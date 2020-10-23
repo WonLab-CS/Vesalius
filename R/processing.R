@@ -1,14 +1,15 @@
 ################################################################################
-############################   ST package        ###############################
+###############################   Vesalius      ################################
 ################################################################################
 
 #/----------------------/ Pre-procssing Functions /----------------------------/
 
-## Removing low genes and low counts
-## Assuming that this a count matrix
-# slide = gene count matrix (digital expression)
-# min.genes = number of genes to have for a barcode to be kept
-# min.count = number of gene counts to have for a barcode to be kept
+#' filter count Matrix - removing low information beads
+#'@param slide count matrix with beads/barcodes as columns and genes as rows
+#'@param min.genes minimum number of different genes a barcodes should have
+#'@param min.count minimum number of counts per barcode
+#'@return A reduced version of the count matrix with barcodes as columns and
+#'genes as rows
 filterCountMatrix <- function(slide, min.genes = 50, min.count = 100 ){
     ## Extracting values
     count <- apply(slide,2,function(x){
@@ -30,40 +31,4 @@ filterCountMatrix <- function(slide, min.genes = 50, min.count = 100 ){
 
 }
 
-## normalise data
-# slide = gene count matrix (digital expression)
-normalizeSlide <- function(slide, method = c("minmax","quantile")){
-    norm <- switch(method[1],
-                   minmax = .minmax(slide),
-                   quantile = normalize.quantiles(slide))
-    return(norm)
-}
 
-### min max norm
-# slide = gene count matrix (digital expression)
-# Function used in normalizeSlide (line 45 - 51)
-.minmax <- function(slide){
-    mi <- min(slide)
-    ma <- max(slide)
-    slide <- (slide - mi)/ (ma - mi)
-    return(slide)
-}
-
-
-## Naive histogram trimmer (Not used)
-## channel = colour channel value
-## trim = quantile of values to remove of each side
-trimHistogram <- function(channel, trim = 0.0125){
-    trim <- as.numeric(as.character(channel)) > quantile(as.numeric(as.character(channel)),0 + trim) &
-             as.numeric(as.character(channel)) < quantile(as.numeric(as.character(channel)),1 - trim)
-    return(trim)
-}
-
-
-
-
-trimHistogram <- function(channel, trim = 0.0125){
-    trim <- as.numeric(as.character(channel)) > quantile(as.numeric(as.character(channel)),0 + trim) &
-             as.numeric(as.character(channel)) < quantile(as.numeric(as.character(channel)),1 - trim)
-    return(trim)
-}

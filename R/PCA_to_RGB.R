@@ -1,12 +1,6 @@
 ################################################################################
-############################   ST package        ###############################
+###############################   Vesalius      ################################
 ################################################################################
-
-#----------------------/Loading pacakges/--------------------------------------#
-library(parallel)
-library(Seurat)
-library(Matrix)
-
 
 #---------------------/PCA RGB Functions/--------------------------------------#
 
@@ -20,7 +14,7 @@ library(Matrix)
 #( e.g: 1 slice computes PC1 to PC3, 2 slices computes PC1 to PC6 -) )
 # trim = quantile limits for colour histogram trimming (Not used)
 
-rgbPCA<- function(slide,SO,slices = 1,countWeight =FALSE, conserveSparse = TRUE, trim = 0){
+rgbPCA<- function(slide,SO,slices = 1,countWeight = FALSE, conserveSparse = TRUE, trim = 0){
 
     # Converting back to a matrix (faster but uses more memory)
     if(!conserveSparse){

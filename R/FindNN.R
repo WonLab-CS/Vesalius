@@ -1,90 +1,35 @@
 ################################################################################
-############################   ST package        ###############################
+###############################   Vesalius      ################################
 ################################################################################
 
 
-#/-------------------------/ nearest Neighbours /------------------------------/
+#/--------------------------/ nearest Neighbors /------------------------------/
 
-
-findNearestNeighborsTrial <- function(slide, k = 5 ,sectors =4,cores=1){
-    # computing polar cooddinates for all points
-    idx <- seq_len(nrow(slide))
-    message("Building Polar Matrix \n")
-    polarMatrix <- mclapply(idx, function(idx,mat,sectors){
-                      ## priming distances
-                      cat(paste0(round(idx/nrow(mat),2),"% Completed"),"\r")
-                      xo <- mat$xcoord[idx]
-                      yo <- mat$ycoord[idx]
-                      xp <- mat$xcoord
-                      yp <- mat$ycoord
-                      # computing euclidean distance between all points
-                      # using point "idx" as center
-                      distance <- sqrt((abs(xp-xo))^2 + (abs(yp-yo))^2)
-                      names(distance) <- mat$barcodes
-                      # Defining x and y for angle calculation
-                      x <- xp-xo ; y <- yp-yo
-                      ## computing all angle from center
-                      angle <- mapply(function(x,y){
-                        if(x >= 0 & y >= 0) angle <- atan(abs(yp-yo)/abs(xp-xo))*(180/pi)
-                        if(x < 0 & y >= 0) angle <- 180 - (atan(abs(yp-yo)/abs(xp-xo))*(180/pi))
-                        if(x < 0 & y < 0) angle <- 180 + (atan(abs(yp-yo)/abs(xp-xo))*(180/pi))
-                        if(x >= 0 & y < 0) angle <- 360 - (atan(abs(yp-yo)/abs(xp-xo))*(180/pi))
-                        return(angle)
-                      },x,y)
-                      names(angle) <- mat$barcodes
-                      ## Assigning angle to sector
-                      sectors <- seq(0,360,length.out = sectors+1)
-                      for(sect in seq(1,length(sectors)-1)){
-                          angle[which(angle >= sectors[sect] &
-                                      angle < sectors[sect+1])] <- sect
-                      }
-
-                      return(list("dist" = distance, "angle" = angle))
-                    }, mat = slide,
-                       sectors = sectors,
-                       mc.cores = cores)
-
-    ## Extracting Distances and sectors
-    message("Building Distance Matrix \n")
-    distanceMatrix <- mclapply(polarMatrix, function(x)return(x$dist),
-                               mc.cores=cores)
-    cat("Building Sector Matrix \n")
-    sectorMatrix <- mclapply(polarMatrix, function(x)return(x$angle),
-                             mc.cores=cores)
-
-    ## Split distance by sectors
-    distanceMatrix <- mcmapply(function(dist,sector){
-
-                              return(split(dist,sector))
-                            },dist = distanceMatrix,
-                              sector = sectorMatrix,mc.cores = cores)
-
-    ## Selecting nearest neighbors in each sector
-    nn <- ceiling(k/sectors)
-    if(nn <1) nn <-1
-    cat("Extracting Nearest Neighbours \n")
-    nearest <- mclapply(distanceMatrix, function(dist,nn){
-                        sectors <- names(nn)
-                        nn <- lapply(dist,function(x,nn,sector){
-                                     tmp <- order(x,decreasing = FALSE)[seq(1,nn)]
-                                     sector <- rep(sector, length(tmp))
-                                     nn <- data.frame(names(tmp),tmp,sector)
-                                     return(nn)
-                        },nn = nn)
-                        nn <- do.call("rbind",nn)
-                        return(nn)
-    })
-
-    return(nearest)
-
-}
-
+#' Finding Nearest spatial neighbors
+#'
+#' @param slide a slide containing the barcodes and associated x/y coordinates.
+#' @param k the number of nearest neighbors to extract
+#' @param box the size of the box used to find nearest neighbors.
+#'     Default is set at 0.05. This represents the proportion of total distance.
+#' @param sectors the number of angle sectors used to find nearest neighbors.
+#'    Default is set at four.
+#' @param cores number of cores used to find nearest neighbors
+#'
+#' @details In order to ensure that the nearest neighbors are distributed in all
+#'    directions, this function find all neighbors within a certain distance (box) and
+#'    categorises all points based on their angle compared to the center point. These points are
+#'    then sorted. The resulting points are the points that are both the closest
+#'    but also found in all directions compared to a center point. If direction is not
+#'    considered important, then set sectors to 1.
+#'
+#' @return A list of nearest neighbors. Each element in the list represents a single
+#'     barcode used as center point. Each elements in the list is a data frame with neighbor barcodes
+#'     x and y coordninates of said neighbors as well as distance and angle from center point.
 
 
 findNearestNeighbors <- function(slide, k = 5 ,box = 0.05,sectors =4,cores=1){
 
     ## cell id locations
-    #cellLoc <- slide[!duplicated(slide$cellID),c("cellID","x","y")]
     cellLoc <- slide[!duplicated(slide$barcodes),c("barcodes","xcoord","ycoord")]
     xcut <- (max(slide$xcoord)-min(slide$xcoord))*box
     ycut <- (max(slide$ycoord)-min(slide$ycoord))*box
@@ -106,13 +51,12 @@ findNearestNeighbors <- function(slide, k = 5 ,box = 0.05,sectors =4,cores=1){
 }
 
 
+### Internal function to FindNearestNeighbors - see above
+### Function is not exported
+### idx - barcodes index
+.localCoordinates <- function(idx,cellLoc, k,totalCells, box, sectors = 8,getNeighbors = FALSE){
 
-
-## Under the assumption that we will be using apply
-## will go row by row with this instead
-localCoordinates <- function(idx,cellLoc, k,totalCells, box, sectors = 8,getNeighbors = FALSE){
-    ##
-
+    ## setting boudaries from coordinates
     xstart <- as.numeric(cellLoc[idx,"xcoord"])
     ystart <- as.numeric(cellLoc[idx,"ycoord"])
     xcor <- c((xstart + (box[1])),(xstart - (box[1])))
@@ -180,7 +124,7 @@ localCoordinates <- function(idx,cellLoc, k,totalCells, box, sectors = 8,getNeig
     }
 
     ## progress
-    cat(paste(round(idx/,, "out of all Cells","\r"))
+    cat(paste(round(idx,"out of all Cells","\r")))
 
 
     return(cellCoordinates)
