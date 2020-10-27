@@ -4,7 +4,16 @@
 
 #----------------------/Isolating Territories/---------------------------------#
 
-
+#' Applying morphological filter to beads by smoothing bead to dominant colour of nearest neighbors
+#' @param img data frame with barcodes, xcoord, ycoord, R, G, and B as coloumns
+#' @param nn nearest neighbors list
+#' @param k numeric describing number of neighbors to use for smoothing
+#' @param threshold numeric between 0 and 1 describing which quantile should be used to select dominant colour.
+#' @details Applying morphological filters on non image data. Morphological filters converts pixels values
+#' to the average value of neighboring pixels. The same process is applied here however instead of using
+#' pixel, this function uses closest beads/spots in space (according to x/coordinates). Depending on how nearest
+#' neighbors were selected, nearest neighbors should be beads/spots that surround the center bead in all directions.
+#' @return data frame with barcodes, xcoord, ycoord, R, G, and B as coloumns but with adjusted RGB values.
 smoothToDominant <- function(img,nn, k =10, threshold = 0.5){
     imgCopy <- img
     for(i in seq_along(nn)){
@@ -20,8 +29,12 @@ smoothToDominant <- function(img,nn, k =10, threshold = 0.5){
     return(imgCopy)
 }
 
-
-enhance <- function(img, saturation = 0.3){
+#' Enhance colour contrast by equalizing the colour histogram
+#' @param img data frame with barcodes, xcoord, ycoord, R, G, and B as coloumns
+#' @details Histogram equalisation ensure that colours are uniformly distributed between all possible colours
+#' Conceptually, this is similar to flatening a curve.
+#' @return data frame with barcodes, xcoord, ycoord, R, G, and B as coloumns with adjusted RGB values.
+enhance <- function(img){
     img[,c("R","G","B")] <- apply(img[,c("R","G","B")],2,
                             equalizeHist)
 
@@ -41,7 +54,17 @@ enhance <- function(img, saturation = 0.3){
       return(res)
     }
 
-
+#' isolating territories from spatial transcriptomic data
+#' @param img data frame with barcodes, xcoord, ycoord, R, G, and B as coloumns
+#' @param colDepth integer describing the number of colours to extract
+#' @param dropRadius numeric describing the proportion of total distance to consider when pooling beads together
+#' @details In order to select territories, colours will be collapsed into \code{colDepth} number of
+#' dominant colours. For each colour, territories will be isolated based on distance between point.
+#' The \code{dropRadius} represents the proportion of total distance (x and y values may differ) to use in order
+#' to pool beads/spots together. The algorithm selects a point and pools all neighboring beads into a territory.
+#' The process is applied to the nearest neighbors until no more points can be pooled into the territory.
+#' If beads remain for a given colour, the process is repeated until all beads/spots are put into a territory.
+#' @return a data frame with barcodes, xcoord, ycoord, R, G, B, cluster number, territory number within that cluster.
 
 isolateTerritories <- function(img,colDepth = 8,dropRadius = 0.025){
       ## clustering colours
@@ -149,8 +172,17 @@ isolateTerritories <- function(img,colDepth = 8,dropRadius = 0.025){
 
 }
 
-
-findSubClusters <- function(img,SO, by = c("cluster","territory"),varF = 2000,ncps = 20, resolution = 0.5){
+#' findSubCluster - Clustering of territories
+#' @param img data frame with barcodes, xcoord, ycoord, R, G, B, cluster number, territory number within that cluster.
+#' @param SO Seurat Object with full spatial assay
+#' @param by character describing if subclustering should be caried out on colour cluster or territories.
+#' @param varF integer describing number of variable features
+#' @param npcs integer describing the number of Principle components to compute
+#' @param resolution numeric describing granularity of clustering
+#' @details The following function is a wrapper function that performs the standard Seurat analysis.
+#' @return A list of lists. The first level represents each cluster of territory. For each cluster or territory,
+#' the list element contains a Seurat Object with sub cluster and markers associated to each subcluster.
+findSubClusters <- function(img,SO, by = c("cluster","territory"),varF = 2000,npcs = 20, resolution = 0.5){
     if(by[1L] == "cluster"){
         ## subsetting by cluster
         clusters <- unique(img$cluster)
@@ -162,7 +194,7 @@ findSubClusters <- function(img,SO, by = c("cluster","territory"),varF = 2000,nc
             tmpSO <- NormalizeData(tmpSO)
             tmpSO <- FindVariableFeatures(tmpSO, selection.method = "vst", nfeatures = varF)
             tmpSO <- ScaleData(tmpSO)
-            tmpSO <- RunPCA(tmpSO,ncps = ncps)
+            tmpSO <- RunPCA(tmpSO,ncps = npcs)
             tmpSO <- RunUMAP(tmpSO,reduction = "pca", dims = seq(1,ncps))
             tmpSO <- FindNeighbors(tmpSO,reduction="pca", dims = seq(1,ncps))
             tmpSO <- FindClusters(tmpSO,resolution = resolution)
@@ -180,14 +212,14 @@ findSubClusters <- function(img,SO, by = c("cluster","territory"),varF = 2000,nc
 
 
 
-##### The oppostite now
-### manuallycollapsing
-
-### this is going to be a bit odd in the approache
-## parsing list ?
-
-# cola <- list(list(c(1,2),c(2,3),c(1,5)),list(c(1,2),c(2,3),c(1,5)))
-# keep in simple for now
+#' Combining Territories
+#' @param img data frame with barcodes, xcoord, ycoord, R, G, B, cluster number, territory number within that cluster.
+#' @param territories list of vectors (cluster and territory).
+#' @details In order to combine territories together, this function takes a list of territories that should be
+#' combined into one. The list elements are vectors containing first the cluster number and then the territory
+#' number within that cluster.
+#'@return  data frame with barcodes, xcoord, ycoord, R, G, B, cluster number, territory number within that cluster where
+#'combined territories will take the value of the first cluster/territory provided.
 
 combineTerritories <- function(img,territories){
     ## first get all section out of img

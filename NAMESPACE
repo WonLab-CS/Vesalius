@@ -1,1 +1,7 @@
+import("parallel","Seurat")
+importFrom("grDevices", "rainbow", "rgb")
+importFrom("graphics", "hist.default", "par", "points", "rect", "text")
+importFrom("stats", "kmeans", "median", "quantile")
+importFrom("utils", "tail")
+importFrom("Matrix","Matrix")
 exportPattern("^[[:alpha:]]+")

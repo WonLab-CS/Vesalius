@@ -32,3 +32,8 @@ filterCountMatrix <- function(slide, min.genes = 50, min.count = 100 ){
 }
 
 
+trimHistogram <- function(channel, trim = 0.0125){
+    trim <- as.numeric(as.character(channel)) > quantile(as.numeric(as.character(channel)),0 + trim) &
+             as.numeric(as.character(channel)) < quantile(as.numeric(as.character(channel)),1 - trim)
+    return(trim)
+}

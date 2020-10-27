@@ -4,15 +4,26 @@
 
 #---------------------/PCA RGB Functions/--------------------------------------#
 
-## Running pca with rgb conversion
-## This function uses the seurat PCA functions
-# slide = gene count matrix (digital expression)
-# SO = Seurat Object - In order to run PCA and find variable features using the
-# Seurat package ,a Seurat Object need to be generated. The generation of such
-# object is describe in the analysis pipeline below.
-# slice = number of PCA slice to compute
-#( e.g: 1 slice computes PC1 to PC3, 2 slices computes PC1 to PC6 -) )
-# trim = quantile limits for colour histogram trimming (Not used)
+#' Embed PCA loading to RGB colour space
+#' @param slide gene count matrix with barcodes as columns and genes as rows
+#' @param SO Seurat Object after normalisation, scaling and finding variable features.
+#' The description of how to build Seurat Objects is described in the Seurat Vignettes.
+#' @param slices number of PCA slices to consider (Integer/numeric).
+#' Slice 1 will embed PC 1 to PC3, slice 2 will embed PC4 to PC6, etc
+#' @param countWeight logical describing if colour embeding should be weighted by count number.
+#' @param conserveSparse logical indicating if sparse matrix format should be conserved.
+#' @param trim numeric describing the quantile at which coulour histogram should be trimmed (two tailed).
+#' Default set to 0 where no histogram trimming will be applied.
+#' @details rgbPCA embeds PCA loadings in the RGB colour space by cumulative summing of PCA loadings for all gene
+#' present on every bead. The absolute values of PCA loading are used for the summation.
+#' The cumulative sum is then normalise in order to bound scores between 0 and 1. If countWegiht
+#' is set to TRUE, loading value for each genes (per bead) are multiplied by the count number of that gene for each bead.
+#' It should be noted that this process is only applied to genes present on a bead/spot. There is no consideration for
+#' genes that are not present on the bead/spot.
+#' @return a list with three different levels.
+#' Level 1 : each list element is a different slice
+#' Level 2 : each list element is R G B channel for that slice
+#' Level 3 : numeric vectors containing colour code for each barcode
 
 rgbPCA<- function(slide,SO,slices = 1,countWeight = FALSE, conserveSparse = TRUE, trim = 0){
 
@@ -72,7 +83,7 @@ rgbPCA<- function(slide,SO,slices = 1,countWeight = FALSE, conserveSparse = TRUE
 
       ## Normalising RGB channels
       rgb <- lapply(rgb, function(x,cutoff){
-                    x <- x [cutoff]
+                    x <- x[cutoff]
                     x <- (x - min(x)) / (max(x) - min(x))
                     return(x)
       }, cutoff = cutoff)
@@ -85,24 +96,25 @@ rgbPCA<- function(slide,SO,slices = 1,countWeight = FALSE, conserveSparse = TRUE
 
 
     ## Return image slice list
-    ## Level 1 : each list element is a different slice
-    ## Level 2 : each list element is R G B channel for that slice
-    ## Level 3 : numeric vectors containing colour code for each barcode
+
     return(image_slice)
 }
 
 
-## Assigning the RGB colour code to its specific barcode location
-## rgb = output of rgbPCA_Seurat
-## image slice list
-## Level 1 : each list element is a different slice
-## Level 2 : each list element is R G B channel for that slice
-## Level 3 : numeric vectors containing colour code for each barcode
+#' Assigning the RGB colour code to its specific barcode location
+#'
+#' @param rgb list of colour codes in the format describe in the Detail section.  Output of rgbPCA.
+#' @param coordinates data frame containing x and y coordinates of barcodes
+#' @param na.rm logical describing if NA should be removed
+#' @details assignRGBtoPixel remaps the colour code to x/y coordinates. \code{rgb} is the output of \code{rgbPCA}.
+#' As such, it should be a list with three different levels.
+#' Level 1 : each list element is a different slice
+#' Level 2 : each list element is R G B channel for that slice
+#' Level 3 : numeric vectors containing colour code for each barcode
+#' @return a data frame with five columns: barcodes (barcode names), xcoord (x coordinates),
+#' ycoord (y coordinates), R (Red colour channel),G (Green colour channel) ,and B (Blue Colour channel).
 
-## coordinates = data frame of barcode coordinates (bead_location.csv)
-## drop = remove NA rgb colour codes
-
-assignRGBtoPixel <- function(rgb,coordinates, drop = TRUE){
+assignRGBtoPixel <- function(rgb,coordinates, na.rm = TRUE){
     # for each slice find coresponding barcodes
     for(i in seq_along(rgb)){
         code <- rep(NA,nrow(coordinates))
@@ -122,21 +134,24 @@ assignRGBtoPixel <- function(rgb,coordinates, drop = TRUE){
 
 
 
-## Generating a pixel matrix with colour codes
-## rgb = output of rgbPCA_Seurat
-## image slice list
-## Level 1 : each list element is a different slice
-## Level 2 : each list element is R G B channel for that slice
-## Level 3 : numeric vectors containing colour code for each barcode
+#' Assigning the RGB colour code to coordinates in lower resolution.
+#'
+#' @param rgb list of colour codes in the format describe in the Detail section.  Output of rgbPCA.
+#' @param coordinates data frame containing x and y coordinates of barcodes
+#' @param resolution size of "image matrix" to be used. n by n matrix where n = resolution
+#' @param drop logical describing if empty location should be removed.
+#' @param na.rm logical describing if NA should be removed
+#' @details assignRGBtoPixel remaps the colour code to x/y coordinates at lower resolution.
+#' This means that beads/spots will be assigned to a "pixel" within a matrix then exported as a data frame.
+#' The current version does not return assigned colours as array images.
+#' \code{rgb} is the output of \code{rgbPCA}.
+#' As such, it should be a list with three different levels.
+#' Level 1 : each list element is a different slice
+#' Level 2 : each list element is R G B channel for that slice
+#' Level 3 : numeric vectors containing colour code for each barcode
+#' @return a data frame with five columns: barcodes (barcode names), xcoord (column index),
+#' ycoord (row index), R (Red colour channel),G (Green colour channel) ,and B (Blue Colour channel).
 
-## coordinates = data frame of barcode coordinates (bead_location.csv)
-## Resolution = size of matrix to generate
-## drop = remove pixel that do not any colours( this is just to remove white pixel)
-## the idea is to reduce the size of the data frame that will be returned
-## A data frame is returned in order to keep track of barcode combinations that are
-## associated to pixels. Keeping track of barcodes and their location is crucial!
-## na.rm = removing NAs if needed
-## NOTE : This function is memory greedy in R (gc())
 
 assingRGBtoPixelQuickBlock <- function(rgb, coordinates,resolution = 200,drop =TRUE,na.rm =TRUE){
   # for each slide find coresponding cooridinates
