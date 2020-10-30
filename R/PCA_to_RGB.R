@@ -124,7 +124,7 @@ assignRGBtoPixel <- function(rgb,coordinates, na.rm = TRUE){
 
     }
     colnames(coordinates) <- c("barcodes","xcoord","ycoord","R","G","B")
-    if(drop){
+    if(na.rm){
         coordinates <- coordinates[!is.na(coordinates$R),]
     }
     # Data frame with barcode name, x/y coordinates and associated RGB colour code

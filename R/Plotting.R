@@ -41,7 +41,7 @@ plotTerritories <- function(img,cluster,cex=1){
       tmp <- img[img$cluster == cluster,]
       cols <- c(median(tmp$R),median(tmp$G),median(tmp$B))
 
-      plot(tmp$xcoord,tmp$ycoord,,xlim=xlims,ylim=ylims,
+      plot(tmp$xcoord,tmp$ycoord,xlim=xlims,ylim=ylims,
            col=rgb(1-cols[1],1-cols[2],1-cols[3], alpha = 0.75),
            pch=19,cex=cex,axes=F, main = cluster)
 
@@ -52,7 +52,7 @@ plotTerritories <- function(img,cluster,cex=1){
                         y <- median(tmp$ycoord)
                         return(list("x" = x,"y" = y))
                   })
-      plot(tmp$xcoord,tmp$ycoord,,xlim=xlims,ylim=ylims,
+      plot(tmp$xcoord,tmp$ycoord,xlim=xlims,ylim=ylims,
            col = tercol[tmp$territories], pch = 19,cex=cex,axes=F)
 
       for(i in seq_along(names(centers))){
@@ -171,7 +171,7 @@ plotSubCluster <- function(subCluster){
     mutate(xu = median(UMAP_1), yu = median(UMAP_2))  -> all_p
 
 
-  #colset <- wes_palette("Darjeeling1",5)
+
 
 
   p1 <- ggplot(all_p, aes(UMAP_1, UMAP_2, colour = seurat_clusters)) +

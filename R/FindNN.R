@@ -36,7 +36,7 @@ findNearestNeighbors <- function(slide, k = 5 ,box = 0.05,sectors =4,cores=1){
     box <- c(xcut,ycut)
     ## lets try local expansion
 
-    localcoor <- mclapply(seq_len(nrow(cellLoc)), localCoordinates,
+    localcoor <- mclapply(seq_len(nrow(cellLoc)), .localCoordinates,
                        cellLoc = cellLoc,
                        k=k,totalCells = nrow(cellLoc),
                        box = box,
@@ -124,7 +124,7 @@ findNearestNeighbors <- function(slide, k = 5 ,box = 0.05,sectors =4,cores=1){
     }
 
     ## progress
-    cat(paste(round(idx,"out of all Cells","\r")))
+
 
 
     return(cellCoordinates)

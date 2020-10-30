@@ -36,7 +36,7 @@ smoothToDominant <- function(img,nn, k =10, threshold = 0.5){
 #' @return data frame with barcodes, xcoord, ycoord, R, G, and B as coloumns with adjusted RGB values.
 enhance <- function(img){
     img[,c("R","G","B")] <- apply(img[,c("R","G","B")],2,
-                            equalizeHist)
+                            .equalizeHist)
 
     return(img)
 }
@@ -52,7 +52,7 @@ enhance <- function(img){
 
       res <- equalized[bins]
       return(res)
-    }
+}
 
 #' isolating territories from spatial transcriptomic data
 #' @param img data frame with barcodes, xcoord, ycoord, R, G, and B as coloumns
@@ -90,7 +90,7 @@ isolateTerritories <- function(img,colDepth = 8,dropRadius = 0.025){
           barcodes <- img[img$cluster == clusters[i],]
           message(paste0("Pooling cluster ",i))
           ## pooling
-          pool <- distancePooling(barcodes,)
+          pool <- .distancePooling(barcodes,)
 
           img[img$cluster == clusters[i],]<- pool
 
