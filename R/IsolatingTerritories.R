@@ -8,24 +8,30 @@
 #' @param img data frame with barcodes, xcoord, ycoord, R, G, and B as coloumns
 #' @param nn nearest neighbors list
 #' @param k numeric describing number of neighbors to use for smoothing
+#' @param iter numeric describing the number of smoothing iterations that should be performed
 #' @param threshold numeric between 0 and 1 describing which quantile should be used to select dominant colour.
 #' @details Applying morphological filters on non image data. Morphological filters converts pixels values
 #' to the average value of neighboring pixels. The same process is applied here however instead of using
 #' pixel, this function uses closest beads/spots in space (according to x/coordinates). Depending on how nearest
 #' neighbors were selected, nearest neighbors should be beads/spots that surround the center bead in all directions.
 #' @return data frame with barcodes, xcoord, ycoord, R, G, and B as coloumns but with adjusted RGB values.
-smoothToDominant <- function(img,nn, k =10, threshold = 0.5){
+smoothToDominant <- function(img,nn, k =10, iter = 1,threshold = 0.5){
     imgCopy <- img
-    for(i in seq_along(nn)){
-        cat(paste((i/length(nn))*100),"%","\r")
-        tmp <- img[img$barcodes %in% nn[[i]]$barcodes,c("R","G","B") ]
+    for(it in seq_len(iter)){
+      cat(paste("Smoothing Iteration",it, "\r"))
+      for(i in seq_along(nn)){
 
-        tmp <- apply(tmp,2,quantile, threshold, na.rm =TRUE)
-        imgCopy[imgCopy$barcodes == names(nn)[i],c("R","G","B")] <- tmp
+          tmp <- img[img$barcodes %in% nn[[i]]$barcodes,c("R","G","B") ]
+
+          tmp <- apply(tmp,2,quantile, threshold, na.rm =TRUE)
+          imgCopy[imgCopy$barcodes == names(nn)[i],c("R","G","B")] <- tmp
+      }
+      imgCopy<-imgCopy[!is.na(imgCopy$R) &
+                       !is.na(imgCopy$G) &
+                       !is.na(imgCopy$B) ,]
+      img <- imgCopy
     }
-    imgCopy<-imgCopy[!is.na(imgCopy$R) &
-                     !is.na(imgCopy$G) &
-                     !is.na(imgCopy$B) ,]
+
     return(imgCopy)
 }
 
@@ -141,7 +147,7 @@ isolateTerritories <- function(img,colDepth = 8,dropRadius = 0.025){
                                             return(res)
                                           },newPool,dropDistance)))
                     overlap <- newPool %in% pool
-                    print(sum(overlap))
+
                     if(sum(overlap) != length(newPool)){
 
                         pool <- unique(c(pool,newPool[!overlap]))
@@ -191,12 +197,12 @@ findSubClusters <- function(img,SO, by = c("cluster","territory"),varF = 2000,np
         for(i in seq_along(clusters)){
             barcodes <- img[img$cluster == clusters[i],"barcodes"]
             tmpSO <- subset(SO, cells = barcodes)
-            tmpSO <- NormalizeData(tmpSO)
+            tmpSO <- SCTransform(tmpSO, assay = "Spatial")
             tmpSO <- FindVariableFeatures(tmpSO, selection.method = "vst", nfeatures = varF)
             tmpSO <- ScaleData(tmpSO)
             tmpSO <- RunPCA(tmpSO,ncps = npcs)
-            tmpSO <- RunUMAP(tmpSO,reduction = "pca", dims = seq(1,ncps))
-            tmpSO <- FindNeighbors(tmpSO,reduction="pca", dims = seq(1,ncps))
+            tmpSO <- RunUMAP(tmpSO,reduction = "pca", dims = seq(1,npcs))
+            tmpSO <- FindNeighbors(tmpSO,reduction="pca", dims = seq(1,npcs))
             tmpSO <- FindClusters(tmpSO,resolution = resolution)
             markers <-  FindAllMarkers(tmpSO)
             subCluster[[i]] <- list("subClusters"= tmpSO,"markers" = markers)
@@ -212,7 +218,7 @@ findSubClusters <- function(img,SO, by = c("cluster","territory"),varF = 2000,np
 
 
 
-#' Combining Territories
+#' Extracting Territories from image data
 #' @param img data frame with barcodes, xcoord, ycoord, R, G, B, cluster number, territory number within that cluster.
 #' @param territories list of vectors (cluster and territory).
 #' @details In order to combine territories together, this function takes a list of territories that should be
@@ -221,7 +227,7 @@ findSubClusters <- function(img,SO, by = c("cluster","territory"),varF = 2000,np
 #'@return  data frame with barcodes, xcoord, ycoord, R, G, B, cluster number, territory number within that cluster where
 #'combined territories will take the value of the first cluster/territory provided.
 
-combineTerritories <- function(img,territories){
+extractTerritories <- function(img,territories){
     ## first get all section out of img
     clust <- sapply(territories,"[[",1L)
     ter <- sapply(territories,"[[",2L)
@@ -230,15 +236,13 @@ combineTerritories <- function(img,territories){
     # index territories
     indexTer <- paste0(img$cluster,"_",img$territories)
 
-    ## references territory
-    cl1 <- clust[1L]
-    ter1 <- ter[1L]
+
     ## get index
     subImg <- indexTer %in% combTer
-    #browser()
-    img[subImg,"cluster"] <- cl1
-    img[subImg,"territories"] <- ter1
 
-    return(img)
+    subImg <- img$barcodes[subImg]
+
+
+    return(subImg)
 
 }
