@@ -9,31 +9,164 @@
 #' @param nn nearest neighbors list
 #' @param k numeric describing number of neighbors to use for smoothing
 #' @param iter numeric describing the number of smoothing iterations that should be performed
+#' @param angleBias logical describing if angle of nearest neighbor should be account for.
 #' @param threshold numeric between 0 and 1 describing which quantile should be used to select dominant colour.
+#' @param logical describing if progress message should outputed to console.
 #' @details Applying morphological filters on non image data. Morphological filters converts pixels values
 #' to the average value of neighboring pixels. The same process is applied here however instead of using
 #' pixel, this function uses closest beads/spots in space (according to x/coordinates). Depending on how nearest
 #' neighbors were selected, nearest neighbors should be beads/spots that surround the center bead in all directions.
 #' @return data frame with barcodes, xcoord, ycoord, R, G, and B as coloumns but with adjusted RGB values.
-smoothToDominant <- function(img,nn, k =10, iter = 1,threshold = 0.5){
-    imgCopy <- img
+smoothToDominant <- function(img,nn,method = c("median","exp","linear"), iter = 1,angleBias = FALSE, verbose =TRUE){
+    ## Building smoothing kernel
+
+
+    ### For each smoothing iteration
+    ### Note that this only applies to this function and is not the same
+    ### As segmentation iteration even if both are used in the segmentation
+    ### process
     for(it in seq_len(iter)){
-      cat(paste("Smoothing Iteration",it, "\r"))
-      for(i in seq_along(nn)){
-
-          tmp <- img[img$barcodes %in% nn[[i]]$barcodes,c("R","G","B") ]
-
-          tmp <- apply(tmp,2,quantile, threshold, na.rm =TRUE)
-          imgCopy[imgCopy$barcodes == names(nn)[i],c("R","G","B")] <- tmp
+      ###########################
+      if(verbose){
+        cat(paste("Smoothing Iteration",it, "\r"))
       }
-      imgCopy<-imgCopy[!is.na(imgCopy$R) &
-                       !is.na(imgCopy$G) &
-                       !is.na(imgCopy$B) ,]
-      img <- imgCopy
+      ###########################
+
+      for(i in seq_along(nn)){
+          #tmp <- img[img$barcodes %in% nn[[i]]$barcodes,c("R","G","B") ]
+          ##### Applying angle bias
+          ### Bug fix -- this is happening somewhere else
+          ### but for now
+          if(nrow(nn[[i]])==0) next()
+
+          img <- switch(method[1L],
+                        "median" = .medianKernel(img, nn[i], angleBias),
+                        "exp" = .expKernel(img, nn[i], angleBias),
+                        "linear" = .linearKernel(img, nn[i], angleBias))
+
+
+      }
+
+      img<-img[!is.na(img$R) &
+               !is.na(img$G) &
+               !is.na(img$B) ,]
+
     }
 
-    return(imgCopy)
+    return(img)
 }
+
+.medianKernel <- function(img,nn, angleBias=FALSE){
+    if(angleBias){
+      ### setting up quadrants
+      q1 <- c(0,90)
+      q2 <- c(90,180)
+      q3 <- c(180,270)
+      q4 <- c(270,360)
+      if(any(colnames(img) == c("cluster"))){
+          ### TO ADD
+      } else {
+          stop("angle Bias smoothing only possible when using iterative segmentation")
+      }
+
+    } else {
+         loc <- names(nn)
+         nn <- nn[[1L]]
+         tmp <- img[img$barcodes %in% nn$barcodes,c("R","G","B")]
+         tmp <- apply(tmp,2,median)
+         img[img$barcodes == names(nn),c("R","G","B")] <- tmp
+    }
+
+    return(img)
+}
+
+.expKernel <- function(img,nn, angleBias=FALSE){
+    if(angleBias){
+      ### setting up quadrants
+      q1 <- c(0,90)
+      q2 <- c(90,180)
+      q3 <- c(180,270)
+      q4 <- c(270,360)
+      if(any(colnames(img) == c("cluster"))){
+          ### TO ADD
+      } else {
+          stop("angle Bias smoothing only possible when using iterative segmentation")
+      }
+
+    } else {
+
+         loc <- names(nn)
+         nn <- nn[[1L]]
+
+         tmp <- img[match(nn$barcodes,img$barcodes),c("R","G","B")]
+         maxDist <- max(nn$distance)
+         minDist <- min(nn$distance)
+         ### Not sure if this is the best number of increments
+         ### But It can get out of hand if you stack them
+
+         increments <- seq(maxDist, minDist, length.out = 6)
+         ## First step adding increment values
+         tmp$inc <- rep(0,nrow(tmp))
+
+         for(inc in seq(1,length.out = length(increments)-1)){
+            tmp[nn$distance < increments[inc] &
+                nn$distance >= increments[inc+1],"inc"] <- ceiling(exp(inc))
+         }
+         ## Replicating points
+         r <- c() ; g <- c() ; b <- c()
+         for(i in seq_len(nrow(tmp))){
+            r <- c(r,rep(tmp$R[i],tmp$inc[i]))
+            g <- c(g,rep(tmp$G[i],tmp$inc[i]))
+            b <- c(b,rep(tmp$B[i],tmp$inc[i]))
+         }
+         tmp <- cbind(r,g,b)
+
+         tmp <- apply(tmp,2,median)
+         img[img$barcodes == loc,c("R","G","B")] <- tmp
+    }
+
+    return(img)
+}
+
+.linearKernel <- function(img,nn, angleBias=FALSE){
+    if(angleBias){
+      ### setting up quadrants
+      q1 <- c(0,90)
+      q2 <- c(90,180)
+      q3 <- c(180,270)
+      q4 <- c(270,360)
+      if(any(colnames(img) == c("cluster"))){
+          ### TO ADD
+      } else {
+          stop("angle Bias smoothing only possible when using iterative segmentation")
+      }
+
+    } else {
+         loc <- names(nn)
+         nn <- nn[[1L]]
+         tmp <- img[match(nn$barcodes,img$barcodes),c("R","G","B")]
+         ### Not sure if this is the best number of increments
+         ### But It can get out of hand if you stack them
+
+         tmp$inc <- order(nn$distance)
+         ## Replicating points
+         r <- c() ; g <- c() ; b <- c()
+         for(i in seq_len(nrow(tmp))){
+            r <- c(r,rep(tmp$R[i],tmp$inc[i]))
+            g <- c(g,rep(tmp$G[i],tmp$inc[i]))
+            b <- c(b,rep(tmp$B[i],tmp$inc[i]))
+         }
+         tmp <- cbind(r,g,b)
+         tmp <- apply(tmp,2,median)
+         img[img$barcodes == loc,c("R","G","B")] <- tmp
+    }
+
+    return(img)
+}
+
+
+
+
 
 #' Enhance colour contrast by equalizing the colour histogram
 #' @param img data frame with barcodes, xcoord, ycoord, R, G, and B as coloumns
@@ -60,24 +193,42 @@ enhance <- function(img){
       return(res)
 }
 
-#' isolating territories from spatial transcriptomic data
-#' @param img data frame with barcodes, xcoord, ycoord, R, G, and B as coloumns
-#' @param colDepth integer describing the number of colours to extract
-#' @param dropRadius numeric describing the proportion of total distance to consider when pooling beads together
-#' @details In order to select territories, colours will be collapsed into \code{colDepth} number of
-#' dominant colours. For each colour, territories will be isolated based on distance between point.
-#' The \code{dropRadius} represents the proportion of total distance (x and y values may differ) to use in order
-#' to pool beads/spots together. The algorithm selects a point and pools all neighboring beads into a territory.
-#' The process is applied to the nearest neighbors until no more points can be pooled into the territory.
-#' If beads remain for a given colour, the process is repeated until all beads/spots are put into a territory.
-#' @return a data frame with barcodes, xcoord, ycoord, R, G, B, cluster number, territory number within that cluster.
+#' iterativeSegmentation - collapse and smooth points into colour startingSegements
+#' @param img data frame containing RGB code for each bead
+#' @param nn list containing nearest spatial neighbours
+#' @param colDepth numeric describing final number of colour segments in image
+#' @param iter numeric describing number of segmentation/smoothing iterations
+#' @param startingSegements numeric describing the number of initial colour segments to consider.
+#' @param eq logical indicating if colour histogram should be equalised before each iteration.
+#' @param verbose logical indicating if progress messages should be outputed to console.
+#' @details For each iteration, the algorithm collapse the colour space into n colour segments.
+#' Then, smoothing is applied to nearest neighbours. The process is repeated for each iteration.
+#' Note that the number of segments from starting segments to final colour depth follows the following
+#' Function : \code{seq(startingSegements,colDepth+1,length.out = iter)}
+#' @return a data frame containing RGB code for each bead.
 
-isolateTerritories <- function(img,colDepth = 8,dropRadius = 0.025){
+iterativeSegmentation <- function(img,nn,colDepth = 9,segIter = 10,
+                                  smoothIter = 1,method = c("median","exp","linear"),
+                                  startingSegements = 256,
+                                  eq = TRUE,angleBias=FALSE, verbose = TRUE){
+  ## Check
+  if(segIter > (startingSegements - colDepth)){
+      warning("Iterations surpass number of startingSegements \n
+              Consider increasing startingSegements or reducing iterations")
+      segIter <- startingSegements - colDepth
+  }
+  ## Building colour segments
+  segments <- c(ceiling(seq(startingSegements,colDepth+1,length.out = segIter)),colDepth)
+
+  for(j in segments){
       ## clustering colours
-      clust <- kmeans(img[,c("R","G","B")],colDepth)
+      if(verbose){
+          cat(paste("Current Number of segments: ", j,"\r"))
+      }
+
+      clust <- kmeans(img[,c("R","G","B")],j,iter.max = 200,nstart = 10)
       img$cluster <- clust$cluster
       clusters <- unique(clust$cluster)
-
       ## collapsing coulours for output
 
       for(i in seq_along(clusters)){
@@ -88,21 +239,70 @@ isolateTerritories <- function(img,colDepth = 8,dropRadius = 0.025){
           img[img$cluster == clusters[i],] <- tmp
       }
 
-      ## Finding territories in each
-      clusterCount <- 1
-      img$territories <- NA
-      for(i in seq_along(clusters)){
-          ## all barcodes from cluster i
-          barcodes <- img[img$cluster == clusters[i],]
-          message(paste0("Pooling cluster ",i))
-          ## pooling
-          pool <- .distancePooling(barcodes,)
+      ### Once we have go through the last segmentation we don't want any more smoothing
+      ### Will slightly change the colour values 
+      if(j != segments[length(segments)]){
+          img <- smoothToDominant(img,nn,method =method[1L],iter=smoothIter,angleBias = angleBias,verbose = FALSE)
+      }
 
-          img[img$cluster == clusters[i],]<- pool
+
+      if(eq){
+        img <- enhance(img)
+      }
+  }
+  return(img)
+}
+
+
+#' isolating territories from spatial transcriptomic data
+#' @param img data frame with barcodes, xcoord, ycoord, R, G, and B as coloumns
+#' @param dropRadius numeric describing the proportion of total distance to consider when pooling beads together
+#' @details In order to select territories, colours will be collapsed into \code{colDepth} number of
+#' dominant colours. For each colour, territories will be isolated based on distance between point.
+#' The \code{dropRadius} represents the proportion of total distance (x and y values may differ) to use in order
+#' to pool beads/spots together. The algorithm selects a point and pools all neighboring beads into a territory.
+#' The process is applied to the nearest neighbors until no more points can be pooled into the territory.
+#' If beads remain for a given colour, the process is repeated until all beads/spots are put into a territory.
+#' @return a data frame with barcodes, xcoord, ycoord, R, G, B, cluster number, territory number within that cluster.
+
+isolateTerritories <- function(img,dropRadius = 0.025,colDepth =12){
+      if(any(colnames(img)=="cluster")){
+        clusters <- unique(as.numeric(as.character(img$cluster)))
+        ## Finding territories in each
+        clusterCount <- 1
+        img$territories <- NA
+        for(i in seq_along(clusters)){
+            ## all barcodes from cluster i
+            barcodes <- img[img$cluster == clusters[i],]
+            message(paste0("Pooling cluster ",i))
+            ## pooling
+            pool <- .distancePooling(barcodes,)
+
+            img[img$cluster == clusters[i],]<- pool
+
+        }
+
+      } else {
+        clust <- kmeans(img[,c("R","G","B")],colDepth,iter.max = 200,nstart = 10)
+        img$cluster <- clust$cluster
+        clusters <- unique(as.numeric(as.character(img$cluster)))
+        ## Finding territories in each
+        clusterCount <- 1
+        img$territories <- NA
+        for(i in seq_along(clusters)){
+            ## all barcodes from cluster i
+            barcodes <- img[img$cluster == clusters[i],]
+            message(paste0("Pooling cluster ",i))
+            ## pooling
+            pool <- .distancePooling(barcodes,)
+
+            img[img$cluster == clusters[i],]<- pool
+
+        }
 
       }
       return(img)
-    }
+}
 
 .distancePooling <- function(img,dropRadius= 0.025){
         dropDistance <- sqrt((max(img$xcoord)-min(img$xcoord))^2 +

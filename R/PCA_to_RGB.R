@@ -10,6 +10,7 @@
 #' The description of how to build Seurat Objects is described in the Seurat Vignettes.
 #' @param slices number of PCA slices to consider (Integer/numeric).
 #' Slice 1 will embed PC 1 to PC3, slice 2 will embed PC4 to PC6, etc
+#' @param adjusted logical indicating if RGB code should be adjusted to rgb (rgb coordinate)
 #' @param countWeight logical describing if colour embeding should be weighted by count number.
 #' @param conserveSparse logical indicating if sparse matrix format should be conserved.
 #' @param trim numeric describing the quantile at which coulour histogram should be trimmed (two tailed).
@@ -25,7 +26,7 @@
 #' Level 2 : each list element is R G B channel for that slice
 #' Level 3 : numeric vectors containing colour code for each barcode
 
-rgbPCA<- function(slide,SO,slices = 1,countWeight = FALSE, conserveSparse = TRUE, trim = 0){
+rgbPCA<- function(slide,SO,slices = 1,adjusted = FALSE,countWeight = FALSE, conserveSparse = TRUE, trim = 0){
 
     # Converting back to a matrix (faster but uses more memory)
     if(!conserveSparse){
@@ -84,11 +85,22 @@ rgbPCA<- function(slide,SO,slices = 1,countWeight = FALSE, conserveSparse = TRUE
       ## Normalising RGB channels
       rgb <- lapply(rgb, function(x,cutoff){
                     x <- x[cutoff]
+                    
                     x <- (x - min(x)) / (max(x) - min(x))
                     return(x)
       }, cutoff = cutoff)
 
-      ##
+      if(adjusted){
+          sums <- sapply(seq_along(rgb[[1]]), function(idx,rgb){
+                          return(sum(rgb[[1]][idx],
+                                     rgb[[2]][idx],
+                                     rgb[[3]][idx]))
+          },rgb)
+          rgb <- lapply(rgb, function(rgb,sums){
+                        return(rgb/sums)
+          },sums)
+      }
+
       image_slice[[sl]] <- rgb
     }
 
