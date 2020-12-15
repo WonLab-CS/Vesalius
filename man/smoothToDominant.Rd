@@ -2,24 +2,37 @@
 % Please edit documentation in R/IsolatingTerritories.R
 \name{smoothToDominant}
 \alias{smoothToDominant}
-\title{Applying morphological filter to beads by smoothing bead to dominant colour of nearest neighbors}
+\title{Applying smoothing filter to beads by smoothing bead to dominant colour of nearest neighbors}
 \usage{
-smoothToDominant(img, nn, k = 10, threshold = 0.5)
+smoothToDominant(
+  img,
+  nn,
+  method = c("median", "exp", "linear"),
+  iter = 1,
+  angleBias = FALSE,
+  verbose = TRUE
+)
 }
 \arguments{
 \item{img}{data frame with barcodes, xcoord, ycoord, R, G, and B as coloumns}
 
 \item{nn}{nearest neighbors list}
 
+\item{iter}{numeric describing the number of smoothing iterations that should be performed}
+
+\item{angleBias}{logical describing if angle of nearest neighbor should be account for.}
+
 \item{k}{numeric describing number of neighbors to use for smoothing}
 
 \item{threshold}{numeric between 0 and 1 describing which quantile should be used to select dominant colour.}
+
+\item{logical}{describing if progress message should outputed to console.}
 }
 \value{
 data frame with barcodes, xcoord, ycoord, R, G, and B as coloumns but with adjusted RGB values.
 }
 \description{
-Applying morphological filter to beads by smoothing bead to dominant colour of nearest neighbors
+Applying smoothing filter to beads by smoothing bead to dominant colour of nearest neighbors
 }
 \details{
 Applying morphological filters on non image data. Morphological filters converts pixels values

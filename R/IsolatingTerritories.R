@@ -4,7 +4,7 @@
 
 #----------------------/Isolating Territories/---------------------------------#
 
-#' Applying morphological filter to beads by smoothing bead to dominant colour of nearest neighbors
+#' Applying smoothing filter to beads by smoothing bead to dominant colour of nearest neighbors
 #' @param img data frame with barcodes, xcoord, ycoord, R, G, and B as coloumns
 #' @param nn nearest neighbors list
 #' @param k numeric describing number of neighbors to use for smoothing
@@ -148,7 +148,7 @@ smoothToDominant <- function(img,nn,method = c("median","exp","linear"), iter = 
          ### Not sure if this is the best number of increments
          ### But It can get out of hand if you stack them
 
-         tmp$inc <- order(nn$distance)
+         tmp$inc <- order(nn$distance, decreasing =TRUE)
          ## Replicating points
          r <- c() ; g <- c() ; b <- c()
          for(i in seq_len(nrow(tmp))){
@@ -164,8 +164,44 @@ smoothToDominant <- function(img,nn,method = c("median","exp","linear"), iter = 
     return(img)
 }
 
+#' Smoothing image array - wrapper function for imager smoothing functions
+#' @param img 4 dimensional array or cimg object
+#' @param method character describing smoothing method to use "median" , "iso"  or "box"
+#' @param sigma numeric - standard deviation associated with the isoblur
+#' @param box numeric describing box size (centered around center pixel) for smoothing
+#' @param threshold numeric - discard pixels that are too low in value (see \code{medianblur})
+#' @param neuman logical describing If Neumann boundary conditions should be used,
+#' Dirichlet otherwise (default true, Neumann)
+#' @param gaussian logical - use gaussian filter
+#' @param na.rm logical describing if NA values should be removed
+#' @param iter numeric describing number of smoothing rounds to apply to image
+#' @details Applying smoothing to image data.
+#' @return Array or cimg object after bieng smoothed
+smoothArray <- function(img,method = c("median","iso","box"),
+                        sigma = 1, box = 20, threshold=0, neuman=TRUE,
+                        gaussian=TRUE,na.rm=FALSE, iter = 1){
+    #--------------------------------------------------------------------------#
+    # Class check
+    #--------------------------------------------------------------------------#
+    if(!is.cimg(img)){
+      img <- as.cimg(img)
+    }
+    #--------------------------------------------------------------------------#
+    # NOTE Export cimg object as data frame and vice versa
+    # It might be easier be easier
+    #--------------------------------------------------------------------------#
 
-
+    #--------------------------------------------------------------------------#
+    # Running multiple smoothing itteration
+    #--------------------------------------------------------------------------#
+    for(i in seq_len(iter)){
+        img <- switch(method,
+                      "median" = medianblur(img,box, threshold),
+                      "iso" = isoblur(img,sigma,neuman,gaussian,na.rm),
+                      "box" = boxblur(img,box,neuman))
+    }
+    return(img)
+}
 
 
 #' Enhance colour contrast by equalizing the colour histogram
@@ -174,8 +210,20 @@ smoothToDominant <- function(img,nn,method = c("median","exp","linear"), iter = 
 #' Conceptually, this is similar to flatening a curve.
 #' @return data frame with barcodes, xcoord, ycoord, R, G, and B as coloumns with adjusted RGB values.
 enhance <- function(img){
-    img[,c("R","G","B")] <- apply(img[,c("R","G","B")],2,
-                            .equalizeHist)
+    ## checking classes
+    if(is(img) == "data.frame"){
+      img[,c("R","G","B")] <- apply(img[,c("R","G","B")],2,
+                              .equalizeHist)
+    } else if( is(img) == "array"){
+        for(i in seq(1,3)){
+            tmp <- img[,,,i]
+            tmp <- .equalizeHist(as.vector(tmp))
+            img[,,,i] <- tmp
+        }
+    } else {
+      stop("Unkown image type")
+    }
+
 
     return(img)
 }
@@ -197,9 +245,12 @@ enhance <- function(img){
 #' @param img data frame containing RGB code for each bead
 #' @param nn list containing nearest spatial neighbours
 #' @param colDepth numeric describing final number of colour segments in image
-#' @param iter numeric describing number of segmentation/smoothing iterations
+#' @param segIter numeric describing number of segmentation iterations
+#' @param smoothIter numeric describing number of smoothing iterations
+#' @param method character describing smoothing method to use (median ,exp or linear)
 #' @param startingSegements numeric describing the number of initial colour segments to consider.
 #' @param eq logical indicating if colour histogram should be equalised before each iteration.
+#' @param angleBias logical describing if angle to nearest neighbor should be considered (NOT IMPLEMENTED)
 #' @param verbose logical indicating if progress messages should be outputed to console.
 #' @details For each iteration, the algorithm collapse the colour space into n colour segments.
 #' Then, smoothing is applied to nearest neighbours. The process is repeated for each iteration.
@@ -207,7 +258,7 @@ enhance <- function(img){
 #' Function : \code{seq(startingSegements,colDepth+1,length.out = iter)}
 #' @return a data frame containing RGB code for each bead.
 
-iterativeSegmentation <- function(img,nn,colDepth = 9,segIter = 10,
+iterativeSegmentation.bead <- function(img,nn,colDepth = 9,segIter = 10,
                                   smoothIter = 1,method = c("median","exp","linear"),
                                   startingSegements = 256,
                                   eq = TRUE,angleBias=FALSE, verbose = TRUE){
@@ -240,7 +291,7 @@ iterativeSegmentation <- function(img,nn,colDepth = 9,segIter = 10,
       }
 
       ### Once we have go through the last segmentation we don't want any more smoothing
-      ### Will slightly change the colour values 
+      ### Will slightly change the colour values
       if(j != segments[length(segments)]){
           img <- smoothToDominant(img,nn,method =method[1L],iter=smoothIter,angleBias = angleBias,verbose = FALSE)
       }
@@ -249,6 +300,99 @@ iterativeSegmentation <- function(img,nn,colDepth = 9,segIter = 10,
       if(eq){
         img <- enhance(img)
       }
+  }
+  return(img)
+}
+
+
+#' iterativeSegmentation - collapse and smooth points into colour startingSegements
+#' @param img data frame containing RGB code for each bead
+#' @param colDepth numeric describing final number of colour segments in image
+#' @param segIter numeric describing number of segmentation iterations
+#' @param smoothIter numeric describing number of smoothing iterations
+#' @param startingSegements numeric describing the number of initial colour segments to consider.
+#' @param method character describing the smoothing method to be used (median , iso or box)
+#' @param sigma numeric - standard deviation associated with the isoblur
+#' @param box numeric describing box size (centered around center pixel) for smoothing
+#' @param threshold numeric - discard pixels that are too low in value (see \code{medianblur})
+#' @param neuman logical describing If Neumann boundary conditions should be used,
+#' Dirichlet otherwise (default true, Neumann)
+#' @param gaussian logical - use gaussian filter
+#' @param na.rm logical describing if NA values should be removed
+#' @param verbose logical indicating if progress messages should be outputed to console.
+#' @details For each iteration, the algorithm collapse the colour space into n colour segments.
+#' Then, smoothing is applied to nearest neighbours. The process is repeated for each iteration.
+#' Note that the number of segments from starting segments to final colour depth follows the following
+#' Function : \code{seq(startingSegements,colDepth+1,length.out = iter)}
+#' @return a data frame containing RGB code for each bead.
+
+iterativeSegmentation.array <- function(img,colDepth = 9,segIter = 10,
+                                        smoothIter = 1,startingSegements = 256,
+                                        method = c("median","iso","box"),
+                                        sigma = 1, box = 20, threshold=0, neuman=TRUE,
+                                        gaussian=TRUE, na.rm=FALSE,
+                                        verbose = TRUE){
+  #----------------------------------------------------------------------------#
+  # Checking stuff
+  #----------------------------------------------------------------------------#
+  if(segIter > (startingSegements - colDepth)){
+      warning("Iterations surpass number of startingSegements \n
+              Consider increasing startingSegements or reducing iterations")
+      segIter <- startingSegements - colDepth
+  }
+  #----------------------------------------------------------------------------#
+  ## Building colour segments
+  #----------------------------------------------------------------------------#
+  segments <- c(ceiling(seq(startingSegements,colDepth+1,length.out = segIter)),colDepth)
+
+  #----------------------------------------------------------------------------#
+  # Comverting image to data.frame
+  # Need to check how things work here
+  ## could be cleaner if you just go back and forth between data frame and cimg
+  #----------------------------------------------------------------------------#
+  if(is.cimg(img)){
+      img <- as.data.frame(img)
+  }
+
+  #----------------------------------------------------------------------------#
+  # Segmenting image by iteratively decreasing colour depth and smoothing
+  #----------------------------------------------------------------------------#
+  for(j in segments){
+
+      if(verbose){
+          cat(paste("Current Number of segments: ", j,"\r"))
+      }
+
+    #--------------------------------------------------------------------------#
+    # Segmentation is done by using kmeans clustering
+    #--------------------------------------------------------------------------#
+      clust <- kmeans(img[,c("R","G","B")],j,iter.max = 200,nstart = 10)
+      img$cluster <- clust$cluster
+      clusters <- unique(clust$cluster)
+
+    #--------------------------------------------------------------------------#
+    # Not using centroid values - this just makes everything gray scale
+    # Not we want at the moment - maybe later
+    #--------------------------------------------------------------------------#
+
+      for(i in seq_along(clusters)){
+          tmp <- img[img$cluster == clusters[i],]
+          tmp$R <- median(tmp$R)
+          tmp$G <- median(tmp$G)
+          tmp$B <- median(tmp$B)
+          img[img$cluster == clusters[i],] <- tmp
+      }
+    #--------------------------------------------------------------------------#
+    # Once we have go through the last segmentation we don't want any more smoothing
+    # Will slightly change the colour values
+    #--------------------------------------------------------------------------#
+      if(j != segments[length(segments)]){
+          img <- smoothArray(img,method =method[1L],sigma = sigma, box = box,
+                             threshold=threshold, neuman=neuman, gaussian=gaussian,
+                             na.rm=FALSE,iter = smoothIter)
+      }
+
+
   }
   return(img)
 }
@@ -265,7 +409,7 @@ iterativeSegmentation <- function(img,nn,colDepth = 9,segIter = 10,
 #' If beads remain for a given colour, the process is repeated until all beads/spots are put into a territory.
 #' @return a data frame with barcodes, xcoord, ycoord, R, G, B, cluster number, territory number within that cluster.
 
-isolateTerritories <- function(img,dropRadius = 0.025,colDepth =12){
+isolateTerritories.bead <- function(img,dropRadius = 0.025,colDepth =12){
       if(any(colnames(img)=="cluster")){
         clusters <- unique(as.numeric(as.character(img$cluster)))
         ## Finding territories in each
@@ -303,6 +447,57 @@ isolateTerritories <- function(img,dropRadius = 0.025,colDepth =12){
       }
       return(img)
 }
+
+#' isolating territories from spatial transcriptomic data
+#' @param img data frame with barcodes, xcoord, ycoord, R, G, and B as coloumns
+#' @param dropRadius numeric describing the proportion of total distance to consider when pooling beads together
+#' @details In order to select territories, colours will be collapsed into \code{colDepth} number of
+#' dominant colours. For each colour, territories will be isolated based on distance between point.
+#' The \code{dropRadius} represents the proportion of total distance (x and y values may differ) to use in order
+#' to pool beads/spots together. The algorithm selects a point and pools all neighboring beads into a territory.
+#' The process is applied to the nearest neighbors until no more points can be pooled into the territory.
+#' If beads remain for a given colour, the process is repeated until all beads/spots are put into a territory.
+#' @return a data frame with barcodes, xcoord, ycoord, R, G, B, cluster number, territory number within that cluster.
+
+isolateTerritories.array <- function(img,dropRadius = 0.025,colDepth =12){
+      if(any(colnames(img)=="cluster")){
+        clusters <- unique(as.numeric(as.character(img$cluster)))
+        ## Finding territories in each
+        clusterCount <- 1
+        img$territories <- NA
+        for(i in seq_along(clusters)){
+            ## all barcodes from cluster i
+            barcodes <- img[img$cluster == clusters[i],]
+            message(paste0("Pooling cluster ",i))
+            ## pooling
+            pool <- .distancePooling(barcodes,)
+
+            img[img$cluster == clusters[i],]<- pool
+
+        }
+
+      } else {
+        clust <- kmeans(img[,c("R","G","B")],colDepth,iter.max = 200,nstart = 10)
+        img$cluster <- clust$cluster
+        clusters <- unique(as.numeric(as.character(img$cluster)))
+        ## Finding territories in each
+        clusterCount <- 1
+        img$territories <- NA
+        for(i in seq_along(clusters)){
+            ## all barcodes from cluster i
+            barcodes <- img[img$cluster == clusters[i],]
+            message(paste0("Pooling cluster ",i))
+            ## pooling
+            pool <- .distancePooling(barcodes,)
+
+            img[img$cluster == clusters[i],]<- pool
+
+        }
+
+      }
+      return(img)
+}
+
 
 .distancePooling <- function(img,dropRadius= 0.025){
         dropDistance <- sqrt((max(img$xcoord)-min(img$xcoord))^2 +

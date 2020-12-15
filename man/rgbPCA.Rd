@@ -8,6 +8,8 @@ rgbPCA(
   slide,
   SO,
   slices = 1,
+  adjusted = FALSE,
+  rgbWeight = FALSE,
   countWeight = FALSE,
   conserveSparse = TRUE,
   trim = 0
@@ -21,6 +23,8 @@ The description of how to build Seurat Objects is described in the Seurat Vignet
 
 \item{slices}{number of PCA slices to consider (Integer/numeric).
 Slice 1 will embed PC 1 to PC3, slice 2 will embed PC4 to PC6, etc}
+
+\item{adjusted}{logical indicating if RGB code should be adjusted to rgb (rgb coordinate)}
 
 \item{countWeight}{logical describing if colour embeding should be weighted by count number.}
 

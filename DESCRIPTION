@@ -6,7 +6,7 @@ Author: Patrick C.N. Martin
 Maintainer: Patrick C.N. Martin <patrick.martin@bric.ku.dk>
 Description: Vesalius helps dissecting tissue anatomy from spatial transcriptomic
     data. Vesalius embeds Principle component loading values in RGB colour space without prior
-    knowlede of marker genes associated to tissues. 
+    knowlede of marker genes associated to tissues.
 License: GPL-3
 Collate: FindNN.R
     IsolatingTerritories.R
@@ -14,7 +14,8 @@ Collate: FindNN.R
     PCA_to_RGB.R
     Plotting.R
     processing.R
-Depends: R (>= 3.5.0),parallel,Matrix,Seurat
+    VesaliusObjects.R
+Depends: R (>= 3.5.0),parallel,Matrix,Seurat,RcppRoll,sp,deldir,imager
 Imports: methods,grDevices,graphics,stats,utils
 Suggests: knitr, RUnit,ggplot2
 Encoding: UTF-8
