@@ -75,7 +75,7 @@ findNearestNeighbors <- function(slide, k = 5 ,box = 0.05,sectors =4,cores=1){
                               (as.numeric(cellLoc$ycoord) <= max(ycor)),]
 
     ## transform x;y coordinates into polar coordinates using start cell as origin
-    polarTransform <- lapply(seq(1,nrow(cellLoc)),.polarConversion,
+    polarTransform <- lapply(seq(1,nrow(cellLoc)),.polarConversion.bead,
                              points = cellLoc, origin =origin)
 
     polarTransform <- as.data.frame(do.call("rbind",polarTransform))
@@ -130,7 +130,7 @@ findNearestNeighbors <- function(slide, k = 5 ,box = 0.05,sectors =4,cores=1){
     return(cellCoordinates)
 }
 
-.polarConversion <- function(idx,points,origin){
+.polarConversion.bead <- function(idx,points,origin){
     ## let's consider that points is going to be a two column matrix or df
     local <- as.vector(as.matrix(points[idx,c("xcoord","ycoord")]))
 
@@ -154,6 +154,39 @@ findNearestNeighbors <- function(slide, k = 5 ,box = 0.05,sectors =4,cores=1){
       polar <- c(points[idx,c("barcodes","cluster")],distance,angle)
       names(polar) <- c("barcodes","cluster","distance","angle")
     }
+
+    return(polar)
+}
+
+.polarConversion.array <- function(points,origin){
+    #--------------------------------------------------------------------------#
+    # generating all neigbors and angles from center
+    #--------------------------------------------------------------------------#
+
+    xo <- origin[1]
+    yo <- origin[2]
+    xp <- points[,"x"]
+    yp <- points[,"y"]
+
+    #--------------------------------------------------------------------------#
+    # Distance from center point
+    #--------------------------------------------------------------------------#
+    distance <- sqrt((abs(xp-xo))^2 + (abs(yp-yo))^2)
+
+    #--------------------------------------------------------------------------#
+    # Angle from center point
+    #--------------------------------------------------------------------------#
+
+    x <- xp-xo ; y <- yp-yo
+    angle <- mapply(function(x,y){
+      if(x >= 0 & y >= 0) angle <- atan(abs(y)/abs(x))*(180/pi)
+      if(x < 0 & y >= 0) angle <- 180 - (atan(abs(y)/abs(x))*(180/pi))
+      if(x < 0 & y < 0) angle <- 180 + (atan(abs(y)/abs(x))*(180/pi))
+      if(x >= 0 & y < 0) angle <- 360 - (atan(abs(y)/abs(x))*(180/pi))
+        return(angle)
+    },x=x,y=y, SIMPLIFY = TRUE)
+    
+    polar <- data.frame("distance" = as.numeric(distance),"angle" = as.numeric(angle))
 
     return(polar)
 }

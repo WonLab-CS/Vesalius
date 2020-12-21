@@ -377,9 +377,9 @@ iterativeSegmentation.array <- function(img,colDepth = 9,segIter = 10,
 
       for(i in seq_along(clusters)){
           tmp <- img[img$cluster == clusters[i],]
-          tmp$R <- median(tmp$R)
-          tmp$G <- median(tmp$G)
-          tmp$B <- median(tmp$B)
+          tmp$R <- median(tmp[,"1"])
+          tmp$G <- median(tmp[,"2"])
+          tmp$B <- median(tmp[,"3"])
           img[img$cluster == clusters[i],] <- tmp
       }
     #--------------------------------------------------------------------------#
@@ -470,16 +470,43 @@ isolateTerritories.array <- function(img,dropRadius = 0.025,colDepth =12){
             barcodes <- img[img$cluster == clusters[i],]
             message(paste0("Pooling cluster ",i))
             ## pooling
-            pool <- .distancePooling(barcodes,)
+            pool <- .distancePooling.array(barcodes,dropRadius)
 
             img[img$cluster == clusters[i],]<- pool
 
         }
 
       } else {
-        clust <- kmeans(img[,c("R","G","B")],colDepth,iter.max = 200,nstart = 10)
+        #----------------------------------------------------------------------#
+        # Format change from imager df
+        #----------------------------------------------------------------------#
+        img <- as.data.frame(img)
+        img <- tidyr::spread(img,cc,value)
+        colnames(img) <- c("x","y","R","G","B")
+        #----------------------------------------------------------------------#
+        # Running k means - simple segmentation
+        #----------------------------------------------------------------------#
+        clust <- kmeans(img[,c("R","G","B")],colDepth)
         img$cluster <- clust$cluster
         clusters <- unique(as.numeric(as.character(img$cluster)))
+        #----------------------------------------------------------------------#
+        # Modify colours
+        #----------------------------------------------------------------------#
+        for(i in seq_along(clusters)){
+            tmp <- img[img$cluster == clusters[i],]
+            tmp$R <- median(tmp[,"R"])
+            tmp$G <- median(tmp[,"G"])
+            tmp$B <- median(tmp[,"B"])
+            img[img$cluster == clusters[i],] <- tmp
+        }
+        #----------------------------------------------------------------------#
+        # Rebuild cimg capable df - will need to be chnage for cleaner code
+        #----------------------------------------------------------------------#
+        img <- melt(img,id.vars = c("x","y"))
+        img$variable <- as.numeric(as.character(img$variable))
+        img[img$variable == "R","variable"] <- 1
+        img[img$variable == "G","variable"] <- 2
+        img[img$variable == "B","variable"] <- 3
         ## Finding territories in each
         clusterCount <- 1
         img$territories <- NA
@@ -488,7 +515,7 @@ isolateTerritories.array <- function(img,dropRadius = 0.025,colDepth =12){
             barcodes <- img[img$cluster == clusters[i],]
             message(paste0("Pooling cluster ",i))
             ## pooling
-            pool <- .distancePooling(barcodes,)
+            pool <- .distancePooling.array(barcodes,dropRadius)
 
             img[img$cluster == clusters[i],]<- pool
 
@@ -499,7 +526,7 @@ isolateTerritories.array <- function(img,dropRadius = 0.025,colDepth =12){
 }
 
 
-.distancePooling <- function(img,dropRadius= 0.025){
+.distancePooling.bead <- function(img,dropRadius= 0.025){
         dropDistance <- sqrt((max(img$xcoord)-min(img$xcoord))^2 +
                          (max(img$ycoord)-min(img$ycoord))^2) * dropRadius
 
