@@ -291,7 +291,7 @@ assingRGBtoPixelQuickBlock <- function(rgb, coordinates,resolution = 200,drop =T
 
 ### temp just to be able to load intermediate objects
 ### This will need to be changed in the final version
-buildImageArray <- function(coordinates,rgb=NULL, resolution = "auto",expand = 10,invert=FALSE,na.rm = TRUE,cores=1){
+buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,cores=1){
   #----------------------------------------------------------------------------#
   # Class checks - this will be removed once S4 classes are functional
   #----------------------------------------------------------------------------#
@@ -322,29 +322,8 @@ buildImageArray <- function(coordinates,rgb=NULL, resolution = "auto",expand = 1
     coordinates[,cols] <- as.numeric(as.character(coordinates[,cols]))
   }
 
-  #----------------------------------------------------------------------------#
-  # Ensuring a slightly larger window size - clean up edges
-  #----------------------------------------------------------------------------#
-  if(expand %% 2 !=0){
-    expand <- expand +1
-  }
 
-  #----------------------------------------------------------------------------#
-  # Resolution of Array - For now only auto resolution
-  # It would be a good idea to make reduced array by combining barcodes
-  #----------------------------------------------------------------------------#
-  if(resolution == "auto"){
-    resolution <- c((max(coordinates$xcoord) - min(coordinates$xcoord))+1 + expand,(max(coordinates$ycoord) - min(coordinates$ycoord))+1 + expand)
-  } else {
-    #TODO
-  }
 
-  #----------------------------------------------------------------------------#
-  # rounding and expanding coordinates
-  #----------------------------------------------------------------------------#
-
-  coordinates$xcoord <- floor(coordinates$xcoord - min(coordinates$xcoord)) + (1+ expand/2)
-  coordinates$ycoord <- floor(coordinates$ycoord - min(coordinates$ycoord)) + (1+ expand/2)
   #----------------------------------------------------------------------------#
   # Inverting colours
   #----------------------------------------------------------------------------#
@@ -369,8 +348,8 @@ buildImageArray <- function(coordinates,rgb=NULL, resolution = "auto",expand = 1
                       return(min(distance))
   }, coordinates)
 
-  distanceThrehsold <- quantile(minDist,0.995)
-  coordinates <- coordinates[which(minDist <= distanceThrehsold),]
+  distanceThrehsold <- quantile(minDist,0.99)
+  coordinates <- coordinates[minDist <= distanceThrehsold,]
 
   #----------------------------------------------------------------------------#
   # TESSELATION TIME!
@@ -381,27 +360,24 @@ buildImageArray <- function(coordinates,rgb=NULL, resolution = "auto",expand = 1
   #----------------------------------------------------------------------------#
   # Extracting Voronoi/dirichlet tessaltion - not intested in Delauney
   #----------------------------------------------------------------------------#
-
+  #browser()
   ## Voronoi tessaltion coordinates
   tessV <- tesselation$dirsgs
   ## If the "point" is on the edge of the box used for tessaltion
-  #tessV <- tessV[!tessV$bp1 & !tessV$bp2,]
-  tessV <- .filterTesselation(tessV)
+  tessV <- tessV[!tessV$bp1 & !tessV$bp2,]
+  #tessV <- .filterTesselation(tessV)
   ## Contains original data - just to ensure that that indeces line up
   ogCoord <- tesselation$summary
 
+
   #----------------------------------------------------------------------------#
   # Rebuilding new cooirdinates based on tesselation borders
+  # cooridinates are shifted for both tesselation cooridantes and starting coord
   #----------------------------------------------------------------------------#
   lpx <- min(c(tessV$x1,tessV$x2))
   hpx <- max(c(tessV$x1,tessV$x2))
   lpy <- min(c(tessV$y1,tessV$y2))
   hpy <- max(c(tessV$y1,tessV$y2))
-
-  tessV$x1 <- tessV$x1 - lpx
-  tessV$x2 <- tessV$x2 - lpx
-  tessV$y1 <- tessV$y1 - lpy
-  tessV$y2 <- tessV$y2 - lpy
 
 
   #----------------------------------------------------------------------------#
@@ -410,8 +386,9 @@ buildImageArray <- function(coordinates,rgb=NULL, resolution = "auto",expand = 1
   allIdx <- parallel::mclapply(seq_len(nrow(ogCoord)),Vesalius:::.fillTesselationTriangle,
     tess = tessV,coord= ogCoord,mc.cores = cores)
 
+
   allIdx <- allIdx[!sapply(allIdx,is.null)]
-print("check9")
+
   #----------------------------------------------------------------------------#
   # Fill in the gaps with the coulours
   #----------------------------------------------------------------------------#
@@ -419,12 +396,19 @@ print("check9")
   img <- array(1,dim = c(hpx - lpx +1,hpy -lpy +1,1,3))
 
   for(i in seq_along(allIdx)){
-      print(i)
+
+      cat((i/length(allIdx))*100 , "% \r")
       loc <- which(coordinates$xcoord == ogCoord[i,"x"] & coordinates$ycoord == ogCoord[i,"y"])
-      if(is.null(dim(allIdx[[i]]))){allIdx[[i]] <- matrix(allIdx[[i]],ncol=2)}
-      img[allIdx[[i]][,1L],allIdx[[i]][,2L],1L,1L] <- coordinates[loc[1L],"R"]
-      img[allIdx[[i]][,1L],allIdx[[i]][,2L],1L,2L] <- coordinates[loc[1L],"G"]
-      img[allIdx[[i]][,1L],allIdx[[i]][,2L],1L,3L] <- coordinates[loc[1L],"B"]
+      tmpIdx <- allIdx[[i]]
+      if(is.null(dim(tmpIdx))){tmpIdx <- matrix(tmpIdx,ncol=2)}
+      if(nrow(tmpIdx) > 5000) next()
+
+      tmpIdx[,1L] <- tmpIdx[,1L] - lpx
+      tmpIdx[,2L] <- tmpIdx[,2L] - lpy
+
+      img[tmpIdx[,1L],tmpIdx[,2L],1L,1L] <- coordinates[loc[1L],"R"]
+      img[tmpIdx[,1L],tmpIdx[,2L],1L,2L] <- coordinates[loc[1L],"G"]
+      img[tmpIdx[,1L],tmpIdx[,2L],1L,3L] <- coordinates[loc[1L],"B"]
   }
 
   return(img)
@@ -437,7 +421,8 @@ print("check9")
     ## Get data
     #--------------------------------------------------------------------------#
 
-    allEdge <- tess[tess$ind1 == idx |tess$ind2 == idx,]
+    #allEdge <- ifelse(i1 >i2,tess[tess$ind1 == idx,],tess[tess$ind2 == idx,])
+    allEdge <- tess[tess$ind2 == idx,]
 
 
     #--------------------------------------------------------------------------#
@@ -447,16 +432,16 @@ print("check9")
         return(NULL)
     }
 
-    buffer <- vector("list", nrow(allEdge))
 
-    for(i in seq_len(nrow(allEdge))){
+
+
       #------------------------------------------------------------------------#
       ## Create all point in reduced space
       #------------------------------------------------------------------------#
-      lpx <- round(min(c(allEdge$x1[i],allEdge$x2[i]))) - 1
-      hpx <- round(max(c(allEdge$x1[i],allEdge$x2[i]))) + 1
-      lpy <- round(min(c(allEdge$y1[i],allEdge$y2[i]))) - 1
-      hpy <- round(max(c(allEdge$y1[i],allEdge$y2[i]))) + 1
+      lpx <- round(min(c(allEdge$x1,allEdge$x2))) - 1
+      hpx <- round(max(c(allEdge$x1,allEdge$x2))) + 1
+      lpy <- round(min(c(allEdge$y1,allEdge$y2))) - 1
+      hpy <- round(max(c(allEdge$y1,allEdge$y2))) + 1
 
       maxPolygonX <- rep(seq(lpx,hpx), times = hpy - lpy +1)
       maxPolygonY <- rep(seq(lpy,hpy), each = hpx - lpx +1)
@@ -466,29 +451,23 @@ print("check9")
       #------------------------------------------------------------------------#
       # Creating triangles
       #------------------------------------------------------------------------#
-        if(allEdge$ind1[i] == idx){
-          x <- c(allEdge$x1[i],allEdge$x2[i],coord[allEdge$ind1[i],c("x")])
-          y <- c(allEdge$y1[i],allEdge$y2[i],coord[allEdge$ind1[i],c("y")])
+      co<- .convexify(allEdge$x1,allEdge$y1)
+      x <- as.numeric(co[,1L]) ; y <- as.numeric(co[,2L])
 
-        } else {
-          x <- c(allEdge$x1[i],allEdge$x2[i],coord[allEdge$ind2[i],c("x")])
-          y <- c(allEdge$y1[i],allEdge$y2[i],coord[allEdge$ind2[i],c("y")])
-        }
-        cell <- point.in.polygon(maxPolygonX,maxPolygonY,x,y)
-        maxPolygonX <- round(maxPolygonX[cell %in% c(1,2,3)])
-        maxPolygonY <- round(maxPolygonY[cell %in% c(1,2,3)])
+      cell <- point.in.polygon(maxPolygonX,maxPolygonY,x,y)
+      maxPolygonX <- round(maxPolygonX[cell %in% c(1,2,3)])
+      maxPolygonY <- round(maxPolygonY[cell %in% c(1,2,3)])
       #------------------------------------------------------------------------#
       # Rebuilding this crap
       #------------------------------------------------------------------------#
-        allIn <- cbind(maxPolygonX,maxPolygonY)
-        #colnames(allIn) <- c("x","y")
-        buffer[[i]] <- allIn
+      allIn <- cbind(maxPolygonX,maxPolygonY)
+
+
+      
 
 
 
-    }
-    buffer <- do.call("rbind",buffer)
-    return(buffer)
+    return(allIn)
 
 }
 
@@ -531,10 +510,63 @@ print("check9")
   #----------------------------------------------------------------------------#
   # Finding thge best way to filter out un wanted points
   #----------------------------------------------------------------------------#
-  numTess <- tess[,c(1,2,3,4,9,10)]
-  numTess <- apply(numTess,1,function(x){return(all(x >= 0))})
-  #logiTess <- tess[,c(7,8)]
-  #logiTess <- logiTess[!logiTess$bp1 | !logiTess$bp2]
 
-  return(tessV[numTess,])
+  edgeConnected <- tess[tess$bp1 | tess$bp2,c("ind1","ind2")]
+  edgeConnected <- unique(as.vector(edgeConnected))
+  tess <- tess[tess$ind1 %in% edgeConnected | tess$ind2 %in% edgeConnected]
+
+  return(tess[numTess,])
+}
+
+
+
+.trimOuter <- function(all,borders){
+    #--------------------------------------------------------------------------#
+    # For each triangle find which points overlap
+    # For many sectors it will return 0 but that is okay as we can just collapse
+    # everything and zeroes will just be discarded
+    #--------------------------------------------------------------------------#
+
+    #--------------------------------------------------------------------------#
+    # Finding points in each sector - trimming outer
+    #--------------------------------------------------------------------------#
+
+    p <- point.in.polygon(all[,"maxPolygonX"],
+                            all[,"maxPolygonY"],
+                            borders[,1L],
+                            borders[,2L])
+    keep <- p %in% c(1,2,3)
+    trimmed <- all[keep,]
+    return(trimmed)
+}
+
+.convexify <- function(x,y){
+
+    start <- x==min(x)
+
+    xst <- x[start]
+    yst <- y[start]
+
+    xrest <- x[!start]
+    yrest <- y[!start]
+
+    top <- yrest >=yst
+    bottom <- yrest <yst
+
+    topx <- xrest[top]
+    topy <- yrest[top]
+
+    bottomx <- xrest[bottom]
+    bottomy <- yrest[bottom]
+
+    topfx <- topx[order(topx,decreasing = F)]
+    topfy <- topy[order(topx,decreasing = F)]
+    bottomfx <- bottomx[order(bottomx,decreasing = T)]
+    bottomfy <- bottomy[order(bottomx,decreasing = T)]
+
+    x <- c(xst,topfx,bottomfx)
+    y<- c(yst,topfy,bottomfy)
+    convex <- cbind(x,y)
+    return(convex)
+
 }
