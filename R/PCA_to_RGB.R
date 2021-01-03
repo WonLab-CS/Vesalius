@@ -367,7 +367,7 @@ buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,cores
   tessV <- tessV[!tessV$bp1 & !tessV$bp2,]
   #tessV <- .filterTesselation(tessV)
   ## Contains original data - just to ensure that that indeces line up
-  ogCoord <- tesselation$summary
+  ogCoord <- data.frame(coordinates,tesselation$summary)
 
 
   #----------------------------------------------------------------------------#
@@ -383,11 +383,9 @@ buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,cores
   #----------------------------------------------------------------------------#
   # This section is equivalent to triangle rasterisation
   #----------------------------------------------------------------------------#
-  allIdx <- parallel::mclapply(seq_len(nrow(ogCoord)),Vesalius:::.fillTesselationTriangle,
+  allIdx <- parallel::mclapply(seq_len(nrow(tessV)),Vesalius:::.fillTesselation,
     tess = tessV,coord= ogCoord,mc.cores = cores)
 
-
-  allIdx <- allIdx[!sapply(allIdx,is.null)]
 
   #----------------------------------------------------------------------------#
   # Fill in the gaps with the coulours
@@ -398,17 +396,26 @@ buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,cores
   for(i in seq_along(allIdx)){
 
       cat((i/length(allIdx))*100 , "% \r")
-      loc <- which(coordinates$xcoord == ogCoord[i,"x"] & coordinates$ycoord == ogCoord[i,"y"])
-      tmpIdx <- allIdx[[i]]
-      if(is.null(dim(tmpIdx))){tmpIdx <- matrix(tmpIdx,ncol=2)}
-      if(nrow(tmpIdx) > 5000) next()
+      #------------------------------------------------------------------------#
+      # First fill in Triangle 1
+      #------------------------------------------------------------------------#
+      x1 <- allIdx[[i]][["t1"]][["fill"]]$x - lpx
+      y1 <- allIdx[[i]][["t1"]][["fill"]]$y - lpy
+      coord <- allIdx[[i]][["t1"]][["ind"]]
 
-      tmpIdx[,1L] <- tmpIdx[,1L] - lpx
-      tmpIdx[,2L] <- tmpIdx[,2L] - lpy
+      img[x1,y1,1L,1L] <- ogCoord[coord,"R"]
+      img[x1,y1,1L,2L] <- ogCoord[coord,"G"]
+      img[x1,y1,1L,3L] <- ogCoord[coord,"B"]
+      #------------------------------------------------------------------------#
+      # Next fill in Triangle 2
+      #------------------------------------------------------------------------#
+      x2 <- allIdx[[i]][["t2"]][["fill"]]$x - lpx
+      y2 <- allIdx[[i]][["t2"]][["fill"]]$y - lpy
+      coord <- allIdx[[i]][["t2"]][["ind"]]
 
-      img[tmpIdx[,1L],tmpIdx[,2L],1L,1L] <- coordinates[loc[1L],"R"]
-      img[tmpIdx[,1L],tmpIdx[,2L],1L,2L] <- coordinates[loc[1L],"G"]
-      img[tmpIdx[,1L],tmpIdx[,2L],1L,3L] <- coordinates[loc[1L],"B"]
+      img[x2,y2,1L,1L] <- ogCoord[coord,"R"]
+      img[x2,y2,1L,2L] <- ogCoord[coord,"G"]
+      img[x2,y2,1L,3L] <- ogCoord[coord,"B"]
   }
 
   return(img)
@@ -416,60 +423,89 @@ buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,cores
 }
 
 
-.fillTesselationTriangle <- function(idx,tess,coord){
+.fillTesselation <- function(idx,tess,coord){
     #--------------------------------------------------------------------------#
     ## Get data
     #--------------------------------------------------------------------------#
-
-    #allEdge <- ifelse(i1 >i2,tess[tess$ind1 == idx,],tess[tess$ind2 == idx,])
-    allEdge <- tess[tess$ind2 == idx,]
-
+    allEdge <- tess[idx,]
 
     #--------------------------------------------------------------------------#
-    # Finding points ineach triangle if triangle exists
+    ## First split data between both triangles
     #--------------------------------------------------------------------------#
-    if(nrow(allEdge) <1){
-        return(NULL)
-    }
+    t1 <- list("fill" = .fillTesselationTriangle(allEdge,coord,tri = 1), "ind" = allEdge$ind1)
+    t2 <- list("fill" = .fillTesselationTriangle(allEdge,coord,tri = 2), "ind" = allEdge$ind2)
 
-
-
-
-      #------------------------------------------------------------------------#
-      ## Create all point in reduced space
-      #------------------------------------------------------------------------#
-      lpx <- round(min(c(allEdge$x1,allEdge$x2))) - 1
-      hpx <- round(max(c(allEdge$x1,allEdge$x2))) + 1
-      lpy <- round(min(c(allEdge$y1,allEdge$y2))) - 1
-      hpy <- round(max(c(allEdge$y1,allEdge$y2))) + 1
-
-      maxPolygonX <- rep(seq(lpx,hpx), times = hpy - lpy +1)
-      maxPolygonY <- rep(seq(lpy,hpy), each = hpx - lpx +1)
-
-
-
-      #------------------------------------------------------------------------#
-      # Creating triangles
-      #------------------------------------------------------------------------#
-      co<- .convexify(allEdge$x1,allEdge$y1)
-      x <- as.numeric(co[,1L]) ; y <- as.numeric(co[,2L])
-
-      cell <- point.in.polygon(maxPolygonX,maxPolygonY,x,y)
-      maxPolygonX <- round(maxPolygonX[cell %in% c(1,2,3)])
-      maxPolygonY <- round(maxPolygonY[cell %in% c(1,2,3)])
-      #------------------------------------------------------------------------#
-      # Rebuilding this crap
-      #------------------------------------------------------------------------#
-      allIn <- cbind(maxPolygonX,maxPolygonY)
-
-
-      
-
-
-
+    #--------------------------------------------------------------------------#
+    # Rebuild list with filled triangle for both points
+    #--------------------------------------------------------------------------#
+    allIn <- list("t1" = t1 , "t2"=t2)
     return(allIn)
 
 }
+
+.fillTesselationTriangle <- function(allEdge,coord,tri){
+  if(tri ==1){
+    #------------------------------------------------------------------------#
+    # Boundaries of tesselation
+    #------------------------------------------------------------------------#
+    lpx <- round(min(c(allEdge$x1,allEdge$x2,coord[allEdge$ind1,"x"]))) - 1
+    hpx <- round(max(c(allEdge$x1,allEdge$x2,coord[allEdge$ind1,"x"]))) + 1
+    lpy <- round(min(c(allEdge$y1,allEdge$y2,coord[allEdge$ind1,"y"]))) - 1
+    hpy <- round(max(c(allEdge$y1,allEdge$y2,coord[allEdge$ind1,"y"]))) + 1
+
+    maxPolygonX <- rep(seq(lpx,hpx), times = hpy - lpy +1)
+    maxPolygonY <- rep(seq(lpy,hpy), each = hpx - lpx +1)
+
+    #------------------------------------------------------------------------#
+    # Creating triangles
+    #------------------------------------------------------------------------#
+    x <- c(allEdge$x1,allEdge$x2,coord[allEdge$ind1,"x"])
+    y <- c(allEdge$y1,allEdge$y2,coord[allEdge$ind1,"y"])
+
+    #------------------------------------------------------------------------#
+    # Fill triangles with all point in that space
+    #------------------------------------------------------------------------#
+    cell <- point.in.polygon(maxPolygonX,maxPolygonY,x,y)
+    maxX <- round(maxPolygonX[cell %in% c(1,2,3)])
+    maxY <- round(maxPolygonY[cell %in% c(1,2,3)])
+
+    allIn <- cbind(maxX,maxY)
+    colnames(allIn) <- c("x","y")
+    return(allIn)
+
+  } else {
+    #------------------------------------------------------------------------#
+    # Boundaries of tesselation
+    #------------------------------------------------------------------------#
+    lpx <- round(min(c(allEdge$x1,allEdge$x2,coord[allEdge$ind2,"x"]))) - 1
+    hpx <- round(max(c(allEdge$x1,allEdge$x2,coord[allEdge$ind2,"x"]))) + 1
+    lpy <- round(min(c(allEdge$y1,allEdge$y2,coord[allEdge$ind2,"y"]))) - 1
+    hpy <- round(max(c(allEdge$y1,allEdge$y2,coord[allEdge$ind2,"y"]))) + 1
+
+    maxPolygonX <- rep(seq(lpx,hpx), times = hpy - lpy +1)
+    maxPolygonY <- rep(seq(lpy,hpy), each = hpx - lpx +1)
+
+    #------------------------------------------------------------------------#
+    # Creating triangles
+    #------------------------------------------------------------------------#
+    x <- c(allEdge$x1,allEdge$x2,coord[allEdge$ind2,"x"])
+    y <- c(allEdge$y1,allEdge$y2,coord[allEdge$ind2,"y"])
+
+    #------------------------------------------------------------------------#
+    # Fill triangles with all point in that space
+    #------------------------------------------------------------------------#
+    cell <- point.in.polygon(maxPolygonX,maxPolygonY,x,y)
+    maxX <- round(maxPolygonX[cell %in% c(1,2,3)])
+    maxY <- round(maxPolygonY[cell %in% c(1,2,3)])
+
+    allIn <- cbind(maxX,maxY)
+    colnames(allIn) <- c("x","y")
+    return(allIn)
+  }
+
+}
+
+
 
 .generateMaxDistancePolygon <- function(centerCoordinates,ogCoord,resolution=360){
     #--------------------------------------------------------------------------#
@@ -541,14 +577,21 @@ buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,cores
 }
 
 .convexify <- function(x,y){
+    ### fixing this
+    ### Still not creating proper polygons for some reason
 
-    start <- x==min(x)
+    startX <- which(x==min(x))
+    if(length(startX)>1){
+      start <- startX[y[startX] == min(y[startX])]
+    } else {
+      start <- startX
+    }
 
     xst <- x[start]
     yst <- y[start]
 
-    xrest <- x[!start]
-    yrest <- y[!start]
+    xrest <- x[!seq_along(x) %in% start]
+    yrest <- y[!seq_along(y) %in% start]
 
     top <- yrest >=yst
     bottom <- yrest <yst
