@@ -288,13 +288,27 @@ assingRGBtoPixelQuickBlock <- function(rgb, coordinates,resolution = 200,drop =T
 }
 
 
+#' buildImageArray creating an Image array from coloured coordinates
+#'
+#' @param coordninates data.frame containing the coordinatesof each spot/bead.
+#' If colour coordinates were previosuly computed this data.frame may also contain
+#' the RGB colour code associated to each location.
+#' @param rgb list containing colour code for each bead. Required if colour
+#' is not already contained in \code{coordinates}.
+#' @param invert logical describing if colour pattern should be inverted (i.e 1-R,1-G,1-B)
+#' @param na.rm logical indicating if NA should be removed from bead list.
+#' @param cores numeric describing number of cores used (Default = 1)
+#' @param verbose logical describing if progress message should be displayed in consolde
+#' @details In order to build an Image type object, it is require to create a 4
+#' dimensional array with rows as x coordinates, columns as y coordinates, slices and colour channels.
+#' Note that the slice dimension is required by the \code{imager} package.
+#' @return a 4 dimensional array - convertable to \code{cimg} objects.
 
-### temp just to be able to load intermediate objects
-### This will need to be changed in the final version
-buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,cores=1){
+buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,cores=1, verbose = TRUE){
   #----------------------------------------------------------------------------#
   # Class checks - this will be removed once S4 classes are functional
   #----------------------------------------------------------------------------#
+
   if(is.null(rgb)){
       if(!any(colnames(coordinates) %in% c("R","G","B"))){
         stop("Coordinates do not contain colour values")
@@ -302,6 +316,7 @@ buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,cores
   } else if(!class(rgb) == "list"){
       stop("RGB - Unrecognised format")
   } else if(!is.null(rgb) & class(rgb)=="list") {
+    .assignCoordinates(verbose)
     for(i in seq_along(rgb)){
         code <- rep(NA,nrow(coordinates))
         locs <- match(coordinates$barcodes,names(rgb[[i]]))
@@ -318,6 +333,7 @@ buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,cores
   #----------------------------------------------------------------------------#
   # Type changed
   #----------------------------------------------------------------------------#
+  .typeChange(verbose)
   for(cols in seq(2,ncol(coordinates))){
     coordinates[,cols] <- as.numeric(as.character(coordinates[,cols]))
   }
@@ -328,6 +344,7 @@ buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,cores
   # Inverting colours
   #----------------------------------------------------------------------------#
   if(invert){
+      .invertCols(verbose)
       coordinates$R <- 1 - coordinates$R
       coordinates$G <- 1 - coordinates$G
       coordinates$B <- 1 - coordinates$B
@@ -336,8 +353,9 @@ buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,cores
   #----------------------------------------------------------------------------#
   # Removing all "outer point" - tend to make tesselation messy
   #----------------------------------------------------------------------------#
+  .distanceBeads(verbose)
   idx <- seq_len(nrow(coordinates))
-  minDist <- sapply(idx, function(idx,mat){
+  minDist <- parallel::mclapply(idx, function(idx,mat){
                       xo <- mat$xcoord[idx]
                       yo <- mat$ycoord[idx]
                       xp <- mat$xcoord
@@ -347,13 +365,14 @@ buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,cores
 
                       return(min(distance))
   }, coordinates)
-
+  minDist <- unlist(minDist)
   distanceThrehsold <- quantile(minDist,0.99)
   coordinates <- coordinates[minDist <= distanceThrehsold,]
 
   #----------------------------------------------------------------------------#
   # TESSELATION TIME!
   #----------------------------------------------------------------------------#
+  .tess(verbose)
   tesselation <- deldir::deldir(x = as.numeric(coordinates$xcoord),
                                 y = as.numeric(coordinates$ycoord))
 
@@ -367,58 +386,34 @@ buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,cores
   tessV <- tessV[!tessV$bp1 & !tessV$bp2,]
   #tessV <- .filterTesselation(tessV)
   ## Contains original data - just to ensure that that indeces line up
-  ogCoord <- data.frame(coordinates,tesselation$summary)
+  ogCoord <- cbind(coordinates,tesselation$summary)
 
 
   #----------------------------------------------------------------------------#
   # Rebuilding new cooirdinates based on tesselation borders
   # cooridinates are shifted for both tesselation cooridantes and starting coord
   #----------------------------------------------------------------------------#
-  lpx <- min(c(tessV$x1,tessV$x2))
-  hpx <- max(c(tessV$x1,tessV$x2))
-  lpy <- min(c(tessV$y1,tessV$y2))
-  hpy <- max(c(tessV$y1,tessV$y2))
+  lpx <- round(abs(min(c(tessV$x1,tessV$x2))))
+
+  lpy <- round(abs(min(c(tessV$y1,tessV$y2))))
+
 
 
   #----------------------------------------------------------------------------#
   # This section is equivalent to triangle rasterisation
   #----------------------------------------------------------------------------#
+  .raster(verbose)
   allIdx <- parallel::mclapply(seq_len(nrow(tessV)),Vesalius:::.fillTesselation,
     tess = tessV,coord= ogCoord,mc.cores = cores)
+  allIdx <- as.data.frame(do.call("rbind",allIdx))
 
+  allIdx <- mutate(allIdx,x = x +lpx +1,y=y+lpy +1) %>% group_by(cc)
 
   #----------------------------------------------------------------------------#
-  # Fill in the gaps with the coulours
+  # Fill image array with coloured tiles
   #----------------------------------------------------------------------------#
 
-  img <- array(1,dim = c(hpx - lpx +1,hpy -lpy +1,1,3))
-
-  for(i in seq_along(allIdx)){
-
-      cat((i/length(allIdx))*100 , "% \r")
-      #------------------------------------------------------------------------#
-      # First fill in Triangle 1
-      #------------------------------------------------------------------------#
-      x1 <- allIdx[[i]][["t1"]][["fill"]]$x - lpx
-      y1 <- allIdx[[i]][["t1"]][["fill"]]$y - lpy
-      coord <- allIdx[[i]][["t1"]][["ind"]]
-
-      img[x1,y1,1L,1L] <- ogCoord[coord,"R"]
-      img[x1,y1,1L,2L] <- ogCoord[coord,"G"]
-      img[x1,y1,1L,3L] <- ogCoord[coord,"B"]
-      #------------------------------------------------------------------------#
-      # Next fill in Triangle 2
-      #------------------------------------------------------------------------#
-      x2 <- allIdx[[i]][["t2"]][["fill"]]$x - lpx
-      y2 <- allIdx[[i]][["t2"]][["fill"]]$y - lpy
-      coord <- allIdx[[i]][["t2"]][["ind"]]
-
-      img[x2,y2,1L,1L] <- ogCoord[coord,"R"]
-      img[x2,y2,1L,2L] <- ogCoord[coord,"G"]
-      img[x2,y2,1L,3L] <- ogCoord[coord,"B"]
-  }
-
-  return(img)
+  return(allIdx)
 
 }
 
@@ -432,22 +427,24 @@ buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,cores
     #--------------------------------------------------------------------------#
     ## First split data between both triangles
     #--------------------------------------------------------------------------#
-    t1 <- list("fill" = .fillTesselationTriangle(allEdge,coord,tri = 1), "ind" = allEdge$ind1)
-    t2 <- list("fill" = .fillTesselationTriangle(allEdge,coord,tri = 2), "ind" = allEdge$ind2)
+    t1 <- .fillTesselationTriangle(allEdge,coord,tri = 1)
+    if(nrow(t1) >25000) t1 <- NULL
+    t2 <- .fillTesselationTriangle(allEdge,coord,tri = 2)
+    if(nrow(t2) >25000) t2 <- NULL
 
     #--------------------------------------------------------------------------#
     # Rebuild list with filled triangle for both points
     #--------------------------------------------------------------------------#
-    allIn <- list("t1" = t1 , "t2"=t2)
+    allIn <- rbind(t1,t2)
     return(allIn)
 
 }
 
 .fillTesselationTriangle <- function(allEdge,coord,tri){
   if(tri ==1){
-    #------------------------------------------------------------------------#
+    #--------------------------------------------------------------------------#
     # Boundaries of tesselation
-    #------------------------------------------------------------------------#
+    #--------------------------------------------------------------------------#
     lpx <- round(min(c(allEdge$x1,allEdge$x2,coord[allEdge$ind1,"x"]))) - 1
     hpx <- round(max(c(allEdge$x1,allEdge$x2,coord[allEdge$ind1,"x"]))) + 1
     lpy <- round(min(c(allEdge$y1,allEdge$y2,coord[allEdge$ind1,"y"]))) - 1
@@ -456,27 +453,33 @@ buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,cores
     maxPolygonX <- rep(seq(lpx,hpx), times = hpy - lpy +1)
     maxPolygonY <- rep(seq(lpy,hpy), each = hpx - lpx +1)
 
-    #------------------------------------------------------------------------#
+    #--------------------------------------------------------------------------#
     # Creating triangles
-    #------------------------------------------------------------------------#
+    #--------------------------------------------------------------------------#
     x <- c(allEdge$x1,allEdge$x2,coord[allEdge$ind1,"x"])
     y <- c(allEdge$y1,allEdge$y2,coord[allEdge$ind1,"y"])
 
-    #------------------------------------------------------------------------#
+    #--------------------------------------------------------------------------#
     # Fill triangles with all point in that space
-    #------------------------------------------------------------------------#
+    #--------------------------------------------------------------------------#
     cell <- point.in.polygon(maxPolygonX,maxPolygonY,x,y)
     maxX <- round(maxPolygonX[cell %in% c(1,2,3)])
     maxY <- round(maxPolygonY[cell %in% c(1,2,3)])
-
-    allIn <- cbind(maxX,maxY)
-    colnames(allIn) <- c("x","y")
+    value <- c(rep(coord[allEdge$ind1,"R"],length(maxX)),
+               rep(coord[allEdge$ind1,"G"],length(maxX)),
+               rep(coord[allEdge$ind1,"B"],length(maxX)))
+    cc <- rep(1:3,each = length(maxX))
+    maxX <- rep(maxX, times = 3)
+    maxY <- rep(maxY, times = 3)
+    barcode <- rep(coord[allEdge$ind1,"barcodes"],length(maxX))
+    allIn <- data.frame(barcode,maxX,maxY,cc,value)
+    colnames(allIn) <- c("barcodes","x","y","cc","value")
     return(allIn)
 
   } else {
-    #------------------------------------------------------------------------#
+    #--------------------------------------------------------------------------#
     # Boundaries of tesselation
-    #------------------------------------------------------------------------#
+    #--------------------------------------------------------------------------#
     lpx <- round(min(c(allEdge$x1,allEdge$x2,coord[allEdge$ind2,"x"]))) - 1
     hpx <- round(max(c(allEdge$x1,allEdge$x2,coord[allEdge$ind2,"x"]))) + 1
     lpy <- round(min(c(allEdge$y1,allEdge$y2,coord[allEdge$ind2,"y"]))) - 1
@@ -485,96 +488,32 @@ buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,cores
     maxPolygonX <- rep(seq(lpx,hpx), times = hpy - lpy +1)
     maxPolygonY <- rep(seq(lpy,hpy), each = hpx - lpx +1)
 
-    #------------------------------------------------------------------------#
+    #--------------------------------------------------------------------------#
     # Creating triangles
-    #------------------------------------------------------------------------#
+    #--------------------------------------------------------------------------#
     x <- c(allEdge$x1,allEdge$x2,coord[allEdge$ind2,"x"])
     y <- c(allEdge$y1,allEdge$y2,coord[allEdge$ind2,"y"])
 
-    #------------------------------------------------------------------------#
+    #--------------------------------------------------------------------------#
     # Fill triangles with all point in that space
-    #------------------------------------------------------------------------#
+    #--------------------------------------------------------------------------#
     cell <- point.in.polygon(maxPolygonX,maxPolygonY,x,y)
     maxX <- round(maxPolygonX[cell %in% c(1,2,3)])
     maxY <- round(maxPolygonY[cell %in% c(1,2,3)])
-
-    allIn <- cbind(maxX,maxY)
-    colnames(allIn) <- c("x","y")
+    value <- c(rep(coord[allEdge$ind2,"R"],length(maxX)),
+               rep(coord[allEdge$ind2,"G"],length(maxX)),
+               rep(coord[allEdge$ind2,"B"],length(maxX)))
+    cc <- rep(1:3,each = length(maxX))
+    maxX <- rep(maxX, times = 3)
+    maxY <- rep(maxY, times = 3)
+    barcode <- rep(coord[allEdge$ind2,"barcodes"],length(maxX))
+    allIn <- data.frame(barcode,maxX,maxY,cc,value)
+    colnames(allIn) <- c("barcodes","x","y","cc","value")
     return(allIn)
   }
 
 }
 
-
-
-.generateMaxDistancePolygon <- function(centerCoordinates,ogCoord,resolution=360){
-    #--------------------------------------------------------------------------#
-    # Making a reference polygon from bead locations
-    # The idea is to trim anything that is not in that polygon
-    # Removing all the outer points
-    # There will be a loss of some points for sure
-    #--------------------------------------------------------------------------#
-    allPoints <- .polarConversion.array(ogCoord,centerCoordinates)
-
-    #--------------------------------------------------------------------------#
-    # creating sectors = resoltuion
-    # Each sector contains point that is the furtherst from center
-    #--------------------------------------------------------------------------#
-    sectors <- seq(0,360,length.out = resolution+1)
-    angle <- allPoints$angle
-    quads <- rep(0,length(sectors))
-
-    for(qu in seq(1,length(sectors)-1)){
-        tmp <- allPoints$distance[angle >= sectors[qu] &
-                                  angle<sectors[qu+1]]
-        tmp <- sort(tmp,decreasing =TRUE)
-
-        quads[qu] <- tmp[1L]
-
-    }
-    #--------------------------------------------------------------------------#
-    # quantiled distance - used a threshold value
-    # all pixel that are futher away from center point that this will be removed
-    #--------------------------------------------------------------------------#
-
-    return(quantile(quads,0.95))
-}
-
-
-
-.filterTesselation <- function(tess){
-  #----------------------------------------------------------------------------#
-  # Finding thge best way to filter out un wanted points
-  #----------------------------------------------------------------------------#
-
-  edgeConnected <- tess[tess$bp1 | tess$bp2,c("ind1","ind2")]
-  edgeConnected <- unique(as.vector(edgeConnected))
-  tess <- tess[tess$ind1 %in% edgeConnected | tess$ind2 %in% edgeConnected]
-
-  return(tess[numTess,])
-}
-
-
-
-.trimOuter <- function(all,borders){
-    #--------------------------------------------------------------------------#
-    # For each triangle find which points overlap
-    # For many sectors it will return 0 but that is okay as we can just collapse
-    # everything and zeroes will just be discarded
-    #--------------------------------------------------------------------------#
-
-    #--------------------------------------------------------------------------#
-    # Finding points in each sector - trimming outer
-    #--------------------------------------------------------------------------#
-
-    p <- point.in.polygon(all[,"maxPolygonX"],
-                            all[,"maxPolygonY"],
-                            borders[,1L],
-                            borders[,2L])
-    keep <- p %in% c(1,2,3)
-    trimmed <- all[keep,]
-    return(trimmed)
-}
 
 .convexify <- function(x,y){
     ### fixing this

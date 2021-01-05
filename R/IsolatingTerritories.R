@@ -398,6 +398,7 @@ iterativeSegmentation.array <- function(img,colDepth = 9,segIter = 10,
 }
 
 
+
 #' isolating territories from spatial transcriptomic data
 #' @param img data frame with barcodes, xcoord, ycoord, R, G, and B as coloumns
 #' @param dropRadius numeric describing the proportion of total distance to consider when pooling beads together
@@ -600,43 +601,6 @@ isolateTerritories.array <- function(img,dropRadius = 0.025,colDepth =12){
 
 }
 
-#' findSubCluster - Clustering of territories
-#' @param img data frame with barcodes, xcoord, ycoord, R, G, B, cluster number, territory number within that cluster.
-#' @param SO Seurat Object with full spatial assay
-#' @param by character describing if subclustering should be caried out on colour cluster or territories.
-#' @param varF integer describing number of variable features
-#' @param npcs integer describing the number of Principle components to compute
-#' @param resolution numeric describing granularity of clustering
-#' @details The following function is a wrapper function that performs the standard Seurat analysis.
-#' @return A list of lists. The first level represents each cluster of territory. For each cluster or territory,
-#' the list element contains a Seurat Object with sub cluster and markers associated to each subcluster.
-findSubClusters <- function(img,SO, by = c("cluster","territory"),varF = 2000,npcs = 20, resolution = 0.5){
-    if(by[1L] == "cluster"){
-        ## subsetting by cluster
-        clusters <- unique(img$cluster)
-        subCluster <- vector("list", length(clusters))
-        names(subCluster) <- as.character(clusters)
-        for(i in seq_along(clusters)){
-            barcodes <- img[img$cluster == clusters[i],"barcodes"]
-            tmpSO <- subset(SO, cells = barcodes)
-            tmpSO <- SCTransform(tmpSO, assay = "Spatial")
-            tmpSO <- FindVariableFeatures(tmpSO, selection.method = "vst", nfeatures = varF)
-            tmpSO <- ScaleData(tmpSO)
-            tmpSO <- RunPCA(tmpSO,ncps = npcs)
-            tmpSO <- RunUMAP(tmpSO,reduction = "pca", dims = seq(1,npcs))
-            tmpSO <- FindNeighbors(tmpSO,reduction="pca", dims = seq(1,npcs))
-            tmpSO <- FindClusters(tmpSO,resolution = resolution)
-            markers <-  FindAllMarkers(tmpSO)
-            subCluster[[i]] <- list("subClusters"= tmpSO,"markers" = markers)
-
-        }
-    } else {
-        message("coming Soon")
-        subCluster <- NULL
-    }
-
-    return(subCluster)
-}
 
 
 
