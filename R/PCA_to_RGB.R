@@ -304,7 +304,7 @@ assingRGBtoPixelQuickBlock <- function(rgb, coordinates,resolution = 200,drop =T
 #' Note that the slice dimension is required by the \code{imager} package.
 #' @return a 4 dimensional array - convertable to \code{cimg} objects.
 
-buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,cores=1, verbose = TRUE){
+buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,cores=1,filterThreshold=0.999, verbose = TRUE){
   #----------------------------------------------------------------------------#
   # Class checks - this will be removed once S4 classes are functional
   #----------------------------------------------------------------------------#
@@ -362,11 +362,11 @@ buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,cores
                       yp <- mat$ycoord
                       distance <- sqrt((abs(xp-xo))^2 + (abs(yp-yo))^2)
                       distance <- distance[distance !=0]
-
-                      return(min(distance))
+                      distance <- sort(distance,decreasing = FALSE)[1:25]
+                      return(mean(distance))
   }, coordinates)
   minDist <- unlist(minDist)
-  distanceThrehsold <- quantile(minDist,0.99)
+  distanceThrehsold <- quantile(minDist,filterThreshold)
   coordinates <- coordinates[minDist <= distanceThrehsold,]
 
   #----------------------------------------------------------------------------#
@@ -379,7 +379,7 @@ buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,cores
   #----------------------------------------------------------------------------#
   # Extracting Voronoi/dirichlet tessaltion - not intested in Delauney
   #----------------------------------------------------------------------------#
-  #browser()
+
   ## Voronoi tessaltion coordinates
   tessV <- tesselation$dirsgs
   ## If the "point" is on the edge of the box used for tessaltion
@@ -388,16 +388,13 @@ buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,cores
   ## Contains original data - just to ensure that that indeces line up
   ogCoord <- cbind(coordinates,tesselation$summary)
 
-
   #----------------------------------------------------------------------------#
   # Rebuilding new cooirdinates based on tesselation borders
   # cooridinates are shifted for both tesselation cooridantes and starting coord
   #----------------------------------------------------------------------------#
+
   lpx <- round(abs(min(c(tessV$x1,tessV$x2))))
-
   lpy <- round(abs(min(c(tessV$y1,tessV$y2))))
-
-
 
   #----------------------------------------------------------------------------#
   # This section is equivalent to triangle rasterisation
@@ -405,18 +402,55 @@ buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,cores
   .raster(verbose)
   allIdx <- parallel::mclapply(seq_len(nrow(tessV)),Vesalius:::.fillTesselation,
     tess = tessV,coord= ogCoord,mc.cores = cores)
-  allIdx <- as.data.frame(do.call("rbind",allIdx))
 
+  #----------------------------------------------------------------------------#
+  # Filtering triangle that exceed max tile size
+  #----------------------------------------------------------------------------#
+  .filter(verbose)
+  allIdx <- .filterTriangle(allIdx,filterThreshold)
   allIdx <- mutate(allIdx,x = x +lpx +1,y=y+lpy +1) %>% group_by(cc)
-
-  #----------------------------------------------------------------------------#
-  # Fill image array with coloured tiles
-  #----------------------------------------------------------------------------#
 
   return(allIdx)
 
 }
 
+
+.filterTriangle <- function(allIdx, filterThreshold){
+    #--------------------------------------------------------------------------#
+    # First get area and extract distribution
+    #--------------------------------------------------------------------------#
+    triArea1 <- sapply(allIdx,function(x){
+                      return(x[[2]][1])
+    })
+    triArea2 <- sapply(allIdx,function(x){
+                      return(x[[2]][2])
+    })
+
+    areaThresh <- quantile(c(triArea1,triArea2),filterThreshold)
+
+    #--------------------------------------------------------------------------#
+    # Next filter triangle that exceed limit
+    #--------------------------------------------------------------------------#
+    tri1 <- lapply(allIdx,function(x){
+                  return(x[[1]][[1]])
+    })
+    tri1 <- tri1[triArea1 < areaThresh]
+    tri1 <- as.data.frame(do.call("rbind",tri1))
+
+    tri2 <- lapply(allIdx,function(x){
+                  return(x[[1]][[2]])
+    })
+    tri2 <- tri2[triArea2 < areaThresh]
+    tri2 <- as.data.frame(do.call("rbind",tri2))
+
+    #--------------------------------------------------------------------------#
+    # Rebuild full data frame
+    #--------------------------------------------------------------------------#
+    tri <- rbind(tri1,tri2)
+    return(tri)
+
+
+}
 
 .fillTesselation <- function(idx,tess,coord){
     #--------------------------------------------------------------------------#
@@ -428,20 +462,26 @@ buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,cores
     ## First split data between both triangles
     #--------------------------------------------------------------------------#
     t1 <- .fillTesselationTriangle(allEdge,coord,tri = 1)
-    if(nrow(t1) >25000) t1 <- NULL
+    a1 <- nrow(t1)
+
     t2 <- .fillTesselationTriangle(allEdge,coord,tri = 2)
-    if(nrow(t2) >25000) t2 <- NULL
+    a2 <- nrow(t2)
+
 
     #--------------------------------------------------------------------------#
     # Rebuild list with filled triangle for both points
     #--------------------------------------------------------------------------#
-    allIn <- rbind(t1,t2)
-    return(allIn)
+    allIn <- list(t1,t2)
+    return(list(allIn,c(a1,a2)))
 
 }
 
 .fillTesselationTriangle <- function(allEdge,coord,tri){
   if(tri ==1){
+    #--------------------------------------------------------------------------#
+    # First checking if it fits the filter threshold
+    #--------------------------------------------------------------------------#
+    if(coord[allEdge$ind1,"dir.area"])
     #--------------------------------------------------------------------------#
     # Boundaries of tesselation
     #--------------------------------------------------------------------------#

@@ -366,22 +366,27 @@ iterativeSegmentation.array <- function(img,colDepth = 9,segIter = 10,
     #--------------------------------------------------------------------------#
     # Segmentation is done by using kmeans clustering
     #--------------------------------------------------------------------------#
-      clust <- kmeans(img[,c("R","G","B")],j,iter.max = 200,nstart = 10)
-      img$cluster <- clust$cluster
-      clusters <- unique(clust$cluster)
+      colours <- cbind(img[img$cc == 1,"value"],
+                       img[img$cc == 2,"value"],
+                       img[img$cc == 3,"value"])
+      clust <- kmeans(colours,j)
+      img$cluster <- rep(clust$cluster,times = 3)
+      clusters <- unique(img$cluster) ; cols <- unique(img$cc)
 
     #--------------------------------------------------------------------------#
     # Not using centroid values - this just makes everything gray scale
     # Not we want at the moment - maybe later
     #--------------------------------------------------------------------------#
 
-      for(i in seq_along(clusters)){
-          tmp <- img[img$cluster == clusters[i],]
-          tmp$R <- median(tmp[,"1"])
-          tmp$G <- median(tmp[,"2"])
-          tmp$B <- median(tmp[,"3"])
-          img[img$cluster == clusters[i],] <- tmp
-      }
+    img <- img %>% group_by(cluster) %>% mutate_at(vars(value),list(~median()))
+
+    #for(i in seq_along(unique(img$cluster))){
+    #    for(j in seq_along(unique(img$cc))){
+    #        img[img$cluster == clusters[i] & img$cc == cols[j],"value"] <-
+    #            median((img[img$cluster == clusters[i] & img$cc == cols[j],"value"]))
+    #    }
+    #}
+
     #--------------------------------------------------------------------------#
     # Once we have go through the last segmentation we don't want any more smoothing
     # Will slightly change the colour values

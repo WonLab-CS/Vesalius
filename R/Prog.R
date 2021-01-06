@@ -66,6 +66,17 @@
     bar <- paste0("#", paste0(rep("-",widthDisplay*0.75),collapse=""),"#")
     cat(bar,"\n")
     cat( paste(t," Rasterising Tiles \n"))
+
+
+}
+
+.filter <- function(verbose =TRUE){
+    if(!verbose) return(NULL)
+    t <- Sys.time()
+    widthDisplay<-round(options()$width)
+    bar <- paste0("#", paste0(rep("-",widthDisplay*0.75),collapse=""),"#")
+    cat(bar,"\n")
+    cat( paste(t," Filtering Triangles that exceed area threshold\n"))
     cat(bar,"\n")
 
 }
