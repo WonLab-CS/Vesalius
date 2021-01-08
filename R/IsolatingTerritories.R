@@ -381,13 +381,18 @@ iterativeSegmentation.array <- function(img,colDepth = 9,segIter = 10,
     # This will ensure faster run time and cleaner results
     #--------------------------------------------------------------------------#
 
-    
+
     tmpImg <- img %>% group_by(cc) %>% distinct(barcodes,.keep_all = TRUE)
 
     tmpImg <- tmpImg %>% group_by(cc) %>%
               mutate(cluster = kmeans(value,segments[j],iter.max=200)$cluster )
 
-
+    #clusters <- tmpImg %>% ungroup
+    #clusters <- cbind(tmpImg$value[tmpImg$cc ==1],
+    #                  tmpImg$value[tmpImg$cc ==2],
+    #                  tmpImg$value[tmpImg$cc ==3])
+    #clusters <- kmeans(clusters, segments[j],iter.max =200)$clusters
+    #tmpImg <- tmpImg %>% add_column(rep(clusters,3))
     #--------------------------------------------------------------------------#
     # Not using centroid values - this just makes everything gray scale
     # Not we want at the moment - maybe later
