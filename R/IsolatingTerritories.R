@@ -184,8 +184,11 @@ smoothArray <- function(img,method = c("median","iso","box"),
     # Class check
     #--------------------------------------------------------------------------#
     if(!is.cimg(img)){
-      img <- as.cimg(img)
+      impCopy <- as.cimg(img)
+    }else {
+      impCopy <- img
     }
+
     #--------------------------------------------------------------------------#
     # NOTE Export cimg object as data frame and vice versa
     # It might be easier be easier
@@ -195,11 +198,20 @@ smoothArray <- function(img,method = c("median","iso","box"),
     # Running multiple smoothing itteration
     #--------------------------------------------------------------------------#
     for(i in seq_len(iter)){
-        img <- switch(method,
-                      "median" = medianblur(img,box, threshold),
-                      "iso" = isoblur(img,sigma,neuman,gaussian,na.rm),
-                      "box" = boxblur(img,box,neuman))
+        impCopy <- switch(method[1L],
+                      "median" = medianblur(impCopy,box, threshold),
+                      "iso" = isoblur(impCopy,sigma,neuman,gaussian,na.rm),
+                      "box" = boxblur(impCopy,box,neuman))
     }
+
+    imgCopy <- as.data.frame(impCopy)
+
+
+
+    img <- right_join(imgCopy, img, by  = c("x","y","cc")) %>%
+           select(c("barcodes","x","y","cc","value.x")) %>% tibble
+
+    colnames(img) <- c("barcodes","x","y","cc","value")
     return(img)
 }
 
@@ -357,35 +369,42 @@ iterativeSegmentation.array <- function(img,colDepth = 9,segIter = 10,
   #----------------------------------------------------------------------------#
   # Segmenting image by iteratively decreasing colour depth and smoothing
   #----------------------------------------------------------------------------#
-  for(j in segments){
+  for(j in seq_along(segments)){
 
       if(verbose){
-          cat(paste("Current Number of segments: ", j,"\r"))
+          #cat(paste("Current Number of segments: ", j,"\r"))
       }
 
     #--------------------------------------------------------------------------#
     # Segmentation is done by using kmeans clustering
+    # We will only run clustering on 1 pixel of each tile
+    # This will ensure faster run time and cleaner results
     #--------------------------------------------------------------------------#
-      colours <- cbind(img[img$cc == 1,"value"],
-                       img[img$cc == 2,"value"],
-                       img[img$cc == 3,"value"])
-      clust <- kmeans(colours,j)
-      img$cluster <- rep(clust$cluster,times = 3)
-      clusters <- unique(img$cluster) ; cols <- unique(img$cc)
+
+    
+    tmpImg <- img %>% group_by(cc) %>% distinct(barcodes,.keep_all = TRUE)
+
+    tmpImg <- tmpImg %>% group_by(cc) %>%
+              mutate(cluster = kmeans(value,segments[j],iter.max=200)$cluster )
+
 
     #--------------------------------------------------------------------------#
     # Not using centroid values - this just makes everything gray scale
     # Not we want at the moment - maybe later
     #--------------------------------------------------------------------------#
 
-    img <- img %>% group_by(cluster) %>% mutate_at(vars(value),list(~median()))
+    tmpImg <- tmpImg %>% group_by(cc,cluster) %>%
+              mutate_at(vars(value),list(~quantile(.,0.5)))
 
-    #for(i in seq_along(unique(img$cluster))){
-    #    for(j in seq_along(unique(img$cc))){
-    #        img[img$cluster == clusters[i] & img$cc == cols[j],"value"] <-
-    #            median((img[img$cluster == clusters[i] & img$cc == cols[j],"value"]))
-    #    }
-    #}
+    #--------------------------------------------------------------------------#
+    # Replacing values in original image
+    #--------------------------------------------------------------------------#
+
+    img <- inner_join(img,tmpImg, by = c("barcodes","cc")) %>%
+           select(c("barcodes","x.x","y.x","cc","value.y","cluster"))
+
+    colnames(img) <- c("barcodes","x","y","cc","value","cluster")
+
 
     #--------------------------------------------------------------------------#
     # Once we have go through the last segmentation we don't want any more smoothing
