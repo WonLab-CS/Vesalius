@@ -16,7 +16,7 @@ Collate: FindNN.R
     processing.R
     VesaliusObjects.R
     Prog.R
-Depends: R (>= 3.5.0),parallel,Matrix,Seurat,deldir,imager,dplyr,sp
+Depends: R (>= 3.5.0),parallel,Matrix,Seurat,deldir,imager,dplyr,sp,tidyr
 Imports: methods,grDevices,graphics,stats,utils
 Suggests: knitr, RUnit,ggplot2
 Encoding: UTF-8

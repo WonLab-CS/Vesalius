@@ -198,10 +198,13 @@ smoothArray <- function(img,method = c("median","iso","box"),
     # Running multiple smoothing itteration
     #--------------------------------------------------------------------------#
     for(i in seq_len(iter)){
-        impCopy <- switch(method[1L],
-                      "median" = medianblur(impCopy,box, threshold),
-                      "iso" = isoblur(impCopy,sigma,neuman,gaussian,na.rm),
-                      "box" = boxblur(impCopy,box,neuman))
+        for(j in method){
+          impCopy <- switch(j,
+                            "median" = medianblur(impCopy,box, threshold),
+                            "iso" = isoblur(impCopy,sigma,neuman,gaussian,na.rm),
+                            "box" = boxblur(impCopy,box,neuman))
+        }
+
     }
 
     imgCopy <- as.data.frame(impCopy)
@@ -214,6 +217,8 @@ smoothArray <- function(img,method = c("median","iso","box"),
     colnames(img) <- c("barcodes","x","y","cc","value")
     return(img)
 }
+
+
 
 
 #' Enhance colour contrast by equalizing the colour histogram
@@ -338,24 +343,17 @@ iterativeSegmentation.bead <- function(img,nn,colDepth = 9,segIter = 10,
 #' Function : \code{seq(startingSegements,colDepth+1,length.out = iter)}
 #' @return a data frame containing RGB code for each bead.
 
-iterativeSegmentation.array <- function(img,colDepth = 9,segIter = 10,
-                                        smoothIter = 1,startingSegements = 256,
+iterativeSegmentation.array <- function(img,colDepth = 10,
+                                        smoothIter = 1,
                                         method = c("median","iso","box"),
                                         sigma = 1, box = 20, threshold=0, neuman=TRUE,
                                         gaussian=TRUE, na.rm=FALSE,
                                         verbose = TRUE){
-  #----------------------------------------------------------------------------#
-  # Checking stuff
-  #----------------------------------------------------------------------------#
-  if(segIter > (startingSegements - colDepth)){
-      warning("Iterations surpass number of startingSegements \n
-              Consider increasing startingSegements or reducing iterations")
-      segIter <- startingSegements - colDepth
-  }
+
   #----------------------------------------------------------------------------#
   ## Building colour segments
   #----------------------------------------------------------------------------#
-  segments <- c(ceiling(seq(startingSegements,colDepth+1,length.out = segIter)),colDepth)
+
 
   #----------------------------------------------------------------------------#
   # Comverting image to data.frame
@@ -369,7 +367,7 @@ iterativeSegmentation.array <- function(img,colDepth = 9,segIter = 10,
   #----------------------------------------------------------------------------#
   # Segmenting image by iteratively decreasing colour depth and smoothing
   #----------------------------------------------------------------------------#
-  for(j in seq_along(segments)){
+  for(j in seq_along(colDepth)){
 
       if(verbose){
           #cat(paste("Current Number of segments: ", j,"\r"))
@@ -385,21 +383,29 @@ iterativeSegmentation.array <- function(img,colDepth = 9,segIter = 10,
     tmpImg <- img %>% group_by(cc) %>% distinct(barcodes,.keep_all = TRUE)
 
     tmpImg <- tmpImg %>% group_by(cc) %>%
-              mutate(cluster = kmeans(value,segments[j],iter.max=200)$cluster )
+              mutate(cluster = .intKmeans(value,colDepth[j],cluster = TRUE),
+                     centers = .intKmeans(value,colDepth[j],cluster = FALSE))
+
+
+
 
     #clusters <- tmpImg %>% ungroup
     #clusters <- cbind(tmpImg$value[tmpImg$cc ==1],
     #                  tmpImg$value[tmpImg$cc ==2],
     #                  tmpImg$value[tmpImg$cc ==3])
-    #clusters <- kmeans(clusters, segments[j],iter.max =200)$clusters
-    #tmpImg <- tmpImg %>% add_column(rep(clusters,3))
+    #clusters <- kmeans(clusters, segments[j],iter.max =200)$cluster
+
+    #tmpImg <- tmpImg %>% mutate(cluster = clusters)
+
     #--------------------------------------------------------------------------#
     # Not using centroid values - this just makes everything gray scale
     # Not we want at the moment - maybe later
     #--------------------------------------------------------------------------#
 
-    tmpImg <- tmpImg %>% group_by(cc,cluster) %>%
-              mutate_at(vars(value),list(~quantile(.,0.5)))
+    #tmpImg <- tmpImg %>% group_by(cc,cluster) %>%
+    #          mutate_at(vars(value),list(~quantile(.,0.5)))
+    tmpImg <- tmpImg%>% group_by(cc,cluster) %>%
+              mutate(value = centers)
 
     #--------------------------------------------------------------------------#
     # Replacing values in original image
@@ -415,7 +421,7 @@ iterativeSegmentation.array <- function(img,colDepth = 9,segIter = 10,
     # Once we have go through the last segmentation we don't want any more smoothing
     # Will slightly change the colour values
     #--------------------------------------------------------------------------#
-      if(j != segments[length(segments)]){
+      if(j != length(colDepth)){
           img <- smoothArray(img,method =method[1L],sigma = sigma, box = box,
                              threshold=threshold, neuman=neuman, gaussian=gaussian,
                              na.rm=FALSE,iter = smoothIter)
@@ -426,6 +432,15 @@ iterativeSegmentation.array <- function(img,colDepth = 9,segIter = 10,
   return(img)
 }
 
+.intKmeans <- function(img,depth,cluster = TRUE){
+    if(cluster){
+      k <- kmeans(img,depth, iter.max = 200)$cluster
+    } else {
+      k <- kmeans(img,depth, iter.max = 200)
+      k <- as.vector(k$centers)[k$cluster]
+    }
+    return(k)
+}
 
 
 #' isolating territories from spatial transcriptomic data
@@ -489,10 +504,10 @@ isolateTerritories.bead <- function(img,dropRadius = 0.025,colDepth =12){
 #' If beads remain for a given colour, the process is repeated until all beads/spots are put into a territory.
 #' @return a data frame with barcodes, xcoord, ycoord, R, G, B, cluster number, territory number within that cluster.
 
-isolateTerritories.array <- function(img,dropRadius = 0.025,colDepth =12){
-      if(any(colnames(img)=="cluster")){
-        clusters <- unique(as.numeric(as.character(img$cluster)))
-        ## Finding territories in each
+isolateTerritories.array <- function(img,dropRadius = 0.025){
+
+
+
         clusterCount <- 1
         img$territories <- NA
         for(i in seq_along(clusters)){
@@ -506,52 +521,7 @@ isolateTerritories.array <- function(img,dropRadius = 0.025,colDepth =12){
 
         }
 
-      } else {
-        #----------------------------------------------------------------------#
-        # Format change from imager df
-        #----------------------------------------------------------------------#
-        img <- as.data.frame(img)
-        img <- tidyr::spread(img,cc,value)
-        colnames(img) <- c("x","y","R","G","B")
-        #----------------------------------------------------------------------#
-        # Running k means - simple segmentation
-        #----------------------------------------------------------------------#
-        clust <- kmeans(img[,c("R","G","B")],colDepth)
-        img$cluster <- clust$cluster
-        clusters <- unique(as.numeric(as.character(img$cluster)))
-        #----------------------------------------------------------------------#
-        # Modify colours
-        #----------------------------------------------------------------------#
-        for(i in seq_along(clusters)){
-            tmp <- img[img$cluster == clusters[i],]
-            tmp$R <- median(tmp[,"R"])
-            tmp$G <- median(tmp[,"G"])
-            tmp$B <- median(tmp[,"B"])
-            img[img$cluster == clusters[i],] <- tmp
-        }
-        #----------------------------------------------------------------------#
-        # Rebuild cimg capable df - will need to be chnage for cleaner code
-        #----------------------------------------------------------------------#
-        img <- melt(img,id.vars = c("x","y"))
-        img$variable <- as.numeric(as.character(img$variable))
-        img[img$variable == "R","variable"] <- 1
-        img[img$variable == "G","variable"] <- 2
-        img[img$variable == "B","variable"] <- 3
-        ## Finding territories in each
-        clusterCount <- 1
-        img$territories <- NA
-        for(i in seq_along(clusters)){
-            ## all barcodes from cluster i
-            barcodes <- img[img$cluster == clusters[i],]
-            message(paste0("Pooling cluster ",i))
-            ## pooling
-            pool <- .distancePooling.array(barcodes,dropRadius)
-
-            img[img$cluster == clusters[i],]<- pool
-
-        }
-
-      }
+      
       return(img)
 }
 
