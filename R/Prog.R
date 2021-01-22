@@ -38,6 +38,16 @@
 
 }
 
+.res <- function(verbose =TRUE){
+    if(!verbose) return(NULL)
+    t <- Sys.time()
+    widthDisplay<-round(options()$width)
+    bar <- paste0("#", paste0(rep("-",widthDisplay*0.75),collapse=""),"#")
+    cat(bar,"\n")
+    cat( paste(t," Coarse Grain Image Building \n"))
+
+}
+
 
 .distanceBeads <- function(verbose =TRUE){
     if(!verbose) return(NULL)

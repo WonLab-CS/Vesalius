@@ -191,23 +191,6 @@ assignRGBtoPixel <- function(rgb,coordinates, na.rm = TRUE){
 
 
 
-#' Assigning the RGB colour code to coordinates in lower resolution.
-#'
-#' @param rgb list of colour codes in the format describe in the Detail section.  Output of rgbPCA.
-#' @param coordinates data frame containing x and y coordinates of barcodes
-#' @param resolution size of "image matrix" to be used. n by n matrix where n = resolution
-#' @param drop logical describing if empty location should be removed.
-#' @param na.rm logical describing if NA should be removed
-#' @details assignRGBtoPixel remaps the colour code to x/y coordinates at lower resolution.
-#' This means that beads/spots will be assigned to a "pixel" within a matrix then exported as a data frame.
-#' The current version does not return assigned colours as array images.
-#' \code{rgb} is the output of \code{rgbPCA}.
-#' As such, it should be a list with three different levels.
-#' Level 1 : each list element is a different slice
-#' Level 2 : each list element is R G B channel for that slice
-#' Level 3 : numeric vectors containing colour code for each barcode
-#' @return a data frame with five columns: barcodes (barcode names), xcoord (column index),
-#' ycoord (row index), R (Red colour channel),G (Green colour channel) ,and B (Blue Colour channel).
 
 
 assingRGBtoPixelQuickBlock <- function(rgb, coordinates,resolution = 200,drop =TRUE,na.rm =TRUE){
@@ -304,7 +287,7 @@ assingRGBtoPixelQuickBlock <- function(rgb, coordinates,resolution = 200,drop =T
 #' Note that the slice dimension is required by the \code{imager} package.
 #' @return a 4 dimensional array - convertable to \code{cimg} objects.
 
-buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,cores=1,filterThreshold=0.999, verbose = TRUE){
+buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,resolution = 1,filterThreshold=0.999,cores=1, verbose = TRUE){
   #----------------------------------------------------------------------------#
   # Class checks - this will be removed once S4 classes are functional
   #----------------------------------------------------------------------------#
@@ -351,23 +334,41 @@ buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,cores
   }
 
   #----------------------------------------------------------------------------#
+  # Decreasing reolsution and making bigger tiles
+  #----------------------------------------------------------------------------#
+  if(resolution <1){
+    .res(verbose)
+    widthX <- max(coord$xcoord) - min(coord$xcoord) + 1
+    widthY <- max(coord$ycoord) - min(coord$ycoord) + 1
+
+    xbox <- round(seq(min(coord$xcoord),max(coord$xcoord), length.out = widthX * resolution))
+    ybox <- round(seq(min(coord$ycoord),max(coord$ycoord), length.out = widthY * resolution))
+
+    coordinates <- .resShift(coordinates,xbox,ybox)
+  }
+
+
+  #----------------------------------------------------------------------------#
   # Removing all "outer point" - tend to make tesselation messy
   #----------------------------------------------------------------------------#
-  .distanceBeads(verbose)
-  idx <- seq_len(nrow(coordinates))
-  minDist <- parallel::mclapply(idx, function(idx,mat){
-                      xo <- mat$xcoord[idx]
-                      yo <- mat$ycoord[idx]
-                      xp <- mat$xcoord
-                      yp <- mat$ycoord
-                      distance <- sqrt((abs(xp-xo))^2 + (abs(yp-yo))^2)
-                      distance <- distance[distance !=0]
-                      distance <- sort(distance,decreasing = FALSE)[1:25]
-                      return(mean(distance))
-  }, coordinates)
-  minDist <- unlist(minDist)
-  distanceThrehsold <- quantile(minDist,filterThreshold)
-  coordinates <- coordinates[minDist <= distanceThrehsold,]
+  if(filterThreshold <1){
+    .distanceBeads(verbose)
+    idx <- seq_len(nrow(coordinates))
+    minDist <- parallel::mclapply(idx, function(idx,mat){
+                        xo <- mat$xcoord[idx]
+                        yo <- mat$ycoord[idx]
+                        xp <- mat$xcoord
+                        yp <- mat$ycoord
+                        distance <- sqrt((abs(xp-xo))^2 + (abs(yp-yo))^2)
+                        distance <- distance[distance !=0]
+                        distance <- sort(distance,decreasing = FALSE)[1:25]
+                        return(mean(distance))
+    }, coordinates)
+    minDist <- unlist(minDist)
+    distanceThrehsold <- quantile(minDist,filterThreshold)
+    coordinates <- coordinates[minDist <= distanceThrehsold,]
+  }
+  
 
   #----------------------------------------------------------------------------#
   # TESSELATION TIME!
@@ -403,14 +404,84 @@ buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,cores
   allIdx <- parallel::mclapply(seq_len(nrow(tessV)),Vesalius:::.fillTesselation,
     tess = tessV,coord= ogCoord,mc.cores = cores)
 
+
+
   #----------------------------------------------------------------------------#
   # Filtering triangle that exceed max tile size
   #----------------------------------------------------------------------------#
   .filter(verbose)
   allIdx <- .filterTriangle(allIdx,filterThreshold)
-  allIdx <- mutate(allIdx,x = x +lpx +1,y=y+lpy +1) %>% group_by(cc)
+
+  allIdx <- mutate(allIdx, x = x -lpx +1,y=y-lpy +1) %>%
+            tibble
 
   return(allIdx)
+
+}
+
+
+.resShift <- function(coord, xbox , ybox){
+  ### Building template Sparse Matrix for each pixel
+
+  rgbMat <- Matrix(0,ncol=3,nrow = length(xbox) * length(ybox))
+  ## Matrix index in long format
+  idx <- rep(seq(1,length(xbox)), each = length(ybox))
+  idy <- rep(seq(1,length(ybox)), times = length(xbox))
+  ## Barcode templates
+  barcode <- rep("NONE",length(xbox) * length(ybox))
+
+  for(cols in seq(1,length.out = length(xbox)-1)){
+
+     for(rows in seq(1,length.out = length(xbox)-1)){
+
+           ## Finding all barcodes in each "pixel"
+          xtmp <- which(coord$xcoord >= xbox[cols] & coord$xcoord <= xbox[cols+1])
+          ytmp <- which(coord$ycoord >= ybox[rows] & coord$ycoord <= ybox[rows+1])
+          inter <- intersect(xtmp,ytmp)
+          pos <- which(idx == cols & idy == rows)
+          if(length(inter) == 0){
+            ## just in case pixels are "empty" in terms of beads
+            next()
+          }
+          ## average colours over all barcodes in pixel
+          temp <- apply(coord[inter,c("R","G","B")],2,mean)
+          # Assigne new colour code to its location in the sparse matrix
+          rgbMat[pos,] <- as.matrix(temp, ncol = 3)
+          ## adding all barcodes associated to that pixel to the barcode tag
+          barcode[pos] <- paste0(barcode[pos],coord[inter,"barcodes"],sep = "_",collapse ="_")
+
+
+     }
+  }
+  colnames(rgbMat) <- c("R","G","B")
+
+  ## Removing all white/ black pixel -
+  ## These represent empty spaces and are not required to rebuild the matrix
+  zeros <- apply(rgbMat,1,sum) != 0
+  rgbMat <- rgbMat[zeros,]
+  idx <- idx[zeros]
+  idy <- idy[zeros]
+  barcode <- barcode[zeros]
+
+
+  ## Return a data frame with the barcode list for each pixel,
+  ## x and y coordinates in the matrix and
+  ## the colour assigned to that matrix coordinate
+
+  rgbMat <- data.frame(barcode,idx,idy,rgbMat)
+  colnames(rgbMat) <- c("barcodes","xcoord","ycoord","R","G","B")
+  return(rgbMat)
+
+}
+
+.findTileCenters <- function(x,y,ogCoord){
+    pos <- paste0(x,"_",y)
+    posCent <- paste0(round(ogCoord$x),"_",round(ogCoord$y))
+
+    centersLoc <- match(posCent,pos)
+    centers <- rep(FALSE, length(pos))
+    centers[centersLoc[!is.na(centersLoc)]] <- TRUE
+    return(centers)
 
 }
 
@@ -478,10 +549,7 @@ buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,cores
 
 .fillTesselationTriangle <- function(allEdge,coord,tri){
   if(tri ==1){
-    #--------------------------------------------------------------------------#
-    # First checking if it fits the filter threshold
-    #--------------------------------------------------------------------------#
-    if(coord[allEdge$ind1,"dir.area"])
+
     #--------------------------------------------------------------------------#
     # Boundaries of tesselation
     #--------------------------------------------------------------------------#
@@ -508,12 +576,16 @@ buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,cores
     value <- c(rep(coord[allEdge$ind1,"R"],length(maxX)),
                rep(coord[allEdge$ind1,"G"],length(maxX)),
                rep(coord[allEdge$ind1,"B"],length(maxX)))
+
     cc <- rep(1:3,each = length(maxX))
     maxX <- rep(maxX, times = 3)
     maxY <- rep(maxY, times = 3)
     barcode <- rep(coord[allEdge$ind1,"barcodes"],length(maxX))
-    allIn <- data.frame(barcode,maxX,maxY,cc,value)
-    colnames(allIn) <- c("barcodes","x","y","cc","value")
+    cent <- which(maxX == round(coord[allEdge$ind1,"x"]) & maxY == round(coord[allEdge$ind1,"y"]))
+    centers <- rep(0, length(maxX))
+    centers[cent] <- 1
+    allIn <- data.frame(barcode,maxX,maxY,cc,value,centers)
+    colnames(allIn) <- c("barcodes","x","y","cc","value","tile")
     return(allIn)
 
   } else {
@@ -547,8 +619,11 @@ buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,cores
     maxX <- rep(maxX, times = 3)
     maxY <- rep(maxY, times = 3)
     barcode <- rep(coord[allEdge$ind2,"barcodes"],length(maxX))
-    allIn <- data.frame(barcode,maxX,maxY,cc,value)
-    colnames(allIn) <- c("barcodes","x","y","cc","value")
+    cent <- which(maxX == round(coord[allEdge$ind2,"x"]) & maxY == round(coord[allEdge$ind2,"y"]))
+    centers <- rep(0, length(maxX))
+    centers[cent] <- 1
+    allIn <- data.frame(barcode,maxX,maxY,cc,value,centers)
+    colnames(allIn) <- c("barcodes","x","y","cc","value","tile")
     return(allIn)
   }
 

@@ -183,8 +183,9 @@ smoothArray <- function(img,method = c("median","iso","box"),
     #--------------------------------------------------------------------------#
     # Class check
     #--------------------------------------------------------------------------#
+
     if(!is.cimg(img)){
-      impCopy <- as.cimg(img)
+      impCopy <- as.cimg(select(img, c("x", "y", "cc", "value")))
     }else {
       impCopy <- img
     }
@@ -212,9 +213,9 @@ smoothArray <- function(img,method = c("median","iso","box"),
 
 
     img <- right_join(imgCopy, img, by  = c("x","y","cc")) %>%
-           select(c("barcodes","x","y","cc","value.x")) %>% tibble
+           select(c("barcodes","x","y","cc","value.x","tile")) %>% tibble
 
-    colnames(img) <- c("barcodes","x","y","cc","value")
+    colnames(img) <- c("barcodes","x","y","cc","value","tile")
     return(img)
 }
 
@@ -378,54 +379,54 @@ iterativeSegmentation.array <- function(img,colDepth = 10,
     # We will only run clustering on 1 pixel of each tile
     # This will ensure faster run time and cleaner results
     #--------------------------------------------------------------------------#
+    img <- smoothArray(img,method =method[1L],sigma = sigma, box = box,
+                       threshold=threshold, neuman=neuman, gaussian=gaussian,
+                       na.rm=FALSE,iter = smoothIter)
 
-
-    tmpImg <- img %>% group_by(cc) %>% distinct(barcodes,.keep_all = TRUE)
-
-    tmpImg <- tmpImg %>% group_by(cc) %>%
-              mutate(cluster = .intKmeans(value,colDepth[j],cluster = TRUE),
-                     centers = .intKmeans(value,colDepth[j],cluster = FALSE))
-
+    tmpImg <- img %>% filter(tile == 1) %>% group_by(cc) %>% distinct(barcodes,.keep_all = TRUE)
 
 
 
-    #clusters <- tmpImg %>% ungroup
-    #clusters <- cbind(tmpImg$value[tmpImg$cc ==1],
-    #                  tmpImg$value[tmpImg$cc ==2],
-    #                  tmpImg$value[tmpImg$cc ==3])
-    #clusters <- kmeans(clusters, segments[j],iter.max =200)$cluster
-
-    #tmpImg <- tmpImg %>% mutate(cluster = clusters)
+    #tmpImg <- tmpImg %>% group_by(cc) %>%
+    #          mutate(cluster = .intKmeans(value,colDepth[j],cluster = TRUE),
+    #                 Kcenters = .intKmeans(value,colDepth[j],cluster = FALSE))
 
     #--------------------------------------------------------------------------#
-    # Not using centroid values - this just makes everything gray scale
-    # Not we want at the moment - maybe later
+    # clustering with each colour together
+    # It cause issues down the line
+    # How do you recombine unique colours backtogether
+    # If you can find a new way of doing iot great but in the mean time...
     #--------------------------------------------------------------------------#
+    colours <- select(tmpImg, c("cc","value"))
+    colours <- data.frame(colours$value[colours$cc ==1],
+                          colours$value[colours$cc ==2],
+                          colours$value[colours$cc ==3])
+    km <- kmeans(colours,colDepth[j])
+    cluster <- km$cluster
+    Kcenters <- km$centers
+    tmpImg$cluster <- 0
 
-    #tmpImg <- tmpImg %>% group_by(cc,cluster) %>%
-    #          mutate_at(vars(value),list(~quantile(.,0.5)))
-    tmpImg <- tmpImg%>% group_by(cc,cluster) %>%
-              mutate(value = centers)
+    for(i in seq(1,3)){
+        tmpImg$cluster[tmpImg$cc == i] <- cluster
+        tmpImg$value[tmpImg$cc == i] <- Kcenters[cluster,i]
+    }
+
+
+
+
+
+    #tmpImg <- tmpImg%>% group_by(cc,cluster) %>%
+    #          mutate(value = Kcenters)
 
     #--------------------------------------------------------------------------#
     # Replacing values in original image
     #--------------------------------------------------------------------------#
 
     img <- inner_join(img,tmpImg, by = c("barcodes","cc")) %>%
-           select(c("barcodes","x.x","y.x","cc","value.y","cluster"))
+           select(c("barcodes","x.x","y.x","cc","value.y","tile.x","cluster"))
 
-    colnames(img) <- c("barcodes","x","y","cc","value","cluster")
+    colnames(img) <- c("barcodes","x","y","cc","value","tile","cluster")
 
-
-    #--------------------------------------------------------------------------#
-    # Once we have go through the last segmentation we don't want any more smoothing
-    # Will slightly change the colour values
-    #--------------------------------------------------------------------------#
-      if(j != length(colDepth)){
-          img <- smoothArray(img,method =method[1L],sigma = sigma, box = box,
-                             threshold=threshold, neuman=neuman, gaussian=gaussian,
-                             na.rm=FALSE,iter = smoothIter)
-      }
 
 
   }
@@ -504,100 +505,223 @@ isolateTerritories.bead <- function(img,dropRadius = 0.025,colDepth =12){
 #' If beads remain for a given colour, the process is repeated until all beads/spots are put into a territory.
 #' @return a data frame with barcodes, xcoord, ycoord, R, G, B, cluster number, territory number within that cluster.
 
-isolateTerritories.array <- function(img,dropRadius = 0.025){
+isolateTerritories.array <- function(img, method = c("distance","neighbor","watershed"),captureRadius = 0.025){
+    #--------------------------------------------------------------------------#
+    # Defining captureRadius
+    #--------------------------------------------------------------------------#
+    if(method[1L] == "distance"){
+      captureRadius <- sqrt((max(img$x)-min(img$x))^2 +
+                            (max(img$y)-min(img$y))^2) * captureRadius
+    }
 
 
+    #--------------------------------------------------------------------------#
+    # IsolatingTerritories dispatching
+    #--------------------------------------------------------------------------#
+    clust <- unique(img$cluster)
 
-        clusterCount <- 1
-        img$territories <- NA
-        for(i in seq_along(clusters)){
-            ## all barcodes from cluster i
-            barcodes <- img[img$cluster == clusters[i],]
-            message(paste0("Pooling cluster ",i))
-            ## pooling
-            pool <- .distancePooling.array(barcodes,dropRadius)
+    img$territory <- 0
+    for(i in seq_along(clust)){
+      #------------------------------------------------------------------------#
+      # We don't need all data in this case only clusters and locations
+      # We can just rebuild everything afterwards
+      # At least we don't don't need to compute anything unnecessarily
+      #------------------------------------------------------------------------#
+      tmp <- filter(img,cluster == clust[i] & cc == 1)
 
-            img[img$cluster == clusters[i],]<- pool
+      ter <- switch(method[1L],
+                    "distance" = .distancePooling.array(tmp,captureRadius),
+                    "neighbor" = .neighborPooling.array(tmp,captureRadius),
+                    "watershed" = .watershedPooling.array(tmpImg))
 
-        }
+      for(j in seq(1,3)){
 
-      
-      return(img)
+          img$territory[img$cluster == clust[i] & img$cc == j] <- ter
+      }
+    }
+    return(img)
 }
 
+.neighborPooling.array <- function(img, captureRadius){
+    #--------------------------------------------------------------------------#
+    # add intersection boundaries
+    # based on how many pixel are allowed to overlap
+    #--------------------------------------------------------------------------#
 
-.distancePooling.bead <- function(img,dropRadius= 0.025){
-        dropDistance <- sqrt((max(img$xcoord)-min(img$xcoord))^2 +
-                         (max(img$ycoord)-min(img$ycoord))^2) * dropRadius
+    img <- img %>% mutate(x0 = x - captureRadius,x1 = x + captureRadius,
+                         y0 = y - captureRadius,y1 = y + captureRadius)
+    #--------------------------------------------------------------------------#
+    # Building a matrix with logical values
+    # TRUE = intersect / FALSE = no intersect
+    #--------------------------------------------------------------------------#
+    barcodes <- unique(barcodes)
+    intersectMatrix <- lapply(barcodes,function(barcodes, mat){
+                              x <- mat$x[mat$barcodes == barcodes]
+                              y <- mat$y[mat$barcodes == barcodes]
 
+                              barInt <- unique(mat$barcodes)
+                              intX <- lapply(barInt, function(bar,mat){
+                                      x0 <- mat$x0[mat$barcodes == barcodes]
+                                      x1 <- mat$x1[mat$barcodes == barcodes]
+                                      tmp <- unlist(mapply(seq,x0,x1))
+                                      retunr(tmp)
+                              })
+                              intY <- lapply(barInt, function(bar,mat){
+                                      y0 <- mat$y0[mat$barcodes == barcodes]
+                                      y1 <- mat$y1[mat$barcodes == barcodes]
+                                      tmp <- unlist(mapply(seq,y0,y1))
+                                      retunr(tmp)
+                              })
 
-        idx <- seq_len(nrow(img))
-        distanceMatrix <- lapply(idx, function(idx,mat){
-                            xo <- mat$xcoord[idx]
-                            yo <- mat$ycoord[idx]
-                            xp <- mat$xcoord
-                            yp <- mat$ycoord
-                            distance <- sqrt((abs(xp-xo))^2 + (abs(yp-yo))^2)
-                            return(distance)
-        }, img)
+                              int <- mapply(function(intX,intY,x,y){
+                                            x <- length(intersect(intX,x)) > 0
+                                            y <- length(intersect(intY,y)) > 0
+                                            return(sum(x&y)>0)
+                              })
 
-        distanceMatrix <- do.call("rbind",distanceMatrix)
-        colnames(distanceMatrix) <- img$barcodes
-        rownames(distanceMatrix) <- img$barcodes
+                              return(int)
+    },tmpImg)
+    intersectMatrix <- do.call("rbind",distanceMatrix)
+    colnames(distanceMatrix) <- barcodes
+    rownames(distanceMatrix) <- barcodes
+    #--------------------------------------------------------------------------#
+    # Pooling points together
+    #--------------------------------------------------------------------------#
+    uniBar <- unique(barcodes)
+    territories <- list()
+    count <- 1
 
-        barcodes <- img$barcodes
-        territories <- vector("list", length(barcodes))
-        count <- 1
+    while(length(uniBar) >0){
+          tmp <- distanceMatrix[,uniBar[1L]]
+          pool <- rownames(distanceMatrix)[tmp]
+          inter <- pool
+          converge <- FALSE
+          while(!converge){
+              if(length(inter)==1){
+                  territories[[count]] <- pool
+                  uniBar <- uniBar[!uniBar %in% pool]
+                  count <- count + 1
+                  converge <- TRUE
+              } else {
+                  newPool <- distanceMatrix[,inter]
 
-        while(length(barcodes) >0){
-            #print(length(barcodes)/length(territories)*100)
-            tmp <- distanceMatrix[,barcodes[1]]
-            pool <- rownames(distanceMatrix)[tmp < dropDistance]
-            inter <- pool
-            converge <- FALSE
-            while(!converge){
-                if(length(inter)==1){
-                    territories[[count]] <- pool
-                    barcodes <- barcodes[!barcodes %in% pool]
-                    count <- count + 1
-                    converge <- TRUE
-                } else {
-                    newPool <- distanceMatrix[,inter]
-
-                    newPool <- unique(unlist(lapply(seq_len(ncol(newPool)), function(idx,np,dropDistance){
-                                            res <- rownames(np)[np[,idx] < dropDistance]
+                  newPool <- unique(unlist(lapply(seq_len(ncol(newPool)), function(idx,np,captureRadius){
+                                            res <- rownames(np)[np[,idx]]
                                             return(res)
-                                          },newPool,dropDistance)))
-                    overlap <- newPool %in% pool
+                                          },newPool,captureRadius)))
+                  overlap <- newPool %in% pool
 
-                    if(sum(overlap) != length(newPool)){
+                  if(sum(overlap) != length(newPool)){
 
                         pool <- unique(c(pool,newPool[!overlap]))
                         inter <- unique(newPool[!overlap])
-                    } else {
+                  } else {
+                        territories[[count]] <- pool
+                        count <- count +1
+                        uniBar <- uniBar[!uniBar %in% pool]
+
+                        converge <- TRUE
+
+                  }
+              }
+          }
+      }
+    #--------------------------------------------------------------------------#
+    # Clean up drop outs
+    #--------------------------------------------------------------------------#
+    nulls <- sapply(territories, is.null)
+    territories <- territories[!nulls]
+    allTers <- rep(NA,nrow(img))
+    for(ter in seq_along(territories)){
+          loc <- match(barcodesInitial,territories[[ter]])
+          allTers[loc[!is.na(loc)]] <- ter
+    }
+
+    return(allTers)
+
+}
+.distancePooling.array <- function(img,captureRadius){
+    #--------------------------------------------------------------------------#
+    # Select center point of each tile for only one channel
+    # Dont need to run it for all channels
+    #--------------------------------------------------------------------------#
+    barcodesInitial <- img$barcodes
+    img <- img %>% filter(tile == 1) %>% distinct(barcodes,.keep_all = TRUE)
+
+    cat("Pooling \n")
+    #--------------------------------------------------------------------------#
+    # Compute distances
+    #--------------------------------------------------------------------------#
+    idx <- seq_len(nrow(img))
+    distanceMatrix <- lapply(idx, function(idx,mat){
+                            xo <- mat$x[idx]
+                            yo <- mat$y[idx]
+                            xp <- mat$x
+                            yp <- mat$y
+                            distance <- sqrt((abs(xp-xo))^2 + (abs(yp-yo))^2)
+                            return(distance)
+    }, img)
+
+    distanceMatrix <- do.call("rbind",distanceMatrix)
+    colnames(distanceMatrix) <- img$barcodes
+    rownames(distanceMatrix) <- img$barcodes
+    #--------------------------------------------------------------------------#
+    # Pooling points together
+    #--------------------------------------------------------------------------#
+    barcodes <- img$barcodes
+    territories <- vector("list", length(barcodes))
+    count <- 1
+
+    while(length(barcodes) >0){
+          tmp <- distanceMatrix[,barcodes[1L]]
+          pool <- rownames(distanceMatrix)[tmp < captureRadius]
+          inter <- pool
+          converge <- FALSE
+          while(!converge){
+              if(length(inter)==1){
+                  territories[[count]] <- pool
+                  barcodes <- barcodes[!barcodes %in% pool]
+                  count <- count + 1
+                  converge <- TRUE
+              } else {
+                  newPool <- distanceMatrix[,inter]
+
+                  newPool <- unique(unlist(lapply(seq_len(ncol(newPool)), function(idx,np,captureRadius){
+                                            res <- rownames(np)[np[,idx] < captureRadius]
+                                            return(res)
+                                          },newPool,captureRadius)))
+                  overlap <- newPool %in% pool
+
+                  if(sum(overlap) != length(newPool)){
+
+                        pool <- unique(c(pool,newPool[!overlap]))
+                        inter <- unique(newPool[!overlap])
+                  } else {
                         territories[[count]] <- pool
                         count <- count +1
                         barcodes <- barcodes[!barcodes %in% pool]
 
                         converge <- TRUE
 
-                    }
-                }
-            }
+                  }
+              }
+          }
+      }
+    #--------------------------------------------------------------------------#
+    # Clean up drop outs
+    #--------------------------------------------------------------------------#
+      nulls <- sapply(territories, is.null)
+      territories <- territories[!nulls]
+      allTers <- rep(NA,nrow(img))
+      for(ter in seq_along(territories)){
+            loc <- match(barcodesInitial,territories[[ter]])
+            allTers[loc[!is.na(loc)]] <- ter
+      }
 
-        }
 
 
 
-        nulls <- sapply(territories, is.null)
-        territories <- territories[!nulls]
-
-        for(ter in seq_along(territories)){
-            loc <- match(territories[[ter]],img$barcodes)
-            img[ loc[!is.na(loc)],"territories"] <- ter
-        }
-        return(img)
-
+      return(allTers)
 }
 
 
