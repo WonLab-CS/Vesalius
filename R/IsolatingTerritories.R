@@ -549,7 +549,7 @@ isolateTerritories.array <- function(img, method = c("distance","neighbor","wate
     #--------------------------------------------------------------------------#
 
     img <- img %>% mutate(x0 = x - captureRadius,x1 = x + captureRadius,
-                         y0 = y - captureRadius,y1 = y + captureRadius)
+                          y0 = y - captureRadius,y1 = y + captureRadius)
     #--------------------------------------------------------------------------#
     # Building a matrix with logical values
     # TRUE = intersect / FALSE = no intersect

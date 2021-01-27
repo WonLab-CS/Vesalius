@@ -344,7 +344,7 @@ buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,resol
     xbox <- round(seq(min(coord$xcoord),max(coord$xcoord), length.out = widthX * resolution))
     ybox <- round(seq(min(coord$ycoord),max(coord$ycoord), length.out = widthY * resolution))
 
-    coordinates <- .resShift(coordinates,xbox,ybox)
+    coordinates <- .resShift(coordinates,xbox,ybox,cores)
   }
 
 
@@ -368,7 +368,7 @@ buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,resol
     distanceThrehsold <- quantile(minDist,filterThreshold)
     coordinates <- coordinates[minDist <= distanceThrehsold,]
   }
-  
+
 
   #----------------------------------------------------------------------------#
   # TESSELATION TIME!
@@ -409,69 +409,84 @@ buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,resol
   #----------------------------------------------------------------------------#
   # Filtering triangle that exceed max tile size
   #----------------------------------------------------------------------------#
-  .filter(verbose)
-  allIdx <- .filterTriangle(allIdx,filterThreshold)
 
-  allIdx <- mutate(allIdx, x = x -lpx +1,y=y-lpy +1) %>%
+    .filter(verbose)
+    allIdx <- .filterTriangle(allIdx,filterThreshold)
+    allIdx <- mutate(allIdx, x = x -lpx +1,y=y-lpy +1) %>%
             tibble
 
   return(allIdx)
 
 }
 
+.resShiftK <- function(coord,xbox ,ybox,resolution,cores){
+    #totalRes <-
+}
+.resShift <- function(coord, xbox , ybox,cores){
+  #----------------------------------------------------------------------------#
+  # Building template Sparse Matrix for each pixel
+  #----------------------------------------------------------------------------#
 
-.resShift <- function(coord, xbox , ybox){
-  ### Building template Sparse Matrix for each pixel
+  #rgbMat <- Matrix(0,ncol=3,nrow = length(xbox) * length(ybox))
 
-  rgbMat <- Matrix(0,ncol=3,nrow = length(xbox) * length(ybox))
-  ## Matrix index in long format
-  idx <- rep(seq(1,length(xbox)), each = length(ybox))
-  idy <- rep(seq(1,length(ybox)), times = length(xbox))
-  ## Barcode templates
-  barcode <- rep("NONE",length(xbox) * length(ybox))
+  #----------------------------------------------------------------------------#
+  # Subdivision index vector
+  # For all possible subdivisions extract all combinations
+  # This will hopefully speed things up
+  #----------------------------------------------------------------------------#
 
-  for(cols in seq(1,length.out = length(xbox)-1)){
-
-     for(rows in seq(1,length.out = length(xbox)-1)){
-
-           ## Finding all barcodes in each "pixel"
-          xtmp <- which(coord$xcoord >= xbox[cols] & coord$xcoord <= xbox[cols+1])
-          ytmp <- which(coord$ycoord >= ybox[rows] & coord$ycoord <= ybox[rows+1])
-          inter <- intersect(xtmp,ytmp)
-          pos <- which(idx == cols & idy == rows)
-          if(length(inter) == 0){
-            ## just in case pixels are "empty" in terms of beads
-            next()
-          }
-          ## average colours over all barcodes in pixel
-          temp <- apply(coord[inter,c("R","G","B")],2,mean)
-          # Assigne new colour code to its location in the sparse matrix
-          rgbMat[pos,] <- as.matrix(temp, ncol = 3)
-          ## adding all barcodes associated to that pixel to the barcode tag
-          barcode[pos] <- paste0(barcode[pos],coord[inter,"barcodes"],sep = "_",collapse ="_")
+  xs <- rep(xbox[seq(1,length(xbox)-1)],each = length(ybox)-1)
+  xe <- rep(xbox[seq(2,length(xbox))], each = length(ybox)-1)
 
 
-     }
-  }
-  colnames(rgbMat) <- c("R","G","B")
+  ys <- rep(ybox[seq(1,length(ybox)-1)], times = length(xbox)-1)
+  ye <- rep(ybox[seq(2,length(ybox))], times = length(xbox)-1)
 
-  ## Removing all white/ black pixel -
-  ## These represent empty spaces and are not required to rebuild the matrix
-  zeros <- apply(rgbMat,1,sum) != 0
-  rgbMat <- rgbMat[zeros,]
-  idx <- idx[zeros]
-  idy <- idy[zeros]
-  barcode <- barcode[zeros]
+  idx <- rep(seq(1,length(xbox)-1), times = length(ybox) -1)
+  idy <- rep(seq(1,length(ybox)-1), each = length(xbox) -1)
 
 
-  ## Return a data frame with the barcode list for each pixel,
-  ## x and y coordinates in the matrix and
-  ## the colour assigned to that matrix coordinate
+  #----------------------------------------------------------------------------#
+  # Looping over idx
+  #----------------------------------------------------------------------------#
 
-  rgbMat <- data.frame(barcode,idx,idy,rgbMat)
+  rgbMat <- parallel::mcmapply(.pixelate,xs,xe,ys,ye,idx,idy,MoreArgs = list(coord), mc.cores = cores)
+
+
+  nulls <- sapply(rgbMat,is.null)
+
+  rgbMat <- rgbMat[!nulls]
+
+  rgbMat <- do.call("rbind",rgbMat)
   colnames(rgbMat) <- c("barcodes","xcoord","ycoord","R","G","B")
+
   return(rgbMat)
 
+}
+
+
+.pixelate <- function(xs,xe,ys,ye,idx,idy,coord){
+    #--------------------------------------------------------------------------#
+    # Select code in each box
+    #--------------------------------------------------------------------------#
+
+    tmp <- filter(coord,xcoord >= xs & xcoord < xe & ycoord >= ys & ycoord < ye)
+    barcodes <- paste0(tmp$barcodes,sep = "", collapse = "_")
+    tmp <- select(tmp,c("R","G","B"))
+
+    #--------------------------------------------------------------------------#
+    # If nothing in interval box
+    #--------------------------------------------------------------------------#
+    if(nrow(tmp)<1){
+        return(NULL)
+    }
+    
+    #--------------------------------------------------------------------------#
+    # Median colour for interval
+    #--------------------------------------------------------------------------#
+    tmp <- data.frame(barcodes,idx,idy,matrix(apply(tmp,2,median),ncol = 3))
+    colnames(tmp) <- c("barcodes","xcoord","ycoord","R","G","B")
+    return(tmp)
 }
 
 .findTileCenters <- function(x,y,ogCoord){
@@ -505,13 +520,19 @@ buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,resol
     tri1 <- lapply(allIdx,function(x){
                   return(x[[1]][[1]])
     })
-    tri1 <- tri1[triArea1 < areaThresh]
+    if(filterThreshold<1){
+      tri1 <- tri1[triArea1 < areaThresh]
+    }
+
     tri1 <- as.data.frame(do.call("rbind",tri1))
 
     tri2 <- lapply(allIdx,function(x){
                   return(x[[1]][[2]])
     })
-    tri2 <- tri2[triArea2 < areaThresh]
+    if(filterThreshold <1){
+      tri2 <- tri2[triArea2 < areaThresh]
+    }
+
     tri2 <- as.data.frame(do.call("rbind",tri2))
 
     #--------------------------------------------------------------------------#
