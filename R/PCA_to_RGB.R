@@ -348,6 +348,7 @@ buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,resol
   }
 
 
+
   #----------------------------------------------------------------------------#
   # Removing all "outer point" - tend to make tesselation messy
   #----------------------------------------------------------------------------#
@@ -363,7 +364,7 @@ buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,resol
                         distance <- distance[distance !=0]
                         distance <- sort(distance,decreasing = FALSE)[1:25]
                         return(mean(distance))
-    }, coordinates)
+    }, coordinates, mc.cores=cores)
     minDist <- unlist(minDist)
     distanceThrehsold <- quantile(minDist,filterThreshold)
     coordinates <- coordinates[minDist <= distanceThrehsold,]
@@ -389,13 +390,7 @@ buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,resol
   ## Contains original data - just to ensure that that indeces line up
   ogCoord <- cbind(coordinates,tesselation$summary)
 
-  #----------------------------------------------------------------------------#
-  # Rebuilding new cooirdinates based on tesselation borders
-  # cooridinates are shifted for both tesselation cooridantes and starting coord
-  #----------------------------------------------------------------------------#
 
-  lpx <- round(abs(min(c(tessV$x1,tessV$x2))))
-  lpy <- round(abs(min(c(tessV$y1,tessV$y2))))
 
   #----------------------------------------------------------------------------#
   # This section is equivalent to triangle rasterisation
@@ -410,18 +405,24 @@ buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,resol
   # Filtering triangle that exceed max tile size
   #----------------------------------------------------------------------------#
 
-    .filter(verbose)
-    allIdx <- .filterTriangle(allIdx,filterThreshold)
-    allIdx <- mutate(allIdx, x = x -lpx +1,y=y-lpy +1) %>%
+  .filter(verbose)
+  allIdx <- .filterTriangle(allIdx,filterThreshold)
+  #----------------------------------------------------------------------------#
+  # Rebuilding new cooirdinates based on tesselation borders
+  # cooridinates are shifted for both tesselation cooridantes and starting coord
+  #----------------------------------------------------------------------------#
+  lpx <- round(min(allIdx$x))
+  lpy <- round(min(allIdx$y))
+
+
+  allIdx <- mutate(allIdx, x = x -lpx +1,y=y-lpy +1) %>%
             tibble
 
   return(allIdx)
 
 }
 
-.resShiftK <- function(coord,xbox ,ybox,resolution,cores){
-    #totalRes <-
-}
+
 .resShift <- function(coord, xbox , ybox,cores){
   #----------------------------------------------------------------------------#
   # Building template Sparse Matrix for each pixel
@@ -435,12 +436,12 @@ buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,resol
   # This will hopefully speed things up
   #----------------------------------------------------------------------------#
 
-  xs <- rep(xbox[seq(1,length(xbox)-1)],each = length(ybox)-1)
-  xe <- rep(xbox[seq(2,length(xbox))], each = length(ybox)-1)
+  xs <- rep(xbox[seq(1,length(xbox)-1)],times = length(ybox)-1)
+  xe <- rep(xbox[seq(2,length(xbox))], times = length(ybox)-1)
 
 
-  ys <- rep(ybox[seq(1,length(ybox)-1)], times = length(xbox)-1)
-  ye <- rep(ybox[seq(2,length(ybox))], times = length(xbox)-1)
+  ys <- rep(ybox[seq(1,length(ybox)-1)], each = length(xbox)-1)
+  ye <- rep(ybox[seq(2,length(ybox))], each = length(xbox)-1)
 
   idx <- rep(seq(1,length(xbox)-1), times = length(ybox) -1)
   idy <- rep(seq(1,length(ybox)-1), each = length(xbox) -1)
@@ -480,7 +481,7 @@ buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,resol
     if(nrow(tmp)<1){
         return(NULL)
     }
-    
+
     #--------------------------------------------------------------------------#
     # Median colour for interval
     #--------------------------------------------------------------------------#
