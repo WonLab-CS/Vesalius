@@ -401,7 +401,7 @@ iterativeSegmentation.array <- function(img,colDepth = 10,
     colours <- data.frame(colours$value[colours$cc ==1],
                           colours$value[colours$cc ==2],
                           colours$value[colours$cc ==3])
-    km <- kmeans(colours,colDepth[j])
+    km <- kmeans(colours,colDepth[j],iter.max = 200,nstart = 50)
     cluster <- km$cluster
     Kcenters <- km$centers
     tmpImg$cluster <- 0
@@ -505,7 +505,8 @@ isolateTerritories.bead <- function(img,dropRadius = 0.025,colDepth =12){
 #' If beads remain for a given colour, the process is repeated until all beads/spots are put into a territory.
 #' @return a data frame with barcodes, xcoord, ycoord, R, G, B, cluster number, territory number within that cluster.
 
-isolateTerritories.array <- function(img, method = c("distance","neighbor","watershed"),captureRadius = 0.025){
+isolateTerritories.array <- function(img, method = c("distance","neighbor","watershed"),
+                                     captureRadius = 0.025,local=TRUE){
 
     #--------------------------------------------------------------------------#
     # Compute real capture Radius
@@ -536,11 +537,24 @@ isolateTerritories.array <- function(img, method = c("distance","neighbor","wate
                     "watershed" = .watershedPooling.array(tmpImg))
 
       for(j in seq(1,3)){
-
           img$territory[img$cluster == clust[i] & img$cc == j] <- ter
       }
     }
+
+    if(!local){
+        img <- .globaliseTerritories(img)
+    }
+
     return(img)
+}
+
+.globaliseTerritories <- function(img){
+    ter <- paste0(img$cluster,"_", img$territory)
+    allTer <- unique(ter)
+    ter <- seq_along(allTer)[match(ter,allTer)]
+    img$territory <- ter
+    return(img)
+
 }
 
 .neighborPooling.array <- function(img, captureRadius){
@@ -607,7 +621,7 @@ isolateTerritories.array <- function(img, method = c("distance","neighbor","wate
                   newPool <- distanceMatrix[,inter]
 
                   newPool <- unique(unlist(lapply(seq_len(ncol(newPool)), function(idx,np,captureRadius){
-                                            res <- names(np)[np[,idx]]
+                                            res <- rownames(np)[np[,idx]]
                                             return(res)
                                           },newPool,captureRadius)))
                   overlap <- newPool %in% pool
@@ -684,10 +698,11 @@ isolateTerritories.array <- function(img, method = c("distance","neighbor","wate
     count <- 1
 
     while(length(barcodes) >0){
-          tmp <- distanceMatrix[,barcodes[1L]]
+          tmp <- distanceMatrix[,sample(barcodes,1)]
           pool <- names(tmp)[tmp <= captureRadius]
           inter <- pool
           converge <- FALSE
+
           while(!converge){
               if(length(inter)==1){
                   territories[[count]] <- pool
@@ -698,9 +713,11 @@ isolateTerritories.array <- function(img, method = c("distance","neighbor","wate
                   newPool <- distanceMatrix[,inter]
 
                   newPool <- unique(unlist(lapply(seq_len(ncol(newPool)), function(idx,np,captureRadius){
-                                            res <- names(np)[np[,idx] <= captureRadius]
+
+                                            res <- rownames(np)[np[,idx] <= captureRadius]
                                             return(res)
                                           },newPool,captureRadius)))
+
                   overlap <- newPool %in% pool
 
                   if(sum(overlap) != length(newPool)){
