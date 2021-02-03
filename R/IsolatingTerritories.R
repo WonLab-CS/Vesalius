@@ -548,113 +548,25 @@ isolateTerritories.array <- function(img, method = c("distance","neighbor","wate
     return(img)
 }
 
-.globaliseTerritories <- function(img){
-    ter <- paste0(img$cluster,"_", img$territory)
-    allTer <- unique(ter)
-    ter <- seq_along(allTer)[match(ter,allTer)]
-    img$territory <- ter
-    return(img)
-
-}
-
-.neighborPooling.array <- function(img, captureRadius){
-    #--------------------------------------------------------------------------#
-    # add intersection boundaries
-    # based on how many pixel are allowed to overlap
-    #--------------------------------------------------------------------------#
-
-    img <- img %>% mutate(x0 = x - captureRadius,x1 = x + captureRadius,
-                          y0 = y - captureRadius,y1 = y + captureRadius)
-    #--------------------------------------------------------------------------#
-    # Building a matrix with logical values
-    # TRUE = intersect / FALSE = no intersect
-    #--------------------------------------------------------------------------#
-    barcodes <- unique(barcodes)
-    intersectMatrix <- lapply(barcodes,function(barcodes, mat){
-                              x <- mat$x[mat$barcodes == barcodes]
-                              y <- mat$y[mat$barcodes == barcodes]
-
-                              barInt <- unique(mat$barcodes)
-                              intX <- lapply(barInt, function(bar,mat){
-                                      x0 <- mat$x0[mat$barcodes == barcodes]
-                                      x1 <- mat$x1[mat$barcodes == barcodes]
-                                      tmp <- unlist(mapply(seq,x0,x1))
-                                      retunr(tmp)
-                              })
-                              intY <- lapply(barInt, function(bar,mat){
-                                      y0 <- mat$y0[mat$barcodes == barcodes]
-                                      y1 <- mat$y1[mat$barcodes == barcodes]
-                                      tmp <- unlist(mapply(seq,y0,y1))
-                                      retunr(tmp)
-                              })
-
-                              int <- mapply(function(intX,intY,x,y){
-                                            x <- length(intersect(intX,x)) > 0
-                                            y <- length(intersect(intY,y)) > 0
-                                            return(sum(x&y)>0)
-                              })
-
-                              return(int)
-    },tmpImg)
-    intersectMatrix <- do.call("rbind",intersectMatrix)
-    colnames(intersectMatrix) <- barcodes
-    rownames(intersectMatrix) <- barcodes
-    #--------------------------------------------------------------------------#
-    # Pooling points together
-    #--------------------------------------------------------------------------#
-    uniBar <- unique(barcodes)
-    territories <- list()
-    count <- 1
-
-    while(length(uniBar) >0){
-          tmp <- intersectMatrix[,uniBar[1L]]
-          pool <- names(intersectMatrix)[tmp]
-          inter <- pool
-          converge <- FALSE
-          while(!converge){
-              if(length(inter)==1){
-                  territories[[count]] <- pool
-                  uniBar <- uniBar[!uniBar %in% pool]
-                  count <- count + 1
-                  converge <- TRUE
-              } else {
-                  newPool <- distanceMatrix[,inter]
-
-                  newPool <- unique(unlist(lapply(seq_len(ncol(newPool)), function(idx,np,captureRadius){
-                                            res <- rownames(np)[np[,idx]]
-                                            return(res)
-                                          },newPool,captureRadius)))
-                  overlap <- newPool %in% pool
-
-                  if(sum(overlap) != length(newPool)){
-
-                        pool <- unique(c(pool,newPool[!overlap]))
-                        inter <- unique(newPool[!overlap])
-                  } else {
-                        territories[[count]] <- pool
-                        count <- count +1
-                        uniBar <- uniBar[!uniBar %in% pool]
-
-                        converge <- TRUE
-
-                  }
-              }
-          }
-      }
-    #--------------------------------------------------------------------------#
-    # Clean up drop outs
-    #--------------------------------------------------------------------------#
-    nulls <- sapply(territories, is.null)
-    territories <- territories[!nulls]
-    allTers <- rep(NA,nrow(img))
-    for(ter in seq_along(territories)){
-          loc <- match(barcodesInitial,territories[[ter]])
-          allTers[loc[!is.na(loc)]] <- ter
+.globaliseTerritories <- function(img,seurat=FALSE){
+    if(!seurat){
+      ter <- paste0(img$cluster,"_", img$territory)
+      allTer <- unique(ter)
+      ter <- seq_along(allTer)[match(ter,allTer)]
+      img$territory <- ter
+      return(img)
+    } else {
+      ter <- paste0(img$seurat_clusters,"_", img$territory)
+      allTer <- unique(ter)
+      ter <- seq_along(allTer)[match(ter,allTer)]
+      img$seurat_clusters <- ter
+      return(img)
     }
 
-    return(allTers)
 
 }
+
+
 .distancePooling.array <- function(img,captureRadius){
     #--------------------------------------------------------------------------#
     # Select center point of each tile for only one channel
@@ -756,31 +668,121 @@ isolateTerritories.array <- function(img, method = c("distance","neighbor","wate
 
 
 
-#' Extracting Territories from image data
-#' @param img data frame with barcodes, xcoord, ycoord, R, G, B, cluster number, territory number within that cluster.
-#' @param territories list of vectors (cluster and territory).
-#' @details In order to combine territories together, this function takes a list of territories that should be
-#' combined into one. The list elements are vectors containing first the cluster number and then the territory
-#' number within that cluster.
-#'@return  data frame with barcodes, xcoord, ycoord, R, G, B, cluster number, territory number within that cluster where
-#'combined territories will take the value of the first cluster/territory provided.
-
-extractTerritories <- function(img,territories){
-    ## first get all section out of img
-    clust <- sapply(territories,"[[",1L)
-    ter <- sapply(territories,"[[",2L)
-    # combination territories
-    combTer <- paste0(clust,"_",ter)
-    # index territories
-    indexTer <- paste0(img$cluster,"_",img$territories)
 
 
-    ## get index
-    subImg <- indexTer %in% combTer
-
-    subImg <- img$barcodes[subImg]
 
 
-    return(subImg)
+extractTerritories <- function(img,seurat, combine = FALSE,keepCoarse = FALSE,
+                               minCell = 10,cores = 1, verbose = TRUE){
 
+    #--------------------------------------------------------------------------#
+    # for combine we will just add a meta data columns
+    # Parsing Seurat object instead
+    # If needed can change it to simple tables later
+    #--------------------------------------------------------------------------#
+    if(combine){
+
+      seurat@meta.data$territory <- 0
+      territories <- img %>% filter(tile == 1) %>% distinct(barcodes,.keep_all = TRUE)
+      territories <- .fineGrain(img, combine = TRUE)
+      loc <- match(territories$barcodes,rownames(seurat@meta.data))
+      seurat@meta.data$territory[loc[!is.na(loc)]]<- territories$territory[!is.na(loc)]
+      return(seurat)
+
+    } else {
+      #--------------------------------------------------------------------------#
+      # Splitting between territories
+      # Will need to add a tag to see if territories are pooled locally or globally
+      # If local , then split based on cluster number
+      # with pre clean step
+      #--------------------------------------------------------------------------#
+      territories <- img %>% filter(tile == 1) %>% distinct(barcodes,.keep_all = TRUE)
+      territories <- split(territories, territories$territory)
+
+
+      #--------------------------------------------------------------------------#
+      # Essentially, do we want to keep the lowered resolution or not
+      # High resolution goes back to the original beads locations and data
+      #--------------------------------------------------------------------------#
+      if(keepCoarse){
+              ##
+      } else {
+          territories <- parallel::mclapply(territories,.fineGrain,minCell,mc.cores = cores)
+
+          territories <- territories[!sapply(territories,is.null)]
+          territories <- parallel::mclapply(territories,.subSetTerritories,seurat,mc.cores= cores)
+      }
+      return(territories)
+    }
+}
+
+.fineGrain <- function(territories,minCell,combine =FALSE){
+    if(combine){
+      #--------------------------------------------------------------------------#
+      # Consider what you need to change for min cell and genes?
+      #--------------------------------------------------------------------------#
+
+      allTags <- strsplit(territories$barcodes,"_")
+      allLength <- sapply(allTags, length)
+
+      territories <- rep(territories$territory, times = allLength)
+      return(data.frame("barcodes" = unlist(allTags),"territory"= territories))
+
+    } else {
+      #--------------------------------------------------------------------------#
+      # Split all barcode tags by seperator
+      # NOTE this will need to be changed once cluster vs territory is implemented
+      #--------------------------------------------------------------------------#
+      #territories<- territories %>% filter(tile == 1) %>% distinct(barcodes,.keep_all = TRUE)
+
+      allTags <- unlist(strsplit(territories$barcodes,"_"))
+      if(length(allTags) <= minCell){
+          return(NULL)
+      } else {
+        return(allTags)
+      }
+
+    }
+
+
+}
+
+.subSetTerritories <- function(territories,seurat){
+    #--------------------------------------------------------------------------#
+    # Simplified version for now
+    # It might be worth while getting away from seurat later
+    #--------------------------------------------------------------------------#
+
+    seurat <- subset(seurat, cells = territories)
+    return(seurat)
+}
+
+
+addTerritories <- function(dat,coordinates = NULL, global = TRUE){
+
+    ters <- names(dat)
+
+    dat <- lapply(seq_along(ters), function(idx,ters,dat){
+                  dat[[idx]]$territory <- ters[idx]
+                  return(dat[[idx]])
+    },ters,dat)
+
+    if(!is.null(coordinates)){
+        dat <- mapply(function(dat,coordinates){
+                      tmp <- cbind(dat,coordinates[,c("x","y")])
+                      return(tmp)
+        },dat,coordinates, SIMPLIFY = FALSE)
+    }
+
+
+    dat <- do.call("rbind",dat)
+    if(global){
+      dat <- .globaliseTerritories(dat, seurat = TRUE)
+    }
+
+    return(dat)
+}
+
+.getSeuratCoordinates <- function(seurat){
+    return(seurat@images$slice1@coordinates)
 }
