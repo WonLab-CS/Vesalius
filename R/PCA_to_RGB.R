@@ -338,12 +338,12 @@ buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,resol
   #----------------------------------------------------------------------------#
   if(resolution <1){
     .res(verbose)
-    widthX <- max(coord$xcoord) - min(coord$xcoord) + 1
-    widthY <- max(coord$ycoord) - min(coord$ycoord) + 1
+    widthX <- max(coordinates$xcoord) - min(coordinates$xcoord) + 1
+    widthY <- max(coordinates$ycoord) - min(coordinates$ycoord) + 1
 
-    xbox <- round(seq(min(coord$xcoord),max(coord$xcoord), length.out = widthX * resolution))
-    ybox <- round(seq(min(coord$ycoord),max(coord$ycoord), length.out = widthY * resolution))
-
+    xbox <- round(seq(min(coordinates$xcoord),max(coordinates$xcoord), length.out = widthX * resolution))
+    ybox <- round(seq(min(coordinates$ycoord),max(coordinates$ycoord), length.out = widthY * resolution))
+    ## Testing new version might need to remove the section above
     coordinates <- .resShift(coordinates,xbox,ybox,cores)
   }
 
@@ -421,6 +421,12 @@ buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,resol
   return(allIdx)
 
 }
+
+
+
+#.resShift <- function(coord){
+
+#}
 
 
 .resShift <- function(coord, xbox , ybox,cores){

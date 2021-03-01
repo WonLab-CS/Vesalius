@@ -200,6 +200,7 @@ smoothArray <- function(img,method = c("median","iso","box"),
     #--------------------------------------------------------------------------#
     for(i in seq_len(iter)){
         for(j in method){
+          print(j)
           impCopy <- switch(j,
                             "median" = medianblur(impCopy,box, threshold),
                             "iso" = isoblur(impCopy,sigma,neuman,gaussian,na.rm),
@@ -348,7 +349,7 @@ iterativeSegmentation.array <- function(img,colDepth = 10,
                                         smoothIter = 1,
                                         method = c("median","iso","box"),
                                         sigma = 1, box = 20, threshold=0, neuman=TRUE,
-                                        gaussian=TRUE, na.rm=FALSE,
+                                        gaussian=TRUE, useCenter=TRUE, na.rm=FALSE,
                                         verbose = TRUE){
 
   #----------------------------------------------------------------------------#
@@ -379,56 +380,64 @@ iterativeSegmentation.array <- function(img,colDepth = 10,
     # We will only run clustering on 1 pixel of each tile
     # This will ensure faster run time and cleaner results
     #--------------------------------------------------------------------------#
-    img <- smoothArray(img,method =method[1L],sigma = sigma, box = box,
+    img <- smoothArray(img,method =method,sigma = sigma, box = box,
                        threshold=threshold, neuman=neuman, gaussian=gaussian,
                        na.rm=FALSE,iter = smoothIter)
 
-    tmpImg <- img %>% filter(tile == 1) %>% group_by(cc) %>% distinct(barcodes,.keep_all = TRUE)
 
 
 
-    #tmpImg <- tmpImg %>% group_by(cc) %>%
-    #          mutate(cluster = .intKmeans(value,colDepth[j],cluster = TRUE),
-    #                 Kcenters = .intKmeans(value,colDepth[j],cluster = FALSE))
+    if(useCenter){
+      tmpImg <- img %>% filter(tile == 1) %>% group_by(cc) %>% distinct(barcodes,.keep_all = TRUE)
+      #tmpImg <- tmpImg %>% group_by(cc) %>%
+      #          mutate(cluster = .intKmeans(value,colDepth[j],cluster = TRUE),
+      #                 Kcenters = .intKmeans(value,colDepth[j],cluster = FALSE))
 
-    #--------------------------------------------------------------------------#
-    # clustering with each colour together
-    # It cause issues down the line
-    # How do you recombine unique colours backtogether
-    # If you can find a new way of doing iot great but in the mean time...
-    #--------------------------------------------------------------------------#
-    colours <- select(tmpImg, c("cc","value"))
-    colours <- data.frame(colours$value[colours$cc ==1],
-                          colours$value[colours$cc ==2],
-                          colours$value[colours$cc ==3])
-    km <- kmeans(colours,colDepth[j],iter.max = 200,nstart = 50)
-    cluster <- km$cluster
-    Kcenters <- km$centers
-    tmpImg$cluster <- 0
+      #--------------------------------------------------------------------------#
+      # clustering with each colour together
+      # It cause issues down the line
+      # How do you recombine unique colours backtogether
+      # If you can find a new way of doing iot great but in the mean time...
+      #--------------------------------------------------------------------------#
+      colours <- select(tmpImg, c("cc","value"))
+      colours <- data.frame(colours$value[colours$cc ==1],
+                            colours$value[colours$cc ==2],
+                            colours$value[colours$cc ==3])
+      km <- kmeans(colours,colDepth[j],iter.max = 200,nstart = 50)
+      cluster <- km$cluster
+      Kcenters <- km$centers
+      tmpImg$cluster <- 0
 
-    for(i in seq(1,3)){
-        tmpImg$cluster[tmpImg$cc == i] <- cluster
-        tmpImg$value[tmpImg$cc == i] <- Kcenters[cluster,i]
+      for(i in seq(1,3)){
+          tmpImg$cluster[tmpImg$cc == i] <- cluster
+          tmpImg$value[tmpImg$cc == i] <- Kcenters[cluster,i]
+      }
+      #tmpImg <- tmpImg%>% group_by(cc,cluster) %>%
+      #          mutate(value = Kcenters)
+
+      #--------------------------------------------------------------------------#
+      # Replacing values in original image
+      #--------------------------------------------------------------------------#
+
+      img <- inner_join(img,tmpImg, by = c("barcodes","cc")) %>%
+             select(c("barcodes","x.x","y.x","cc","value.y","tile.x","cluster"))
+
+      colnames(img) <- c("barcodes","x","y","cc","value","tile","cluster")
+    } else {
+      colours <- select(img, c("cc","value"))
+      colours <- data.frame(colours$value[colours$cc ==1],
+                            colours$value[colours$cc ==2],
+                            colours$value[colours$cc ==3])
+      km <- kmeans(colours,colDepth[j],iter.max = 200,nstart = 10)
+      cluster <- km$cluster
+      Kcenters <- km$centers
+      img$cluster <- 0
+
+      for(i in seq(1,3)){
+          img$cluster[img$cc == i] <- cluster
+          img$value[img$cc == i] <- Kcenters[cluster,i]
+      }
     }
-
-
-
-
-
-    #tmpImg <- tmpImg%>% group_by(cc,cluster) %>%
-    #          mutate(value = Kcenters)
-
-    #--------------------------------------------------------------------------#
-    # Replacing values in original image
-    #--------------------------------------------------------------------------#
-
-    img <- inner_join(img,tmpImg, by = c("barcodes","cc")) %>%
-           select(c("barcodes","x.x","y.x","cc","value.y","tile.x","cluster"))
-
-    colnames(img) <- c("barcodes","x","y","cc","value","tile","cluster")
-
-
-
   }
   return(img)
 }
