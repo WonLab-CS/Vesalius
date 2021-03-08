@@ -179,7 +179,7 @@ smoothToDominant <- function(img,nn,method = c("median","exp","linear"), iter = 
 #' @return Array or cimg object after bieng smoothed
 smoothArray <- function(img,method = c("median","iso","box"),
                         sigma = 1, box = 20, threshold=0, neuman=TRUE,
-                        gaussian=TRUE,na.rm=FALSE, iter = 1){
+                        gaussian=TRUE,na.rm=FALSE, iter = 1,verbose = TRUE){
     #--------------------------------------------------------------------------#
     # Class check
     #--------------------------------------------------------------------------#
@@ -199,8 +199,9 @@ smoothArray <- function(img,method = c("median","iso","box"),
     # Running multiple smoothing itteration
     #--------------------------------------------------------------------------#
     for(i in seq_len(iter)){
+        .smooth(i,verbose)
         for(j in method){
-          print(j)
+
           impCopy <- switch(j,
                             "median" = medianblur(impCopy,box, threshold),
                             "iso" = isoblur(impCopy,sigma,neuman,gaussian,na.rm),
@@ -352,11 +353,7 @@ iterativeSegmentation.array <- function(img,colDepth = 10,
                                         gaussian=TRUE, useCenter=TRUE, na.rm=FALSE,
                                         verbose = TRUE){
 
-  #----------------------------------------------------------------------------#
-  ## Building colour segments
-  #----------------------------------------------------------------------------#
-
-
+  .simpleBar(verbose)
   #----------------------------------------------------------------------------#
   # Comverting image to data.frame
   # Need to check how things work here
@@ -371,9 +368,7 @@ iterativeSegmentation.array <- function(img,colDepth = 10,
   #----------------------------------------------------------------------------#
   for(j in seq_along(colDepth)){
 
-      if(verbose){
-          #cat(paste("Current Number of segments: ", j,"\r"))
-      }
+
 
     #--------------------------------------------------------------------------#
     # Segmentation is done by using kmeans clustering
@@ -382,11 +377,12 @@ iterativeSegmentation.array <- function(img,colDepth = 10,
     #--------------------------------------------------------------------------#
     img <- smoothArray(img,method =method,sigma = sigma, box = box,
                        threshold=threshold, neuman=neuman, gaussian=gaussian,
-                       na.rm=FALSE,iter = smoothIter)
+                       na.rm=FALSE,iter = smoothIter,verbose=verbose)
 
 
-
-
+    cat("\n")
+    .seg(j,verbose)
+    cat("\n")
     if(useCenter){
       tmpImg <- img %>% filter(tile == 1) %>% group_by(cc) %>% distinct(barcodes,.keep_all = TRUE)
       #tmpImg <- tmpImg %>% group_by(cc) %>%
@@ -439,6 +435,8 @@ iterativeSegmentation.array <- function(img,colDepth = 10,
       }
     }
   }
+
+  .simpleBar(verbose)
   return(img)
 }
 
@@ -514,12 +512,14 @@ isolateTerritories.bead <- function(img,dropRadius = 0.025,colDepth =12){
 #' If beads remain for a given colour, the process is repeated until all beads/spots are put into a territory.
 #' @return a data frame with barcodes, xcoord, ycoord, R, G, B, cluster number, territory number within that cluster.
 
-isolateTerritories.array <- function(img, method = c("distance","neighbor","watershed"),
-                                     captureRadius = 0.025,local=TRUE){
+isolateTerritories.array <- function(img, method = c("distance"),
+                                     captureRadius = 0.025,global=TRUE,
+                                     minCell = 10,verbose =TRUE){
 
     #--------------------------------------------------------------------------#
     # Compute real capture Radius
     #--------------------------------------------------------------------------#
+    .simpleBar(verbose)
     if(method[1L] == "distance"){
       captureRadius <- sqrt((max(img$x)-min(img$x))^2 +
                             (max(img$y)-min(img$y))^2) * captureRadius
@@ -533,10 +533,14 @@ isolateTerritories.array <- function(img, method = c("distance","neighbor","wate
 
     img$territory <- 0
     for(i in seq_along(clust)){
+      .terPool(i,verbose)
       #------------------------------------------------------------------------#
       # We don't need all data in this case only clusters and locations
       # We can just rebuild everything afterwards
       # At least we don't don't need to compute anything unnecessarily
+      ## Note other method not in use for now
+      # Might not be worthwile to implement them
+      # Argument could be removed
       #------------------------------------------------------------------------#
       tmp <- filter(img,cluster == clust[i] & cc == 1)
 
@@ -544,16 +548,34 @@ isolateTerritories.array <- function(img, method = c("distance","neighbor","wate
                     "distance" = .distancePooling.array(tmp,captureRadius),
                     "neighbor" = .neighborPooling.array(tmp,captureRadius),
                     "watershed" = .watershedPooling.array(tmpImg))
+      #------------------------------------------------------------------------#
+      # Skipping if does not meet min cell requirements
+      # filtering can be done later
+      #------------------------------------------------------------------------#
+      if(length(ter)<= minCell) next()
 
       for(j in seq(1,3)){
           img$territory[img$cluster == clust[i] & img$cc == j] <- ter
       }
     }
 
-    if(!local){
+    #--------------------------------------------------------------------------#
+    # Filtering out territories that do not meat he minimum number of cell
+    # criteria - by default they should have a territory value of 0
+    #--------------------------------------------------------------------------#
+    img <- img %>% filter(territory!=0)
+
+    #--------------------------------------------------------------------------#
+    # Globalise territories crate a numbering system for all colour clusters
+    # If set to false territories only describe territories for any given colour
+    # cluster
+    #--------------------------------------------------------------------------#
+
+    if(global){
         img <- .globaliseTerritories(img)
     }
-
+    cat("\n")
+    .simpleBar(verbose)
     return(img)
 }
 
@@ -584,7 +606,7 @@ isolateTerritories.array <- function(img, method = c("distance","neighbor","wate
     barcodesInitial <- img$barcodes
     imgCopy <- img %>% filter(tile == 1) %>% distinct(barcodes,.keep_all = TRUE)
 
-    cat("Pooling \n")
+
     #--------------------------------------------------------------------------#
     # Compute distances
     #--------------------------------------------------------------------------#
@@ -598,9 +620,6 @@ isolateTerritories.array <- function(img, method = c("distance","neighbor","wate
                             return(distance)
     }, imgCopy)
 
-    #--------------------------------------------------------------------------#
-    # Compute real capture Radius
-    #--------------------------------------------------------------------------#
 
     #--------------------------------------------------------------------------#
     # Buildan actual matrix
@@ -609,6 +628,15 @@ isolateTerritories.array <- function(img, method = c("distance","neighbor","wate
     colnames(distanceMatrix) <- imgCopy$barcodes
     rownames(distanceMatrix) <- imgCopy$barcodes
 
+    #--------------------------------------------------------------------------#
+    # If there is only one point
+    # In this case you only have one territory as well
+    # Don't need to any pooling
+    #--------------------------------------------------------------------------#
+
+    if(sum(dim(distanceMatrix))==2){
+        return(1)
+    }
 
 
     #--------------------------------------------------------------------------#
@@ -680,7 +708,9 @@ isolateTerritories.array <- function(img, method = c("distance","neighbor","wate
 
 
 
-
+### Cant remember why I took this approach
+### Lets keep it ultra simple for now
+### Dont create this intermediate object only if required
 extractTerritories <- function(img,seurat, combine = FALSE,keepCoarse = FALSE,
                                minCell = 10,cores = 1, verbose = TRUE){
 

@@ -5,152 +5,317 @@
 #-------------------------/Territory identity/---------------------------------#
 
 #' extractIdentity compute differentially expressed genes for each territory
-
-extractIdentity <- function(territories,counts, method = "wilcox",
-  logFC = 0.5, pvalThreshold = 0.05,min.pct = 0.1, extractOver = "territory",between = TRUE){
+#' @param territories dataframe conatining territory information
+#' @param counts count matrix - either matrix, sparse matrix or seurat object
+#' This matrix should contain genes as rownames and cells/barcodes as colnames
+#' @param method character describing the statistical test to use in order to extract
+#' Differentially expressed genes
+#' @param logFC numeric describing minimum log fold change value for diff gene expression
+#' @param pval numeric bound between 0 and 1 defining minimum p value for Differentially
+#' expressed genes
+#' @param minPct numeric defining the minimum percentage of cells that should contain
+#' any given gene.
+#' @param extractOver character describing how Differentially expressed genes
+#' should be computed. Three option are available: "territory","cluster" or "all".See details
+#' @param between logical describing if territories should be compared between each other
+#' or only against all other cells.
+#' @param cores numeric describing the number of cores used for the analyis.
+#' @details To add
+#' @return A data.frame (tibble) containing differentially expressed genes as well
+#' p.value, logFC, seedPct (percentage of cells containing gene in first group), queryPct
+#' (percentage of cells containing gene in second group), seedTerritory (territory used as group 1)
+#' queryTerritory ( territory value that is compared to seed territory)
+extractAllMarkers <- function(territories,counts, method = "wilcox",
+  logFC = 0.25, pval = 0.05,minPct = 0.05,minCell = 10, extractOver = "territory",between = TRUE,cores = 1){
     #--------------------------------------------------------------------------#
-    ## First run I will only consider the list object
-    ## Get the data out then we can think about refactoring
-    ## Consider you have a full list after computing clusters
+    # Lets assume that you have dataframe or tibble
+    # We can do the split in side it will make thing cleaner for
+    # code conversion later down the line
     #--------------------------------------------------------------------------#
+    countType <- class(counts)
 
+    #--------------------------------------------------------------------------#
+    # Switch depending on how we want to split
+    # all checks can be done internally
+    #--------------------------------------------------------------------------#
     markers <- switch(extractOver,
-                      "territory" = .territoryMarkers(territories,counts,method,logFC,pvalThreshold,min.pct,between),
-                      "cluster" = .clusterMarkers(territories,counts,method,logFC,pvalThreshold,min.pct,between),
-                      "all" = .allMarkers(territories,counts,method,logFC,pvalThreshold,min.pct,between))
+                      "territory" = .territoryMarkers(territories,counts,method,between,
+                                     logFC,pval,minPct,cores),
+                      "cluster" = .clusterMarkers(territories,counts,method,between,
+                                   logFC,pval,minPctcores),
+                      "all" = .allMarkers(territories,counts,method,between,
+                              logFC,pval,minPct,cores))
 
 
-  return(markers)
+   return(markers)
+
+}
+
+### might not use this function
+### I honestly think it is a pain to just do one at a time
+### But if needed I can implement it - if required and asked for
+extractMarkers <- function(territories,counts,seedTer = NULL,queryTer = NULL, method = "wilcox",
+  logFC = 0.25, pval = 0.05,minPct = 0.05,minCell = 10, extractOver = "territory",between = TRUE,cores = 1){
+    #--------------------------------------------------------------------------#
+    # Lets assume that you have dataframe or tibble
+    # We can do the split in side it will make thing cleaner for
+    # code conversion later down the line
+    #--------------------------------------------------------------------------#
+    countType <- class(counts)
+
+    #--------------------------------------------------------------------------#
+    # Switch depending on how we want to split
+    # all checks can be done internally
+    #--------------------------------------------------------------------------#
+    markers <- switch(extractOver,
+                      "territory" = .territoryMarkers(territories,counts,method,between,
+                                     logFC,pval,minPct,cores),
+                      "cluster" = .clusterMarkers(territories,counts,method,between,
+                                   logFC,pval,minPctcores),
+                      "all" = .allMarkers(territories,counts,method,between,
+                              logFC,pval,minPct,cores))
+
+
+   return(markers)
 
 }
 
 
 
-.territoryMarkers <- function(territories,counts,method,logFC,pvalThreshold,min.pct,between = TRUE){
+.territoryMarkers <- function(territories, counts, method,between = TRUE,
+                             logFC,pval,minPct,minCell,verbose=TRUE,cores=1){
     #--------------------------------------------------------------------------#
-    # Get counts for territories
+    # Check class of counts and determine approach based on that
     #--------------------------------------------------------------------------#
-    all.counts <- lapply(territories, .getGeneCounts,"territory")
-
-    #--------------------------------------------------------------------------#
-    # Comparing all territories between each other
-    #--------------------------------------------------------------------------#
-    all.deg <- vector("list", length(all.counts))
-    for(i in seq_along(all.counts)){
-        message(paste0("Territoty ",i))
-        #----------------------------------------------------------------------#
-        # Comparing to all other territories individually
-        #----------------------------------------------------------------------#
-        seedCount <- all.counts[[i]]
-        otherTer <- seq_along(all.counts)[seq_along(all.counts) != i]
-        #----------------------------------------------------------------------#
-        # Comparing seed territory to all other territories after combining
-        # Might need to think about a better way of describing
-        #----------------------------------------------------------------------#
-        queryCount <- all.counts[otherTer]
-        queryCount <- .bindCounts(queryCount,counts)
-        deg <- .VesaliusDEGGlobal(seedCount,queryCount,method,i,"all")
-
-        if(between){
-            for(j in otherTer){
-                #--------------------------------------------------------------#
-                # Getting all genes with at least one count in either group
-                #--------------------------------------------------------------#
-                queryCount <- all.counts[[j]]
-                degAll <- .VesaliusDEGGlobal(seedCount,queryCount,method,i,j)
-            }
-            deg <- rbind(deg,degAll)
+    if(is(counts) == "Seurat"){
+        if(DefaultAssay(counts) == "Spatial"){
+            counts <- counts@assays$Spatial@counts
+        } else if(DefaultAssay(counts) == "SCT"){
+            counts <- counts@assays$SCT@counts
         }
     }
-    #--------------------------------------------------------------------------#
-    # Filtering based on provided thresholds
-    #--------------------------------------------------------------------------#
-    deg <- deg %>% filter(seedPct >= min.pct | queryPct >= min.pct &
-                          logFC >= logFC &
-                          p.value <= pvalThreshold)
 
-    return(deg)
+    #--------------------------------------------------------------------------#
+    # Next if between == TRUE we want to compare territories between each other
+    #--------------------------------------------------------------------------#
+    .simpleBar(verbose)
+    if(between){
+        territories <- .VesaliusDEG.each(territories,counts,logFC,
+                                         pval,minPct,minCell,method,verbose,cores)
+
+    } else {
+        #----------------------------------------------------------------------#
+        # splitting only so i can use mclapply
+        #----------------------------------------------------------------------#
+        territories <- territories %>% distinct(barcodes,.keep_all = TRUE)
+        territories <- split(territories, territories$territory)
+        territories <- parallel::mclapply(territories,.VesaliusDEG.all,
+                                          counts,logFC,pval,minPct,minCell,
+                                          method,verbose,
+                                          mc.cores = cores)
+
+        territories <- do.call("rbind",territories)
+    }
+    .simpleBar(verbose)
+    return(tibble(territories))
+
+
 }
 
 
-.VesaliusDEGGlobal <- function(seedCount,queryCount,method,i,j){
-    geneUnion <- union(rownames(seedCount), rownames(queryCount))
+.VesaliusDEG.each <- function(territory,counts,logFC,pval,minPct,minCell,method,verbose,cores){
+    #--------------------------------------------------------------------------#
+    # Selecting territories from counts - each comparing to each individual
+    # territory - I don't think I'm going to add "all" in this section
+    # That can be added to the upper level function
+    #--------------------------------------------------------------------------#
+    territory <- territory %>% distinct(barcodes,.keep_all = TRUE)
+    splitTerritory <- split(territory, territory$territory)
+    deg <- vector("list",length(splitTerritory))
 
-    #------------------------------------------------------------------#
-    # Overlap between genes - commonGenes will stay as is
-    # diff.genes we be converted to a zero matrix
-    #------------------------------------------------------------------#
+    for(i in seq_along(splitTerritory)){
+      #------------------------------------------------------------------------#
+      # lapply over all the other territories - this is were cores come into play
+      #------------------------------------------------------------------------#
+      query <- splitTerritory[!names(splitTerritory) %in% names(splitTerritory)[i]]
+      query <- parallel::mclapply(names(query),.VesaliusDEG.int,
+                                  query = query,seed = splitTerritory,
+                                  seedID = i,method = method ,counts = counts,
+                                  logFC = logFC,pval = pval,minPct = minPct,
+                                  minCell = minCell,verbose = verbose,
+                                  mc.cores = cores)
+      cat("\n")
+      deg[[i]] <- do.call("rbind",query)
 
-    seedDiff <- setdiff(rownames(seedCount),geneUnion)
-    if(length(seedDiff)>0){
-      seedDiffMat <-  Matrix(0,nrow = length(seedDiff), ncol = ncol(seedCount))
-      rownames(seedDiffMat) <- seedDiff
-      seedCount <- rbind(seedCount,seedDiffMat)
     }
-    seedCount <- seedCount[order(rownames(seedCount)),]
-
-    queryDiff <- setdiff(rownames(queryCount), geneUnion)
-    if(length(queryDiff)>0){
-      queryDiffMat <-  Matrix(0,nrow = length(queryDiff), ncol = ncol(queryCount))
-      rownames(queryDiffMat) <- queryDiff
-      queryCount <- rbind(queryCount,queryDiffMat)
-    }
-
-    queryCount <- queryCount[order(rownames(queryCount)),]
-    #------------------------------------------------------------------#
-    # computing percantge of cells containing each gene
-    # comouting log Fold change
-    #------------------------------------------------------------------#
-
-    seedPct <- Matrix::rowSums(seedCount >0) / ncol(seedCount)
-    queryPct <- Matrix::rowSums(queryCount >0) / ncol(queryCount)
-    logFC <- log(Matrix::rowMeans(seedCount) - Matrix::rowMeans(queryCount))
-
-
-    #------------------------------------------------------------------#
-    # Diff genes expression in common gene pool
-    #------------------------------------------------------------------#
-    deg <- pblapply(rownames(seedCount),.VesaliusDEG,seedCount,queryCount,method)
     deg <- do.call("rbind",deg)
-
-    #------------------------------------------------------------------#
-    # Adding percentage and fold change
-    # Adding territory info
-    #------------------------------------------------------------------#
-
-    deg$seedPct <- seedPct
-    deg$queryPct <- queryPct
-    deg$logFC <- logFC
-    deg$seedTerritory <- i
-    deg$compTerritory <- j
-
     return(deg)
 }
 
-.VesaliusDEG <- function(genes,group1,group2,method){
+.VesaliusDEG.int <- function(ter,query,seed,seedID,method,counts,logFC,pval,
+                             minPct,minCell,verbose=TRUE){
     #--------------------------------------------------------------------------#
-    # Selecting genes in common for analysis
+    # Don't need to subset seed as it has already been done
+    # subset the query variable
     #--------------------------------------------------------------------------#
-    group1 <- group1[rownames(group1) == genes,]
-    group2 <- group2[rownames(group2) == genes,]
+    .degEachProg(seedID,ter,verbose)
+    seed <- counts[,colnames(counts) %in% seed[[seedID]]$barcodes]
+    query <- counts[,colnames(counts) %in% query[[ter]]$barcodes]
+
+    #--------------------------------------------------------------------------#
+    # Just in case there are not enough cells
+    #--------------------------------------------------------------------------#
+    dimSeed <- dim(seed)
+    dimQuery <- dim(query)
+    if(is.null(dimSeed)| is.null(dimQuery)){
+        warning(paste0("Territory ",seedID," does not contain enough cells.\n
+        Territory will be skipped"),call.=FALSE)
+        return(NULL)
+    } else if(dimSeed[2L] < minCell | dimQuery[2L] < minCell){
+        warning(paste0("Territory ",seedID," does not contain enough cells.\n
+        Territory will be skipped"),call.=FALSE)
+        return(NULL)
+    }
+    #--------------------------------------------------------------------------#
+    # Computing DEG metrics
+    # Pseudo count = 1
+    #--------------------------------------------------------------------------#
+    seedPct <- Matrix::rowSums(seed >0) / ncol(seed)
+    queryPct <- Matrix::rowSums(query >0) / ncol(query)
+    FC <- log(Matrix::rowMeans(seed) +1) - log(Matrix::rowMeans(query)+1)
+    #--------------------------------------------------------------------------#
+    # Dropping genes that don't fit the logFC and pct criteria
+    # At least I won't be computing anything that doesn't need to be
+    # I say that while creating a whole bunch of variables
+    #--------------------------------------------------------------------------#
+    keep <- (seedPct >= minPct | queryPct >= minPct) & abs(FC) >= logFC
+    genes <- rownames(seed)[keep]
+    seed <- seed[keep,]
+    query <- query[keep,]
+    seedPct <- seedPct[keep]
+    queryPct <- queryPct[keep]
+    FC <- FC[keep]
 
 
 
     #--------------------------------------------------------------------------#
     # testing diff gene expression
+    # Rebuilding a matrix just in case you only have one gene to test
+    # Not going to rewrite the sapply for that
     #--------------------------------------------------------------------------#
-    deg <- switch(method,
-                  "wilcox" = wilcox.test(group1,group2)$p.value,
-                  "t.test" = t.test(group1,group2)$p.value)
+    if(is.null(dim(seed))){
+      idx <- 1
+      seed <- matrix(seed,nrow=1)
+      query <- matrix(query, nrow=1)
+    } else {
+      idx <- seq_len(nrow(seed))
+    }
+
+    deg <- sapply(idx,function(idx,seed,query,method){
+                  res <- switch(method,
+                         "wilcox" = wilcox.test(seed[idx,],query[idx,])$p.value,
+                         "t.test" = t.test(seed[idx,],query[idx,])$p.value)
+                  return(res)
+    },seed,query,method)
+
+
+    #--------------------------------------------------------------------------#
+    # rebuilding data.frame and filtering p values
+    #--------------------------------------------------------------------------#
+    deg <- tibble("genes" = genes,"p.value" = deg,"seedPct" = seedPct,
+                  "queryPct" = queryPct,"logFC" = FC,
+                  "seedTerritory" = rep(seedID,length(deg)),
+                  "queryTerritory" = rep(ter,length(deg)))
+
+    deg <- deg %>% filter(p.value <= pval)
+    return(deg)
+}
+
+.VesaliusDEG.all <- function(territory,counts,logFC,pval,minPct,minCell,
+                             method = "wilcox",verbose=TRUE){
+    #--------------------------------------------------------------------------#
+    # Selecting territories from counts - All = Against all
+    #--------------------------------------------------------------------------#
+    .degAllProg(unique(territory$territory),verbose)
+    seed <- counts[,colnames(counts) %in% territory$barcodes]
+    query <- counts[,!colnames(counts) %in% territory$barcodes]
+
+    #--------------------------------------------------------------------------#
+    # Just in case there are not enough cells
+    #--------------------------------------------------------------------------#
+    dims <- dim(seed)
+    if(is.null(dims)){
+        warning(paste0("Territory ",unique(territory$territory)," does not contain enough cells.\n
+        Territory will be skipped"),call.=FALSE)
+        return(NULL)
+    } else if(dims[2]<minCell){
+        warning(paste0("Territory ",unique(territory$territory)," does not contain enough cells.\n
+        Territory will be skipped"),call.=FALSE)
+        return(NULL)
+    }
+
+    #--------------------------------------------------------------------------#
+    # Computing DEG metrics
+    # Pseudo count = 1
+    #--------------------------------------------------------------------------#
+    seedPct <- (Matrix::rowSums(seed >0) / ncol(seed))
+    queryPct <- (Matrix::rowSums(query >0) / ncol(query))
+
+    FC <- log(Matrix::rowMeans(seed) +1) - log(Matrix::rowMeans(query)+1)
+
+    #--------------------------------------------------------------------------#
+    # Dropping genes that don't fit the logFC and pct criteria
+    # At least I won't be computing anything that doesn't need to be
+    # I say that while creating a whole bunch of variables
+    # also I want to return all diff expressed genes even if that means
+    # that the genes are down regulated
+    # You can do the filtering afterwards and that is just as interesting
+    #--------------------------------------------------------------------------#
+
+    keep <- (seedPct >= minPct | queryPct >= minPct) & abs(FC) >= logFC
+    genes <- rownames(seed)[keep]
+    seed <- seed[keep,]
+    query <- query[keep,]
+    seedPct <- seedPct[keep]
+    queryPct <- queryPct[keep]
+    FC <- FC[keep]
+    territory <- unique(territory$territory)
+
+    #--------------------------------------------------------------------------#
+    # testing diff gene expression
+    # Rebuilding a matrix just in case you only have one gene to test
+    # Not going to rewrite the sapply for that
+    #--------------------------------------------------------------------------#
+    if(is.null(dim(seed))){
+      idx <- 1
+      seed <- matrix(seed,nrow=1)
+      query <- matrix(query, nrow=1)
+    } else {
+      idx <- seq_len(nrow(seed))
+    }
+
+    deg <- sapply(idx,function(idx,seed,query,method){
+                  res <- switch(method,
+                         "wilcox" = wilcox.test(seed[idx,],query[idx,])$p.value,
+                         "t.test" = t.test(seed[idx,],query[idx,])$p.value)
+                  return(res)
+    },seed,query,method)
+
 
     #--------------------------------------------------------------------------#
     # rebuilding data.frame
     #--------------------------------------------------------------------------#
-    deg <- data.frame("genes" = genes,"p.value" = deg)
+    deg <- tibble("genes" = genes,"p.value" = deg,"seedPct" = seedPct,
+                  "queryPct" = queryPct,"logFC" = FC,
+                  "seedTerritory" = territory,
+                  "queryTerritory" = rep("all",length(deg)))
 
-
+    deg <- deg %>% filter(p.value <= pval)
     return(deg)
 }
+
+
+
 
 
 
