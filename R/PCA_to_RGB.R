@@ -109,21 +109,14 @@ rgbPCA<- function(slide,SO,slices = 1,adjusted = FALSE,rgbWeight=FALSE,countWeig
 
           }
       }
-      #------------------------------------------------------------------------#
-      ## trimming histogram - unused for now
-      #------------------------------------------------------------------------#
-      cutoff <- do.call("cbind",lapply(rgb,trimHistogram,trim))
-      cutoff <- apply(cutoff,1,sum) ==3
 
       #------------------------------------------------------------------------#
       ## Normalising RGB channels
       #------------------------------------------------------------------------#
-      rgb <- lapply(rgb, function(x,cutoff){
-                    x <- x[cutoff]
-
+      rgb <- lapply(rgb, function(x){
                     x <- (x - min(x)) / (max(x) - min(x))
                     return(x)
-      }, cutoff = cutoff)
+      })
       #------------------------------------------------------------------------#
       # adjusted RGB colour - NOT THE SAME AS THE WEIGHTED PC
       #------------------------------------------------------------------------#
@@ -287,7 +280,9 @@ assingRGBtoPixelQuickBlock <- function(rgb, coordinates,resolution = 200,drop =T
 #' Note that the slice dimension is required by the \code{imager} package.
 #' @return a 4 dimensional array - convertable to \code{cimg} objects.
 
-buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,resolution = 1,filterThreshold=0.999,cores=1, verbose = TRUE){
+buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,
+                            resolution = 100,filterThreshold=0.999,interpolation_type =2,
+                            cores=1, verbose = TRUE){
   #----------------------------------------------------------------------------#
   # Class checks - this will be removed once S4 classes are functional
   #----------------------------------------------------------------------------#
@@ -333,19 +328,17 @@ buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,resol
       coordinates$B <- 1 - coordinates$B
   }
 
-  #----------------------------------------------------------------------------#
-  # Decreasing reolsution and making bigger tiles
-  #----------------------------------------------------------------------------#
-  if(resolution <1){
-    .res(verbose)
-    widthX <- max(coordinates$xcoord) - min(coordinates$xcoord) + 1
-    widthY <- max(coordinates$ycoord) - min(coordinates$ycoord) + 1
 
-    xbox <- round(seq(min(coordinates$xcoord),max(coordinates$xcoord), length.out = widthX * resolution))
-    ybox <- round(seq(min(coordinates$ycoord),max(coordinates$ycoord), length.out = widthY * resolution))
+  #if(resolution <1){
+  #  .res(verbose)
+  #  widthX <- max(coordinates$xcoord) - min(coordinates$xcoord) + 1
+  #  widthY <- max(coordinates$ycoord) - min(coordinates$ycoord) + 1
+
+  #  xbox <- round(seq(min(coordinates$xcoord),max(coordinates$xcoord), length.out = widthX * resolution))
+  #  ybox <- round(seq(min(coordinates$ycoord),max(coordinates$ycoord), length.out = widthY * resolution))
     ## Testing new version might need to remove the section above
-    coordinates <- .resShift(coordinates,xbox,ybox,cores)
-  }
+    #coordinates <- .resShift(coordinates,xbox,ybox,cores)
+  #}
 
 
 
@@ -417,19 +410,53 @@ buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,resol
 
   allIdx <- mutate(allIdx, x = x -lpx +1,y=y-lpy +1) %>%
             tibble
-
+  #----------------------------------------------------------------------------#
+  # Decreasing reolsution
+  #----------------------------------------------------------------------------#
+  if(resolution<100){
+      .res(verbose)
+      allIdx <- .resShift(allIdx, resolution,interpolation_type,na.rm)
+  }
   return(allIdx)
 
 }
 
 
 
-#.resShift <- function(coord){
+.resShift <- function(image, resolution = 50,interpolation_type = 1,na.rm=TRUE){
+  #----------------------------------------------------------------------------#
+  # Converting image back image for resizing
+  # Here we are using the imager function as the intrapolation is already
+  # optimised and also provides a few different ways of doing so
+  #----------------------------------------------------------------------------#
 
-#}
+  img <- as.cimg(select(image, c("x", "y", "cc", "value")))
+  img <- resize(img,size_x = -(50),
+                    size_y = -(50),
+                    interpolation_type = interpolation_type)
+  img <- tibble(as.data.frame(img))
+  #----------------------------------------------------------------------------#
+  # Scaling original coordinates and joining them the new table
+  # This is so dumb - why did I not think of this before...
+  #----------------------------------------------------------------------------#
+  image$x <- round((image$x / max(image$x))* max(img$x)) +1
+  image$y <- round((image$y / max(image$y))* max(img$y)) +1
+  image <- image %>% distinct()
+
+  img <- right_join(img, image, by  = c("x","y","cc")) %>%
+         select(c("barcodes","x","y","cc","value.x","tile")) %>% tibble
+  colnames(img) <- c("barcodes","x","y","cc","value","tile")
+  #----------------------------------------------------------------------------#
+  # remove NAs
+  #----------------------------------------------------------------------------#
+  if(na.rm){
+      img <- img %>% na.exclude()
+  }
+  return(img)
+}
 
 
-.resShift <- function(coord, xbox , ybox,cores){
+.resShiftOld <- function(coord, xbox , ybox,cores){
   #----------------------------------------------------------------------------#
   # Building template Sparse Matrix for each pixel
   #----------------------------------------------------------------------------#

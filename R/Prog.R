@@ -44,7 +44,8 @@
     widthDisplay<-round(options()$width)
     bar <- paste0("#", paste0(rep("-",widthDisplay*0.9),collapse=""),"#")
     cat(bar,"\n")
-    cat( paste(t," Coarse Grain Image Building \n"))
+    cat( paste(t," Resizing Image \n"))
+    cat(bar,"\n")
 
 }
 
@@ -87,7 +88,7 @@
     bar <- paste0("#", paste0(rep("-",widthDisplay*0.9),collapse=""),"#")
     cat(bar,"\n")
     cat( paste(t," Filtering Triangles that exceed area threshold\n"))
-    cat(bar,"\n")
+    #cat(bar,"\n")
 
 }
 
@@ -104,7 +105,7 @@
     if(!verbose) return(NULL)
     t <- Sys.time()
 
-    cat( paste(t," Computing DEG for territory",ter,"against all\n"))
+    cat( paste(t," Computing DEG for territory",ter,"against all\r"))
 
 
 }
@@ -133,4 +134,32 @@
     if(!verbose) return(NULL)
     t <- Sys.time()
     cat( paste(t,"Pooling territory ", ter,"\r"))
+}
+
+.checkCounts <- function(verbose =TRUE){
+    if(!verbose) return(NULL)
+    t <- Sys.time()
+    widthDisplay<-round(options()$width)
+    bar <- paste0("#", paste0(rep("-",widthDisplay*0.9),collapse=""),"#")
+    cat(bar,"\n")
+    cat( paste(t," Checking and extracting Counts \n"))
+
+}
+.seedSelect <- function(verbose =TRUE){
+    if(!verbose) return(NULL)
+    t <- Sys.time()
+    widthDisplay<-round(options()$width)
+    bar <- paste0("#", paste0(rep("-",widthDisplay*0.9),collapse=""),"#")
+    cat(bar,"\n")
+    cat( paste(t," Extracting Seed territories \n"))
+
+}
+.querySelect <- function(verbose =TRUE){
+    if(!verbose) return(NULL)
+    t <- Sys.time()
+    widthDisplay<-round(options()$width)
+    bar <- paste0("#", paste0(rep("-",widthDisplay*0.9),collapse=""),"#")
+    cat(bar,"\n")
+    cat( paste(t," Extracting Query territories \n"))
+
 }

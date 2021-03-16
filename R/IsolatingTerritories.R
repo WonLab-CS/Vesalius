@@ -179,38 +179,38 @@ smoothToDominant <- function(img,nn,method = c("median","exp","linear"), iter = 
 #' @return Array or cimg object after bieng smoothed
 smoothArray <- function(img,method = c("median","iso","box"),
                         sigma = 1, box = 20, threshold=0, neuman=TRUE,
-                        gaussian=TRUE,na.rm=FALSE, iter = 1,verbose = TRUE){
+                        gaussian=TRUE,na.rm=FALSE, acrossLevels = "min", iter = 1,verbose = TRUE){
     #--------------------------------------------------------------------------#
     # Class check
     #--------------------------------------------------------------------------#
 
     if(!is.cimg(img)){
-      impCopy <- as.cimg(select(img, c("x", "y", "cc", "value")))
+      imgCopy <- as.cimg(select(img, c("x", "y", "cc", "value")))
     }else {
-      impCopy <- img
+      imgCopy <- img
     }
 
     #--------------------------------------------------------------------------#
-    # NOTE Export cimg object as data frame and vice versa
-    # It might be easier be easier
-    #--------------------------------------------------------------------------#
-
-    #--------------------------------------------------------------------------#
     # Running multiple smoothing itteration
+    # TODO change the verbose part to account for multiple signa/box values
     #--------------------------------------------------------------------------#
     for(i in seq_len(iter)){
         .smooth(i,verbose)
         for(j in method){
 
-          impCopy <- switch(j,
-                            "median" = medianblur(impCopy,box, threshold),
-                            "iso" = isoblur(impCopy,sigma,neuman,gaussian,na.rm),
-                            "box" = boxblur(impCopy,box,neuman))
+          imgCopy <- switch(j,
+                            "median" = map_il(box,~medianblur(imgCopy,.,threshold)),
+                            "iso" = map_il(sigma,~isoblur(imgCopy,.,neuman,gaussian,na.rm)),
+                            "box" = map_il(box,~boxblur(imgCopy,.,neuman)))
+          imgCopy <- switch(acrossLevels,
+                            "min" = parmin(imgCopy),
+                            "max" = parmax(imgCopy),
+                            "mean" = average(imgCopy))
         }
 
     }
 
-    imgCopy <- as.data.frame(impCopy)
+    imgCopy <- as.data.frame(imgCopy)
 
 
 
@@ -349,6 +349,7 @@ iterativeSegmentation.bead <- function(img,nn,colDepth = 9,segIter = 10,
 iterativeSegmentation.array <- function(img,colDepth = 10,
                                         smoothIter = 1,
                                         method = c("median","iso","box"),
+                                        acrossLevels = "min",
                                         sigma = 1, box = 20, threshold=0, neuman=TRUE,
                                         gaussian=TRUE, useCenter=TRUE, na.rm=FALSE,
                                         verbose = TRUE){
@@ -377,7 +378,8 @@ iterativeSegmentation.array <- function(img,colDepth = 10,
     #--------------------------------------------------------------------------#
     img <- smoothArray(img,method =method,sigma = sigma, box = box,
                        threshold=threshold, neuman=neuman, gaussian=gaussian,
-                       na.rm=FALSE,iter = smoothIter,verbose=verbose)
+                       na.rm=FALSE,acrossLevels=acrossLevels,
+                       iter = smoothIter,verbose=verbose)
 
 
     cat("\n")
@@ -711,66 +713,67 @@ isolateTerritories.array <- function(img, method = c("distance"),
 ### Cant remember why I took this approach
 ### Lets keep it ultra simple for now
 ### Dont create this intermediate object only if required
-extractTerritories <- function(img,seurat, combine = FALSE,keepCoarse = FALSE,
-                               minCell = 10,cores = 1, verbose = TRUE){
-
+extractTerritories <- function(img,seurat,combine = NULL,
+                               minCell = 10, verbose = TRUE,cores = 1){
     #--------------------------------------------------------------------------#
-    # for combine we will just add a meta data columns
-    # Parsing Seurat object instead
-    # If needed can change it to simple tables later
+    # if combine is null we consider that we want to have all
+    # territories prepared for clustering analysis
     #--------------------------------------------------------------------------#
-    if(combine){
-
-      seurat@meta.data$territory <- 0
-      territories <- img %>% filter(tile == 1) %>% distinct(barcodes,.keep_all = TRUE)
-      territories <- .fineGrain(img, combine = TRUE)
-      loc <- match(territories$barcodes,rownames(seurat@meta.data))
-      seurat@meta.data$territory[loc[!is.na(loc)]]<- territories$territory[!is.na(loc)]
-      return(seurat)
-
+    if(is.null(combine)){
+        territories <- img %>% filter(tile == 1) %>% distinct(barcodes, .keep_all = TRUE)
+        territories <- split(territories, territories$territory)
+        #----------------------------------------------------------------------#
+        # Revert back to fine grain if inage array was reduced
+        #----------------------------------------------------------------------#
+        #territories <- parallel::mclapply(territories,.fineGrain,minCell,mc.cores = cores)
+        #territories <- territories[!sapply(territories,is.null)]
+        cells <- sapply(territories,nrow) > minCell
+        territories <- territorries[cells]
+        territories <- parallel::mclapply(territories,.subSetTerritories,seurat,mc.cores= cores)
+        return(territories)
     } else {
-      #--------------------------------------------------------------------------#
-      # Splitting between territories
-      # Will need to add a tag to see if territories are pooled locally or globally
-      # If local , then split based on cluster number
-      # with pre clean step
-      #--------------------------------------------------------------------------#
-      territories <- img %>% filter(tile == 1) %>% distinct(barcodes,.keep_all = TRUE)
-      territories <- split(territories, territories$territory)
+        #----------------------------------------------------------------------#
+        # Filtering only the barcodes that are in the territories of interest
+        # To ADD check for combine - numeric values
+        #----------------------------------------------------------------------#
+        territories <- img %>% filter(tile==1 & territory %in% combine)%>%
+                       distinct(barcodes, .keep_all = TRUE)
 
+        #----------------------------------------------------------------------#
+        # Revert back to fine graind and return null if territory does not
+        # Conatin enough cells - in this case throw in a warning
+        #----------------------------------------------------------------------#
+        #territories <- .fineGrain(territories,minCell)
 
-      #--------------------------------------------------------------------------#
-      # Essentially, do we want to keep the lowered resolution or not
-      # High resolution goes back to the original beads locations and data
-      #--------------------------------------------------------------------------#
-      if(keepCoarse){
-              ##
-      } else {
-          territories <- parallel::mclapply(territories,.fineGrain,minCell,mc.cores = cores)
+        if(nrow(territories) < minCell){
 
-          territories <- territories[!sapply(territories,is.null)]
-          territories <- parallel::mclapply(territories,.subSetTerritories,seurat,mc.cores= cores)
-      }
-      return(territories)
+            warning("Territory selection does not contain enough cells - NULL returned")
+            return(NULL)
+        }else{
+            territories <- .subSetTerritories(territories,seurat)
+            return(territories)
+        }
     }
+
+
 }
 
 .fineGrain <- function(territories,minCell,combine =FALSE){
-    if(combine){
+    ### To be removed ? might not be worthwhile to keep this section
+    #if(combine){
       #--------------------------------------------------------------------------#
       # Consider what you need to change for min cell and genes?
       #--------------------------------------------------------------------------#
 
-      allTags <- strsplit(territories$barcodes,"_")
-      allLength <- sapply(allTags, length)
+      #allTags <- strsplit(territories$barcodes,"_")
+      #allLength <- sapply(allTags, length)
 
-      territories <- rep(territories$territory, times = allLength)
-      return(data.frame("barcodes" = unlist(allTags),"territory"= territories))
+      #territories <- rep(territories$territory, times = allLength)
+      #return(data.frame("barcodes" = unlist(allTags),"territory"= territories))
 
-    } else {
+    #} else {
       #--------------------------------------------------------------------------#
       # Split all barcode tags by seperator
-      # NOTE this will need to be changed once cluster vs territory is implemented
       #--------------------------------------------------------------------------#
       #territories<- territories %>% filter(tile == 1) %>% distinct(barcodes,.keep_all = TRUE)
 
@@ -781,7 +784,7 @@ extractTerritories <- function(img,seurat, combine = FALSE,keepCoarse = FALSE,
         return(allTags)
       }
 
-    }
+    #}
 
 
 }
@@ -790,6 +793,7 @@ extractTerritories <- function(img,seurat, combine = FALSE,keepCoarse = FALSE,
     #--------------------------------------------------------------------------#
     # Simplified version for now
     # It might be worth while getting away from seurat later
+    # essentially this is a template function
     #--------------------------------------------------------------------------#
 
     seurat <- subset(seurat, cells = territories)
@@ -824,4 +828,24 @@ addTerritories <- function(dat,coordinates = NULL, global = TRUE){
 
 .getSeuratCoordinates <- function(seurat){
     return(seurat@images$slice1@coordinates)
+}
+
+
+
+
+extractLayers <- function(image,territory = NULL,layerDepth = 1,concavity=1,length_threshold=0){
+    layer <- list()
+    if(is.null(territory)){
+        # to add
+        # loop over all territories
+    } else {
+        ter <- image %>% filter(territory %in% territory)
+        edge <- concaveman::concaveman(as.matrix(ter[,c("x","y")]),
+                            concavity,length_threshold)
+        edge <- paste0(edge[,1],edge[,2],sep = "_")
+        points <- paste0(ter$x,ter$y,sep = "_")
+        edge <- points %in% edge
+        #layer
+
+    }
 }
