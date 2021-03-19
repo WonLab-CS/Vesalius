@@ -18,8 +18,9 @@ Collate: FindNN.R
     Prog.R
     Territory_identity.R
     viz.R
-Depends: R (>= 3.5.0),methods
-Imports: parallel,
+Depends: R (>= 3.5.0),
+    methods,
+    parallel,
     Matrix,
     Seurat,
     deldir,
@@ -29,11 +30,12 @@ Imports: parallel,
     concaveman,
     sp,
     ggplot2,
+    imagerExtra
+Imports:
     grDevices,
     graphics,
     stats,
-    utils,
-    imagerExtra
+    utils
 Suggests: knitr, RUnit
 Encoding: UTF-8
 LazyData: true

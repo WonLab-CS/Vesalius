@@ -4,165 +4,6 @@
 
 #----------------------/Isolating Territories/---------------------------------#
 
-#' Applying smoothing filter to beads by smoothing bead to dominant colour of nearest neighbors
-#' @param img data frame with barcodes, xcoord, ycoord, R, G, and B as coloumns
-#' @param nn nearest neighbors list
-#' @param k numeric describing number of neighbors to use for smoothing
-#' @param iter numeric describing the number of smoothing iterations that should be performed
-#' @param angleBias logical describing if angle of nearest neighbor should be account for.
-#' @param threshold numeric between 0 and 1 describing which quantile should be used to select dominant colour.
-#' @param logical describing if progress message should outputed to console.
-#' @details Applying morphological filters on non image data. Morphological filters converts pixels values
-#' to the average value of neighboring pixels. The same process is applied here however instead of using
-#' pixel, this function uses closest beads/spots in space (according to x/coordinates). Depending on how nearest
-#' neighbors were selected, nearest neighbors should be beads/spots that surround the center bead in all directions.
-#' @return data frame with barcodes, xcoord, ycoord, R, G, and B as coloumns but with adjusted RGB values.
-smoothToDominant <- function(img,nn,method = c("median","exp","linear"), iter = 1,angleBias = FALSE, verbose =TRUE){
-    ## Building smoothing kernel
-
-
-    ### For each smoothing iteration
-    ### Note that this only applies to this function and is not the same
-    ### As segmentation iteration even if both are used in the segmentation
-    ### process
-    for(it in seq_len(iter)){
-      ###########################
-      if(verbose){
-        cat(paste("Smoothing Iteration",it, "\r"))
-      }
-      ###########################
-
-      for(i in seq_along(nn)){
-          #tmp <- img[img$barcodes %in% nn[[i]]$barcodes,c("R","G","B") ]
-          ##### Applying angle bias
-          ### Bug fix -- this is happening somewhere else
-          ### but for now
-          if(nrow(nn[[i]])==0) next()
-
-          img <- switch(method[1L],
-                        "median" = .medianKernel(img, nn[i], angleBias),
-                        "exp" = .expKernel(img, nn[i], angleBias),
-                        "linear" = .linearKernel(img, nn[i], angleBias))
-
-
-      }
-
-      img<-img[!is.na(img$R) &
-               !is.na(img$G) &
-               !is.na(img$B) ,]
-
-    }
-
-    return(img)
-}
-
-.medianKernel <- function(img,nn, angleBias=FALSE){
-    if(angleBias){
-      ### setting up quadrants
-      q1 <- c(0,90)
-      q2 <- c(90,180)
-      q3 <- c(180,270)
-      q4 <- c(270,360)
-      if(any(colnames(img) == c("cluster"))){
-          ### TO ADD
-      } else {
-          stop("angle Bias smoothing only possible when using iterative segmentation")
-      }
-
-    } else {
-         loc <- names(nn)
-         nn <- nn[[1L]]
-         tmp <- img[img$barcodes %in% nn$barcodes,c("R","G","B")]
-         tmp <- apply(tmp,2,median)
-         img[img$barcodes == names(nn),c("R","G","B")] <- tmp
-    }
-
-    return(img)
-}
-
-.expKernel <- function(img,nn, angleBias=FALSE){
-    if(angleBias){
-      ### setting up quadrants
-      q1 <- c(0,90)
-      q2 <- c(90,180)
-      q3 <- c(180,270)
-      q4 <- c(270,360)
-      if(any(colnames(img) == c("cluster"))){
-          ### TO ADD
-      } else {
-          stop("angle Bias smoothing only possible when using iterative segmentation")
-      }
-
-    } else {
-
-         loc <- names(nn)
-         nn <- nn[[1L]]
-
-         tmp <- img[match(nn$barcodes,img$barcodes),c("R","G","B")]
-         maxDist <- max(nn$distance)
-         minDist <- min(nn$distance)
-         ### Not sure if this is the best number of increments
-         ### But It can get out of hand if you stack them
-
-         increments <- seq(maxDist, minDist, length.out = 6)
-         ## First step adding increment values
-         tmp$inc <- rep(0,nrow(tmp))
-
-         for(inc in seq(1,length.out = length(increments)-1)){
-            tmp[nn$distance < increments[inc] &
-                nn$distance >= increments[inc+1],"inc"] <- ceiling(exp(inc))
-         }
-         ## Replicating points
-         r <- c() ; g <- c() ; b <- c()
-         for(i in seq_len(nrow(tmp))){
-            r <- c(r,rep(tmp$R[i],tmp$inc[i]))
-            g <- c(g,rep(tmp$G[i],tmp$inc[i]))
-            b <- c(b,rep(tmp$B[i],tmp$inc[i]))
-         }
-         tmp <- cbind(r,g,b)
-
-         tmp <- apply(tmp,2,median)
-         img[img$barcodes == loc,c("R","G","B")] <- tmp
-    }
-
-    return(img)
-}
-
-.linearKernel <- function(img,nn, angleBias=FALSE){
-    if(angleBias){
-      ### setting up quadrants
-      q1 <- c(0,90)
-      q2 <- c(90,180)
-      q3 <- c(180,270)
-      q4 <- c(270,360)
-      if(any(colnames(img) == c("cluster"))){
-          ### TO ADD
-      } else {
-          stop("angle Bias smoothing only possible when using iterative segmentation")
-      }
-
-    } else {
-         loc <- names(nn)
-         nn <- nn[[1L]]
-         tmp <- img[match(nn$barcodes,img$barcodes),c("R","G","B")]
-         ### Not sure if this is the best number of increments
-         ### But It can get out of hand if you stack them
-
-         tmp$inc <- order(nn$distance, decreasing =TRUE)
-         ## Replicating points
-         r <- c() ; g <- c() ; b <- c()
-         for(i in seq_len(nrow(tmp))){
-            r <- c(r,rep(tmp$R[i],tmp$inc[i]))
-            g <- c(g,rep(tmp$G[i],tmp$inc[i]))
-            b <- c(b,rep(tmp$B[i],tmp$inc[i]))
-         }
-         tmp <- cbind(r,g,b)
-         tmp <- apply(tmp,2,median)
-         img[img$barcodes == loc,c("R","G","B")] <- tmp
-    }
-
-    return(img)
-}
 
 #' Smoothing image array - wrapper function for imager smoothing functions
 #' @param img 4 dimensional array or cimg object
@@ -224,105 +65,27 @@ smoothArray <- function(img,method = c("median","iso","box"),
 
 
 
-#' Enhance colour contrast by equalizing the colour histogram
-#' @param img data frame with barcodes, xcoord, ycoord, R, G, and B as coloumns
-#' @details Histogram equalisation ensure that colours are uniformly distributed between all possible colours
-#' Conceptually, this is similar to flatening a curve.
-#' @return data frame with barcodes, xcoord, ycoord, R, G, and B as coloumns with adjusted RGB values.
-enhance <- function(img){
-    ## checking classes
-    if(is(img) == "data.frame"){
-      img[,c("R","G","B")] <- apply(img[,c("R","G","B")],2,
-                              .equalizeHist)
-    } else if( is(img) == "array"){
-        for(i in seq(1,3)){
-            tmp <- img[,,,i]
-            tmp <- .equalizeHist(as.vector(tmp))
-            img[,,,i] <- tmp
-        }
-    } else {
-      stop("Unkown image type")
-    }
 
 
+equalizeContrast <- function(image, type = "BalanceSimplest",N=1,smax=1,
+                         sleft =1,sright =1,lambda=0.1,up=100, down = 10,range = c(0,1)){
+    img <-image %>% select(c("x","y","cc","value")) %>% as.cimg %>% imsplit("c")
+    img <- switch(type,
+                    "EqualizePiecewise" = lapply(img,EqualizePiecewise,N) %>% imappend("c"),
+                    "BalanceSimplest" = lapply(img,BalanceSimplest,sleft,sright,range) %>% imappend("c"),
+                    "SPE" = lapply(img,SPE,lambda) %>% imappend("c"),
+                    "EqualizeDP"  = lapply(img,EqualizeDP,down,up) %>% imappend("c"),
+                    "EqualizeADP" = lapply(img,EqualizeADP) %>% imappend("c"))
+    img <- as.data.frame(img)
+    img <- right_join(img, image, by  = c("x","y","cc")) %>%
+           select(c("barcodes","x","y","cc","value.x","tile")) %>% tibble
+
+    colnames(img) <- c("barcodes","x","y","cc","value","tile")
     return(img)
 }
 
-.equalizeHist <- function(img,range = c(0,1),levels = 256) {
-      breaks <- seq(range[1L], range[2L], length.out = levels + 1L)
-      h <- hist.default(img, breaks = breaks, plot = FALSE)
-      cdf <- cumsum(h$counts)
-      cdf_min <- min(cdf[cdf>0])
+## Have to run them internally
 
-      equalized <- ( (cdf - cdf_min) / (length(img) - cdf_min) * (range[2L] - range[1L]) ) + range[1L]
-      bins <- round( (img - range[1L]) / (range[2L] - range[1L]) * (levels-1L) ) + 1L
-
-      res <- equalized[bins]
-      return(res)
-}
-
-#' iterativeSegmentation - collapse and smooth points into colour startingSegements
-#' @param img data frame containing RGB code for each bead
-#' @param nn list containing nearest spatial neighbours
-#' @param colDepth numeric describing final number of colour segments in image
-#' @param segIter numeric describing number of segmentation iterations
-#' @param smoothIter numeric describing number of smoothing iterations
-#' @param method character describing smoothing method to use (median ,exp or linear)
-#' @param startingSegements numeric describing the number of initial colour segments to consider.
-#' @param eq logical indicating if colour histogram should be equalised before each iteration.
-#' @param angleBias logical describing if angle to nearest neighbor should be considered (NOT IMPLEMENTED)
-#' @param verbose logical indicating if progress messages should be outputed to console.
-#' @details For each iteration, the algorithm collapse the colour space into n colour segments.
-#' Then, smoothing is applied to nearest neighbours. The process is repeated for each iteration.
-#' Note that the number of segments from starting segments to final colour depth follows the following
-#' Function : \code{seq(startingSegements,colDepth+1,length.out = iter)}
-#' @return a data frame containing RGB code for each bead.
-
-iterativeSegmentation.bead <- function(img,nn,colDepth = 9,segIter = 10,
-                                  smoothIter = 1,method = c("median","exp","linear"),
-                                  startingSegements = 256,
-                                  eq = TRUE,angleBias=FALSE, verbose = TRUE){
-  ## Check
-  if(segIter > (startingSegements - colDepth)){
-      warning("Iterations surpass number of startingSegements \n
-              Consider increasing startingSegements or reducing iterations")
-      segIter <- startingSegements - colDepth
-  }
-  ## Building colour segments
-  segments <- c(ceiling(seq(startingSegements,colDepth+1,length.out = segIter)),colDepth)
-
-  for(j in segments){
-      ## clustering colours
-      if(verbose){
-          cat(paste("Current Number of segments: ", j,"\r"))
-      }
-
-      clust <- kmeans(img[,c("R","G","B")],j,iter.max = 200,nstart = 10)
-      img$cluster <- clust$cluster
-      clusters <- unique(clust$cluster)
-      ## collapsing coulours for output
-
-      for(i in seq_along(clusters)){
-          tmp <- img[img$cluster == clusters[i],]
-          tmp$R <- median(tmp$R)
-          tmp$G <- median(tmp$G)
-          tmp$B <- median(tmp$B)
-          img[img$cluster == clusters[i],] <- tmp
-      }
-
-      ### Once we have go through the last segmentation we don't want any more smoothing
-      ### Will slightly change the colour values
-      if(j != segments[length(segments)]){
-          img <- smoothToDominant(img,nn,method =method[1L],iter=smoothIter,angleBias = angleBias,verbose = FALSE)
-      }
-
-
-      if(eq){
-        img <- enhance(img)
-      }
-  }
-  return(img)
-}
 
 
 #' iterativeSegmentation - collapse and smooth points into colour startingSegements
@@ -453,55 +216,6 @@ iterativeSegmentation.array <- function(img,colDepth = 10,
 }
 
 
-#' isolating territories from spatial transcriptomic data
-#' @param img data frame with barcodes, xcoord, ycoord, R, G, and B as coloumns
-#' @param dropRadius numeric describing the proportion of total distance to consider when pooling beads together
-#' @details In order to select territories, colours will be collapsed into \code{colDepth} number of
-#' dominant colours. For each colour, territories will be isolated based on distance between point.
-#' The \code{dropRadius} represents the proportion of total distance (x and y values may differ) to use in order
-#' to pool beads/spots together. The algorithm selects a point and pools all neighboring beads into a territory.
-#' The process is applied to the nearest neighbors until no more points can be pooled into the territory.
-#' If beads remain for a given colour, the process is repeated until all beads/spots are put into a territory.
-#' @return a data frame with barcodes, xcoord, ycoord, R, G, B, cluster number, territory number within that cluster.
-
-isolateTerritories.bead <- function(img,dropRadius = 0.025,colDepth =12){
-      if(any(colnames(img)=="cluster")){
-        clusters <- unique(as.numeric(as.character(img$cluster)))
-        ## Finding territories in each
-        clusterCount <- 1
-        img$territories <- NA
-        for(i in seq_along(clusters)){
-            ## all barcodes from cluster i
-            barcodes <- img[img$cluster == clusters[i],]
-            message(paste0("Pooling cluster ",i))
-            ## pooling
-            pool <- .distancePooling(barcodes,)
-
-            img[img$cluster == clusters[i],]<- pool
-
-        }
-
-      } else {
-        clust <- kmeans(img[,c("R","G","B")],colDepth,iter.max = 200,nstart = 10)
-        img$cluster <- clust$cluster
-        clusters <- unique(as.numeric(as.character(img$cluster)))
-        ## Finding territories in each
-        clusterCount <- 1
-        img$territories <- NA
-        for(i in seq_along(clusters)){
-            ## all barcodes from cluster i
-            barcodes <- img[img$cluster == clusters[i],]
-            message(paste0("Pooling cluster ",i))
-            ## pooling
-            pool <- .distancePooling(barcodes,)
-
-            img[img$cluster == clusters[i],]<- pool
-
-        }
-
-      }
-      return(img)
-}
 
 #' isolating territories from spatial transcriptomic data
 #' @param img data frame with barcodes, xcoord, ycoord, R, G, and B as coloumns
@@ -547,15 +261,13 @@ isolateTerritories.array <- function(img, method = c("distance"),
       tmp <- filter(img,cluster == clust[i] & cc == 1)
 
       ter <- switch(method[1L],
-                    "distance" = .distancePooling.array(tmp,captureRadius),
+                    "distance" = .distancePooling.array(tmp,captureRadius,minCell),
                     "neighbor" = .neighborPooling.array(tmp,captureRadius),
                     "watershed" = .watershedPooling.array(tmpImg))
       #------------------------------------------------------------------------#
       # Skipping if does not meet min cell requirements
       # filtering can be done later
       #------------------------------------------------------------------------#
-      if(length(ter)<= minCell) next()
-
       for(j in seq(1,3)){
           img$territory[img$cluster == clust[i] & img$cc == j] <- ter
       }
@@ -583,16 +295,18 @@ isolateTerritories.array <- function(img, method = c("distance"),
 
 .globaliseTerritories <- function(img,seurat=FALSE){
     if(!seurat){
-      ter <- paste0(img$cluster,"_", img$territory)
+      imgTmp <- img %>% filter(territory != "isolated")
+      ter <- paste0(imgTmp$cluster,"_", imgTmp$territory)
       allTer <- unique(ter)
       ter <- seq_along(allTer)[match(ter,allTer)]
-      img$territory <- ter
+      img$territory[img$territory != "isolated"] <- ter
       return(img)
     } else {
+      imgTmp <- img %>% filter(territory != "isolated")
       ter <- paste0(img$seurat_clusters,"_", img$territory)
       allTer <- unique(ter)
       ter <- seq_along(allTer)[match(ter,allTer)]
-      img$seurat_clusters <- ter
+      img$seurat_clusters[img$territory != "isolated"] <- ter
       return(img)
     }
 
@@ -600,7 +314,7 @@ isolateTerritories.array <- function(img, method = c("distance"),
 }
 
 
-.distancePooling.array <- function(img,captureRadius){
+.distancePooling.array <- function(img,captureRadius,minCell){
     #--------------------------------------------------------------------------#
     # Select center point of each tile for only one channel
     # Dont need to run it for all channels
@@ -694,8 +408,14 @@ isolateTerritories.array <- function(img, method = c("distance"),
 
       for(ter in seq_along(territories)){
             loc <- img$barcodes %in% territories[[ter]]
+            if(length(territories[[ter]]) <= minCell){
+               allTers[loc] <- "isolated"
+            } else {
+               allTers[loc] <- ter
+            }
 
-            allTers[loc] <- ter
+
+
       }
 
 
@@ -705,22 +425,63 @@ isolateTerritories.array <- function(img, method = c("distance"),
 }
 
 
+### Selecting similar colours from
+selectSimilar <- function(image,territory = NULL,threshold = "auto"){
+    #--------------------------------------------------------------------------#
+    # Getting seed colour fron each territories
+    # maybe base r would be faster in this case ??
+    # we can run it on more than territory maybe ??
+    #--------------------------------------------------------------------------#
+    if(is.null(territory)){
+        cols <- image %>% group_by(cluster,cc) %>%
+              select(value) %>% unique %>%
+              pivot_wider(names_from = "cc", values_from = "value")
+    } else if(length(territory ==1)){
+        cols <- image %>% filter(territory == territory) %>%
+                group_by(cc) %>% select(value) %>%
+                unique() %>%
+                pivot_wider(names_from = "cc", values_from = "value")
+    } else {
+        cols <- image %>% filter(territory %in% territory) %>%
+                group_by(cc) %>% select(value) %>%
+                median() %>%
+                pivot_wider(names_from = "cc", values_from = "value")
+    }
+    #--------------------------------------------------------------------------#
+    # First convertin image to actual image
+    #--------------------------------------------------------------------------#
+    img <- as.cimg(image[,c("x","y","cc","value")])
 
+    #--------------------------------------------------------------------------#
+    # Next we can loop over each colour palette
+    # i.e each territory cluster
+    #--------------------------------------------------------------------------#
+    byTer <- vector("list", nrow(cols))
+    for(i in seq_along(byTer)){
+        tmp <- img %>%
+               { . - imfill(dim=dim(img),val=cols[i,2:4]) } %>%
+                imsplit("c") %>%
+                enorm
+        tmp <- !threshold(tmp,threshold)
+        byTer[[i]] <- tmp
+    }
 
+    return(byTer)
+}
 
 
 
 ### Cant remember why I took this approach
 ### Lets keep it ultra simple for now
 ### Dont create this intermediate object only if required
-extractTerritories <- function(img,seurat,combine = NULL,
+extractTerritories <- function(img,seurat,terIdent = NULL,combine = FALSE,
                                minCell = 10, verbose = TRUE,cores = 1){
     #--------------------------------------------------------------------------#
     # if combine is null we consider that we want to have all
     # territories prepared for clustering analysis
     #--------------------------------------------------------------------------#
-    if(is.null(combine)){
-        territories <- img %>% filter(tile == 1) %>% distinct(barcodes, .keep_all = TRUE)
+    if(is.null(terIdent)){
+        territories <- img %>% filter(tile == 1) %>% distinct(barcodes, .keep_all = FALSE)
         territories <- split(territories, territories$territory)
         #----------------------------------------------------------------------#
         # Revert back to fine grain if inage array was reduced
@@ -729,6 +490,7 @@ extractTerritories <- function(img,seurat,combine = NULL,
         #territories <- territories[!sapply(territories,is.null)]
         cells <- sapply(territories,nrow) > minCell
         territories <- territorries[cells]
+        territories <- lapply(territories,"$",territory)
         territories <- parallel::mclapply(territories,.subSetTerritories,seurat,mc.cores= cores)
         return(territories)
     } else {
@@ -736,16 +498,16 @@ extractTerritories <- function(img,seurat,combine = NULL,
         # Filtering only the barcodes that are in the territories of interest
         # To ADD check for combine - numeric values
         #----------------------------------------------------------------------#
-        territories <- img %>% filter(tile==1 & territory %in% combine)%>%
-                       distinct(barcodes, .keep_all = TRUE)
-
+        territories <- img %>% filter(tile==1 & territory %in% terIdent)%>%
+                       distinct(barcodes, .keep_all = FALSE)
+        territories <- territories$barcodes
         #----------------------------------------------------------------------#
         # Revert back to fine graind and return null if territory does not
         # Conatin enough cells - in this case throw in a warning
         #----------------------------------------------------------------------#
         #territories <- .fineGrain(territories,minCell)
 
-        if(nrow(territories) < minCell){
+        if(length(territories) < minCell){
 
             warning("Territory selection does not contain enough cells - NULL returned")
             return(NULL)
