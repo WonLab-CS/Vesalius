@@ -8,88 +8,85 @@
 # I really don't want to include this in the main functions
 # That is just messy
 
+.consSparse <- function(verbose =TRUE){
+    if(!verbose) return(NULL)
+    t <- Sys.time()
+    cat( paste(t," Converting Sparse Matrix to Matrix \n"))
+}
+.pca <- function(verbose =TRUE,slices =1){
+    if(!verbose) return(NULL)
+    t <- Sys.time()
+    cat( paste(t," Running Principle Component Analysis in",slices,"slices", "\n"))
+}
+.rgb <- function(verbose =TRUE,slice){
+    if(!verbose) return(NULL)
+    t <- Sys.time()
+    cat( paste(t," Converting Loading Values to RGB in slice",slice, "\n"))
+}
+.adj <- function(verbose =TRUE){
+    if(!verbose) return(NULL)
+    t <- Sys.time()
+    cat( paste(t," Adjusting RGB values \n"))
+}
+
+.norm <- function(verbose =TRUE){
+    if(!verbose) return(NULL)
+    t <- Sys.time()
+    cat( paste(t," Normalising RGB values \n"))
+}
+.pcadj <- function(verbose =TRUE,slice){
+    if(!verbose) return(NULL)
+    t <- Sys.time()
+    cat( paste(t," Adujsting RGB values using total variance in each PC - slice",slice,"\n"))
+}
+
 .assignCoordinates <- function(verbose =TRUE){
     if(!verbose) return(NULL)
     t <- Sys.time()
-    widthDisplay<-round(options()$width)
-    bar <- paste0("#", paste0(rep("-",widthDisplay*0.9),collapse=""),"#")
-    cat(bar,"\n")
     cat( paste(t," Assigning Colours to Coordinates \n"))
-
 }
 
 .typeChange <- function(verbose =TRUE){
     if(!verbose) return(NULL)
     t <- Sys.time()
-    widthDisplay<-round(options()$width)
-    bar <- paste0("#", paste0(rep("-",widthDisplay*0.9),collapse=""),"#")
-    cat(bar,"\n")
     cat( paste(t," Class coersion to numeric \n"))
-
 }
 
 .invertCols <- function(verbose =TRUE){
     if(!verbose) return(NULL)
     t <- Sys.time()
-    widthDisplay<-round(options()$width)
-    bar <- paste0("#", paste0(rep("-",widthDisplay*0.9),collapse=""),"#")
-    cat(bar,"\n")
     cat( paste(t," Inverting Colours \n"))
-
 }
 
 .res <- function(verbose =TRUE){
     if(!verbose) return(NULL)
     t <- Sys.time()
-    widthDisplay<-round(options()$width)
-    bar <- paste0("#", paste0(rep("-",widthDisplay*0.9),collapse=""),"#")
-    cat(bar,"\n")
     cat( paste(t," Resizing Image \n"))
-    cat(bar,"\n")
-
 }
 
 
 .distanceBeads <- function(verbose =TRUE){
     if(!verbose) return(NULL)
     t <- Sys.time()
-    widthDisplay<-round(options()$width)
-    bar <- paste0("#", paste0(rep("-",widthDisplay*0.9),collapse=""),"#")
-    cat(bar,"\n")
     cat( paste(t," Filtering outlier beads \n"))
-
 }
 
 .tess <- function(verbose =TRUE){
     if(!verbose) return(NULL)
     t <- Sys.time()
-    widthDisplay<-round(options()$width)
-    bar <- paste0("#", paste0(rep("-",widthDisplay*0.9),collapse=""),"#")
-    cat(bar,"\n")
     cat( paste(t," Generating Voronoi Tesselation \n"))
-
 }
 
 .raster <- function(verbose =TRUE){
     if(!verbose) return(NULL)
     t <- Sys.time()
-    widthDisplay<-round(options()$width)
-    bar <- paste0("#", paste0(rep("-",widthDisplay*0.9),collapse=""),"#")
-    cat(bar,"\n")
     cat( paste(t," Rasterising Tiles \n"))
-
-
 }
 
 .filter <- function(verbose =TRUE){
     if(!verbose) return(NULL)
     t <- Sys.time()
-    widthDisplay<-round(options()$width)
-    bar <- paste0("#", paste0(rep("-",widthDisplay*0.9),collapse=""),"#")
-    cat(bar,"\n")
     cat( paste(t," Filtering Triangles that exceed area threshold\n"))
-    #cat(bar,"\n")
-
 }
 
 
@@ -101,65 +98,64 @@
 
 }
 
-.degAllProg <- function(ter,verbose =TRUE){
+.degProg <- function(verbose =TRUE){
     if(!verbose) return(NULL)
     t <- Sys.time()
-
-    cat( paste(t," Computing DEG for territory",ter,"against all\r"))
-
-
+    cat( paste(t," Computing Differentially Expressed Genes\n"))
 }
 
 .degEachProg <- function(seed,query,verbose =TRUE){
     if(!verbose) return(NULL)
+    cat( paste("===>",seed,"VS",query,"<===","\r"))
+}
+
+.extractTerProg <- function(seed,verbose =TRUE){
+    if(!verbose) return(NULL)
     t <- Sys.time()
-
-    cat( paste(t," Computing DEG for territory",seed,"against territory", query,"\r"))
-
+    cat( paste(t,"Extracting territory",seed,"\n"))
 }
 
 .seg <- function(seg,verbose =TRUE){
     if(!verbose) return(NULL)
     t <- Sys.time()
-    cat( paste(t,"Segmentation Iteration ", seg,"\r"))
+    cat( paste(t," Segmentation Iteration ", seg,"\r"))
 }
 
 .smooth <- function(smooth,verbose =TRUE){
     if(!verbose) return(NULL)
     t <- Sys.time()
-    cat( paste(t,"Smoothing Iteration ", smooth,"\r"))
+    cat( paste(t," Smoothing Iteration ", smooth,"\r"))
 }
 
 .terPool <- function(ter,verbose =TRUE){
     if(!verbose) return(NULL)
     t <- Sys.time()
-    cat( paste(t,"Pooling territory ", ter,"\r"))
+    cat( paste(t," Pooling territory ", ter,"\r"))
 }
 
 .checkCounts <- function(verbose =TRUE){
     if(!verbose) return(NULL)
     t <- Sys.time()
-    widthDisplay<-round(options()$width)
-    bar <- paste0("#", paste0(rep("-",widthDisplay*0.9),collapse=""),"#")
-    cat(bar,"\n")
     cat( paste(t," Checking and extracting Counts \n"))
-
 }
 .seedSelect <- function(verbose =TRUE){
     if(!verbose) return(NULL)
     t <- Sys.time()
-    widthDisplay<-round(options()$width)
-    bar <- paste0("#", paste0(rep("-",widthDisplay*0.9),collapse=""),"#")
-    cat(bar,"\n")
     cat( paste(t," Extracting Seed territories \n"))
-
 }
+
 .querySelect <- function(verbose =TRUE){
     if(!verbose) return(NULL)
     t <- Sys.time()
-    widthDisplay<-round(options()$width)
-    bar <- paste0("#", paste0(rep("-",widthDisplay*0.9),collapse=""),"#")
-    cat(bar,"\n")
     cat( paste(t," Extracting Query territories \n"))
-
+}
+.eq <- function(verbose =TRUE){
+    if(!verbose) return(NULL)
+    t <- Sys.time()
+    cat( paste(t," Equalizing Histogram \n"))
+}
+.rebuildDF <- function(verbose =TRUE){
+    if(!verbose) return(NULL)
+    t <- Sys.time()
+    cat( paste(t," Rebuilding Data Frame from image \n"))
 }

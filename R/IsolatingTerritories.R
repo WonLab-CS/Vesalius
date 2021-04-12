@@ -20,7 +20,8 @@
 #' @return Array or cimg object after bieng smoothed
 smoothArray <- function(img,method = c("median","iso","box"),
                         sigma = 1, box = 20, threshold=0, neuman=TRUE,
-                        gaussian=TRUE,na.rm=FALSE, acrossLevels = "min", iter = 1,verbose = TRUE){
+                        gaussian=TRUE,na.rm=FALSE, acrossLevels = "min",
+                        iter = 1,verbose = TRUE,invert = FALSE){
     #--------------------------------------------------------------------------#
     # Class check
     #--------------------------------------------------------------------------#
@@ -31,6 +32,25 @@ smoothArray <- function(img,method = c("median","iso","box"),
       imgCopy <- img
     }
 
+    if(invert){
+      #------------------------------------------------------------------------#
+      ## This is effing clonky
+      ## Probably need to re work this
+      ## It works but it just sucks that I have to rebuild the whole thing
+      ## Unless.... I "hack" the as.cimg function and add an argument myself?
+      ## That just sounds like a stupid idea with extra steps.
+      #------------------------------------------------------------------------#
+      .invertCols(verbose)
+      imgCopy <- img %>%
+             select(c("x","y","cc","value")) %>%
+             as.cimg %>%
+             as.data.frame
+      nonImg <- paste0(img$x,"_",img$y)
+      inImg <- paste0(imgCopy$x,"_",imgCopy$y)
+      imgCopy[!inImg %in% nonImg,"value"] <- 1
+      imgCopy <- as.cimg(imgCopy)
+    }
+
     #--------------------------------------------------------------------------#
     # Running multiple smoothing itteration
     # TODO change the verbose part to account for multiple signa/box values
@@ -38,7 +58,6 @@ smoothArray <- function(img,method = c("median","iso","box"),
     for(i in seq_len(iter)){
         .smooth(i,verbose)
         for(j in method){
-
           imgCopy <- switch(j,
                             "median" = map_il(box,~medianblur(imgCopy,.,threshold)),
                             "iso" = map_il(sigma,~isoblur(imgCopy,.,neuman,gaussian,na.rm)),
@@ -67,20 +86,50 @@ smoothArray <- function(img,method = c("median","iso","box"),
 
 
 
-equalizeContrast <- function(image, type = "BalanceSimplest",N=1,smax=1,
-                         sleft =1,sright =1,lambda=0.1,up=100, down = 10,range = c(0,1)){
-    img <-image %>% select(c("x","y","cc","value")) %>% as.cimg %>% imsplit("c")
+equalizeHistogram <- function(image, type = "BalanceSimplest",N=1,smax=1,
+                         sleft =1,sright =1,lambda=0.1,up=100, down = 10,
+                         range = c(0,1),invert=FALSE,verbose=TRUE){
+    .simpleBar(verbose)
+    if(invert){
+      #------------------------------------------------------------------------#
+      ## This is effing clonky
+      ## Probably need to re work this
+      ## It works but it just sucks that I have to rebuild the whole thing
+      ## Unless.... I "hack" the as.cimg function and add an argument myself?
+      ## That just sounds like a stupid idea with extra steps.
+      #------------------------------------------------------------------------#
+      .invertCols()
+      img <- image %>%
+             select(c("x","y","cc","value")) %>%
+             as.cimg %>%
+             as.data.frame
+      nonImg <- paste0(image$x,"_",image$y)
+      inImg <- paste0(img$x,"_",img$y)
+      img[!inImg %in% nonImg,"value"] <- 1
+      img <- img %>% as.cimg() %>% imsplit("c")
+    } else {
+      img <-image %>% select(c("x","y","cc","value")) %>% as.cimg %>% imsplit("c")
+    }
+    .eq(verbose)
+    #--------------------------------------------------------------------------#
+    # Equalizing histogram - dpending on the image different methods will
+    # work differently. It worth keeping in mind that these are made and
+    # optimised for real images. BalanceSimplest seems to be the best for our
+    # pseudo images...
+    #--------------------------------------------------------------------------#
     img <- switch(type,
                     "EqualizePiecewise" = lapply(img,EqualizePiecewise,N) %>% imappend("c"),
                     "BalanceSimplest" = lapply(img,BalanceSimplest,sleft,sright,range) %>% imappend("c"),
                     "SPE" = lapply(img,SPE,lambda) %>% imappend("c"),
                     "EqualizeDP"  = lapply(img,EqualizeDP,down,up) %>% imappend("c"),
                     "EqualizeADP" = lapply(img,EqualizeADP) %>% imappend("c"))
+    .rebuildDF(verbose)
     img <- as.data.frame(img)
     img <- right_join(img, image, by  = c("x","y","cc")) %>%
            select(c("barcodes","x","y","cc","value.x","tile")) %>% tibble
 
     colnames(img) <- c("barcodes","x","y","cc","value","tile")
+    .simpleBar(verbose)
     return(img)
 }
 
@@ -115,6 +164,7 @@ iterativeSegmentation.array <- function(img,colDepth = 10,
                                         acrossLevels = "min",
                                         sigma = 1, box = 20, threshold=0, neuman=TRUE,
                                         gaussian=TRUE, useCenter=TRUE, na.rm=FALSE,
+                                        invert = FALSE,
                                         verbose = TRUE){
 
   .simpleBar(verbose)
@@ -142,7 +192,7 @@ iterativeSegmentation.array <- function(img,colDepth = 10,
     img <- smoothArray(img,method =method,sigma = sigma, box = box,
                        threshold=threshold, neuman=neuman, gaussian=gaussian,
                        na.rm=FALSE,acrossLevels=acrossLevels,
-                       iter = smoothIter,verbose=verbose)
+                       iter = smoothIter,invert = invert,verbose=verbose)
 
 
     cat("\n")
@@ -268,6 +318,10 @@ isolateTerritories.array <- function(img, method = c("distance"),
       # Skipping if does not meet min cell requirements
       # filtering can be done later
       #------------------------------------------------------------------------#
+      if(is.null(ter))next()
+      #------------------------------------------------------------------------#
+      # adding territories to each channel
+      #------------------------------------------------------------------------#
       for(j in seq(1,3)){
           img$territory[img$cluster == clust[i] & img$cc == j] <- ter
       }
@@ -318,9 +372,14 @@ isolateTerritories.array <- function(img, method = c("distance"),
     #--------------------------------------------------------------------------#
     # Select center point of each tile for only one channel
     # Dont need to run it for all channels
+    # !!!!! Hot fix - this will need to chnaged upstream !!!!!
+    # it is possible to have a colour cluster that does not have any center beads
+    # This is generally an artifact of smoothing and not using center for the
+    # segmentation. This mainly occurs when colours are inverted
     #--------------------------------------------------------------------------#
-    barcodesInitial <- img$barcodes
+
     imgCopy <- img %>% filter(tile == 1) %>% distinct(barcodes,.keep_all = TRUE)
+    if(nrow(imgCopy)<1){return(NULL)}
 
 
     #--------------------------------------------------------------------------#
@@ -340,6 +399,7 @@ isolateTerritories.array <- function(img, method = c("distance"),
     #--------------------------------------------------------------------------#
     # Buildan actual matrix
     #--------------------------------------------------------------------------#
+
     distanceMatrix <- do.call("rbind",distanceMatrix)
     colnames(distanceMatrix) <- imgCopy$barcodes
     rownames(distanceMatrix) <- imgCopy$barcodes
@@ -417,10 +477,6 @@ isolateTerritories.array <- function(img, method = c("distance"),
 
 
       }
-
-
-
-
       return(allTers)
 }
 
@@ -471,54 +527,6 @@ selectSimilar <- function(image,territory = NULL,threshold = "auto"){
 
 
 
-### Cant remember why I took this approach
-### Lets keep it ultra simple for now
-### Dont create this intermediate object only if required
-extractTerritories <- function(img,seurat,terIdent = NULL,combine = FALSE,
-                               minCell = 10, verbose = TRUE,cores = 1){
-    #--------------------------------------------------------------------------#
-    # if combine is null we consider that we want to have all
-    # territories prepared for clustering analysis
-    #--------------------------------------------------------------------------#
-    if(is.null(terIdent)){
-        territories <- img %>% filter(tile == 1) %>% distinct(barcodes, .keep_all = FALSE)
-        territories <- split(territories, territories$territory)
-        #----------------------------------------------------------------------#
-        # Revert back to fine grain if inage array was reduced
-        #----------------------------------------------------------------------#
-        #territories <- parallel::mclapply(territories,.fineGrain,minCell,mc.cores = cores)
-        #territories <- territories[!sapply(territories,is.null)]
-        cells <- sapply(territories,nrow) > minCell
-        territories <- territorries[cells]
-        territories <- lapply(territories,"$",territory)
-        territories <- parallel::mclapply(territories,.subSetTerritories,seurat,mc.cores= cores)
-        return(territories)
-    } else {
-        #----------------------------------------------------------------------#
-        # Filtering only the barcodes that are in the territories of interest
-        # To ADD check for combine - numeric values
-        #----------------------------------------------------------------------#
-        territories <- img %>% filter(tile==1 & territory %in% terIdent)%>%
-                       distinct(barcodes, .keep_all = FALSE)
-        territories <- territories$barcodes
-        #----------------------------------------------------------------------#
-        # Revert back to fine graind and return null if territory does not
-        # Conatin enough cells - in this case throw in a warning
-        #----------------------------------------------------------------------#
-        #territories <- .fineGrain(territories,minCell)
-
-        if(length(territories) < minCell){
-
-            warning("Territory selection does not contain enough cells - NULL returned")
-            return(NULL)
-        }else{
-            territories <- .subSetTerritories(territories,seurat)
-            return(territories)
-        }
-    }
-
-
-}
 
 .fineGrain <- function(territories,minCell,combine =FALSE){
     ### To be removed ? might not be worthwhile to keep this section
@@ -551,16 +559,7 @@ extractTerritories <- function(img,seurat,terIdent = NULL,combine = FALSE,
 
 }
 
-.subSetTerritories <- function(territories,seurat){
-    #--------------------------------------------------------------------------#
-    # Simplified version for now
-    # It might be worth while getting away from seurat later
-    # essentially this is a template function
-    #--------------------------------------------------------------------------#
 
-    seurat <- subset(seurat, cells = territories)
-    return(seurat)
-}
 
 
 addTerritories <- function(dat,coordinates = NULL, global = TRUE){

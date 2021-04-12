@@ -29,18 +29,20 @@
 rgbPCA<- function(slide,SO,slices = 1,adjusted = FALSE,rgbWeight=FALSE,countWeight = FALSE, conserveSparse = TRUE, trim = 0){
 
 
-
+    .simpleBar(verbose)
     #--------------------------------------------------------------------------#
     # Sparse matrices are more memory efficient but also slower
     #--------------------------------------------------------------------------#
     if(!conserveSparse){
+        .consSparse(verbose)
         slide <- as.matrix(slide)
     }
 
     #--------------------------------------------------------------------------#
     # PCA from seurat
     #--------------------------------------------------------------------------#
-    pca <- RunPCA(SO,npcs = slices*3)
+    .pca(verbose,slices)
+    pca <- RunPCA(SO,npcs = slices*3,verbose =FALSE)
 
     image_slice <- vector("list",slices)
     slice_start <- seq(1,slices*3,by=3)
@@ -57,6 +59,7 @@ rgbPCA<- function(slide,SO,slices = 1,adjusted = FALSE,rgbWeight=FALSE,countWeig
       loadings <-Loadings(pca[["pca"]])[,seq(slice_start[sl], slice_start[sl]+2)]
 
       if(rgbWeight){
+        .pcadj(verbose,sl)
         varPerPC <- apply(loadings,2,var)
         varPerPC <- varPerPC /sum(varPerPC)
       }
@@ -68,6 +71,7 @@ rgbPCA<- function(slide,SO,slices = 1,adjusted = FALSE,rgbWeight=FALSE,countWeig
       # RGB conversion
       rgb <- vector("list", 3)
       names(rgb) <- c("R","G","B")
+      .rgb(verbose,sl)
       #------------------------------------------------------------------------#
       # Going through each colour
       #------------------------------------------------------------------------#
@@ -96,6 +100,7 @@ rgbPCA<- function(slide,SO,slices = 1,adjusted = FALSE,rgbWeight=FALSE,countWeig
              # Generally There is very little difference
              #-----------------------------------------------------------------#
                if(countWeight){
+
                   gcount <- slide[slide[,j]!=0,j]
                   gcount <- gcount[!is.na(match(genes,names(cs)))]
 
@@ -113,6 +118,7 @@ rgbPCA<- function(slide,SO,slices = 1,adjusted = FALSE,rgbWeight=FALSE,countWeig
       #------------------------------------------------------------------------#
       ## Normalising RGB channels
       #------------------------------------------------------------------------#
+      .norm(verbose)
       rgb <- lapply(rgb, function(x){
                     x <- (x - min(x)) / (max(x) - min(x))
                     return(x)
@@ -121,6 +127,7 @@ rgbPCA<- function(slide,SO,slices = 1,adjusted = FALSE,rgbWeight=FALSE,countWeig
       # adjusted RGB colour - NOT THE SAME AS THE WEIGHTED PC
       #------------------------------------------------------------------------#
       if(adjusted){
+          .adj(verbose)
           sums <- sapply(seq_along(rgb[[1]]), function(idx,rgb){
                           return(sum(rgb[[1]][idx],
                                      rgb[[2]][idx],
@@ -134,6 +141,7 @@ rgbPCA<- function(slide,SO,slices = 1,adjusted = FALSE,rgbWeight=FALSE,countWeig
       # Weighted colours based on PC variance
       #------------------------------------------------------------------------#
       if(rgbWeight){
+
           for(i in seq_along(rgb)){
             rgb[[i]] <- rgb[[i]] * varPerPC[i]
           }
@@ -147,6 +155,7 @@ rgbPCA<- function(slide,SO,slices = 1,adjusted = FALSE,rgbWeight=FALSE,countWeig
     # Level 2 : each list element is R G B channel for that slice
     # Level 3 : numeric vectors containing colour code for each barcode
     #--------------------------------------------------------------------------#
+    .simpleBar(verbose)
     return(image_slice)
 }
 
@@ -283,6 +292,7 @@ assingRGBtoPixelQuickBlock <- function(rgb, coordinates,resolution = 200,drop =T
 buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,
                             resolution = 100,filterThreshold=0.999,interpolation_type =2,
                             cores=1, verbose = TRUE){
+    .simpleBar(verbose)
   #----------------------------------------------------------------------------#
   # Class checks - this will be removed once S4 classes are functional
   #----------------------------------------------------------------------------#
@@ -417,6 +427,7 @@ buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,
       .res(verbose)
       allIdx <- .resShift(allIdx, resolution,interpolation_type,na.rm)
   }
+  .simpleBar(verbose)
   return(allIdx)
 
 }

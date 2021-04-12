@@ -56,6 +56,7 @@ extractAllMarkers <- function(territories,counts, method = "wilcox",
 ### But if needed I can implement it - if required and asked for
 extractMarkers <- function(territories,counts,seedTer = NULL,queryTer = NULL, method = "wilcox",
   logFC = 0.25, pval = 0.05,minPct = 0.05,minCell = 10,verbose=TRUE){
+    .simpleBar(verbose)
     .checkCounts(verbose)
     #--------------------------------------------------------------------------#
     # Check class of counts and determine approach based on that
@@ -91,6 +92,7 @@ extractMarkers <- function(territories,counts,seedTer = NULL,queryTer = NULL, me
     #--------------------------------------------------------------------------#
     # running grouped analysis for DEG
     #--------------------------------------------------------------------------#
+    .degProg(verbose)
     markers <- .VesaliusDEG.grouped(counts,seed,query,
                 logFC,pval,minPct,minCell,method,verbose)
     cat("\n")
@@ -117,7 +119,7 @@ extractMarkers <- function(territories,counts,seedTer = NULL,queryTer = NULL, me
     #--------------------------------------------------------------------------#
     # Next if between == TRUE we want to compare territories between each other
     #--------------------------------------------------------------------------#
-    .simpleBar(verbose)
+
     if(between){
         territories <- .VesaliusDEG.each(territories,counts,logFC,
                                          pval,minPct,minCell,method,verbose,cores)
@@ -217,7 +219,7 @@ extractMarkers <- function(territories,counts,seedTer = NULL,queryTer = NULL, me
     #--------------------------------------------------------------------------#
     # rebuilding data.frame and filtering p values
     #--------------------------------------------------------------------------#
-    deg <- tibble("genes" = genes,"p.value" = deg,"seedPct" = seedPct,
+    deg <- tibble("genes" = genes,"p.value" = deg,"p.value.adj" = p.adjust(deg),"seedPct" = seedPct,
                   "queryPct" = queryPct,"logFC" = FC,
                   "seedTerritory" = rep(seedID,length(deg)),
                   "queryTerritory" = rep(ter,length(deg)))
@@ -327,7 +329,8 @@ extractMarkers <- function(territories,counts,seedTer = NULL,queryTer = NULL, me
     #--------------------------------------------------------------------------#
     # rebuilding data.frame and filtering p values
     #--------------------------------------------------------------------------#
-    deg <- tibble("genes" = genes,"p.value" = deg,"seedPct" = seedPct,
+    deg <- tibble("genes" = genes,"p.value" = deg,"p.value.adj" = p.adjust(deg),
+                  "seedPct" = seedPct,
                   "queryPct" = queryPct,"logFC" = FC,
                   "seedTerritory" = rep(seedID,length(deg)),
                   "queryTerritory" = rep(ter,length(deg)))
@@ -341,7 +344,7 @@ extractMarkers <- function(territories,counts,seedTer = NULL,queryTer = NULL, me
     #--------------------------------------------------------------------------#
     # Selecting territories from counts - All = Against all
     #--------------------------------------------------------------------------#
-    .degAllProg(unique(territory$territory),verbose)
+    .degEachProg(unique(territory$territory),"All",verbose)
     seed <- counts[,colnames(counts) %in% territory$barcodes]
     query <- counts[,!colnames(counts) %in% territory$barcodes]
 
@@ -410,7 +413,8 @@ extractMarkers <- function(territories,counts,seedTer = NULL,queryTer = NULL, me
     #--------------------------------------------------------------------------#
     # rebuilding data.frame
     #--------------------------------------------------------------------------#
-    deg <- tibble("genes" = genes,"p.value" = deg,"seedPct" = seedPct,
+    deg <- tibble("genes" = genes,"p.value" = deg,
+                  "p.value.adj" = p.adjust(deg),"seedPct" = seedPct,
                   "queryPct" = queryPct,"logFC" = FC,
                   "seedTerritory" = territory,
                   "queryTerritory" = rep("all",length(deg)))
@@ -482,3 +486,131 @@ extractMarkers <- function(territories,counts,seedTer = NULL,queryTer = NULL, me
     counts <- counts[,cells]
     return(counts)
 }
+
+
+### Cant remember why I took this approach
+### Lets keep it ultra simple for now
+### Dont create this intermediate object only if required
+extractTerritories <- function(img,seurat,terIdent = NULL,combine = FALSE,
+                               minCell = 10, verbose = TRUE,cores = 1){
+    .simpleBar(verbose)
+    #--------------------------------------------------------------------------#
+    # if combine is null we consider that we want to have all
+    # territories prepared for clustering analysis
+    #--------------------------------------------------------------------------#
+    if(is.null(terIdent)){
+        .extractTerProg("all",verbose)
+        territories <- img %>% filter(tile == 1) %>% distinct(barcodes, .keep_all = FALSE)
+        territories <- split(territories, territories$territory)
+        #----------------------------------------------------------------------#
+        # Revert back to fine grain if inage array was reduced
+        #----------------------------------------------------------------------#
+        #territories <- parallel::mclapply(territories,.fineGrain,minCell,mc.cores = cores)
+        #territories <- territories[!sapply(territories,is.null)]
+        cells <- sapply(territories,nrow) > minCell
+        territories <- territorries[cells]
+        territories <- lapply(territories,"$",territory)
+        territories <- parallel::mclapply(territories,.subSetTerritories,seurat,mc.cores= cores)
+        .simpleBar(verbose)
+        return(territories)
+    } else {
+        #----------------------------------------------------------------------#
+        # Filtering only the barcodes that are in the territories of interest
+        # To ADD check for combine - numeric values
+        #----------------------------------------------------------------------#
+        territories <- img %>% filter(tile==1 & territory %in% terIdent)%>%
+                       distinct(barcodes, .keep_all = FALSE)
+        .extractTerProg(terIdent,verbose)
+        territories <- territories$barcodes
+
+        #----------------------------------------------------------------------#
+        # Revert back to fine graind and return null if territory does not
+        # Contain enough cells - in this case throw in a warning
+        #----------------------------------------------------------------------#
+        #territories <- .fineGrain(territories,minCell)
+
+        if(length(territories) < minCell){
+
+            warning("Territory selection does not contain enough cells - NULL returned",
+                  immediate. = TRUE)
+            .simpleBar(verbose)
+            return(NULL)
+        }else{
+
+            territories <- .subSetTerritories(territories,seurat)
+            .simpleBar(verbose)
+            return(territories)
+        }
+    }
+
+
+}
+
+
+.subSetTerritories <- function(territories,seurat){
+    #--------------------------------------------------------------------------#
+    # Simplified version for now
+    # It might be worth while getting away from seurat later
+    # essentially this is a template function
+    #--------------------------------------------------------------------------#
+
+    seurat <- subset(seurat, cells = territories)
+    return(seurat)
+}
+
+compareClusters <- function(ref,seedCluster,queryCluster,seed = NULL,query = NULL,method = "wilcox",
+  logFC = 0.25, pval = 0.05,minPct = 0.05,minCell = 10,verbose=TRUE){
+      .simpleBar(verbose)
+      #------------------------------------------------------------------------#
+      # First let's set up seed cells
+      # For now we will consider that if seed is null then you want to compare
+      # to everything. That is the same as comparing territories
+      #------------------------------------------------------------------------#
+      .seedSelect(verbose)
+      if(!is.null(seed)){
+        seedCluster <- FetchData(seedCluster,c("seurat_clusters")) %>% filter(seurat_clusters %in% seed)
+      } else {
+        seedCluster <- FetchData(seedCluster,c("seurat_clusters"))
+      }
+
+      seedCluster <- data.frame(rownames(seedCluster),seedCluster)
+      colnames(seedCluster) <- c("barcodes","territory")
+      #------------------------------------------------------------------------#
+      # Same thing with query cells
+      # For now we will consider that if seed is null then you want to compare
+      # to everything. That is the same as comparing territories
+      #------------------------------------------------------------------------#
+      .querySelect(verbose)
+      if(!is.null(query)){
+          queryCluster <- FetchData(queryCluster,c("seurat_clusters")) %>% filter(seurat_clusters %in% query)
+      } else {
+          queryCluster <- FetchData(queryCluster,c("seurat_clusters"))
+      }
+
+      queryCluster <- data.frame(rownames(queryCluster),queryCluster)
+      colnames(queryCluster) <- c("barcodes","territory")
+      #------------------------------------------------------------------------#
+      # Now we can subset the refence
+      # First we check if it is seurat or count matrix
+      #------------------------------------------------------------------------#
+      .checkCounts(verbose)
+      if(is(ref) == "Seurat"){
+          if(DefaultAssay(ref) == "Spatial"){
+              ref <- ref@assays$Spatial@counts
+          } else if(DefaultAssay(ref) == "SCT"){
+              ref <- ref@assays$SCT@counts
+          }
+      }
+      #------------------------------------------------------------------------#
+      # get counts for seed and query
+      #------------------------------------------------------------------------#
+      .degProg(verbose)
+      deg<- .VesaliusDEG.grouped(counts =ref,seedTer =seedCluster,
+                                 queryTer = queryCluster,
+                                 logFC= logFC,pval = pval,
+                                 minPct = minPct,minCell = minCell,method=method,
+                                 verbose = verbose)
+      cat("\n")
+      .simpleBar(verbose)
+      return(deg)
+  }
