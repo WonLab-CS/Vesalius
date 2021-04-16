@@ -561,7 +561,7 @@ selectSimilar <- function(image,territory = NULL,threshold = "auto"){
 
 
 
-
+### might be dropped in final version
 addTerritories <- function(dat,coordinates = NULL, global = TRUE){
 
     ters <- names(dat)
@@ -594,19 +594,96 @@ addTerritories <- function(dat,coordinates = NULL, global = TRUE){
 
 
 
-extractLayers <- function(image,territory = NULL,layerDepth = 1,concavity=1,length_threshold=0){
-    layer <- list()
-    if(is.null(territory)){
-        # to add
-        # loop over all territories
-    } else {
-        ter <- image %>% filter(territory %in% territory)
-        edge <- concaveman::concaveman(as.matrix(ter[,c("x","y")]),
-                            concavity,length_threshold)
-        edge <- paste0(edge[,1],edge[,2],sep = "_")
-        points <- paste0(ter$x,ter$y,sep = "_")
-        edge <- points %in% edge
-        #layer
+layerTerritory <- function(image,seedTerritory = NULL,layerDepth = 2,concavity=1,
+  length_threshold=0, dilationFactor = 3,captureRadius=0.2,minCell = 10, verbose =TRUE){
+
+    .simpleBar(verbose)
+
+    #--------------------------------------------------------------------------#
+    # Get pixels that are part of that territory
+    #--------------------------------------------------------------------------#
+    .seedSelect(verbose)
+    ter <- image %>% filter(territory %in% seedTerritory)
+    image <- filter(image,cc == 1)
+
+    #--------------------------------------------------------------------------#
+    # Splitting territory if it consists of multiple sub territories
+    # Otherwise the concave hulling parameters become tricky to tune
+    # not ideal - will need to fix and improve
+    #--------------------------------------------------------------------------#
+
+    pooled <- isolateTerritories.array(ter, method = c("distance"),
+                                         captureRadius = captureRadius,global=TRUE,
+                                         minCell = minCell,verbose =FALSE)
+    colnames(pooled)[colnames(pooled) == "territory"] <- "subTerritory"
+
+    pooled <- split(pooled, pooled$subTerritory)
+
+    for(te in seq_along(pooled)){
+      layer <- list()
+      #------------------------------------------------------------------------#
+      # Next for convenience we will convert to grey scale and dillate
+      # as Default lets set dillation to 3 pixels
+      #------------------------------------------------------------------------#
+      .dilate(verbose)
+      ter <- pooled[[te]]
+      ter <- ter %>% select(c("x","y","cc","value")) %>%
+             as.cimg %>% grayscale %>% grow(dilationFactor)
+      #------------------------------------------------------------------------#
+      # Once we have dilated we can start iterative layayering
+      # We will do this on tile centers and that is what we really care about
+      # First let's convert back to a data frame and add back the barcodes and what
+      #not
+      #------------------------------------------------------------------------#
+      .rebuildDF(verbose)
+
+      ter <- as.data.frame(ter)
+      ter <- right_join(ter,pooled[[te]],by = c("x","y"))
+      ter <- inner_join(ter, image,by = c("x","y")) %>%
+             select(c("barcodes.x","x","y","cluster.x","territory","subTerritory","tile.y"))
+      colnames(ter) <-c("barcodes","x","y","cluster","territory","subTerritory","tile")
+      ter <- ter %>% filter(tile == 1)
+
+      #------------------------------------------------------------------------#
+      # Next we will iteratively pool beads into single layers
+      #------------------------------------------------------------------------#
+      .layerTer(verbose)
+      counter <- 1
+
+      while(nrow(ter)>0){
+          edge <- concaveman::concaveman(as.matrix(ter[,c("x","y")]),
+                                concavity,length_threshold)
+          colnames(edge) <- c("x","y")
+          edge <- inner_join(as.data.frame(edge), ter, by = c("x","y"))
+          edge$layer <- counter
+          ter <- filter(ter,!barcodes %in% edge$barcodes)
+          layer[[counter]] <- edge
+
+          counter <- counter +1
+      }
+      layer <- do.call("rbind",layer)
+      #------------------------------------------------------------------------#
+      # Now we can pool layers together to equal the desired layer number
+      # with a few checks for the number of layers
+      #------------------------------------------------------------------------#
+      layers <- unique(layer$layer)
+      if(length(layers) < layerDepth){
+          warning("Layer depth exceeds layers in Territory - using layers in territories", immediate. = TRUE)
+
+      } else {
+          idx <- floor(seq(1,length(layers), length.out = layerDepth +1))
+          for(i in seq(1,length.out = layerDepth)){
+              layer$layer[layer$layer %in% seq(idx[i], idx[i+1])] <- i
+          }
+      }
+      pooled[[te]] <- layer
 
     }
+    
+    pooled <- do.call("rbind", pooled)
+
+    .simpleBar(verbose)
+    return(pooled)
+
+
 }
