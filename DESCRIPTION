@@ -18,6 +18,7 @@ Collate: FindNN.R
     Prog.R
     Territory_identity.R
     viz.R
+    spatialClustering.R
 Depends: R (>= 3.5.0),
     methods,
     parallel,
@@ -30,7 +31,8 @@ Depends: R (>= 3.5.0),
     concaveman,
     sp,
     ggplot2,
-    imagerExtra
+    imagerExtra,
+    tvR
 Imports:
     grDevices,
     graphics,

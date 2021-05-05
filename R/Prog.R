@@ -64,6 +64,12 @@
     cat( paste(t," Resizing Image \n"))
 }
 
+.reg <- function(verbose =TRUE){
+    if(!verbose) return(NULL)
+    t <- Sys.time()
+    cat( paste(t," Regularising Image \n"))
+}
+
 
 .distanceBeads <- function(verbose =TRUE){
     if(!verbose) return(NULL)
@@ -87,6 +93,11 @@
     if(!verbose) return(NULL)
     t <- Sys.time()
     cat( paste(t," Filtering Triangles that exceed area threshold\n"))
+}
+.findCenter <- function(verbose =TRUE){
+    if(!verbose) return(NULL)
+    t <- Sys.time()
+    cat( paste(t," Finding Tile centers in image\n"))
 }
 
 

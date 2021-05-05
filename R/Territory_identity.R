@@ -264,6 +264,7 @@ extractMarkers <- function(territories,counts,seedTer = NULL,queryTer = NULL, me
     #--------------------------------------------------------------------------#
     # Don't need to subset seed as it has already been done
     # subset the query variable
+    # TO SANATISE! REFACTOR THE SHIT OUT OF THIS
     #--------------------------------------------------------------------------#
     .degEachProg(seedID,ter,verbose)
     seed <- counts[,colnames(counts) %in% seed[[seedID]]$barcodes]
@@ -612,5 +613,62 @@ compareClusters <- function(ref,seedCluster,queryCluster,seed = NULL,query = NUL
                                  verbose = verbose)
       cat("\n")
       .simpleBar(verbose)
+      return(deg)
+  }
+
+
+  compareLayers <- function(layers,counts,l1 = NULL, l2 = NULL, method = "wilcox",
+    logFC = 0.25, pval = 0.05,minPct = 0.05,minCell = 10,verbose=TRUE){
+      #------------------------------------------------------------------------#
+      # Ayo now we comapre layers
+      # First thing is to get layers so lets start with layer 1
+      #------------------------------------------------------------------------#
+      if(!is.null(l1)){
+
+          l1 <- list(filter(layers, layer %in% l1))
+
+      } else {
+
+          l1 <- split(layers,layers$layer)
+      }
+      #------------------------------------------------------------------------#
+      # Get layer 2
+      #------------------------------------------------------------------------#
+      if(!is.null(l2)){
+
+          l2 <- list(filter(layers, layer %in% l2))
+      } else {
+
+          l2 <- split(layers,layers$layer)
+      }
+      #------------------------------------------------------------------------#
+      # Prep counts for deg
+      #------------------------------------------------------------------------#
+      .checkCounts(verbose)
+      if(is(counts) == "Seurat"){
+          if(DefaultAssay(counts) == "Spatial"){
+              counts <- counts@assays$Spatial@counts
+          } else if(DefaultAssay(ref) == "SCT"){
+              counts <- counts@assays$SCT@counts
+          }
+      }
+      #------------------------------------------------------------------------#
+      # Now we can loop over layers
+      #------------------------------------------------------------------------#
+      deg <- vector("list", length(l1) * length(l2))
+      counter <- 1
+      for(i in seq_along(l1)){
+          for(j in seq_along(l2)){
+              #TODO change when DEG functions are refactored
+              ## This sucks - it is so messy
+              
+              deg[[counter]] <- .VesaliusDEG.int(j,l2,l1,i,
+                                                method = method,counts =counts,
+                                                logFC=logFC,pval = pval,
+                                                minPct= minPct,minCell=minCell,
+                                                verbose=verbose)
+          }
+      }
+      deg <- do.call("rbind",deg)
       return(deg)
   }

@@ -122,7 +122,8 @@ equalizeHistogram <- function(image, type = "BalanceSimplest",N=1,smax=1,
                     "BalanceSimplest" = lapply(img,BalanceSimplest,sleft,sright,range) %>% imappend("c"),
                     "SPE" = lapply(img,SPE,lambda) %>% imappend("c"),
                     "EqualizeDP"  = lapply(img,EqualizeDP,down,up) %>% imappend("c"),
-                    "EqualizeADP" = lapply(img,EqualizeADP) %>% imappend("c"))
+                    "EqualizeADP" = lapply(img,EqualizeADP) %>% imappend("c"),
+                    "ECDF" = lapply(img,ecdf.eq) %>% imappend("c"))
     .rebuildDF(verbose)
     img <- as.data.frame(img)
     img <- right_join(img, image, by  = c("x","y","cc")) %>%
@@ -133,8 +134,10 @@ equalizeHistogram <- function(image, type = "BalanceSimplest",N=1,smax=1,
     return(img)
 }
 
-## Have to run them internally
 
+ecdf.eq <- function(im){
+   return(as.cimg(ecdf(im)(im),dim=dim(im)))
+}
 
 
 #' iterativeSegmentation - collapse and smooth points into colour startingSegements
@@ -200,9 +203,6 @@ iterativeSegmentation.array <- function(img,colDepth = 10,
     cat("\n")
     if(useCenter){
       tmpImg <- img %>% filter(tile == 1) %>% group_by(cc) %>% distinct(barcodes,.keep_all = TRUE)
-      #tmpImg <- tmpImg %>% group_by(cc) %>%
-      #          mutate(cluster = .intKmeans(value,colDepth[j],cluster = TRUE),
-      #                 Kcenters = .intKmeans(value,colDepth[j],cluster = FALSE))
 
       #--------------------------------------------------------------------------#
       # clustering with each colour together
@@ -223,8 +223,7 @@ iterativeSegmentation.array <- function(img,colDepth = 10,
           tmpImg$cluster[tmpImg$cc == i] <- cluster
           tmpImg$value[tmpImg$cc == i] <- Kcenters[cluster,i]
       }
-      #tmpImg <- tmpImg%>% group_by(cc,cluster) %>%
-      #          mutate(value = Kcenters)
+              mutate(value = Kcenters)
 
       #--------------------------------------------------------------------------#
       # Replacing values in original image
@@ -240,6 +239,7 @@ iterativeSegmentation.array <- function(img,colDepth = 10,
                             colours$value[colours$cc ==2],
                             colours$value[colours$cc ==3])
       km <- kmeans(colours,colDepth[j],iter.max = 200,nstart = 10)
+
       cluster <- km$cluster
       Kcenters <- km$centers
       img$cluster <- 0
@@ -248,6 +248,10 @@ iterativeSegmentation.array <- function(img,colDepth = 10,
           img$cluster[img$cc == i] <- cluster
           img$value[img$cc == i] <- Kcenters[cluster,i]
       }
+      img <- img %>% group_by(cc,barcodes) %>%
+           mutate(value = mean(value),cluster = .top_cluster(cluster)) %>%
+           ungroup
+
     }
   }
 
@@ -263,6 +267,12 @@ iterativeSegmentation.array <- function(img,colDepth = 10,
       k <- as.vector(k$centers)[k$cluster]
     }
     return(k)
+}
+
+.top_cluster <- function(cluster){
+    top <- table(cluster)
+    top <- names(top)[order(top, decreasing = T)]
+    return(as.numeric(top[1]))
 }
 
 
@@ -308,6 +318,7 @@ isolateTerritories.array <- function(img, method = c("distance"),
       # Might not be worthwile to implement them
       # Argument could be removed
       #------------------------------------------------------------------------#
+
       tmp <- filter(img,cluster == clust[i] & cc == 1)
 
       ter <- switch(method[1L],
@@ -594,7 +605,7 @@ addTerritories <- function(dat,coordinates = NULL, global = TRUE){
 
 
 
-layerTerritory <- function(image,seedTerritory = NULL,layerDepth = 2,concavity=1,
+layerTerritory.concave <- function(image,seedTerritory = NULL,layerDepth = NULL,concavity=1,
   length_threshold=0, dilationFactor = 3,captureRadius=0.2,minCell = 10, verbose =TRUE){
 
     .simpleBar(verbose)
@@ -667,23 +678,151 @@ layerTerritory <- function(image,seedTerritory = NULL,layerDepth = 2,concavity=1
       # with a few checks for the number of layers
       #------------------------------------------------------------------------#
       layers <- unique(layer$layer)
-      if(length(layers) < layerDepth){
-          warning("Layer depth exceeds layers in Territory - using layers in territories", immediate. = TRUE)
+      if(!is.null(layerDepth)){
+          if(length(layers) < layerDepth){
+              warning("Layer depth exceeds layers in Territory - using layers in territories", immediate. = TRUE)
 
-      } else {
-          idx <- floor(seq(1,length(layers), length.out = layerDepth +1))
-          for(i in seq(1,length.out = layerDepth)){
-              layer$layer[layer$layer %in% seq(idx[i], idx[i+1])] <- i
+          } else {
+              idx <- floor(seq(1,length(layers), length.out = layerDepth +1))
+              for(i in seq(1,length.out = layerDepth)){
+                  layer$layer[layer$layer %in% seq(idx[i], idx[i+1])] <- i
+              }
           }
       }
+
       pooled[[te]] <- layer
 
     }
-    
+
     pooled <- do.call("rbind", pooled)
 
     .simpleBar(verbose)
     return(pooled)
 
 
+}
+
+
+layerTerritory.edge <- function(image,seedTerritory = NULL,layerDepth = NULL,
+  dilationFactor = 3,verbose =TRUE){
+
+    .simpleBar(verbose)
+
+    #--------------------------------------------------------------------------#
+    # Get pixels that are part of that territory
+    # and prepare df for image transformations
+    # adding extra layer so we don't loose any information
+    # There is a whole lot of empty space but I'll keep for Now
+    # Removing it is trivial but I need the original coordinates and barcodes
+    # I will use the dilaltion factor as a way of expanding the image
+    # Initial image set up
+    #--------------------------------------------------------------------------#
+    .seedSelect(verbose)
+    ter <- image %>% filter(territory %in% seedTerritory) %>% mutate(value=1)
+    dilationFactor <- ifelse(dilationFactor <= 0,1,dilationFactor)
+    ymin <- ifelse((min(ter$y) - dilationFactor *2) <=0,1,min(ter$y) - dilationFactor *2)
+    xmin <- ifelse((min(ter$x) - dilationFactor *2) <=0,1,min(ter$x) - dilationFactor *2)
+    ymax <- max(ter$y) + dilationFactor * 2
+    xmax <- max(ter$x) + dilationFactor * 2
+
+
+    #--------------------------------------------------------------------------#
+    # Dilate territory to ensure that we cover the outer layers as well
+    #--------------------------------------------------------------------------#
+    .dilate(verbose)
+    terTmp <- ter %>% select(c("x","y","cc","value")) %>%
+              rbind(.,c(xmin,ymin,1,0),c(xmax,ymax,1,0)) %>%
+              as.cimg %>% grayscale() %>% grow(dilationFactor)
+
+    terForLoop <- terTmp %>% as.data.frame()
+
+    terForLoop <- inner_join(terForLoop,image,by = c("x","y"))%>%
+           select(c("barcodes","x","y","cc.y","z","tile","cluster","territory"))%>%
+           filter(cc.y ==1)
+    colnames(terForLoop) <- c("barcodes","x","y","cc","value","tile","cluster","territory")
+    ter <- terForLoop
+    colnames(ter) <- c("barcodes","x","y","cc","value","tile","cluster","territory")
+
+
+    #--------------------------------------------------------------------------#
+    # Now we can get edges of shape and compare this to tiles
+    # and pool this "edge" into layers
+    #--------------------------------------------------------------------------#
+
+    .layerTer(verbose)
+    counter <- 1
+    layer <- list()
+    while(nrow(terForLoop)>0){
+      grad <- terTmp  %>%
+              imgradient("xy") %>%
+              enorm() %>%
+              add() %>%
+              sqrt() %>%
+              grow(1) %>%
+              as.cimg() %>%
+              as.data.frame() %>%
+              filter(value >0)
+      #------------------------------------------------------------------------#
+      # getting barcodes from territory
+      #------------------------------------------------------------------------#
+
+      edge <- inner_join(grad,terForLoop, by = c("x","y")) %>%
+                        select(c("barcodes"))
+
+      #------------------------------------------------------------------------#
+      # Resizing ter - removing barcodes that are part of the edge
+      #------------------------------------------------------------------------#
+
+      terForLoop <- filter(terForLoop, !barcodes %in% unique(edge$barcodes))
+
+      #------------------------------------------------------------------------#
+      # Rebuilding an image but adding a little extra space
+      #------------------------------------------------------------------------#
+      if(nrow(terForLoop)>0){
+      ymin <- ifelse((min(terForLoop$y) - dilationFactor *2) <=0,1,min(terForLoop$y) - dilationFactor *2)
+      xmin <- ifelse((min(terForLoop$x) - dilationFactor *2) <=0,1,min(terForLoop$x) - dilationFactor *2)
+      ymax <- max(terForLoop$y) + dilationFactor * 2
+      xmax <- max(terForLoop$x) + dilationFactor * 2
+
+      terTmp <- terForLoop %>% select(c("x","y","cc","value")) %>%
+                rbind(.,c(xmin,ymin,1,0),c(xmax,ymax,1,0)) %>%
+                as.cimg
+      }
+      #------------------------------------------------------------------------#
+      # Adding edge to layer list and counting up
+      #------------------------------------------------------------------------#
+      layer[[counter]] <- unique(edge$barcodes)
+      counter <- counter +1
+
+    }
+
+    #--------------------------------------------------------------------------#
+    # Now we can add the layers to the original territory
+    # A rename layer if required
+    #--------------------------------------------------------------------------#
+
+    ter$layer <-0
+    for(lay in seq_along(layer)){
+
+        ter$layer[ter$barcodes %in% layer[[lay]]] <- lay
+    }
+
+    #--------------------------------------------------------------------------#
+    # Finally we can split the different layers if we want to combine
+    #--------------------------------------------------------------------------#
+    layers <- unique(ter$layer)
+    if(!is.null(layerDepth)){
+        if(length(layers) < layerDepth){
+            warning("Layer depth exceeds layers in Territory - using layers in territories", immediate. = TRUE)
+
+        } else {
+            idx <- floor(seq(1,length(layers), length.out = layerDepth +1))
+            for(i in seq(1,length.out = layerDepth)){
+                ter$layer[ter$layer %in% seq(idx[i], idx[i+1])] <- i
+            }
+        }
+    }
+    .simpleBar(verbose)
+
+    return(ter)
 }

@@ -339,16 +339,6 @@ buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,
   }
 
 
-  #if(resolution <1){
-  #  .res(verbose)
-  #  widthX <- max(coordinates$xcoord) - min(coordinates$xcoord) + 1
-  #  widthY <- max(coordinates$ycoord) - min(coordinates$ycoord) + 1
-
-  #  xbox <- round(seq(min(coordinates$xcoord),max(coordinates$xcoord), length.out = widthX * resolution))
-  #  ybox <- round(seq(min(coordinates$ycoord),max(coordinates$ycoord), length.out = widthY * resolution))
-    ## Testing new version might need to remove the section above
-    #coordinates <- .resShift(coordinates,xbox,ybox,cores)
-  #}
 
 
 
@@ -370,6 +360,7 @@ buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,
     }, coordinates, mc.cores=cores)
     minDist <- unlist(minDist)
     distanceThrehsold <- quantile(minDist,filterThreshold)
+
     coordinates <- coordinates[minDist <= distanceThrehsold,]
   }
 
@@ -408,8 +399,12 @@ buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,
   # Filtering triangle that exceed max tile size
   #----------------------------------------------------------------------------#
 
-  .filter(verbose)
-  allIdx <- .filterTriangle(allIdx,filterThreshold)
+
+  allIdx <- .imageBuild(allIdx,filterThreshold,verbose)
+
+
+  #.findCenter(verbose)
+  #allIdx <- .findTileCenters(allIdx,ogCoord)
   #----------------------------------------------------------------------------#
   # Rebuilding new cooirdinates based on tesselation borders
   # cooridinates are shifted for both tesselation cooridantes and starting coord
@@ -420,6 +415,7 @@ buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,
 
   allIdx <- mutate(allIdx, x = x -lpx +1,y=y-lpy +1) %>%
             tibble
+
   #----------------------------------------------------------------------------#
   # Decreasing reolsution
   #----------------------------------------------------------------------------#
@@ -434,28 +430,30 @@ buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,
 
 
 
-.resShift <- function(image, resolution = 50,interpolation_type = 1,na.rm=TRUE){
+.resShift <- function(image,resolution = 50,interpolation_type = 1,na.rm=TRUE){
   #----------------------------------------------------------------------------#
   # Converting image back image for resizing
   # Here we are using the imager function as the intrapolation is already
   # optimised and also provides a few different ways of doing so
+  # NOTE testing regularisation - will need to integrate a bit better
   #----------------------------------------------------------------------------#
 
   img <- as.cimg(select(image, c("x", "y", "cc", "value")))
-  img <- resize(img,size_x = -(50),
-                    size_y = -(50),
+  img <- resize(img,size_x = -(resolution),
+                    size_y = -(resolution),
                     interpolation_type = interpolation_type)
+
   img <- tibble(as.data.frame(img))
   #----------------------------------------------------------------------------#
   # Scaling original coordinates and joining them the new table
   # This is so dumb - why did I not think of this before...
   #----------------------------------------------------------------------------#
-  image$x <- round((image$x / max(image$x))* max(img$x)) +1
-  image$y <- round((image$y / max(image$y))* max(img$y)) +1
+  image$x <- floor((image$x / max(image$x))* max(img$x)) +1
+  image$y <- floor((image$y / max(image$y))* max(img$y)) +1
   image <- image %>% distinct()
 
   img <- right_join(img, image, by  = c("x","y","cc")) %>%
-         select(c("barcodes","x","y","cc","value.x","tile")) %>% tibble
+         select(c("barcodes","x","y","cc","value.y","tile")) %>% distinct()
   colnames(img) <- c("barcodes","x","y","cc","value","tile")
   #----------------------------------------------------------------------------#
   # remove NAs
@@ -466,98 +464,80 @@ buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,
   return(img)
 }
 
+regulariseImage <- function(image,lambda =1, niter=100,
+      method = "TVL2.FiniteDifference",normalise =TRUE,na.rm=TRUE,verbose=TRUE){
+    .simpleBar(verbose)
+    .reg(verbose)
+    #----------------------------------------------------------------------------#
+    img <- as.cimg(select(image, c("x", "y", "cc", "value"))) %>% imsplit("c")
 
-.resShiftOld <- function(coord, xbox , ybox,cores){
-  #----------------------------------------------------------------------------#
-  # Building template Sparse Matrix for each pixel
-  #----------------------------------------------------------------------------#
+    img <- lapply(img, .regularise, lambda, niter,method, normalise) %>%
+           imappend("c")
 
-  #rgbMat <- Matrix(0,ncol=3,nrow = length(xbox) * length(ybox))
-
-  #----------------------------------------------------------------------------#
-  # Subdivision index vector
-  # For all possible subdivisions extract all combinations
-  # This will hopefully speed things up
-  #----------------------------------------------------------------------------#
-
-  xs <- rep(xbox[seq(1,length(xbox)-1)],times = length(ybox)-1)
-  xe <- rep(xbox[seq(2,length(xbox))], times = length(ybox)-1)
-
-
-  ys <- rep(ybox[seq(1,length(ybox)-1)], each = length(xbox)-1)
-  ye <- rep(ybox[seq(2,length(ybox))], each = length(xbox)-1)
-
-  idx <- rep(seq(1,length(xbox)-1), times = length(ybox) -1)
-  idy <- rep(seq(1,length(ybox)-1), each = length(xbox) -1)
-
-
-  #----------------------------------------------------------------------------#
-  # Looping over idx
-  #----------------------------------------------------------------------------#
-
-  rgbMat <- parallel::mcmapply(.pixelate,xs,xe,ys,ye,idx,idy,MoreArgs = list(coord), mc.cores = cores)
-
-
-  nulls <- sapply(rgbMat,is.null)
-
-  rgbMat <- rgbMat[!nulls]
-
-  rgbMat <- do.call("rbind",rgbMat)
-  colnames(rgbMat) <- c("barcodes","xcoord","ycoord","R","G","B")
-
-  return(rgbMat)
-
-}
-
-
-.pixelate <- function(xs,xe,ys,ye,idx,idy,coord){
-    #--------------------------------------------------------------------------#
-    # Select code in each box
-    #--------------------------------------------------------------------------#
-
-    tmp <- filter(coord,xcoord >= xs & xcoord < xe & ycoord >= ys & ycoord < ye)
-    barcodes <- paste0(tmp$barcodes,sep = "", collapse = "_")
-    tmp <- select(tmp,c("R","G","B"))
-
-    #--------------------------------------------------------------------------#
-    # If nothing in interval box
-    #--------------------------------------------------------------------------#
-    if(nrow(tmp)<1){
-        return(NULL)
+    img <- tibble(as.data.frame(img))
+    #----------------------------------------------------------------------------#
+    # Adding meta data
+    #----------------------------------------------------------------------------#
+    img <- right_join(img, image, by  = c("x","y","cc")) %>%
+           select(c("barcodes","x","y","cc","value.x","tile")) %>% distinct()
+    colnames(img) <- c("barcodes","x","y","cc","value","tile")
+    #----------------------------------------------------------------------------#
+    # remove NAs
+    #----------------------------------------------------------------------------#
+    if(na.rm){
+        img <- img %>% na.exclude()
     }
-
-    #--------------------------------------------------------------------------#
-    # Median colour for interval
-    #--------------------------------------------------------------------------#
-    tmp <- data.frame(barcodes,idx,idy,matrix(apply(tmp,2,median),ncol = 3))
-    colnames(tmp) <- c("barcodes","xcoord","ycoord","R","G","B")
-    return(tmp)
-}
-
-.findTileCenters <- function(x,y,ogCoord){
-    pos <- paste0(x,"_",y)
-    posCent <- paste0(round(ogCoord$x),"_",round(ogCoord$y))
-
-    centersLoc <- match(posCent,pos)
-    centers <- rep(FALSE, length(pos))
-    centers[centersLoc[!is.na(centersLoc)]] <- TRUE
-    return(centers)
-
+    .simpleBar(verbose)
+    return(img)
 }
 
 
-.filterTriangle <- function(allIdx, filterThreshold){
+.regularise <- function(img,lambda, niter,method, normalise){
+    #--------------------------------------------------------------------------#
+    # might need to change the normalise part
+    # it doesn't seem it works well
+    # or at all for that matter
+    #--------------------------------------------------------------------------#
+    img <- denoise2(as.matrix(img), lambda = lambda, niter = niter,
+           method = method,normalize = normalise)
+    return(as.cimg(img))
+}
+
+
+
+### This really sucks
+### This is really slow - it takes fuckiong five minutes
+###
+.findTileCenters <- function(allIdx,ogCoord){
+    ogCoord$x <- round(ogCoord$x)
+    ogCoord$y <- round(ogCoord$y)
+
+    allIdxCenters <- paste0(allIdx$barcodes,"_",allIdx$x,"_",allIdx$y)
+    ogCoordCenters <- paste0(ogCoord$barcodes,"_",ogCoord$x,"_",ogCoord$y)
+
+    loc <- match(ogCoordCenters,allIdxCenters)
+    allIdx$tile <- 0
+    allIdx$tile[loc]<-1
+    return(allIdx)
+}
+
+
+.imageBuild <- function(allIdx, filterThreshold,verbose){
     #--------------------------------------------------------------------------#
     # First get area and extract distribution
     #--------------------------------------------------------------------------#
-    triArea1 <- sapply(allIdx,function(x){
-                      return(x[[2]][1])
-    })
-    triArea2 <- sapply(allIdx,function(x){
-                      return(x[[2]][2])
-    })
+    if(filterThreshold <1){
+      .filter(verbose)
+      triArea1 <- sapply(allIdx,function(x){
+                        return(x[[2]][1])
+      })
+      triArea2 <- sapply(allIdx,function(x){
+                        return(x[[2]][2])
+      })
 
-    areaThresh <- quantile(c(triArea1,triArea2),filterThreshold)
+      areaThresh <- quantile(c(triArea1,triArea2),filterThreshold)
+    }
+
 
     #--------------------------------------------------------------------------#
     # Next filter triangle that exceed limit
@@ -630,15 +610,15 @@ buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,
     #--------------------------------------------------------------------------#
     # Creating triangles
     #--------------------------------------------------------------------------#
-    x <- c(allEdge$x1,allEdge$x2,coord[allEdge$ind1,"x"])
-    y <- c(allEdge$y1,allEdge$y2,coord[allEdge$ind1,"y"])
+    x <- round(c(allEdge$x1,allEdge$x2,coord[allEdge$ind1,"x"]))
+    y <- round(c(allEdge$y1,allEdge$y2,coord[allEdge$ind1,"y"]))
 
     #--------------------------------------------------------------------------#
     # Fill triangles with all point in that space
     #--------------------------------------------------------------------------#
     cell <- point.in.polygon(maxPolygonX,maxPolygonY,x,y)
-    maxX <- round(maxPolygonX[cell %in% c(1,2,3)])
-    maxY <- round(maxPolygonY[cell %in% c(1,2,3)])
+    maxX <- maxPolygonX[cell %in% c(1,2,3)]
+    maxY <- maxPolygonY[cell %in% c(1,2,3)]
     value <- c(rep(coord[allEdge$ind1,"R"],length(maxX)),
                rep(coord[allEdge$ind1,"G"],length(maxX)),
                rep(coord[allEdge$ind1,"B"],length(maxX)))
@@ -650,6 +630,7 @@ buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,
     cent <- which(maxX == round(coord[allEdge$ind1,"x"]) & maxY == round(coord[allEdge$ind1,"y"]))
     centers <- rep(0, length(maxX))
     centers[cent] <- 1
+    if(length(cent) == 0)browser()
     allIn <- data.frame(barcode,maxX,maxY,cc,value,centers)
     colnames(allIn) <- c("barcodes","x","y","cc","value","tile")
     return(allIn)
@@ -669,15 +650,15 @@ buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,
     #--------------------------------------------------------------------------#
     # Creating triangles
     #--------------------------------------------------------------------------#
-    x <- c(allEdge$x1,allEdge$x2,coord[allEdge$ind2,"x"])
-    y <- c(allEdge$y1,allEdge$y2,coord[allEdge$ind2,"y"])
+    x <- round(c(allEdge$x1,allEdge$x2,coord[allEdge$ind2,"x"]))
+    y <- round(c(allEdge$y1,allEdge$y2,coord[allEdge$ind2,"y"]))
 
     #--------------------------------------------------------------------------#
     # Fill triangles with all point in that space
     #--------------------------------------------------------------------------#
     cell <- point.in.polygon(maxPolygonX,maxPolygonY,x,y)
-    maxX <- round(maxPolygonX[cell %in% c(1,2,3)])
-    maxY <- round(maxPolygonY[cell %in% c(1,2,3)])
+    maxX <- maxPolygonX[cell %in% c(1,2,3)]
+    maxY <- maxPolygonY[cell %in% c(1,2,3)]
     value <- c(rep(coord[allEdge$ind2,"R"],length(maxX)),
                rep(coord[allEdge$ind2,"G"],length(maxX)),
                rep(coord[allEdge$ind2,"B"],length(maxX)))
@@ -688,6 +669,7 @@ buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,
     cent <- which(maxX == round(coord[allEdge$ind2,"x"]) & maxY == round(coord[allEdge$ind2,"y"]))
     centers <- rep(0, length(maxX))
     centers[cent] <- 1
+    if(length(cent) == 0)browser()
     allIn <- data.frame(barcode,maxX,maxY,cc,value,centers)
     colnames(allIn) <- c("barcodes","x","y","cc","value","tile")
     return(allIn)
