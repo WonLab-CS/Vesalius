@@ -465,12 +465,31 @@ buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,
 }
 
 regulariseImage <- function(image,lambda =1, niter=100,
-      method = "TVL2.FiniteDifference",normalise =TRUE,na.rm=TRUE,verbose=TRUE){
+      method = "TVL2.FiniteDifference",normalise =TRUE,na.rm=TRUE,invert=TRUE,verbose=TRUE){
     .simpleBar(verbose)
-    .reg(verbose)
-    #----------------------------------------------------------------------------#
-    img <- as.cimg(select(image, c("x", "y", "cc", "value"))) %>% imsplit("c")
 
+    #----------------------------------------------------------------------------#
+    if(invert){
+      #------------------------------------------------------------------------#
+      ## This is effing clonky
+      ## Probably need to re work this
+      ## It works but it just sucks that I have to rebuild the whole thing
+      ## Unless.... I "hack" the as.cimg function and add an argument myself?
+      ## That just sounds like a stupid idea with extra steps.
+      #------------------------------------------------------------------------#
+      .invertCols()
+      img <- image %>%
+             select(c("x","y","cc","value")) %>%
+             as.cimg %>%
+             as.data.frame
+      nonImg <- paste0(image$x,"_",image$y)
+      inImg <- paste0(img$x,"_",img$y)
+      img[!inImg %in% nonImg,"value"] <- 1
+      img <- img %>% as.cimg() %>% imsplit("c")
+    } else {
+      img <-image %>% select(c("x","y","cc","value")) %>% as.cimg %>% imsplit("c")
+    }
+    .reg(verbose)
     img <- lapply(img, .regularise, lambda, niter,method, normalise) %>%
            imappend("c")
 
