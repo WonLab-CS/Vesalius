@@ -26,7 +26,7 @@
 #' Level 2 : each list element is R G B channel for that slice
 #' Level 3 : numeric vectors containing colour code for each barcode
 
-rgbPCA<- function(slide,SO,slices = 1,adjusted = FALSE,rgbWeight=FALSE,countWeight = FALSE, conserveSparse = TRUE, trim = 0){
+rgbPCA<- function(slide,SO,slices = 1,adjusted = FALSE,rgbWeight=FALSE,countWeight = FALSE, conserveSparse = TRUE, trim = 0,verbose=TRUE){
 
 
     .simpleBar(verbose)
@@ -499,7 +499,10 @@ regulariseImage <- function(image,lambda =1, niter=100,
     # or at all for that matter
     #--------------------------------------------------------------------------#
     img <- denoise2(as.matrix(img), lambda = lambda, niter = niter,
-           method = method,normalize = normalise)
+           method = method,normalize = F)
+    if(normalise){
+        img <- (img - min(img)) / (max(img) - min(img))
+    }
     return(as.cimg(img))
 }
 

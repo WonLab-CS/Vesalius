@@ -511,7 +511,7 @@ extractTerritories <- function(img,seurat,terIdent = NULL,combine = FALSE,
         cells <- sapply(territories,nrow) > minCell
         territories <- territorries[cells]
         territories <- lapply(territories,"$",territory)
-        territories <- parallel::mclapply(territories,.subSetTerritories,seurat,mc.cores= cores)
+        territories <- parallel::mclapply(territories,subSetTerritories,seurat,mc.cores= cores)
         .simpleBar(verbose)
         return(territories)
     } else {
@@ -538,7 +538,7 @@ extractTerritories <- function(img,seurat,terIdent = NULL,combine = FALSE,
             return(NULL)
         }else{
 
-            territories <- .subSetTerritories(territories,seurat)
+            territories <- subSetTerritories(territories,seurat)
             .simpleBar(verbose)
             return(territories)
         }
@@ -548,7 +548,7 @@ extractTerritories <- function(img,seurat,terIdent = NULL,combine = FALSE,
 }
 
 
-.subSetTerritories <- function(territories,seurat){
+subSetTerritories <- function(territories,seurat){
     #--------------------------------------------------------------------------#
     # Simplified version for now
     # It might be worth while getting away from seurat later
@@ -623,6 +623,7 @@ compareClusters <- function(ref,seedCluster,queryCluster,seed = NULL,query = NUL
       # Ayo now we comapre layers
       # First thing is to get layers so lets start with layer 1
       #------------------------------------------------------------------------#
+      .simpleBar(verbose)
       if(!is.null(l1)){
 
           l1 <- list(filter(layers, layer %in% l1))
@@ -648,7 +649,7 @@ compareClusters <- function(ref,seedCluster,queryCluster,seed = NULL,query = NUL
       if(is(counts) == "Seurat"){
           if(DefaultAssay(counts) == "Spatial"){
               counts <- counts@assays$Spatial@counts
-          } else if(DefaultAssay(ref) == "SCT"){
+          } else if(DefaultAssay(counts) == "SCT"){
               counts <- counts@assays$SCT@counts
           }
       }
@@ -661,7 +662,7 @@ compareClusters <- function(ref,seedCluster,queryCluster,seed = NULL,query = NUL
           for(j in seq_along(l2)){
               #TODO change when DEG functions are refactored
               ## This sucks - it is so messy
-              
+
               deg[[counter]] <- .VesaliusDEG.int(j,l2,l1,i,
                                                 method = method,counts =counts,
                                                 logFC=logFC,pval = pval,
@@ -670,5 +671,6 @@ compareClusters <- function(ref,seedCluster,queryCluster,seed = NULL,query = NUL
           }
       }
       deg <- do.call("rbind",deg)
+      .simpleBar(verbose)
       return(deg)
   }
