@@ -5,7 +5,7 @@
 #-------------------------/Territory identity/---------------------------------#
 
 #' extractIdentity compute differentially expressed genes for each territory
-#' @param territories dataframe conatining territory information
+#' @param image a dataframe conatining territory information
 #' @param counts count matrix - either matrix, sparse matrix or seurat object
 #' This matrix should contain genes as rownames and cells/barcodes as colnames
 #' @param method character describing the statistical test to use in order to extract
@@ -15,47 +15,85 @@
 #' expressed genes
 #' @param minPct numeric defining the minimum percentage of cells that should contain
 #' any given gene.
-#' @param extractOver character describing how Differentially expressed genes
-#' should be computed. Three option are available: "territory","cluster" or "all".See details
-#' @param between logical describing if territories should be compared between each other
-#' or only against all other cells.
+#' @param dilationFactor positive Integer describing the extent of territory growth
 #' @param cores numeric describing the number of cores used for the analyis.
 #' @details To add
 #' @return A data.frame (tibble) containing differentially expressed genes as well
 #' p.value, logFC, seedPct (percentage of cells containing gene in first group), queryPct
 #' (percentage of cells containing gene in second group), seedTerritory (territory used as group 1)
 #' queryTerritory ( territory value that is compared to seed territory)
-extractAllMarkers <- function(territories,counts, method = "wilcox",
-  logFC = 0.25, pval = 0.05,minPct = 0.05,minCell = 10, extractOver = "territory",between = TRUE,cores = 1){
-    #--------------------------------------------------------------------------#
-    # Lets assume that you have dataframe or tibble
-    # We can do the split in side it will make thing cleaner for
-    # code conversion later down the line
-    #--------------------------------------------------------------------------#
-    countType <- class(counts)
 
+extractAllMarkers <- function(image,counts,method = "wilcox",
+  logFC = 0.25, pval = 0.05,minPct = 0.05,minCell = 10,dilationFactor=0,cores = 1){
+    .simpleBar(verbose)
+    .checkCounts(verbose)
     #--------------------------------------------------------------------------#
-    # Switch depending on how we want to split
-    # all checks can be done internally
+    # Check class of counts and determine approach based on that
     #--------------------------------------------------------------------------#
-    markers <- switch(extractOver,
-                      "territory" = .territoryMarkers(territories,counts,method,between,
-                                     logFC,pval,minPct,cores),
-                      "cluster" = .clusterMarkers(territories,counts,method,between,
-                                   logFC,pval,minPctcores),
-                      "all" = .allMarkers(territories,counts,method,between,
-                              logFC,pval,minPct,cores))
+    if(is(counts) == "Seurat"){
+        if(DefaultAssay(counts) == "Spatial"){
+            counts <- counts@assays$Spatial@counts
+        } else if(DefaultAssay(counts) == "SCT"){
+            counts <- counts@assays$SCT@counts
+        }
+    }
+    #--------------------------------------------------------------------------#
+    # Let's split the image into seed territories
+    #--------------------------------------------------------------------------#
+    territories <- split(image,territory)
+    seedTerritory <- names(territories)
+    #--------------------------------------------------------------------------#
+    # For each territory, dilate and subset
+    #--------------------------------------------------------------------------#
+    for(i in seq_along(territories)){
 
+        #----------------------------------------------------------------------#
+        # Dilation factor can only be postive - now erosion for now
+        #----------------------------------------------------------------------#
+        if(dilationFactor==0){
+            seed <- territories[[i]] %>%
+              filter(tile ==1 & territory %in% seedTerritory[i])
+        } else {
+            seed <- territories[[i]] %>% filter(territory %in% seedTerritory[i])
+            seed <- .territoryDilation(seed,dilationFactor,image,verbose)
+            seed <- filter(seed, tile ==1)
+        }
+        #----------------------------------------------------------------------#
+        # Now that we have the seed barcodes , we can take all the other
+        # barcodes as the query image. This ensure that we don't have
+        # any overlap between territories even affter dilation
+        #----------------------------------------------------------------------#
+        query <-image%>%filter(tile ==1 & !barcodes %in% seed$barcodes & cc ==1)
 
-   return(markers)
+        #----------------------------------------------------------------------#
+        # aight let's get dem juicy counts out for both seed and query
+        #----------------------------------------------------------------------#
+        seed <- counts[,colnames(counts) %in% unique(seed$barcodes)]
+        query <- counts[,colnames(counts) %in% unique(query$barcodes)]
+        #----------------------------------------------------------------------#
+        # Let's do some diff expression analysis
+        #----------------------------------------------------------------------#
+        deg <- .VesaliusDEG(seed,query,seedTerritory[i],"Remaining",method,
+            logFC,pval,minPct,minCell,verbose)
+        territories[[i]] <- deg
+      }
+      #------------------------------------------------------------------------#
+      # find nulls
+      #------------------------------------------------------------------------#
+      nulls <- sapply(territories,is.null)
+      territories <- territories[!nulls]
+      territories <- do.call("rbind",territories)
+      return(territories)
 
-}
+  }
+
 
 ### might not use this function
 ### I honestly think it is a pain to just do one at a time
 ### But if needed I can implement it - if required and asked for
-extractMarkers <- function(territories,counts,seedTer = NULL,queryTer = NULL, method = "wilcox",
-  logFC = 0.25, pval = 0.05,minPct = 0.05,minCell = 10,verbose=TRUE){
+extractMarkers <- function(image,counts,seed = NULL,query = NULL, method = "wilcox",
+     logFC = 0.25, pval = 0.05,minPct = 0.05,minCell = 10,
+     dilationFactorSeed = 0,dilationFactorQuery = 0,verbose=TRUE){
     .simpleBar(verbose)
     .checkCounts(verbose)
     #--------------------------------------------------------------------------#
@@ -73,10 +111,26 @@ extractMarkers <- function(territories,counts,seedTer = NULL,queryTer = NULL, me
     # setting up seed territoy counts
     #--------------------------------------------------------------------------#
     .seedSelect(verbose)
-    if(is.null(seedTer)){
-        stop("Please supply seedTer as numeric values describing territory identity")
+    if(is.null(seed)){
+        stop("Please supply a seed as numeric values describing territory identity")
     }
-    seed <- territories %>% filter(tile == 1) %>% filter(territory %in% seedTer)
+    #--------------------------------------------------------------------------#
+    # getting tmp to use as template when getting query territorires
+    #--------------------------------------------------------------------------#
+    tmp <- seed
+    #--------------------------------------------------------------------------#
+    # Dilating if needed
+    #--------------------------------------------------------------------------#
+    if(dilationFactorSeed == 0){
+        seedID <- paste0(seed, sep =" ",collapse="")
+        seed <- image %>% filter(tile == 1) %>% filter(territory %in% seed)
+        seed <- counts[,colnames(counts) %in% unique(seed$barcodes)]
+    } else {
+        seedID <- paste0(seed, sep =" ",collapse="")
+        seed <- image %>% filter(territory %in% seed)
+        seed <- .territoryDilation(seed,dilationFactorSeed,image, verbose)
+        seed <- counts[,colnames(counts) %in% unique(seed$barcodes)]
+    }
 
     #--------------------------------------------------------------------------#
     # setting up query territories - if it is set to null then
@@ -84,17 +138,33 @@ extractMarkers <- function(territories,counts,seedTer = NULL,queryTer = NULL, me
     #--------------------------------------------------------------------------#
     .querySelect(verbose)
 
-    if(is.null(queryTer)){
-        query <- territories %>% filter(tile == 1) %>% filter(!territory %in% seedTer)
+    if(is.null(query)){
+        queryID <- "Remaining"
+        query <- image %>% filter(!territory %in% tmp)
     } else {
-        query <- territories %>% filter(tile == 1) %>% filter(territory %in% queryTer)
+        queryID <- paste0(query, sep =" ",collapse="")
+        query <- territories %>% filter(territory %in% query)
     }
+    if(dilationFactorQuery == 0){
+        queryID <- paste0(query, sep =" ",collapse="")
+        query <- image %>% filter(tile == 1)
+        query <- counts[,colnames(counts) %in% unique(query$barcodes)]
+        query <- counts[,!colnames(query) %in% colnames(seed)]
+    } else {
+        queryID <- paste0(query, sep =" ",collapse="")
+        query <- image %>% filter(territory %in% query)
+        query <- .territoryDilation(query,dilationFactorQuery,image, verbose)
+        query <- filter(query, tile == 1)
+        query <- counts[,colnames(counts) %in% unique(query$barcodes)]
+        query <- counts[,!colnames(query) %in% colnames(seed)]
+    }
+
     #--------------------------------------------------------------------------#
     # running grouped analysis for DEG
     #--------------------------------------------------------------------------#
     .degProg(verbose)
-    markers <- .VesaliusDEG.grouped(counts,seed,query,
-                logFC,pval,minPct,minCell,method,verbose)
+    deg <- .VesaliusDEG(seed,query,seedID,queryID,method,
+        logFC,pval,minPct,minCell,verbose)
     cat("\n")
    .simpleBar(verbose)
    return(markers)
@@ -103,73 +173,76 @@ extractMarkers <- function(territories,counts,seedTer = NULL,queryTer = NULL, me
 
 
 
-.territoryMarkers <- function(territories, counts, method,between = TRUE,
-                             logFC,pval,minPct,minCell,verbose=TRUE,cores=1){
-    #--------------------------------------------------------------------------#
-    # Check class of counts and determine approach based on that
-    #--------------------------------------------------------------------------#
-    if(is(counts) == "Seurat"){
-        if(DefaultAssay(counts) == "Spatial"){
-            counts <- counts@assays$Spatial@counts
-        } else if(DefaultAssay(counts) == "SCT"){
-            counts <- counts@assays$SCT@counts
-        }
-    }
-
-    #--------------------------------------------------------------------------#
-    # Next if between == TRUE we want to compare territories between each other
-    #--------------------------------------------------------------------------#
-
-    if(between){
-        territories <- .VesaliusDEG.each(territories,counts,logFC,
-                                         pval,minPct,minCell,method,verbose,cores)
-
-    } else {
-        #----------------------------------------------------------------------#
-        # splitting only so i can use mclapply
-        #----------------------------------------------------------------------#
-        territories <- territories %>% distinct(barcodes,.keep_all = TRUE)
-        territories <- split(territories, territories$territory)
-        territories <- parallel::mclapply(territories,.VesaliusDEG.all,
-                                          counts,logFC,pval,minPct,minCell,
-                                          method,verbose,
-                                          mc.cores = cores)
-
-        territories <- do.call("rbind",territories)
-    }
-    .simpleBar(verbose)
-    return(tibble(territories))
 
 
+.territoryDilation <- function(territories,dilationFactor,image,verbose){
+
+  if(dilationFactor<0){
+      stop("Territory Erosion not supported - dilationFactor < 0")
+  } else if(dilationFactor >0){
+      .dilate(verbose)
+      #------------------------------------------------------------------#
+      # First we define territory limits and add a little on each
+      # side - this ensures that we won't be clipping any parts of the
+      # territory
+      #------------------------------------------------------------------#
+      seed <- territories %>% mutate(value=1)
+
+      dilationFactor <- ifelse(dilationFactor <= 0,1,dilationFactor)
+      ymin <- ifelse((min(seed$y) - dilationFactor *2) <=0,1,
+         min(seed$y) - dilationFactor *2)
+      xmin <- ifelse((min(seed$x) - dilationFactor *2) <=0,1,
+         min(seed$x) - dilationFactor *2)
+      ymax <- max(seed$y) + dilationFactor * 2
+      xmax <- max(seed$x) + dilationFactor * 2
+      #------------------------------------------------------------------#
+      # Now we convert add buffer boundaeries, covert to grey scale and
+      # dilate the territory
+      #------------------------------------------------------------------#
+      seed <- seed %>% select(c("x","y","cc","value")) %>%
+              rbind(.,c(xmin,ymin,1,0),c(xmax,ymax,1,0)) %>%
+              as.cimg() %>% grayscale() %>% grow(dilationFactor)
+      #------------------------------------------------------------------#
+      # Next we rebuild the image data frame with dilated
+      #------------------------------------------------------------------#
+      seed %>% as.data.frame()
+      seed <- inner_join(seed,image,by = c("x","y"))%>%
+             select(c("barcodes","x","y","cc.y","z","tile",
+                      "cluster","territory"))%>%
+             filter(cc.y ==1)
+      colnames(seed) <- c("barcodes","x","y","cc","value","tile",
+                         "cluster","territory")
+
+     return(seed)
 }
 
-.VesaliusDEG.grouped <- function(counts,seedTer,queryTer,logFC,pval,
-                                 minPct,minCell,method,verbose){
-    #--------------------------------------------------------------------------#
-    # generating messages
-    #--------------------------------------------------------------------------#
 
-    seedID <- paste(unique(seedTer$territory),collapse = " ")
-    ter <- paste(unique(queryTer$territory),collapse = " ")
-    #--------------------------------------------------------------------------#
-    # Don't need to subset seed as it has already been done
-    # subset the query variable
-    #--------------------------------------------------------------------------#
-    .degEachProg(seedID,ter,verbose)
-    seed <- counts[,colnames(counts) %in% seedTer$barcodes]
-    query <- counts[,colnames(counts) %in% queryTer$barcodes]
 
+
+.VesaliusDEG <- function(seed,query,seedID,queryID,method,logFC,pval,minPct,minCell,verbose =T){
+    .degEachProg(seedID,queryID,verbose)
     #--------------------------------------------------------------------------#
+    # We assume here that we are parsing cleaned up version of each object
+    # This is strictly just computing DEG between two groups
+    #
     # Just in case there are not enough cells
     #--------------------------------------------------------------------------#
     dimSeed <- dim(seed)
     dimQuery <- dim(query)
-    if(is.null(dimSeed)| is.null(dimQuery)){
+    if(is.null(dimSeed)){
         warning(paste0("Territory ",seedID," does not contain enough cells.\n
         Territory will be skipped"),call.=FALSE)
         return(NULL)
-    } else if(dimSeed[2L] < minCell | dimQuery[2L] < minCell){
+    }else if(is.null(dimQuery)){
+        warning(paste0("Territory ",queryID," does not contain enough cells.\n
+        Territory will be skipped"),call.=FALSE)
+        return(NULL)
+    } else if(dimSeed[2L] < minCell){
         warning(paste0("Territory ",seedID," does not contain enough cells.\n
+        Territory will be skipped"),call.=FALSE)
+        return(NULL)
+    } else if(dimQuery[2L] < minCell){
+        warning(paste0("Territory ",queryID," does not contain enough cells.\n
         Territory will be skipped"),call.=FALSE)
         return(NULL)
     }
@@ -192,8 +265,6 @@ extractMarkers <- function(territories,counts,seedTer = NULL,queryTer = NULL, me
     seedPct <- seedPct[keep]
     queryPct <- queryPct[keep]
     FC <- FC[keep]
-
-
 
     #--------------------------------------------------------------------------#
     # testing diff gene expression
@@ -218,214 +289,17 @@ extractMarkers <- function(territories,counts,seedTer = NULL,queryTer = NULL, me
 
     #--------------------------------------------------------------------------#
     # rebuilding data.frame and filtering p values
-    #--------------------------------------------------------------------------#
-    deg <- tibble("genes" = genes,"p.value" = deg,"p.value.adj" = p.adjust(deg),"seedPct" = seedPct,
-                  "queryPct" = queryPct,"logFC" = FC,
-                  "seedTerritory" = rep(seedID,length(deg)),
-                  "queryTerritory" = rep(ter,length(deg)))
-
-    deg <- deg %>% filter(p.value <= pval)
-    return(deg)
-
-}
-
-
-.VesaliusDEG.each <- function(territory,counts,logFC,pval,minPct,minCell,method,verbose,cores){
-    #--------------------------------------------------------------------------#
-    # Selecting territories from counts - each comparing to each individual
-    # territory - I don't think I'm going to add "all" in this section
-    # That can be added to the upper level function
-    #--------------------------------------------------------------------------#
-    territory <- territory %>% distinct(barcodes,.keep_all = TRUE)
-    splitTerritory <- split(territory, territory$territory)
-    deg <- vector("list",length(splitTerritory))
-
-    for(i in seq_along(splitTerritory)){
-      #------------------------------------------------------------------------#
-      # lapply over all the other territories - this is were cores come into play
-      #------------------------------------------------------------------------#
-      query <- splitTerritory[!names(splitTerritory) %in% names(splitTerritory)[i]]
-      query <- parallel::mclapply(names(query),.VesaliusDEG.int,
-                                  query = query,seed = splitTerritory,
-                                  seedID = i,method = method ,counts = counts,
-                                  logFC = logFC,pval = pval,minPct = minPct,
-                                  minCell = minCell,verbose = verbose,
-                                  mc.cores = cores)
-      cat("\n")
-      deg[[i]] <- do.call("rbind",query)
-
-    }
-    deg <- do.call("rbind",deg)
-    return(deg)
-}
-
-.VesaliusDEG.int <- function(ter,query,seed,seedID,method,counts,logFC,pval,
-                             minPct,minCell,verbose=TRUE){
-    #--------------------------------------------------------------------------#
-    # Don't need to subset seed as it has already been done
-    # subset the query variable
-    # TO SANATISE! REFACTOR THE SHIT OUT OF THIS
-    #--------------------------------------------------------------------------#
-    .degEachProg(seedID,ter,verbose)
-    seed <- counts[,colnames(counts) %in% seed[[seedID]]$barcodes]
-    query <- counts[,colnames(counts) %in% query[[ter]]$barcodes]
-
-    #--------------------------------------------------------------------------#
-    # Just in case there are not enough cells
-    #--------------------------------------------------------------------------#
-    dimSeed <- dim(seed)
-    dimQuery <- dim(query)
-    if(is.null(dimSeed)| is.null(dimQuery)){
-        warning(paste0("Territory ",seedID," does not contain enough cells.\n
-        Territory will be skipped"),call.=FALSE)
-        return(NULL)
-    } else if(dimSeed[2L] < minCell | dimQuery[2L] < minCell){
-        warning(paste0("Territory ",seedID," does not contain enough cells.\n
-        Territory will be skipped"),call.=FALSE)
-        return(NULL)
-    }
-    #--------------------------------------------------------------------------#
-    # Computing DEG metrics
-    # Pseudo count = 1
-    #--------------------------------------------------------------------------#
-    seedPct <- Matrix::rowSums(seed >0) / ncol(seed)
-    queryPct <- Matrix::rowSums(query >0) / ncol(query)
-    FC <- log(Matrix::rowMeans(seed) +1) - log(Matrix::rowMeans(query)+1)
-    #--------------------------------------------------------------------------#
-    # Dropping genes that don't fit the logFC and pct criteria
-    # At least I won't be computing anything that doesn't need to be
-    # I say that while creating a whole bunch of variables
-    #--------------------------------------------------------------------------#
-    keep <- (seedPct >= minPct | queryPct >= minPct) & abs(FC) >= logFC
-    genes <- rownames(seed)[keep]
-    seed <- seed[keep,]
-    query <- query[keep,]
-    seedPct <- seedPct[keep]
-    queryPct <- queryPct[keep]
-    FC <- FC[keep]
-
-
-
-    #--------------------------------------------------------------------------#
-    # testing diff gene expression
-    # Rebuilding a matrix just in case you only have one gene to test
-    # Not going to rewrite the sapply for that
-    #--------------------------------------------------------------------------#
-    if(is.null(dim(seed))){
-      idx <- 1
-      seed <- matrix(seed,nrow=1)
-      query <- matrix(query, nrow=1)
-    } else {
-      idx <- seq_len(nrow(seed))
-    }
-
-    deg <- sapply(idx,function(idx,seed,query,method){
-                  res <- switch(method,
-                         "wilcox" = wilcox.test(seed[idx,],query[idx,])$p.value,
-                         "t.test" = t.test(seed[idx,],query[idx,])$p.value)
-                  return(res)
-    },seed,query,method)
-
-
-    #--------------------------------------------------------------------------#
-    # rebuilding data.frame and filtering p values
+    # filtering on pval or pvaladjusted?
     #--------------------------------------------------------------------------#
     deg <- tibble("genes" = genes,"p.value" = deg,"p.value.adj" = p.adjust(deg),
                   "seedPct" = seedPct,
                   "queryPct" = queryPct,"logFC" = FC,
                   "seedTerritory" = rep(seedID,length(deg)),
-                  "queryTerritory" = rep(ter,length(deg)))
+                  "queryTerritory" = rep(queryID,length(deg)))
 
     deg <- deg %>% filter(p.value <= pval)
     return(deg)
 }
-
-.VesaliusDEG.all <- function(territory,counts,logFC,pval,minPct,minCell,
-                             method = "wilcox",verbose=TRUE){
-    #--------------------------------------------------------------------------#
-    # Selecting territories from counts - All = Against all
-    #--------------------------------------------------------------------------#
-    .degEachProg(unique(territory$territory),"All",verbose)
-    seed <- counts[,colnames(counts) %in% territory$barcodes]
-    query <- counts[,!colnames(counts) %in% territory$barcodes]
-
-    #--------------------------------------------------------------------------#
-    # Just in case there are not enough cells
-    #--------------------------------------------------------------------------#
-    dims <- dim(seed)
-    if(is.null(dims)){
-        warning(paste0("Territory ",unique(territory$territory)," does not contain enough cells.\n
-        Territory will be skipped"),call.=FALSE)
-        return(NULL)
-    } else if(dims[2]<minCell){
-        warning(paste0("Territory ",unique(territory$territory)," does not contain enough cells.\n
-        Territory will be skipped"),call.=FALSE)
-        return(NULL)
-    }
-
-    #--------------------------------------------------------------------------#
-    # Computing DEG metrics
-    # Pseudo count = 1
-    #--------------------------------------------------------------------------#
-    seedPct <- (Matrix::rowSums(seed >0) / ncol(seed))
-    queryPct <- (Matrix::rowSums(query >0) / ncol(query))
-
-    FC <- log(Matrix::rowMeans(seed) +1) - log(Matrix::rowMeans(query)+1)
-
-    #--------------------------------------------------------------------------#
-    # Dropping genes that don't fit the logFC and pct criteria
-    # At least I won't be computing anything that doesn't need to be
-    # I say that while creating a whole bunch of variables
-    # also I want to return all diff expressed genes even if that means
-    # that the genes are down regulated
-    # You can do the filtering afterwards and that is just as interesting
-    #--------------------------------------------------------------------------#
-
-    keep <- (seedPct >= minPct | queryPct >= minPct) & abs(FC) >= logFC
-    genes <- rownames(seed)[keep]
-    seed <- seed[keep,]
-    query <- query[keep,]
-    seedPct <- seedPct[keep]
-    queryPct <- queryPct[keep]
-    FC <- FC[keep]
-    territory <- unique(territory$territory)
-
-    #--------------------------------------------------------------------------#
-    # testing diff gene expression
-    # Rebuilding a matrix just in case you only have one gene to test
-    # Not going to rewrite the sapply for that
-    #--------------------------------------------------------------------------#
-    if(is.null(dim(seed))){
-      idx <- 1
-      seed <- matrix(seed,nrow=1)
-      query <- matrix(query, nrow=1)
-    } else {
-      idx <- seq_len(nrow(seed))
-    }
-
-    deg <- sapply(idx,function(idx,seed,query,method){
-                  res <- switch(method,
-                         "wilcox" = wilcox.test(seed[idx,],query[idx,])$p.value,
-                         "t.test" = t.test(seed[idx,],query[idx,])$p.value)
-                  return(res)
-    },seed,query,method)
-
-
-    #--------------------------------------------------------------------------#
-    # rebuilding data.frame
-    #--------------------------------------------------------------------------#
-    deg <- tibble("genes" = genes,"p.value" = deg,
-                  "p.value.adj" = p.adjust(deg),"seedPct" = seedPct,
-                  "queryPct" = queryPct,"logFC" = FC,
-                  "seedTerritory" = territory,
-                  "queryTerritory" = rep("all",length(deg)))
-
-    deg <- deg %>% filter(p.value <= pval)
-    return(deg)
-}
-
-
-
 
 
 
@@ -492,22 +366,23 @@ extractMarkers <- function(territories,counts,seedTer = NULL,queryTer = NULL, me
 ### Cant remember why I took this approach
 ### Lets keep it ultra simple for now
 ### Dont create this intermediate object only if required
-extractTerritories <- function(img,seurat,terIdent = NULL,combine = FALSE,
+extractTerritories <- function(image,seurat,seedID = NULL,dilationFactor = 0,
                                minCell = 10, verbose = TRUE,cores = 1){
     .simpleBar(verbose)
     #--------------------------------------------------------------------------#
     # if combine is null we consider that we want to have all
     # territories prepared for clustering analysis
     #--------------------------------------------------------------------------#
-    if(is.null(terIdent)){
+    if(is.null(seedID)){
         .extractTerProg("all",verbose)
-        territories <- img %>% filter(tile == 1) %>% distinct(barcodes, .keep_all = FALSE)
+        territories <- image %>% filter(tile == 1) %>% distinct(barcodes, .keep_all = FALSE)
         territories <- split(territories, territories$territory)
         #----------------------------------------------------------------------#
         # Revert back to fine grain if inage array was reduced
         #----------------------------------------------------------------------#
-        #territories <- parallel::mclapply(territories,.fineGrain,minCell,mc.cores = cores)
-        #territories <- territories[!sapply(territories,is.null)]
+        if(dilationFactor != 0){
+           cat("No seedID specified - Territory Dilation will not be applied.\n")
+        }
         cells <- sapply(territories,nrow) > minCell
         territories <- territorries[cells]
         territories <- lapply(territories,"$",territory)
@@ -519,9 +394,11 @@ extractTerritories <- function(img,seurat,terIdent = NULL,combine = FALSE,
         # Filtering only the barcodes that are in the territories of interest
         # To ADD check for combine - numeric values
         #----------------------------------------------------------------------#
-        territories <- img %>% filter(tile==1 & territory %in% terIdent)%>%
-                       distinct(barcodes, .keep_all = FALSE)
-        .extractTerProg(terIdent,verbose)
+        .extractTerProg(seedID,verbose)
+        territories <- image %>% filter(territory %in% seedID)
+        territories <- .territoryDilation(territories,dilationFactor,image,verbose)
+        territories <- filter(territories,tile == 1)  %>%
+            distinct(barcodes,.keep_all=F)
         territories <- territories$barcodes
 
         #----------------------------------------------------------------------#
@@ -660,11 +537,12 @@ compareClusters <- function(ref,seedCluster,queryCluster,seed = NULL,query = NUL
       counter <- 1
       for(i in seq_along(l1)){
           for(j in seq_along(l2)){
-              #TODO change when DEG functions are refactored
-              ## This sucks - it is so messy
-
-              deg[[counter]] <- .VesaliusDEG.int(j,l2,l1,i,
-                                                method = method,counts =counts,
+              tmp1 <- counts[,colnames(counts %in% unique(l1[[i]]$barcodes))]
+              tmp2 <- counts[,colnames(counts %in% unique(l2[[j]]$barcodes))]
+              tmpID1 <- paste0(l1[[i]]$layer,collapse = "",sep = " ")
+              tmpID2 <- paste0(l2[[j]]$layer,collapse = "",sep = " ")
+              deg[[counter]] <- .VesaliusDEG(tmp1,tmp2,tmpID1,tmpID2,
+                                                method = method,
                                                 logFC=logFC,pval = pval,
                                                 minPct= minPct,minCell=minCell,
                                                 verbose=verbose)
