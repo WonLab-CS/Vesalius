@@ -123,7 +123,7 @@
 .extractTerProg <- function(seed,verbose =TRUE){
     if(!verbose) return(NULL)
     t <- Sys.time()
-    cat( paste(t,"Extracting territory",seed,"\n"))
+    cat( paste(t," Extracting territory",seed,"\n"))
 }
 
 .seg <- function(seg,verbose =TRUE){

@@ -146,12 +146,10 @@ extractMarkers <- function(image,counts,seed = NULL,query = NULL, method = "wilc
         query <- territories %>% filter(territory %in% query)
     }
     if(dilationFactorQuery == 0){
-        queryID <- paste0(query, sep =" ",collapse="")
         query <- image %>% filter(tile == 1)
         query <- counts[,colnames(counts) %in% unique(query$barcodes)]
         query <- counts[,!colnames(query) %in% colnames(seed)]
     } else {
-        queryID <- paste0(query, sep =" ",collapse="")
         query <- image %>% filter(territory %in% query)
         query <- .territoryDilation(query,dilationFactorQuery,image, verbose)
         query <- filter(query, tile == 1)
@@ -167,7 +165,7 @@ extractMarkers <- function(image,counts,seed = NULL,query = NULL, method = "wilc
         logFC,pval,minPct,minCell,verbose)
     cat("\n")
    .simpleBar(verbose)
-   return(markers)
+   return(deg)
 
 }
 
@@ -205,7 +203,7 @@ extractMarkers <- function(image,counts,seed = NULL,query = NULL, method = "wilc
       #------------------------------------------------------------------#
       # Next we rebuild the image data frame with dilated
       #------------------------------------------------------------------#
-      seed %>% as.data.frame()
+      seed <- seed %>% as.data.frame()
       seed <- inner_join(seed,image,by = c("x","y"))%>%
              select(c("barcodes","x","y","cc.y","z","tile",
                       "cluster","territory"))%>%

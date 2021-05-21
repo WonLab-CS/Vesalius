@@ -223,7 +223,7 @@ iterativeSegmentation.array <- function(img,colDepth = 10,
           tmpImg$cluster[tmpImg$cc == i] <- cluster
           tmpImg$value[tmpImg$cc == i] <- Kcenters[cluster,i]
       }
-              
+
 
       #--------------------------------------------------------------------------#
       # Replacing values in original image

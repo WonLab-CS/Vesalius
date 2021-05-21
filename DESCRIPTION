@@ -31,7 +31,8 @@ Depends: R (>= 3.5.0),
     sp,
     ggplot2,
     imagerExtra,
-    tvR
+    tvR,
+    RColorBrewer
 Imports:
     grDevices,
     graphics,
