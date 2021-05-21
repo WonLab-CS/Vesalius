@@ -1,18 +1,14 @@
 ################################################################################
 ############################   ST package        ###############################
 ################################################################################
-
-#-------------------------------/Data Viz /------------------------------------#
-
-
 imagePlot <- function(image, as.cimg = TRUE,cex=1){
     if(as.cimg){
         plot(as.cimg(image[,c("x","y","cc","value")]))
     } else {
         fgcol <- select(image, c("cc","value"))
         fgcol <- data.frame(fgcol$value[fgcol$cc ==1],
-                             fgcol$value[fgcol$cc ==2],
-                             fgcol$value[fgcol$cc ==3])
+                            fgcol$value[fgcol$cc ==2],
+                            fgcol$value[fgcol$cc ==3])
         fgcol <- rgb(fgcol[,1],fgcol[,2],fgcol[,3])
         image <- image %>% filter(cc==1)
         image <- ggplot(image,aes(x,y))+
@@ -66,7 +62,6 @@ territoryPlot <- function(territories, split = FALSE,randomise = TRUE,cex=1,cex.
     if(split){
         terPlot <- ggplot(ter, aes(x,y,col = territory)) +
                geom_point(size= cex.pt, alpha = 0.65)+
-               #geom_point(data = iso ,aes(x,y,col = territory),size = 0.25,alpha = 0.65)+
                facet_wrap(~territory)+
                theme_classic() +
                scale_color_manual(values = ter_col)+
@@ -116,8 +111,6 @@ cellProportion <- function(image){
             )
 
 }
-
-
 
 viewGeneExpression <- function(image,counts,ter = NULL, genes = NULL,cex =10){
     #--------------------------------------------------------------------------#
@@ -188,7 +181,7 @@ viewGeneExpression <- function(image,counts,ter = NULL, genes = NULL,cex =10){
     image <- right_join(image,counts,by = "barcodes")
 
     ge <- ggplot(image,aes(x,y))+
-          geom_raster( aes(fill = counts))+
+          geom_raster(aes(fill = counts))+
           scale_fill_gradientn(colors = rev(brewer.pal(11,"Spectral")))+
           theme_classic()+
           theme(axis.text = element_text(size = cex ),
@@ -198,7 +191,5 @@ viewGeneExpression <- function(image,counts,ter = NULL, genes = NULL,cex =10){
                 plot.title = element_text(size=cex)) +
           labs(title = genes,fill = type,
                x = "X coordinates", y = "Y coordinates")
-
-
-
+    return(ge)
 }

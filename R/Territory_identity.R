@@ -214,12 +214,14 @@ extractMarkers <- function(image,counts,seed = NULL,query = NULL, method = "wilc
                          "cluster","territory")
 
      return(seed)
+  }
 }
 
 
 
 
-.VesaliusDEG <- function(seed,query,seedID,queryID,method,logFC,pval,minPct,minCell,verbose =T){
+.VesaliusDEG <- function(seed,query,seedID,queryID,method,logFC,
+    pval,minPct,minCell,verbose =T){
     .degEachProg(seedID,queryID,verbose)
     #--------------------------------------------------------------------------#
     # We assume here that we are parsing cleaned up version of each object

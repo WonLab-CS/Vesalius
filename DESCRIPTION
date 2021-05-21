@@ -18,7 +18,6 @@ Collate: FindNN.R
     Prog.R
     Territory_identity.R
     viz.R
-    spatialClustering.R
 Depends: R (>= 3.5.0),
     methods,
     parallel,
