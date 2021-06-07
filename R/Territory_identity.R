@@ -212,6 +212,8 @@ extractMarkers <- function(image,counts,seed = NULL,query = NULL, method = "wilc
                          "cluster","territory")
 
      return(seed)
+  } else {
+     return(territories)
   }
 }
 
@@ -537,10 +539,11 @@ compareClusters <- function(ref,seedCluster,queryCluster,seed = NULL,query = NUL
       counter <- 1
       for(i in seq_along(l1)){
           for(j in seq_along(l2)){
-              tmp1 <- counts[,colnames(counts %in% unique(l1[[i]]$barcodes))]
-              tmp2 <- counts[,colnames(counts %in% unique(l2[[j]]$barcodes))]
-              tmpID1 <- paste0(l1[[i]]$layer,collapse = "",sep = " ")
-              tmpID2 <- paste0(l2[[j]]$layer,collapse = "",sep = " ")
+
+              tmp1 <- counts[,colnames(counts) %in% unique(l1[[i]]$barcodes)]
+              tmp2 <- counts[,colnames(counts) %in% unique(l2[[j]]$barcodes)]
+              tmpID1 <- paste0(unique(l1[[i]]$layer),collapse = "",sep = " ")
+              tmpID2 <- paste0(unique(l2[[j]]$layer),collapse = "",sep = " ")
               deg[[counter]] <- .VesaliusDEG(tmp1,tmp2,tmpID1,tmpID2,
                                                 method = method,
                                                 logFC=logFC,pval = pval,
@@ -549,6 +552,7 @@ compareClusters <- function(ref,seedCluster,queryCluster,seed = NULL,query = NUL
           }
       }
       deg <- do.call("rbind",deg)
+      cat("\n")
       .simpleBar(verbose)
       return(deg)
   }

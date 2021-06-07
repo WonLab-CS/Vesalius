@@ -57,6 +57,15 @@ smoothArray <- function(img,method = c("median","iso","box"),
     #--------------------------------------------------------------------------#
     for(i in seq_len(iter)){
         .smooth(i,verbose)
+        #----------------------------------------------------------------------#
+        # This might seem strange but when doing a lot of smoothing there is
+        # directionality bias. This introduces a shift in pixels and colour
+        # To avoid this problem we can rotate the image. Heaby smoothing often
+        # required to get large territories
+        #----------------------------------------------------------------------#
+        if(i %% 2 == 0){
+            imgCopy <- imrotate(imgCopy,180)
+        }
         for(j in method){
           imgCopy <- switch(j,
                             "median" = map_il(box,~medianblur(imgCopy,.,threshold)),
@@ -66,6 +75,9 @@ smoothArray <- function(img,method = c("median","iso","box"),
                             "min" = parmin(imgCopy),
                             "max" = parmax(imgCopy),
                             "mean" = average(imgCopy))
+        }
+        if(i %% 2 == 0){
+            imgCopy <- imrotate(imgCopy,180)
         }
 
     }
