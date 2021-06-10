@@ -112,7 +112,7 @@ cellProportion <- function(image){
 
 }
 
-viewGeneExpression <- function(image,counts,ter = NULL, genes = NULL,cex =10){
+viewGeneExpression <- function(image,counts,ter = NULL, genes = NULL,regularise = FALSE,cex =10){
     #--------------------------------------------------------------------------#
     # We will assume that you parse the image with all pixel for now
     # if no territory is specified gene expression on all
@@ -190,6 +190,81 @@ viewGeneExpression <- function(image,counts,ter = NULL, genes = NULL,cex =10){
                 legend.text = element_text(size = cex),
                 plot.title = element_text(size=cex)) +
           labs(title = genes,fill = type,
+               x = "X coordinates", y = "Y coordinates")
+    return(ge)
+}
+
+
+viewLayerExpression <- function(image,counts,genes = NULL,quantile = 0.5,cex =10){
+
+    #------------------------------------------------------------------------#
+    # Next lets get the unique barcodes associated to the selected territories
+    # Not great but it gets the job done I guess
+    #------------------------------------------------------------------------#
+    barcodes <- image %>% distinct(barcodes, .keep_all = FALSE)
+    barcodes <- barcodes$barcodes
+
+    #------------------------------------------------------------------------#
+    # Extract counts from the seurat object
+    # This will need to be cleaned up later
+    #------------------------------------------------------------------------#
+    counts <- subset(counts,cells = barcodes)
+    if(is(counts) == "Seurat"){
+        if(DefaultAssay(counts) == "Spatial"){
+            counts <- counts@assays$Spatial@counts
+
+        } else if(DefaultAssay(counts) == "SCT"){
+            counts <- counts@assays$SCT@counts
+
+        }
+    }
+
+
+    #--------------------------------------------------------------------------#
+    # Getting genes - For now it will stay as null
+    # I could add multiple gene viz and what not
+    # And yes I know it would be better to be consitent between tidyr and base
+    #--------------------------------------------------------------------------#
+    if(is.null(genes)){
+        stop("Please specifiy which gene you would like to visualize")
+    } else {
+        #----------------------------------------------------------------------#
+        # will need some regex here probs
+        #----------------------------------------------------------------------#
+        inCount <- rownames(counts) == genes
+        #----------------------------------------------------------------------#
+        # Just in case the gene is not present
+        # this should probably be cleaned up
+        #----------------------------------------------------------------------#
+        if(sum(inCount) == 0){
+            warning(paste(genes," is not present in count matrix. Returning NULL"),immediate.=T)
+            return(NULL)
+        }
+
+        counts <- counts[inCount,]
+
+        counts <- data.frame(names(counts),counts)
+        colnames(counts) <-c("barcodes","counts")
+
+
+    }
+    #--------------------------------------------------------------------------#
+    # Adding count values to iamge
+    #--------------------------------------------------------------------------#
+    image <- right_join(image,counts,by = "barcodes")
+
+    image <- image %>% group_by(layer) %>% mutate(counts = mean(counts))
+
+    ge <- ggplot(image,aes(x,y))+
+          geom_raster(aes(fill = counts))+
+          scale_fill_gradientn(colors = rev(brewer.pal(11,"Spectral")))+
+          theme_classic()+
+          theme(axis.text = element_text(size = cex ),
+                axis.title = element_text(size = cex),
+                legend.title = element_text(size = cex),
+                legend.text = element_text(size = cex),
+                plot.title = element_text(size=cex)) +
+          labs(title = genes,fill = "Mean Expression",
                x = "X coordinates", y = "Y coordinates")
     return(ge)
 }
