@@ -55,7 +55,7 @@ extractAllMarkers <- function(image,counts,method = "wilcox",
               filter(tile ==1 & territory %in% seedTerritory[i])
         } else {
             seed <- territories[[i]] %>% filter(territory %in% seedTerritory[i])
-            seed <- .territoryDilation(seed,dilationFactor,image,verbose)
+            seed <- territoryMorphing(seed,dilationFactor,image,verbose)
             seed <- filter(seed, tile ==1)
         }
         #----------------------------------------------------------------------#
@@ -88,12 +88,10 @@ extractAllMarkers <- function(image,counts,method = "wilcox",
   }
 
 
-### might not use this function
-### I honestly think it is a pain to just do one at a time
-### But if needed I can implement it - if required and asked for
-extractMarkers <- function(image,counts,seed = NULL,query = NULL, method = "wilcox",
-     logFC = 0.25, pval = 0.05,minPct = 0.05,minCell = 10,
-     dilationFactorSeed = 0,dilationFactorQuery = 0,verbose=TRUE){
+
+extractMarkers <- function(image,counts,seed = NULL,query = NULL,
+     method = "wilcox",logFC = 0.25, pval = 0.05,minPct = 0.05,minCell = 10,
+     morphologyFactorSeed = 0,morphologyFactorQuery = 0,verbose=TRUE){
     .simpleBar(verbose)
     .checkCounts(verbose)
     #--------------------------------------------------------------------------#
@@ -121,14 +119,14 @@ extractMarkers <- function(image,counts,seed = NULL,query = NULL, method = "wilc
     #--------------------------------------------------------------------------#
     # Dilating if needed
     #--------------------------------------------------------------------------#
-    if(dilationFactorSeed == 0){
+    if(morphologyFactorSeed == 0){
         seedID <- paste0(seed, sep =" ",collapse="")
         seed <- image %>% filter(tile == 1) %>% filter(territory %in% seed)
         seed <- counts[,colnames(counts) %in% unique(seed$barcodes)]
     } else {
         seedID <- paste0(seed, sep =" ",collapse="")
         seed <- image %>% filter(territory %in% seed)
-        seed <- .territoryDilation(seed,dilationFactorSeed,image, verbose)
+        seed <- territoryMorphing(seed,morphologyFactorSeed,image, verbose)
         seed <- counts[,colnames(counts) %in% unique(seed$barcodes)]
     }
 
@@ -145,13 +143,13 @@ extractMarkers <- function(image,counts,seed = NULL,query = NULL, method = "wilc
         queryID <- paste0(query, sep =" ",collapse="")
         query <- territories %>% filter(territory %in% query)
     }
-    if(dilationFactorQuery == 0){
+    if(morphologyFactorQuery == 0){
         query <- image %>% filter(tile == 1)
         query <- counts[,colnames(counts) %in% unique(query$barcodes)]
         query <- counts[,!colnames(query) %in% colnames(seed)]
     } else {
         query <- image %>% filter(territory %in% query)
-        query <- .territoryDilation(query,dilationFactorQuery,image, verbose)
+        query <- territoryMorphing(query,morphologyFactorQuery,image, verbose)
         query <- filter(query, tile == 1)
         query <- counts[,colnames(counts) %in% unique(query$barcodes)]
         query <- counts[,!colnames(query) %in% colnames(seed)]
@@ -169,16 +167,62 @@ extractMarkers <- function(image,counts,seed = NULL,query = NULL, method = "wilc
 
 }
 
+extractClusterMarkers <- function(cluster,counts,
+     method = "wilcox",logFC = 0.25, pval = 0.05,minPct = 0.05,minCell = 10,verbose=TRUE){
+    .simpleBar(verbose)
+    .checkCounts(verbose)
+    #--------------------------------------------------------------------------#
+    # Check class of counts and determine approach based on that
+    #--------------------------------------------------------------------------#
+    if(is(counts) == "Seurat"){
+        if(DefaultAssay(counts) == "Spatial"){
+            counts <- counts@assays$Spatial@counts
+        } else if(DefaultAssay(counts) == "SCT"){
+            counts <- counts@assays$SCT@counts
+        }
+    }
+
+    #--------------------------------------------------------------------------#
+    # Get data relating the seurat clusters
+    # And coordinates - Not in use at the moment but would be useful if
+    # I want to add some morphology for each cluster later on
+    #--------------------------------------------------------------------------#
+    #coord <-.getSeuratCoordinates(CACluster)
+    cluster <- FetchData(cluster, c("seurat_clusters"))
+
+    #--------------------------------------------------------------------------#
+    # Now we can loop over each cluster and compare each cluster to everything
+    # sounds stupid but other wise you won't always get the proper markers
+    # You get subtle difference when isolating territories and that is great
+    # but sometimes you have to compare to everything else for markers
+    #--------------------------------------------------------------------------#
+    clustNum <- unique(cluster$seurat_clusters)
+    deg <- vector("list", length(clustNum))
+    for(i in seq_along(clustNum)){
+        tmp <- cluster %>% filter(seurat_clusters == clustNum[i]) %>% rownames()
+        seed <- counts[,colnames(counts) %in% tmp]
+        query <- counts[,!colnames(counts) %in% tmp]
+        .degProg(verbose)
+        deg[[i]] <- .VesaliusDEG(seed,query,clustNum[i],"Remaining",method,
+            logFC,pval,minPct,minCell,verbose)
+    }
+    deg <- do.call("rbind", deg)
+    cat("\n")
+    .simpleBar(verbose)
+    return(deg)
+
+
+
+}
 
 
 
 
-.territoryDilation <- function(territories,dilationFactor,image,verbose){
 
-  if(dilationFactor<0){
-      stop("Territory Erosion not supported - dilationFactor < 0")
-  } else if(dilationFactor >0){
-      .dilate(verbose)
+territoryMorphing <- function(territories,morphologyFactor,image,verbose){
+
+
+      .morph(verbose)
       #------------------------------------------------------------------#
       # First we define territory limits and add a little on each
       # side - this ensures that we won't be clipping any parts of the
@@ -186,20 +230,33 @@ extractMarkers <- function(image,counts,seed = NULL,query = NULL, method = "wilc
       #------------------------------------------------------------------#
       seed <- territories %>% mutate(value=1)
 
-      dilationFactor <- ifelse(dilationFactor <= 0,1,dilationFactor)
-      ymin <- ifelse((min(seed$y) - dilationFactor *2) <=0,1,
-         min(seed$y) - dilationFactor *2)
-      xmin <- ifelse((min(seed$x) - dilationFactor *2) <=0,1,
-         min(seed$x) - dilationFactor *2)
-      ymax <- max(seed$y) + dilationFactor * 2
-      xmax <- max(seed$x) + dilationFactor * 2
+
+      ymin <- ifelse((min(seed$y) - max(abs(morphologyFactor)) *2) <=0,1,
+         min(seed$y) - morphologyFactor *2)
+      xmin <- ifelse((min(seed$x) - max(abs(morphologyFactor)) *2) <=0,1,
+         min(seed$x) - max(abs(morphologyFactor)) *2)
+      ymax <- max(seed$y) + max(abs(morphologyFactor)) * 2
+      xmax <- max(seed$x) + max(abs(morphologyFactor)) * 2
       #------------------------------------------------------------------#
-      # Now we convert add buffer boundaeries, covert to grey scale and
-      # dilate the territory
+      # Now we convert add buffer boundaeries, covert to grey scale a
       #------------------------------------------------------------------#
       seed <- seed %>% select(c("x","y","cc","value")) %>%
               rbind(.,c(xmin,ymin,1,0),c(xmax,ymax,1,0)) %>%
-              as.cimg() %>% grayscale() %>% grow(dilationFactor)
+              as.cimg() %>% grayscale()
+      #------------------------------------------------------------------#
+      # Now we can do the morphing - grow, erode, clean and fill
+      # For some reason I need to create mf seperately
+      # maybe due to the fact that the grow/shrink function
+      # is parsing weird stuff to imager/C++ ?
+      #------------------------------------------------------------------#
+      for(i in seq_along(morphologyFactor)){
+          mf <- abs(morphologyFactor[i])
+          if(morphologyFactor[i] >=0){
+              seed <- grow(seed,mf)
+          } else {
+              seed <- shrink(seed, mf)
+          }
+      }
       #------------------------------------------------------------------#
       # Next we rebuild the image data frame with dilated
       #------------------------------------------------------------------#
@@ -212,9 +269,7 @@ extractMarkers <- function(image,counts,seed = NULL,query = NULL, method = "wilc
                          "cluster","territory")
 
      return(seed)
-  } else {
-     return(territories)
-  }
+
 }
 
 
@@ -368,7 +423,7 @@ extractMarkers <- function(image,counts,seed = NULL,query = NULL, method = "wilc
 ### Cant remember why I took this approach
 ### Lets keep it ultra simple for now
 ### Dont create this intermediate object only if required
-extractTerritories <- function(image,seurat,seedID = NULL,dilationFactor = 0,
+extractTerritories <- function(image,seurat,seedID = NULL,morphologyFactor = 0,
                                minCell = 10, verbose = TRUE,cores = 1){
     .simpleBar(verbose)
     #--------------------------------------------------------------------------#
@@ -382,7 +437,7 @@ extractTerritories <- function(image,seurat,seedID = NULL,dilationFactor = 0,
         #----------------------------------------------------------------------#
         # Revert back to fine grain if inage array was reduced
         #----------------------------------------------------------------------#
-        if(dilationFactor != 0){
+        if(morphologyFactor != 0){
            cat("No seedID specified - Territory Dilation will not be applied.\n")
         }
         cells <- sapply(territories,nrow) > minCell
@@ -398,7 +453,7 @@ extractTerritories <- function(image,seurat,seedID = NULL,dilationFactor = 0,
         #----------------------------------------------------------------------#
         .extractTerProg(seedID,verbose)
         territories <- image %>% filter(territory %in% seedID)
-        territories <- .territoryDilation(territories,dilationFactor,image,verbose)
+        territories <- territoryMorphing(territories,morphologyFactor,image,verbose)
         territories <- filter(territories,tile == 1)  %>%
             distinct(barcodes,.keep_all=F)
         territories <- territories$barcodes
@@ -438,6 +493,9 @@ subSetTerritories <- function(territories,seurat){
     return(seurat)
 }
 
+##### NOT in USE for now
+##### This has some interesting benifits but this whole function needs to be
+##### re worked anyway.
 compareClusters <- function(ref,seedCluster,queryCluster,seed = NULL,query = NULL,method = "wilcox",
   logFC = 0.25, pval = 0.05,minPct = 0.05,minCell = 10,verbose=TRUE){
       .simpleBar(verbose)

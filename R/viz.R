@@ -112,7 +112,8 @@ cellProportion <- function(image){
 
 }
 
-viewGeneExpression <- function(image,counts,ter = NULL, genes = NULL,regularise = FALSE,cex =10){
+viewGeneExpression <- function(image,counts,ter = NULL, genes = NULL,
+    regularise = FALSE,normalise = TRUE,cex =10){
     #--------------------------------------------------------------------------#
     # We will assume that you parse the image with all pixel for now
     # if no territory is specified gene expression on all
@@ -139,13 +140,13 @@ viewGeneExpression <- function(image,counts,ter = NULL, genes = NULL,regularise 
     if(is(counts) == "Seurat"){
         if(DefaultAssay(counts) == "Spatial"){
             counts <- counts@assays$Spatial@counts
-            type <- "counts"
+
         } else if(DefaultAssay(counts) == "SCT"){
             counts <- counts@assays$SCT@counts
-            type <- "Norm. Counts"
+
         }
     }
-
+    type <- "Expression"
 
     #--------------------------------------------------------------------------#
     # Getting genes - For now it will stay as null
@@ -172,7 +173,11 @@ viewGeneExpression <- function(image,counts,ter = NULL, genes = NULL,regularise 
 
         counts <- data.frame(names(counts),counts)
         colnames(counts) <-c("barcodes","counts")
-
+        if(normalise){
+            counts$counts <- (counts$counts - min(counts$counts)) /
+                             (max(counts$counts) - min(counts$counts))
+            type <- "Norm. Expression"
+        }
 
     }
     #--------------------------------------------------------------------------#
@@ -195,7 +200,7 @@ viewGeneExpression <- function(image,counts,ter = NULL, genes = NULL,regularise 
 }
 
 
-viewLayerExpression <- function(image,counts,genes = NULL,quantile = 0.5,cex =10){
+viewLayerExpression <- function(image,counts,genes = NULL,normalise =TRUE,cex =10){
 
     #------------------------------------------------------------------------#
     # Next lets get the unique barcodes associated to the selected territories
@@ -254,7 +259,16 @@ viewLayerExpression <- function(image,counts,genes = NULL,quantile = 0.5,cex =10
     image <- right_join(image,counts,by = "barcodes")
 
     image <- image %>% group_by(layer) %>% mutate(counts = mean(counts))
-
+    #--------------------------------------------------------------------------#
+    # Normalising counts in image
+    # There might be a cleaner way of doing This
+    # Should I norm over all counts?
+    #--------------------------------------------------------------------------#
+    
+    if(normalise){
+        image$counts <- (image$counts - min(image$counts)) /
+                         (max(image$counts) - min(image$counts))
+    }
     ge <- ggplot(image,aes(x,y))+
           geom_raster(aes(fill = counts))+
           scale_fill_gradientn(colors = rev(brewer.pal(11,"Spectral")))+

@@ -12,7 +12,6 @@ Collate: FindNN.R
     IsolatingTerritories.R
     LoadingData.R
     PCA_to_RGB.R
-    Plotting.R
     processing.R
     VesaliusObjects.R
     Prog.R

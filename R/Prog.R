@@ -120,6 +120,7 @@
     cat( paste("===>",seed,"VS",query,"<===","\r"))
 }
 
+
 .extractTerProg <- function(seed,verbose =TRUE){
     if(!verbose) return(NULL)
     t <- Sys.time()
@@ -171,7 +172,7 @@
     cat( paste(t," Rebuilding Data Frame from image \n"))
 }
 
-.dilate <- function(verbose =TRUE){
+.morph <- function(verbose =TRUE){
     if(!verbose) return(NULL)
     t <- Sys.time()
     cat( paste(t," Converting to pixset and dilating territory \n"))

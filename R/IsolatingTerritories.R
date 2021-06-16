@@ -618,7 +618,7 @@ addTerritories <- function(dat,coordinates = NULL, global = TRUE){
 
 
 layerTerritory.concave <- function(image,seedTerritory = NULL,layerDepth = NULL,concavity=1,
-  length_threshold=0, dilationFactor = 3,captureRadius=0.2,minCell = 10, verbose =TRUE){
+  length_threshold=0, morphologyFactor = 3,captureRadius=0.2,minCell = 10, verbose =TRUE){
 
     .simpleBar(verbose)
 
@@ -651,7 +651,7 @@ layerTerritory.concave <- function(image,seedTerritory = NULL,layerDepth = NULL,
       .dilate(verbose)
       ter <- pooled[[te]]
       ter <- ter %>% select(c("x","y","cc","value")) %>%
-             as.cimg %>% grayscale %>% grow(dilationFactor)
+             as.cimg %>% grayscale %>% grow(morphologyFactor)
       #------------------------------------------------------------------------#
       # Once we have dilated we can start iterative layayering
       # We will do this on tile centers and that is what we really care about
@@ -716,7 +716,7 @@ layerTerritory.concave <- function(image,seedTerritory = NULL,layerDepth = NULL,
 
 
 layerTerritory.edge <- function(image,seedTerritory = NULL,layerDepth = NULL,
-  dilationFactor = 3,verbose =TRUE){
+  morphologyFactor = 3,verbose =TRUE){
 
     .simpleBar(verbose)
 
@@ -731,20 +731,30 @@ layerTerritory.edge <- function(image,seedTerritory = NULL,layerDepth = NULL,
     #--------------------------------------------------------------------------#
     .seedSelect(verbose)
     ter <- image %>% filter(territory %in% seedTerritory) %>% mutate(value=1)
-    dilationFactor <- ifelse(dilationFactor <= 0,1,dilationFactor)
-    ymin <- ifelse((min(ter$y) - dilationFactor *2) <=0,1,min(ter$y) - dilationFactor *2)
-    xmin <- ifelse((min(ter$x) - dilationFactor *2) <=0,1,min(ter$x) - dilationFactor *2)
-    ymax <- max(ter$y) + dilationFactor * 2
-    xmax <- max(ter$x) + dilationFactor * 2
+
+    ymin <- ifelse((min(ter$y) - max(abs(morphologyFactor)) *2) <=0,1,
+        min(ter$y) - max(abs(morphologyFactor)) *2)
+    xmin <- ifelse((min(ter$x) - max(abs(morphologyFactor)) *2) <=0,1,
+        min(ter$x) - max(abs(morphologyFactor)) *2)
+    ymax <- max(ter$y) + max(abs(morphologyFactor)) * 2
+    xmax <- max(ter$x) + max(abs(morphologyFactor)) * 2
 
 
     #--------------------------------------------------------------------------#
     # Dilate territory to ensure that we cover the outer layers as well
     #--------------------------------------------------------------------------#
-    .dilate(verbose)
+    .morph(verbose)
     terTmp <- ter %>% select(c("x","y","cc","value")) %>%
               rbind(.,c(xmin,ymin,1,0),c(xmax,ymax,1,0)) %>%
-              as.cimg %>% grayscale() %>% grow(dilationFactor)
+              as.cimg %>% grayscale()
+    for(i in seq_along(morphologyFactor)){
+        mf <- abs(morphologyFactor[i])
+        if(morphologyFactor[i] >=0){
+            terTmp <- grow(terTmp,mf)
+        } else {
+            terTmp <- shrink(terTmp, mf)
+        }
+    }
 
     terForLoop <- terTmp %>% as.data.frame()
 
@@ -791,10 +801,12 @@ layerTerritory.edge <- function(image,seedTerritory = NULL,layerDepth = NULL,
       # Rebuilding an image but adding a little extra space
       #------------------------------------------------------------------------#
       if(nrow(terForLoop)>0){
-      ymin <- ifelse((min(terForLoop$y) - dilationFactor *2) <=0,1,min(terForLoop$y) - dilationFactor *2)
-      xmin <- ifelse((min(terForLoop$x) - dilationFactor *2) <=0,1,min(terForLoop$x) - dilationFactor *2)
-      ymax <- max(terForLoop$y) + dilationFactor * 2
-      xmax <- max(terForLoop$x) + dilationFactor * 2
+      ymin <- ifelse((min(terForLoop$y) - max(abs(morphologyFactor)) *2) <=0,1,
+          min(terForLoop$y) - max(abs(morphologyFactor)) *2)
+      xmin <- ifelse((min(terForLoop$x) - max(abs(morphologyFactor)) *2) <=0,1,
+          min(terForLoop$x) - max(abs(morphologyFactor)) *2)
+      ymax <- max(terForLoop$y) + max(abs(morphologyFactor)) * 2
+      xmax <- max(terForLoop$x) + max(abs(morphologyFactor)) * 2
 
       terTmp <- terForLoop %>% select(c("x","y","cc","value")) %>%
                 rbind(.,c(xmin,ymin,1,0),c(xmax,ymax,1,0)) %>%
