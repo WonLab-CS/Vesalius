@@ -664,6 +664,9 @@ imageBrainEq <- equalizeHistogram(imageBrain,sleft = 2.5, sright=2.5,invert =T)
 # image reg
 imageBrainReg <- regulariseImage(imageBrainEq, lambda = 10, niter = 200,normalise=T)
 
+pdf("imageBrain_regEQ.pdf")
+imagePlot(imageBrainReg,as.cimg=F,cex =12)
+dev.off()
 #segmentation
 imageBrain1 <- iterativeSegmentation.array(imageBrainReg,colDepth = 6, smoothIter = 20, method = c("iso","median"),sigma=1.5,box = 10,acrossLevels = "mean",useCenter = T,invert =T)
 
@@ -689,7 +692,7 @@ dev.off()
 #### This section returns seurat objects to run clustering
 
 CACluster <- extractTerritories(imageBrain2,brainRaw,seedID = c(19),morphologyFactor=0)
-StriaCluster <- extractTerritories(imageBrain2,brainRaw,seedID = c(46,49),morphologyFactor=13)
+StriaCluster <- extractTerritories(imageBrain2,brainRaw,seedID = c(45,48),morphologyFactor=13)
 
 
 ## Cluster Analayis for various sub territoriries
@@ -705,12 +708,12 @@ CACluster <- CACluster %>%
 CAMarkers <- FindAllMarkers(CACluster) %>% group_by(cluster) %>%
              top_n(15,wt = avg_logFC)
 
-CAClusterMarkers <- extractClusterMarkers(CACluster,brainCounts) %>% group_by(seedTerritory) %>% top_n(15,wt = logFC)
+CAClusterMarkers <- extractClusterMarkers(CACluster,brainCounts) %>% group_by(seedTerritory) %>% top_n(20,wt = logFC)
 
 CA <- FetchData(CACluster, c("UMAP_1","UMAP_2","seurat_clusters"))
 
 
-CA_ISH <- c("CA1 Pyramidal Layer","CA3 Pyramidal Layer","CA1 Pyramidal Layer","CA2 Pyramidal Layer","Oligodendrocyte","Neurons","Microglia")
+CA_ISH <- c("CA1 Pyramidal Layer","CA3 Pyramidal Layer","CA1 Pyramidal Layer","CA1 Pyramidal Layer","CA2 Pyramidal Layer","Neurons","Microglia")
 coordCA <- Vesalius:::.getSeuratCoordinates(CACluster)
 CA <- cbind(CA,coordCA[,c("x","y")]) %>% group_by(seurat_clusters) %>%
       mutate(xs = mean(UMAP_1),ys = mean(UMAP_2))
@@ -719,37 +722,41 @@ lvls <- CA_ISH[as.numeric(as.character(CA$seurat_clusters))+1]
 CA$seurat_clusters <- lvls
 
 CA_col <- length(unique(CA$seurat_clusters))
-CA_pal <- colorRampPalette(brewer.pal(8, "Accent"))
-#cols <- CA_pal(8)[c(1:3,5:7)]
-cols <- CA_pal(7)
+#CA_pal <- colorRampPalette(c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7"))
+#cols <- CA_pal(5)
+cols <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")[c(2,3,4,5,8)]
 umap_CA <- ggplot(CA, aes(UMAP_1,UMAP_2,col = as.factor(seurat_clusters))) +
-            geom_point(size = 1.2, alpha = 0.6) +
+            geom_point(size = 1.2, alpha = 1) +
             theme_classic() +
             scale_color_manual(values =cols) +
+            scale_y_continuous(position = "right")+
             theme(legend.position = "none",
                   axis.text = element_text(size = 20),
                   axis.title = element_text(size = 20),
-                  plot.title = element_text(size = 20),
-                  plot.tag = element_text(size=20)) +
+                  plot.title = element_text(size = 20,hjust=0),
+                  plot.tag = element_text(size=20),
+                  plot.margin = margin(0.5, 1.2, 0.5, 0.5, "cm")) +
             #guides(colour = guide_legend(override.aes = list(size=4)))+
-            labs(title = "UMAP Clusters",
+            labs(title = "CA Field - Pyramidal layer",
                               x = "UMAP 1", y = "UMAP 2")
 
 coord_CA <- ggplot(CA, aes(x,y,col = as.factor(seurat_clusters))) +
-            geom_point(size = 0.4, alpha = 0.6) +
+            geom_point(size = 0.4, alpha = 1) +
             theme_void() +
             scale_color_manual(values = cols) +
             theme(legend.text = element_text(size = 20),
                   #axis.text = element_text(size = 20),
                   #axis.title = element_text(size = 20),
+                  legend.position = "left",
                   plot.title = element_text(size = 20),
-                  plot.tag = element_text(size=20)) +
+                  plot.tag = element_text(size=20),
+                  plot.margin = margin(0, 0, 0.5, 0, "cm")) +
             guides(colour = guide_legend(override.aes = list(size=9)))+
-            labs(colour = " ", title = "Isolated CA Field - Pyramidal layer",
+            labs(colour = " ", title = " ",
                 x = "X coordinates", y = "Y coordinates")
 
-pdf("CA_umap.pdf", width =14.5, height=6)
-umap_CA + coord_CA
+pdf("CA_umap.pdf", width =10, height=10)
+umap_CA / coord_CA
 dev.off()
 
 
@@ -760,7 +767,7 @@ StriaCluster <- StriaCluster %>%
              RunPCA(dims =1:30) %>%
              RunUMAP(dims =1:30) %>%
              FindNeighbors()
-StriaCluster <- StriaCluster %>%FindClusters(resolution = 0.85)
+StriaCluster <- StriaCluster %>%FindClusters(resolution = 0.75)
 
 striaMarkers <- FindAllMarkers(StriaCluster) %>% group_by(cluster) %>%
              top_n(15,wt = avg_logFC)
@@ -768,7 +775,7 @@ striaClusterMarkers <- extractClusterMarkers(StriaCluster,brainCounts) %>%
 group_by(seedTerritory) %>% top_n(15,wt = logFC)
 
 stria <- FetchData(StriaCluster, c("UMAP_1","UMAP_2","seurat_clusters"))
-stria_ISH <-c("Third Ventricle","Medial Habenula - Lat.","Medial Habenula","Neurons - Unassigned","Third Ventricle","Unassigned","Oligodendrocyte - Medial Habenula","Ependymal Cells","Oligodendrocyte - Third Ventricle","Neurons - Medial Habenula","Unassigned","Third Ventricle - Border")
+stria_ISH <-c("Medial Habenula","Third Ventricle","Medial Habenula - Low","Third Ventricle - Low","Third Ventricle","Oligodendrocyte - TV","Ependymal Cells - TV","Unassigned","Oligodendrocyte - MH","Neurons","Third Ventricle - Border","Unassigned")
 coordStria <- Vesalius:::.getSeuratCoordinates(StriaCluster)
 stria <- cbind(stria,coordStria[,c("x","y")]) %>% group_by(seurat_clusters) %>%
       mutate(xs = mean(UMAP_1),ys = mean(UMAP_2))
@@ -776,37 +783,39 @@ lvls <- stria_ISH[as.numeric(as.character(stria$seurat_clusters))+1]
 stria$seurat_clusters <- lvls
 
 stria_col <- length(unique(stria$seurat_clusters))
-stria_pal <- colorRampPalette(brewer.pal(8, "Accent"))
-#cols <- stria_pal(8)[c(1:3,5:6)]
-cols <- stria_pal(12)
+stria_pal <- colorRampPalette(c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7"))
+cols <- stria_pal(stria_col)[sample(1:stria_col)]
+#cols <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 umap_stria <- ggplot(stria, aes(UMAP_1,UMAP_2,col = as.factor(seurat_clusters))) +
-            geom_point(size = 1, alpha = 0.6) +
+            geom_point(size = 1, alpha = 1) +
             theme_classic() +
             scale_color_manual(values =cols) +
             theme(legend.position = "none",
                   axis.text = element_text(size = 20),
                   axis.title = element_text(size = 20),
-                  plot.title = element_text(size = 20),
-                  plot.tag = element_text(size=20)) +
+                  plot.title = element_text(size = 20,hjust=1),
+                  plot.tag = element_text(size=20),
+                  plot.margin = margin(0.5, 0.5, 0.5, 1.2, "cm")) +
             #guides(colour = guide_legend(override.aes = list(size=4)))+
-            labs(title = "UMAP Clusters",
+            labs(title = "Third Ventricle - Medial Habenula",
                               x = "UMAP 1", y = "UMAP 2")
 
 coord_stria <- ggplot(stria, aes(x,y,col = as.factor(seurat_clusters))) +
-            geom_point(size = 1.1, alpha = 0.6) +
+            geom_point(size = 1.3, alpha = 1) +
             theme_void() +
             scale_color_manual(values = cols) +
             theme(legend.text = element_text(size = 20),
                   #axis.text = element_text(size = 20),
                   #axis.title = element_text(size = 20),,
                   plot.title = element_text(size = 20),
-                  plot.tag = element_text(size=20)) +
+                  plot.tag = element_text(size=20),
+                  plot.margin = margin(0, 0, 0.5, 0, "cm")) +
             guides(colour = guide_legend(override.aes = list(size=9)))+
-            labs(colour = " ", title = "Isolated Third Ventricle",
+            labs(colour = " ", title = "",
                 x = "X coordinates", y = "Y coordinates")
 
-pdf("stria_umap.pdf", width =14.5, height=6)
-umap_stria + coord_stria
+pdf("stria_umap.pdf", width =10, height=10)
+umap_stria /coord_stria
 dev.off()
 
 ```
@@ -830,21 +839,23 @@ for(i in seq_along(embryoList)){
   imageEmbryo <- embryoList[[i]]
   imageEmbryo <- equalizeHistogram(imageEmbryo, sleft = 2.5, sright = 2.5,invert = T)
   imageEmbryo <- regulariseImage(imageEmbryo,lambda =10)
-
+  pdf(paste0("imageEmbryo_regEQ_",i,".pdf"))
+  imagePlot(imageEmbryo,as.cimg =F , cex =12)
+  dev.off()
 
 
   imageEmbryo1 <- iterativeSegmentation.array(imageEmbryo,colDepth = 8, smoothIter = 20, method = c("iso","box"),sigma = seq(0.5,2,by=0.5),box = seq(3,9,by=2),invert =T,useCenter=F)
 
   imageEmbryo2 <- isolateTerritories.array(imageEmbryo1,method="distance",captureRadius = 0.025,minCell = 40)
   embryoList[[i]] <- imageEmbryo2
-  #imgSmoothedEm <- imagePlot(imageEmbryo1, as.cimg = F,cex = 15) + theme_void()
-  #imgTerritoryEm <- territoryPlot(imageEmbryo2, randomise = TRUE,cex =15 , cex.pt=0.25)+theme_void()+
-  #theme(legend.text = element_text(size = 12),
-  #     legend.title = element_text(size=12))
-  #pdf(paste0("smoother_and_territory_embryo_slice",i,".pdf"), width = 11, height=5)
-  #g <-imgSmoothedEm +  imgTerritoryEm
-  #print(g)
-  #dev.off()
+  imgSmoothedEm <- imagePlot(imageEmbryo1, as.cimg = F,cex = 15) + theme_void()
+  imgTerritoryEm <- territoryPlot(imageEmbryo2, randomise = TRUE,cex =15 , cex.pt=0.25)+theme_void()+
+  theme(legend.text = element_text(size = 12),
+       legend.title = element_text(size=12))
+  pdf(paste0("smoother_and_territory_embryo_slice",i,".pdf"), width = 11.5, height=5.5)
+  g <-imgSmoothedEm +  imgTerritoryEm
+  print(g)
+  dev.off()
 
   #pdf(paste0("embryo_split_slice",i,".pdf"),width =20, height = 20)
   #print(territoryPlot(imageEmbryo2,split = T,randomise = F,cex=10))
@@ -852,8 +863,8 @@ for(i in seq_along(embryoList)){
 }
 
 
-eyeCluster <- extractTerritories(embryoList[[2]],embryoRaw,seedID = 11)
-liverCluster <- extractTerritories(embryoList[[1]],embryoRaw,seedID = 8)
+eyeCluster <- extractTerritories(embryoList[[2]],embryoCounts,seedID = 11)
+liverCluster <- extractTerritories(embryoList[[1]],embryoCounts,seedID = 7)
 
 
 ## Cluster Analayis for various sub territoriries
@@ -881,15 +892,15 @@ eye <- FetchData(eyeCluster, c("UMAP_1","UMAP_2","seurat_clusters"))
 #  "Bipolar Cells - Inner Layer",
 #  "Müller Cells - Lens Placode",
 #  "Photo-receptor Cells")
-eye_ISH <- c("Preplacodal Lens Ectoderm Cells",
-    "Periocular Mesenchymal Cells",
-    "Primary Lens Fiber Cells - Inner Layer",
-    "Primary Lens Fiber Cells - Outer Lens",
-    "Mesenchymal - Lens",
+eye_ISH <- c("Primary Lens Fiber Cells",
+    "Anterior Lens Epithelial Cells",
     "Preplacodal Lens Ectoderm Cells",
+    "Periocular Mesenchyme",
     "Lens Vesicle Cells",
-    "Retinal progenitor-like cells",
-    "Preplacodal Lens Ectoderm Cells")
+    "Anterior Lens Epithelial Cells - L2",
+    "Lens Vesicle Cells - L2",
+    "Primary Lens Fiber Cells")
+
 coordeye <- Vesalius:::.getSeuratCoordinates(eyeCluster)
 eye <- cbind(eye,coordeye[,c("x","y")]) %>% group_by(seurat_clusters) %>%
       mutate(xs = mean(UMAP_1),ys = mean(UMAP_2))
@@ -898,39 +909,45 @@ lvls <- eye_ISH[as.numeric(as.character(eye$seurat_clusters))+1]
 eye$seurat_clusters <- lvls
 
 eye_col <- length(unique(eye$seurat_clusters))
-eye_pal <- colorRampPalette(brewer.pal(8, "Accent"))
-cols <- eye_pal(9)
+eye_pal <- colorRampPalette(c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7"))
+cols <- eye_pal(eye_col)[sample(1:eye_col)]
+cols <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 #manual change because that yellow really sucks
 #cols <- cols[-4]
 
 umap_eye <- ggplot(eye, aes(UMAP_1,UMAP_2,col = as.factor(seurat_clusters))) +
-            geom_point(size = 1.2, alpha = 0.6) +
+            geom_point(size = 1.2, alpha = 1) +
             theme_classic() +
             scale_color_manual(values =cols) +
+            scale_y_continuous(position = "right") +
+            scale_x_continuous(position = "top")+
             theme(legend.position = "none",
                   axis.text = element_text(size = 20),
                   axis.title = element_text(size = 20),
-                  plot.title = element_text(size = 20),
-                  plot.tag = element_text(size=20)) +
+                  plot.caption = element_text(size = 20,hjust = 0),
+                  plot.tag = element_text(size=20),
+                  plot.margin = margin(0.5, 1.2, 0.5, 0.5, "cm")) +
             #guides(colour = guide_legend(override.aes = list(size=4)))+
-            labs(title = "UMAP Clusters",
+            labs(caption = "Embryonic Eye (E12.5)",
                               x = "UMAP 1", y = "UMAP 2")
 
 coord_eye <- ggplot(eye, aes(x,y,col = as.factor(seurat_clusters))) +
-            geom_point(size = 1.4, alpha = 0.6) +
+            geom_point(size = 1.4, alpha = 1) +
             theme_void() +
             scale_color_manual(values = cols) +
             theme(legend.text = element_text(size = 20),
+                  legend.position ="left",
                   #axis.text = element_text(size = 20),
                   #axis.title = element_text(size = 20),
                   plot.title = element_text(size = 20),
-                  plot.tag = element_text(size=20)) +
+                  plot.tag = element_text(size=20),
+                  plot.margin = margin(0.5, 0, 0, 0, "cm")) +
             guides(colour = guide_legend(override.aes = list(size=9)))+
-            labs(colour = "", title = "Isolated Embryonic Eye (E12.5)",
+            labs(colour = "", title = "",
                 x = "X coordinates", y = "Y coordinates")
 
-pdf("eye_umap.pdf", width =16.5, height=6)
-umap_eye + coord_eye
+pdf("eye_umap.pdf", width =10, height=10)
+coord_eye /umap_eye
 dev.off()
 
 
@@ -953,7 +970,7 @@ liverClusterMarkers <- extractClusterMarkers(liverCluster,embryoCounts) %>%
 
 liver <- FetchData(liverCluster, c("UMAP_1","UMAP_2","seurat_clusters"))
 #liver_ISH <- c("Hepatocyte", "Erythroid Cells","Ito Cells","Kupffer Cells","B Cells")
-liver_ISH <- c("Fetal Hepatocyte", "Erythroblasts","Perivenous Hepatocytes","Mesothelial Cells","Platelets")
+liver_ISH <- c("Hepatoblast", "Hepatoblast","Mesothelial Cells","Perivenous Hepatocytes","Hepatobiliary System","Embryonic Erythrocytes")
 coordliver <- Vesalius:::.getSeuratCoordinates(liverCluster)
 liver <- cbind(liver,coordliver[,c("x","y")]) %>% group_by(seurat_clusters) %>%
       mutate(xs = mean(UMAP_1),ys = mean(UMAP_2))
@@ -962,37 +979,40 @@ lvls <- liver_ISH[as.numeric(as.character(liver$seurat_clusters))+1]
 liver$seurat_clusters <- lvls
 
 liver_col <- length(unique(liver$seurat_clusters))
-liver_pal <- colorRampPalette(brewer.pal(8, "Accent"))
-cols <- liver_pal(8)[c(1:3,5,6)]
+
+cols <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")[c(2,3,4,5,8)]
 
 umap_liver <- ggplot(liver, aes(UMAP_1,UMAP_2,col = as.factor(seurat_clusters))) +
-            geom_point(size = 1.2, alpha = 0.6) +
+            geom_point(size = 1.2, alpha = 1) +
             theme_classic() +
             scale_color_manual(values =cols) +
+            scale_x_continuous(position ="top")+
             theme(legend.position = "none",
                   axis.text = element_text(size = 20),
                   axis.title = element_text(size = 20),
-                  plot.title = element_text(size = 20),
-                  plot.tag = element_text(size=20)) +
+                  plot.caption = element_text(size = 20,hjust=1),
+                  plot.tag = element_text(size=20),
+                  plot.margin = margin(0.5, 0.5, 1.5, 0.5, "cm")) +
             #guides(colour = guide_legend(override.aes = list(size=4)))+
-            labs(title = "UMAP Clusters",
+            labs(caption = "Embryonic Liver (E12.5)",
                               x = "UMAP 1", y = "UMAP 2")
 
 coord_liver <- ggplot(liver, aes(x,y,col = as.factor(seurat_clusters))) +
-            geom_point(size = 1, alpha = 0.6) +
+            geom_point(size = 1, alpha = 1) +
             theme_void() +
             scale_color_manual(values = cols) +
             theme(legend.text = element_text(size = 20),
                   #axis.text = element_text(size = 20),
                   #axis.title = element_text(size = 20),
                   plot.title = element_text(size = 20),
-                  plot.tag = element_text(size=20)) +
+                  plot.tag = element_text(size=20),
+                  plot.margin = margin(0.5, 0.0, 0.0, 0.0, "cm")) +
             guides(colour = guide_legend(override.aes = list(size=9)))+
-            labs(colour = " ", title = "Isolated Liver (E12.5)",
+            labs(colour = " ", title = "",
                 x = "X coordinates", y = "Y coordinates")
 
-pdf("liver_umap.pdf", width =14.5, height=6)
-umap_liver + coord_liver
+pdf("liver_umap.pdf", width =10, height=10)
+coord_liver /umap_liver
 dev.off()
 
 ```
@@ -1000,6 +1020,12 @@ dev.off()
 ```{r full_fig3, eval = T , echo = T}
 pdf("fig_3_template_2.pdf",height=18,width=15)
 umap_CA+coord_CA+umap_stria+coord_stria+umap_eye+coord_eye+umap_liver+coord_liver + plot_layout(ncol=2,width=c(1,1.3))
+dev.off()
+
+
+pdf("fig_3_template.pdf",height=16,width=20)
+umap_CA+umap_stria+coord_CA+coord_stria+coord_eye+coord_liver+umap_eye+umap_liver +
+   plot_layout(ncol=2,height=c(1,1.4,1.4,1))
 dev.off()
 ```
 
@@ -1012,13 +1038,13 @@ I fear that might get a bit crowded.
 
 ```{r Territory_comp,eval = TRUE, echo=TRUE}
 ############################### Hippocampus ####################################
-Dentate <- layerTerritory.edge(imageBrain2,30,morphologyFactor = 15)
+Dentate <- layerTerritory.edge(imageBrain2,29,morphologyFactor = 15)
 
-DenMarkers <- extractMarkers(imageBrain2,brainCounts,30,morphologyFactorSeed =0)
+DenMarkers <- extractMarkers(imageBrain2,brainCounts,29,morphologyFactorSeed =0)
 
 
 
-DenClusterDilated <- extractTerritories(imageBrain2, brainRaw,seedID = 30,dilationFactor = 15)
+DenClusterDilated <- extractTerritories(imageBrain2, brainRaw,seedID = 29,morphologyFactor = 15)
 
 DenClusterDilated <- DenClusterDilated %>% SCTransform(assay = "Spatial") %>%
               RunPCA(dims = 1:30) %>% RunUMAP(dims = 1:30) %>%
@@ -1053,105 +1079,131 @@ outer <- FetchData(DenClusterDilated, c("UMAP_1","UMAP_2","seurat_clusters"))
 coordouter <- Vesalius:::.getSeuratCoordinates(DenClusterDilated)
 outer <- cbind(outer,coordouter[,c("x","y")]) %>% group_by(seurat_clusters) %>%
                mutate(xs = mean(UMAP_1),ys = mean(UMAP_2))
-outer_ISH <- c("Dentate Gyrus", "Dentate Gyrus","Microglia Cells","Neurons","Neurons")
+outer_ISH <- c("DG - Granule Cell Layer", "DG - Granule Cell Layer","DG - Polymorph Layer","DG - Molecular Layer")
 
-#lvls <- outer_ISH[as.numeric(as.character(outer$seurat_clusters))+1]
-#outer$seurat_clusters <- lvls
+lvls <- outer_ISH[as.numeric(as.character(outer$seurat_clusters))+1]
+outer$seurat_clusters <- lvls
 outer_col <- length(unique(outer$seurat_clusters))
-outer_pal <- colorRampPalette(brewer.pal(8, "Accent"))
-cols <- inner_pal(8)[c(1,3,5,6)]
+
+cols <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")[c(2,3,4)]
 
 coord_outer <- ggplot(outer, aes(x,y,col = as.factor(seurat_clusters))) +
-                      geom_point(size = 1.3, alpha = 0.8) +
-                      theme_classic() +
+                      geom_point(size = 2, alpha = 1) +
+                      theme_void() +
                       scale_color_manual(values = cols) +
-                      theme(legend.text = element_text(size = 20),
-                            legend.title = element_text(size = 20),
-                            axis.text = element_text(size = 20),
-                            axis.title = element_text(size = 20),
-                            plot.title = element_text(size = 20),
-                            plot.tag = element_text(size=20)) +
+                      theme(legend.text = element_text(size = 16),
+                            legend.position = "top",
+                            legend.title = element_text(size = 15),
+                            plot.title = element_text(size = 15,hjust =0),
+                            plot.tag = element_text(size=15)) +
                       guides(colour = guide_legend(override.aes = list(size=9)))+
-                      labs(colour = " ", title = "Dilated Dentate Gyrus",
-                           x = "X coordinates", y = "Y coordinates")
+                      labs(colour = " ", title = " ",
+                           x = " ", y = " ")
 
 
 
-#layer <- ggplot(Dentate,aes(x,y,col = as.factor(layer))) +
-#         geom_point(size =0.1) +
-#         theme_classic()+
-#         scale_color_viridis_d()+
-#         theme(legend.text = element_text(size = 20),
-#         legend.title = element_text(size = 20),
-#               axis.text = element_text(size = 20),
-#               axis.title = element_text(size = 20),
-#               plot.title = element_text(size = 20),
-#               plot.tag = element_text(size=20)) +
-#         guides(colour = guide_legend(override.aes = list(size=9)))+
-#         labs(colour = "Layer nr.", title = " Dilated and Layered Dentate Gyrus",
-#             x = "X coordinates", y = "Y coordinates")
 
 
-#layout <- "
-#ABC
-#"
 
-
-pdf("DenMaps_umap.pdf", width =7, height=7)
+pdf("DenMaps_umap.pdf", width =9, height=9)
 coord_outer
 #plot_layout(design = layout,height = c(1,1.5))
 dev.off()
 
 
-cAll <- viewGeneExpression(imageBrain2,brainCounts,ter = NULL, genes = "C1ql2",cex=20)
-lAll <- viewGeneExpression(imageBrain2,brainCounts,ter = NULL, genes = "Lrrtm4",cex=20)
+cAll <- viewGeneExpression(imageBrain2,brainCounts,ter = NULL, genes = "C1ql2",cex=25) +
+    theme_void() + theme(legend.position = "left",
+    plot.margin = margin(0.5,0.5,0.5,0.5,"cm"),
+    plot.title = element_text(hjust = 1,size =25),
+    legend.text = element_text(size = 20),
+    legend.title = element_text(size = 20))
+
+lAll <- viewGeneExpression(imageBrain2,brainCounts,ter = NULL, genes = "Lrrtm4",cex=25) +
+    theme_void()+ theme(plot.margin = margin(0.5,0.5,0.5,0.5,"cm"),plot.title = element_text(hjust = 0,size =25),
+    legend.text = element_text(size = 20),
+    legend.title = element_text(size = 20))
 
 
 
-pdf("denMarkers.pdf",width = 9,height = 7)
+pdf("denMarkers.pdf",width = 7.5,height = 6)
 print(cAll)
 print(lAll)
 dev.off()
 
 
-cst3 <- viewLayerExpression(Dentate,brainCounts, genes = "Cst3",cex=20)
-apoe <- viewLayerExpression(Dentate,brainCounts, genes = "Apoe",cex=20)
+cst3 <- viewLayerExpression(Dentate,brainCounts, genes = "Cst3",cex=25) + theme_void() +
+theme(legend.position = "left",plot.margin = margin(0.5,0.5,0.5,0.5,"cm"),
+plot.caption = element_text(hjust = 0.5, size = 25),
+legend.text = element_text(size = 20),
+legend.title = element_text(size = 20)) +
+labs(title = " ",caption = "Cst3")
 
-pdf("borderdentate.pdf", width=9,height=7)
+
+apoe <- viewLayerExpression(Dentate,brainCounts, genes = "Apoe",cex=25) + theme_void()+
+theme(legend.position = "left",plot.margin = margin(0.5,0.5,0.5,0.5,"cm"),
+plot.caption = element_text(hjust = 0, size = 25),
+legend.text = element_text(size = 20),
+legend.title = element_text(size = 20)) +
+labs(title = " ",caption = "Apoe")
+
+pdf("borderdentate.pdf", width=7,height=6)
 print(cst3)
 print(apoe)
 dev.off()
 
 
+border <- read.table("raw_data_cst_apoe.tsv", sep = "\t", header =T)
+border$sample_name <- rep(c("DG - Granule Cell layer","DG - Polymorph layer"),each =2)
+border$gene_short_name <- as.factor(border$gene_short_name)
+border$gene_short_name <- factor(border$gene_short_name, levels = rev(levels(border$gene_short_name)))
+bord <- ggplot(border,aes(x = gene_short_name,y = sample_name,fill =fpkmNorm))+
+    geom_tile()+
+    scale_fill_gradientn(colors = rev(brewer.pal(11,"Spectral")))+
+    theme_light()+
+    theme(legend.text = element_text(size = 10),
+          legend.position = "bottom",
+          axis.text = element_text(size = 12),
+          axis.title = element_text(size = 12),
+          legend.title = element_text(size =12))+
+    labs(x = " ",y= "Tissue section")
+pdf("border_expression.pdf", width= 9, height = 4 )
+print(bord)
+dev.off()
 ```
 
 Plotting genes in that are diff regulated in a given territory
 NEED to clean this section up
 
 ```{r gene_by_ter,eval = TRUE, echo = FALSE}
-pcp4All <- viewGeneExpression(imageBrain2,brainCounts,ter = NULL, genes = "Pcp4",cex=20)
-pcp4 <- viewGeneExpression(imageBrain2,CACluster, genes = "Pcp4",cex=20)
-#pdf("pcp4.pdf",width=14,height=6)
-#pcp4All + pcp4
-#dev.off()
-
-
-rgs14All <- viewGeneExpression(imageBrain2,brainCounts,ter = NULL, genes = "Rgs14",cex=20)
-rgs14 <- viewGeneExpression(imageBrain2,CACluster, genes = "Rgs14",cex=20)
-#pdf("rgs14.pdf",width=14,height=6)
-#rgs14All + rgs14
-#dev.off()
-
-necab2All <- viewGeneExpression(imageBrain2,brainCounts,ter = NULL, genes = "Necab2",cex=20)
-necab2 <- viewGeneExpression(imageBrain2,CACluster, genes = "Necab2",cex=20)
-
-#pdf("necab2.pdf",width=14,height=6)
-#necab2All + necab2
-#dev.off()
-
-pdf("CA2_markers_inCluster.pdf",width = 16.8,height = 18)
-pcp4All + pcp4 +rgs14All + rgs14+necab2All + necab2 + plot_layout(ncol=2)
+pcp4All <- viewGeneExpression(imageBrain2,brainCounts,ter = NULL, genes = "Pcp4",cex=20)+
+  theme_void() + theme(legend.position='left',plot.title = element_text(hjust=0.5))
+pcp4 <- viewGeneExpression(imageBrain2,CACluster, genes = "Pcp4",cex=20)+ theme_void()+
+theme(legend.position='right',plot.title = element_text(hjust=0.5))
+pdf("pcp4.pdf",width=10,height=4)
+pcp4All + pcp4
 dev.off()
+
+
+rgs14All <- viewGeneExpression(imageBrain2,brainCounts,ter = NULL, genes = "Rgs14",cex=20)+
+   theme_void() + theme(legend.position='left',plot.title = element_text(hjust=0.5))
+rgs14 <- viewGeneExpression(imageBrain2,CACluster, genes = "Rgs14",cex=20)+ theme_void()+ theme(legend.position='left',plot.title = element_text(hjust=0.5))
+
+
+necab2All <- viewGeneExpression(imageBrain2,brainCounts,ter = NULL, genes = "Necab2",cex=20)+
+   theme_void() + theme(legend.position='right',plot.title = element_text(hjust=0.5))
+necab2 <- viewGeneExpression(imageBrain2,CACluster, genes = "Necab2",cex=20)+ theme_void()+ theme(legend.position='right',plot.title = element_text(hjust=0.5))
+
+
+
+pdf("CA2_inClust_overall.pdf",width = 10,height = 4)
+rgs14All + necab2All + plot_layout(ncol=2,nrow = 1)
+dev.off()
+
+pdf("CA2_markers_inCluster.pdf",width = 10,height = 4)
+rgs14 + necab2 + plot_layout(ncol=2,nrow =1)
+dev.off()
+
+
 
 ## comp to other CA2 markers
 #ccdc3All <- viewGeneExpression(imageBrain2,brainCounts,ter = NULL, genes = "Ccdc3",cex=20)
@@ -1312,8 +1364,14 @@ dev.off()
 
 
 pdf("sc_layer_genes.pdf",width=9,height=7)
-viewLayerExpression(sc,brainCounts,genes = "Kif5a",cex=20)
-viewLayerExpression(sc, brainCounts, genes = "Apod",cex =20)
+viewLayerExpression(sc,brainCounts,genes = "Kif5a",cex=20)+ theme_void()+
+    theme(plot.margin = margin(0.5,0.5,0.5,0.5,"cm"),
+          plot.title = element_text(hjust = 0.5, size = 25),
+          legend.text = element_text(size = 10),
+          legend.title = element_text(size = 20),
+          legend.position = "bottom") +
+    labs(title ="Kif5a")
+
 dev.off()
 
 ```
