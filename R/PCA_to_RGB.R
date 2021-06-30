@@ -290,7 +290,7 @@ assingRGBtoPixelQuickBlock <- function(rgb, coordinates,resolution = 200,drop =T
 #' @return a 4 dimensional array - convertable to \code{cimg} objects.
 
 buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,
-                            resolution = 100,filterThreshold=0.999,interpolation_type =2,
+                            resolution = 100,filterThreshold=0.999,interpolation_type =1,
                             cores=1, verbose = TRUE){
     .simpleBar(verbose)
   #----------------------------------------------------------------------------#

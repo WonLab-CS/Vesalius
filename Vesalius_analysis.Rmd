@@ -7,9 +7,23 @@ output:
 ---
 
 
-# Set up
+# Preface
 
-## Library and Custom Function Loading
+The purpose of this file is to demonstrate the the workflow used to produce
+the Vesalius paper. This file contains all code related to the manuscript as well
+as comments of the code itself. It should be noted that we save intermediate files
+to ensure that we can re-run sections without needing to run the whole code.
+Please ensure that you modify the path towards files accordingly.
+
+# Set up
+First, we will set up the R environment to run Vesalius. Note that some of the
+packages are Vesalius dependencies but for sake of clarity, they are also listed
+here. We also set a seed. Some functions (such as `kmeans`) requires random start
+points. This seed ensure that you will (hopefully) recover the same territories
+as we had in the paper.
+
+
+## Libraries
 ```{r loadings, eval = TRUE, echo=TRUE, message=FALSE, warning=FALSE}
 library(Vesalius)
 library(imagerExtra)
@@ -38,75 +52,73 @@ set.seed(1)
 ```
 
 # Running Vesalius Analysis
-
 ## RGB embeddings
+The first step of the Vesalius algorithm is to load and pre-process spatial
+transcriptomic data. For this manuscript, we used slide-seqV2 data provided on
+the (Single Cell Portal)[https://singlecell.broadinstitute.org/single_cell/study/SCP948/robust-decomposition-of-cell-type-mixtures-in-spatial-transcriptomics#study-download]. Our analysis mainly focused on the mouse Hippocampus and the mouse
+embryo (E12.5).
 
-The following sections runs loads and cleans data. We create Seurat objects to handle
-easy processing of single cell data. The current version of Vesalius uses seurat.
+Once the data has been loaded and pre-processed (log normalisation, scaling,
+Finding variable features - handled by Seurat), the data can be parsed to Vesalius
+for embedding into the RGB colour space.
 
-I think it would be wiser to make seurat add on type situation. It will make it more attractive for other users. They won't need to learn a new package. Figure out what could be the best way to do this.
+Vesalius decomposes PCA loadings into slices of three PCs. The first slice
+represents PC1 to PC3, slice two represents PC4 to PC6, etc. For mouse
+Hippocampus, we only use the first slice. For mouse embryo, we extract territories
+from slice 1 and slice 3. In this section, we run the first three slice for both
+data sets. While this is not necessary, it just made more convenient to stick
+everything into a for loop.
 
 
-This whole sections will be changed once all the data has been integrated.
-That won't take to long
-
-```{r RGB_Embedding, eval = TRUE, echo = FALSE}
+```{r RGB_Embedding, eval = TRUE, echo = TRUE}
 
 #-----------------------/Slide-seq Data Loading/-------------------------------#
+#------------------------------------------------------------------------------#
+# Only 2 pucks were used - but ultimately you can add as many as you want
+# The first one is the mouse Hippocampus, the second is mouse embryo
+#------------------------------------------------------------------------------#
+slideTag <- c("Puck_200115_08","Puck_190926_03")
 
+slideBeads <-c("~/group/slide_seqV2/Puck_200115_08_bead_locations.csv",
+               "~/group/slide_seqV2/Puck_190926_03_bead_locations.csv")
 
-slideBeads <- list.files(path = "~/group/slide_seqV2/",pattern = "locations.csv")
-slideCounts <- list.files(path = "~/group/slide_seqV2/",pattern = ".txt.gz")
-### Creating slide seq tags
-slideTag <- sapply(strsplit(slideBeads,"_bead_locations.csv"),"[[",1)
-### slide seq path to files
-slideBeads <- paste0("~/group/slide_seqV2/",slideBeads)
-slideCounts <- paste0("~/group/slide_seqV2/",slideCounts)
+slideCounts <- c("~/group/slide_seqV2/Puck_200115_08.digital_expression.txt.gz",
+                 "~/group/slide_seqV2/Puck_190926_03.digital_expression.txt.gz")
 
-# only running one for now but can add more later
-#slideTag <- "Puck_200115_08"
-#slideBeads <-"~/group/slide_seqV2/Puck_200115_08_bead_locations.csv"
-#slideCounts <- "~/group/slide_seqV2/Puck_200115_08.digital_expression.txt.gz"
-
-## There are total of 9 pucks that can be downloaded
-## We will only work with a sample of these pucks
-
-selection <- c(10,11)
-slideTag <- slideTag[selection]
-slideBeads <- slideBeads[selection]
-slideCounts <- slideCounts[selection]
 
 #-----------------------/Slide-seq analysis/-----------------------------------#
-
-######################
-### Set parameters ###
-######################
-
-#### Filtering low quality cells -  for now we will leave all beads
-filterThreshold <- 0 ; ft <- "00"
-#### nfeatures
+#------------------------------------------------------------------------------#
+# Next we can set a few parameters for the pre-processing
+#------------------------------------------------------------------------------#
+## number of variable features
 nfeatures <- 2000
-#### FindVariableFeatures method
+
+## FindVariableFeatures method
 method <- "vst"
-#### Number of PCA slices
-slices <- 5
-#### countWeight: if colour embeddings should be weighted by count number
-countWeight <- FALSE
-#### Plot output directory
+
+## Number of PCA slices - each slice will cover 3 PCs
+slices <- 3
+
+## Plot output directory
 plots <- "~/group/slide_seqV2/plots/"
-#### Invert colour code - F = black dominant & T = White dominant
+
+## Invert colour code - F = black dominant & T = White dominant
+## Colour inversion is not strickly speaking necessary. Light colours are
+## however easier to visualise.  
 invert <- TRUE
-#### Image processing Matrices output directory
+
+## Image processing Matrices output directory
 IP <- "~/group/slide_seqV2/IP/"
 
-
-##################
-### PCA to RGB ###
-##################
+#------------------------------------------------------------------------------#
+# Looping over files and converting PCA loading values to RGB colours
+#------------------------------------------------------------------------------#
 
 for(i in seq_along(slideTag)){
   message(paste("Loading Bead file",slideTag[i]))
-  ## We will need the barcode locations for later
+  #----------------------------------------------------------------------------#
+  # We will need the barcode locations for later
+  #----------------------------------------------------------------------------#
   btmp <- utils::read.csv(slideBeads[i], header=T,as.is =TRUE, row.names =1)
   btmp <- btmp[,c("barcode","xcoord","ycoord")]
   colnames(btmp)<- c("barcodes","xcoord","ycoord")
@@ -115,391 +127,142 @@ for(i in seq_along(slideTag)){
 
 
   message(paste("Loading Count file",slideTag[i]))
-  ## Unconventional loading - however required as some data sets
-  ## Fail to load  - This ensures all data sets can be loaded
+  #----------------------------------------------------------------------------#
+  # Unconventional loading - however required as some data sets
+  # Fail to load  - This ensures all data sets can be loaded
+  #----------------------------------------------------------------------------#
   ctmp <- read.table(slideCounts[i], header = TRUE )
   rownames(ctmp) <- ctmp[,1]
   ctmp <- ctmp[,-1]
 
-  #message("Filter Matrix")
-  ## Extracting quantile values for filtering
-  #min.count  <- quantile(apply(ctmp,2,function(x){
-  #              return(sum(x))
-  #}),filterThreshold)
-  #min.genes <- quantile(apply(ctmp,2,function(x){
-  #              return(sum(x!=0))
-  #}),filterThreshold)
-  ## Vesalius Function that extracts relevant data
-  #ctmp <- filterCountMatrix(ctmp,min.genes = min.genes, min.count = min.count)
-
-  ## Copy of count matrix for later use
+  #----------------------------------------------------------------------------#
+  # Copy of count matrix for later use
+  #----------------------------------------------------------------------------#
   sl <- ctmp
 
-  ## Creating seurat spatial object
-  ## NOTE this code is taken from the Seurat source code as it does not seem that
-  ## Slide seq loading function are all exported
-  ## If this has been updated - this section can be changed accordingly
+  #----------------------------------------------------------------------------#
+  # Creating seurat spatial object
+  # NOTE this code is taken from the Seurat source code as it does not seem that
+  # Slide seq loading function are all exported
+  # If this has been updated - this section can be changed accordingly
+  #----------------------------------------------------------------------------#
   ctmp <- CreateSeuratObject(ctmp, assay ="Spatial")
   bead <- bead[Cells(x = ctmp)]
   DefaultAssay(object = bead) <- "Spatial"
   ctmp[["slice1"]] <- bead
 
-
+  #----------------------------------------------------------------------------#
+  # Seuart pre-processing steps
+  #----------------------------------------------------------------------------#
   ctmp <- NormalizeData(ctmp)
   ctmp <- FindVariableFeatures(ctmp, method = method, nfeatures = nfeatures)
   ctmp <- ScaleData(ctmp)
 
-  ## Embed PCA loading into the RGB colour space.
+  #----------------------------------------------------------------------------#
+  # Embed PCA loading into the RGB colour space.
+  #----------------------------------------------------------------------------#
   ctmp <- rgbPCA(sl,ctmp, slices = slices , conserveSparse = FALSE)
 
-  ## For each "slice" rebuold images and export RGB code files
+  #----------------------------------------------------------------------------#
+  # For each slice, assign colour code to it's coordinates
+  # NOTE we do not have an image yet. We have a colour code associated with
+  # an x and y coordinates. We refer to these coordinates as pixels
+  #----------------------------------------------------------------------------#
   message("RGB to pixel")
   for(slice in seq_along(ctmp)){
-    ## Reassign the colour to the right barcode
-    ## NOTE: there is also the option of exporting arrays/ block matrices
-    ## We do not use this method as it reduces resolution for current version of Vesalius
+    #--------------------------------------------------------------------------#
+    # Reassign the colour to the right barcode
+    #--------------------------------------------------------------------------#
     pixel <- assignRGBtoPixel(ctmp[[slice]], btmp)
     message("Exporting")
+    #--------------------------------------------------------------------------#
+    # We export the coordinates for later use. This file the basis of image
+    # creation. Essentially, the file contains barcodes, x/y coordinates and
+    # the colour values associated with each barcode (barcode,x,y,R,G,B)
+    # Subject to change!! I might change this format to the imager format
+    # => barcode, x,y, cc, value
+    #--------------------------------------------------------------------------#
     write.csv(pixel,file = paste0(IP,"PCA_to_RGB_log_",ft,"_",nfeatures,
-                                 "_slice",slice,"_",slideTag[i],".csv"),row.names=F)
+                                 "_slice",slice,"_",slideTag[i],".csv"),
+                                 row.names=F)
   }
 
 }
 
+## Adding garbage collector maybe?
 
 ```
 
 
 ## Image Array Creation
-Creating image arrays from RGB embeddings. Creating an Image array transforms
-bead coordinates into an image using a combination of Voronoi tesselation, rasterisation,
-and resolution reshaping (decreasing resolution). In order to decrease computational
-time, we save intermediate files as .csv. Note that this is not necessary but helps
-if something goes wrong.  
+The next step uses the data frames generated above to build image arrays. Here,
+we will use intermediate files instead of using loaded variables. By doing so,
+we can run this section independently if the previous section has already been
+run.
 
-```{r Vesalius_Figure1_build, eval=TRUE, echo=TRUE, warning= FALSE,message=FALSE}
-## Loading Intermediate files
+```{r Vesalius_Figure1_build, eval=TRUE, echo=TRUE, warning= FALSE,message=FALSE,
+    fig.width = 12, fig.height=8}
+#-----------------------/Building Vesalius Images/-----------------------------#
+#------------------------------------------------------------------------------#
+# Loading the intermediate file
+#------------------------------------------------------------------------------#
+imageSlide <- utils::read.csv("~/group/slide_seqV2/IP/PCA_to_RGB_log_00_2000_slice1_Puck_200115_08.csv",
+                              header=T, stringsAsFactors=F)
 
-### Slide-seqV2 data
-imageSlide <- utils::read.csv("~/group/slide_seqV2/IP/PCA_to_RGB_log_00_2000_slice1_Puck_200115_08.csv", header=T, stringsAsFactors=F)
+#------------------------------------------------------------------------------#
+# Converting coordinates and colours to and RGB image
+#------------------------------------------------------------------------------#
+imageSlide <- buildImageArray(imageSlide,invert =T,
+                              filterThreshold = 0.9975,
+                              resolution = 100, cores = 1)
 
-## Converting to array
-### Slide seqV2 - in this case we will decrease over all resolution
-imageSlide <- buildImageArray(imageSlide,invert =T, filterThreshold = 0.9975, resolution = 100, cores = 1)
+#------------------------------------------------------------------------------#
+# Vesalius plotting function
+# The nice thing about always using data frame is that you can plot this
+# however you wish. Here, we are producing a ggplot object by setting the
+# as.cimg argument to false. If set to true it just plots the image
+#------------------------------------------------------------------------------#
+Vesalius_image <- imagePlot(imageSlide,as.cimg =FALSE) + theme_void()
 
-
-
-
-
+# pdf("Figure_1_template.pdf")
+print(Vesalius_image)
+#dev.off()
 ```
-NOTE : the filterThreshold argument is set at 0.9975 which is more stringent
-than the filter threshold used in the next steps. In this case, we use a higher
-filterThreshold for visualisation purposes. Voronoi tesselation extends points
-to outer bounderies. This tends to create "spiky" images and do not represent the
-true position of points.
+As seen in the code above, we select a filter threshold. This filter threshold
+ensures that we remove tessellation artefacts. The tessellation algorithm extends
+the coordinate system to create a box around all the barcode coordinates.
+It creates tiles that are tied to the external box and we want to filter these
+tiles as well as the tile that are too large. The `filterThreshold`describes the
+quantile at which tile areas should be discarded. The same `filterThreshold` to
+is applied to points that are to far away from other points (i.e. stray beads).
 
-```{r Vesalius_Figure1, eval = FALSE, echo =FALSE, message = FALSE, warning=FALSE, fig.width = 12, fig.height=8}
-
-## Loading Histology images
-## See Material and methods
-## Note could add a url request??
-histMouse <- image_read("~/Vesalius/HistoMousHippo.png")
-histMouse <- image_flop(histMouse)
-histMouse <- image_ggplot(histMouse,interpolate = TRUE)
-histMouse <- histMouse +theme_void() +
-          labs(title = "Mouse Hippocampus - Coronal",x = "X coordinates", y = "Y coordinates") +
-          theme(plot.title = element_text(hjust = 0.5),plot.tag = element_text(size=20),
-                plot.background = element_rect(fill = "white"))
+Note the `resolution` argument is set to 100. This argument determines if the
+image must be resize. The larger the image the higher the resolution but the
+slower the analysis. For this section, we only want to demonstrate the direct
+output of building RGB images from transcrtiptional profiles. For later sections,
+we will use a lower resolution.
 
 
-## Loading Anatomy Images          
-anatMouse <- image_read("~/Vesalius/AnatMouseHippo.png")
-anatMouse <- image_ggplot(anatMouse,interpolate = TRUE)
-anatMouse <- anatMouse +theme_void() +
-          labs(title = "Mouse Hippocampus - Coronal",x = "X coordinates", y = "Y coordinates")+
-          theme(plot.title = element_text(hjust = 0.5),plot.tag = element_text(size=20),
-                plot.background = element_rect(fill = "white"),panel.border = element_blank(),
-                panel.grid.major = element_blank(),
-                panel.grid.minor = element_blank())
+## Image building for territory isolation
+In this section, we will focus on the creation and manipulation of Vesalius
+images in order to produce territories used for in depth analysis. We will make
+the assumption that you have already run the PCA to RGB conversion and saved the
+intermediate file. This whole section will require some object to be stored in
+memory. Not all blocks are thus independent from each other.
 
 
-
-## pivot_wider does work properly - this is likely due to "duplicated" values
-## This method ensure that it is possible
-## If it becomes problematic I will switch back to cimg and import back in
-fineGrainSlideColours <- select(imageSlide, c("cc","value"))
-fineGrainSlideColours <- data.frame(fineGrainSlideColours$value[fineGrainSlideColours$cc ==1],
-                                    fineGrainSlideColours$value[fineGrainSlideColours$cc ==2],
-                                    fineGrainSlideColours$value[fineGrainSlideColours$cc ==3])
-fineGrainSlideColours <- rgb(fineGrainSlideColours[,1],fineGrainSlideColours[,2],fineGrainSlideColours[,3])
-imgS <- imageSlide %>% filter(cc==1)
-fineGrainSlidePlot <- ggplot(imgS,aes(x,y))+
-                      geom_raster(aes(fill=fineGrainSlideColours))+
-                      scale_fill_identity()+
-                      theme_void()+
-                      theme(plot.title = element_text(hjust = 0.5),
-                            plot.tag = element_text(size=20),
-                            panel.background = element_rect(fill = "white",
-                                                          colour = "white"),
-                            plot.background = element_rect(fill = "white"),
-                            panel.border = element_blank(),
-                            panel.grid.major = element_blank(),
-                            panel.grid.minor = element_blank())
-
-
-slide_layout <- "
-AB
-AC"
-
-pcomp <- fineGrainSlidePlot + anatMouse + histMouse
-pcomp <- pcomp + plot_layout(design = slide_layout,widths = c(2,1))
-pdf("Figure_1_template.pdf", width=12,height=8)
-print(pcomp)
-dev.off()
-```
-
-Supplemtary Figure 1 demonstrates the different slices and how they look like.
-This sections demonstrates how to build panels for the figure. The final figure is built
-seperately. The link towards images can be found in material and methods. Figu
-
-```{r Figure_S1, eval = TRUE, echo = FALSE}
-
-
-### Slide-seqV2 data
-slice1 <- utils::read.csv("~/group/slide_seqV2/IP/PCA_to_RGB_log_00_2000_slice1_Puck_200115_08.csv", header=T, stringsAsFactors=F)
-slice2 <- utils::read.csv("~/group/slide_seqV2/IP/PCA_to_RGB_log_00_2000_slice2_Puck_200115_08.csv", header=T, stringsAsFactors=F)
-slice3 <- utils::read.csv("~/group/slide_seqV2/IP/PCA_to_RGB_log_00_2000_slice3_Puck_200115_08.csv", header=T, stringsAsFactors=F)
-slice4 <- utils::read.csv("~/group/slide_seqV2/IP/PCA_to_RGB_log_00_2000_slice4_Puck_200115_08.csv", header=T, stringsAsFactors=F)
-slice5 <- utils::read.csv("~/group/slide_seqV2/IP/PCA_to_RGB_log_00_2000_slice5_Puck_200115_08.csv", header=T, stringsAsFactors=F)
-
-## Converting to array
-### Slide seqV2 - in this case we will decrease over all resolution
-img1 <- buildImageArray(slice1, filterThreshold = 0.9975, invert =T,resolution = 100, cores = 1)
-img2 <- buildImageArray(slice2, filterThreshold = 0.9975, invert =T,resolution = 100, cores = 1)
-img3 <- buildImageArray(slice3, filterThreshold = 0.9975, invert =T,resolution = 100, cores = 1)
-img4 <- buildImageArray(slice4, filterThreshold = 0.9975, invert =T,resolution = 100, cores = 1)
-img5 <- buildImageArray(slice5, filterThreshold = 0.9975, invert =T,resolution = 100, cores = 1)
-
-fgcol1 <- select(img1, c("cc","value"))
-fgcol1 <- data.frame(fgcol1$value[fgcol1$cc ==1],
-                     fgcol1$value[fgcol1$cc ==2],
-                     fgcol1$value[fgcol1$cc ==3])
-fgcol1 <- rgb(fgcol1[,1],fgcol1[,2],fgcol1[,3])
-imgS1 <- img1 %>% filter(cc==1)
-g1 <- ggplot(imgS1,aes(x,y))+
-             geom_raster(aes(fill=fgcol1))+
-             scale_fill_identity()+
-             theme_void()+
-             labs(title = "Slice 1 ~ PC1 - 3")+
-             theme(plot.title = element_text(hjust = 0.5),
-                   plot.tag = element_text(size=20),
-                   panel.background = element_rect(fill = "white",
-                                                   colour = "white"),
-                   plot.background = element_rect(fill = "white"),
-                   panel.border = element_blank(),
-                   panel.grid.major = element_blank(),
-                   panel.grid.minor = element_blank())
-
-fgcol2 <- select(img2, c("cc","value"))
-fgcol2 <- data.frame(fgcol2$value[fgcol2$cc ==1],fgcol2$value[fgcol2$cc ==2],fgcol2$value[fgcol2$cc ==3])
-fgcol2 <- rgb(fgcol2[,1],fgcol2[,2],fgcol2[,3])
-imgS2 <- img2 %>% filter(cc==1)
-g2 <- ggplot(imgS2,aes(x,y))+
-      geom_raster(aes(fill=fgcol2))+
-      scale_fill_identity()+
-      theme_void()+
-      labs(title = "Slice 2 ~ PC4 - 6") +
-      theme(plot.title = element_text(hjust = 0.5),
-      plot.tag = element_text(size=20),
-      panel.background = element_rect(fill = "white",colour = "white"),
-      plot.background = element_rect(fill = "white"),
-      panel.border = element_blank(),
-      panel.grid.major = element_blank(),
-      panel.grid.minor = element_blank())
-
-fgcol3 <- select(img3, c("cc","value"))
-fgcol3 <- data.frame(fgcol3$value[fgcol3$cc ==1],fgcol3$value[fgcol3$cc ==2],fgcol3$value[fgcol3$cc ==3])
-fgcol3 <- rgb(fgcol3[,1],fgcol3[,2],fgcol3[,3])
-imgS3 <- img3 %>% filter(cc==1)
-g3 <- ggplot(imgS3,aes(x,y))+
-            geom_raster(aes(fill=fgcol3))+
-            scale_fill_identity()+
-            theme_void()+
-            labs(title = "Slice 3 ~ PC7 - 9") +
-            theme(plot.title = element_text(hjust = 0.5),
-            plot.tag = element_text(size=20),
-            panel.background = element_rect(fill = "white",colour = "white"),
-            plot.background = element_rect(fill = "white"),
-            panel.border = element_blank(),
-            panel.grid.major = element_blank(),
-            panel.grid.minor = element_blank())
-
-
-fgcol4 <- select(img4, c("cc","value"))
-fgcol4 <- data.frame(fgcol4$value[fgcol4$cc ==1],fgcol4$value[fgcol4$cc ==2],fgcol4$value[fgcol4$cc ==3])
-fgcol4 <- rgb(fgcol4[,1],fgcol4[,2],fgcol4[,3])
-imgS4 <- img4 %>% filter(cc==1)
-g4 <- ggplot(imgS4,aes(x,y))+
-            geom_raster(aes(fill=fgcol4))+
-            scale_fill_identity()+
-            theme_void()+
-            labs(title = "Slice 4 ~ PC10 - 12")+
-            theme(plot.title = element_text(hjust = 0.5),
-                  plot.tag = element_text(size=20),
-                  panel.background = element_rect(fill = "white",colour = "white"),
-                  plot.background = element_rect(fill = "white"),
-                  panel.border = element_blank(),
-                  panel.grid.major = element_blank(),
-                  panel.grid.minor = element_blank())
-
-fgcol5 <- select(img5, c("cc","value"))
-fgcol5 <- data.frame(fgcol5$value[fgcol5$cc ==1],fgcol5$value[fgcol5$cc ==2],fgcol5$value[fgcol5$cc ==3])
-fgcol5 <- rgb(fgcol5[,1],fgcol5[,2],fgcol5[,3])
-imgS5 <- img5 %>% filter(cc==1)
-g5 <- ggplot(imgS5,aes(x,y))+
-      geom_raster(aes(fill=fgcol5))+
-      scale_fill_identity()+
-      theme_void()+
-      labs(title = "Slice 5 ~ PC13 - 15")+
-    theme(plot.title = element_text(hjust = 0.5),
-                                    plot.tag = element_text(size=20),
-                                    panel.background = element_rect(fill = "white",colour = "white"),
-                                    plot.background = element_rect(fill = "white"),
-                                    panel.border = element_blank(),
-                                    panel.grid.major = element_blank(),
-                                    panel.grid.minor = element_blank())
-
-slices <- g1 + g2 + g3 +g4 + g5 + plot_layout(ncol = 3)
-pdf("Figure_S1_brain_template.pdf", width = 18, height = 12)
-print(slices)
-dev.off()
-```
-
-
-```{r Figure_S1_embryo_template, eval = TRUE, echo = FALSE}
-
-
-### Slide-seqV2 data
-slice1 <- utils::read.csv("~/group/slide_seqV2/IP/PCA_to_RGB_log_00_2000_slice1_Puck_190926_03.csv", header=T, stringsAsFactors=F)
-slice2 <- utils::read.csv("~/group/slide_seqV2/IP/PCA_to_RGB_log_00_2000_slice2_Puck_190926_03.csv", header=T, stringsAsFactors=F)
-slice3 <- utils::read.csv("~/group/slide_seqV2/IP/PCA_to_RGB_log_00_2000_slice3_Puck_190926_03.csv", header=T, stringsAsFactors=F)
-slice4 <- utils::read.csv("~/group/slide_seqV2/IP/PCA_to_RGB_log_00_2000_slice4_Puck_190926_03.csv", header=T, stringsAsFactors=F)
-slice5 <- utils::read.csv("~/group/slide_seqV2/IP/PCA_to_RGB_log_00_2000_slice5_Puck_190926_03.csv", header=T, stringsAsFactors=F)
-
-## Converting to array
-### Slide seqV2 - in this case we will decrease over all resolution
-img1 <- buildImageArray(slice1, filterThreshold = 0.9975, invert =T,resolution = 100, cores = 5)
-img2 <- buildImageArray(slice2, filterThreshold = 0.9975, invert =T,resolution = 100, cores = 5)
-img3 <- buildImageArray(slice3, filterThreshold = 0.9975, invert =T,resolution = 100, cores = 5)
-img4 <- buildImageArray(slice4, filterThreshold = 0.9975, invert =T,resolution = 100, cores = 5)
-img5 <- buildImageArray(slice5, filterThreshold = 0.9975, invert =T,resolution = 100, cores = 5)
-
-fgcol1 <- select(img1, c("cc","value"))
-fgcol1 <- data.frame(fgcol1$value[fgcol1$cc ==1],
-                     fgcol1$value[fgcol1$cc ==2],
-                     fgcol1$value[fgcol1$cc ==3])
-fgcol1 <- rgb(fgcol1[,1],fgcol1[,2],fgcol1[,3])
-imgS1 <- img1 %>% filter(cc==1)
-g1 <- ggplot(imgS1,aes(x,y))+
-             geom_raster(aes(fill=fgcol1))+
-             scale_fill_identity()+
-             theme_void()+
-             labs(title = "Slice 1 ~ PC1 - 3")+
-             theme(plot.title = element_text(hjust = 0.5),
-                   plot.tag = element_text(size=20),
-                   panel.background = element_rect(fill = "white",
-                                                   colour = "white"),
-                   plot.background = element_rect(fill = "white"),
-                   panel.border = element_blank(),
-                   panel.grid.major = element_blank(),
-                   panel.grid.minor = element_blank())
-
-fgcol2 <- select(img2, c("cc","value"))
-fgcol2 <- data.frame(fgcol2$value[fgcol2$cc ==1],fgcol2$value[fgcol2$cc ==2],fgcol2$value[fgcol2$cc ==3])
-fgcol2 <- rgb(fgcol2[,1],fgcol2[,2],fgcol2[,3])
-imgS2 <- img2 %>% filter(cc==1)
-g2 <- ggplot(imgS2,aes(x,y))+
-      geom_raster(aes(fill=fgcol2))+
-      scale_fill_identity()+
-      theme_void()+
-      labs(title = "Slice 2 ~ PC4 - 6") +
-      theme(plot.title = element_text(hjust = 0.5),
-      plot.tag = element_text(size=20),
-      panel.background = element_rect(fill = "white",colour = "white"),
-      plot.background = element_rect(fill = "white"),
-      panel.border = element_blank(),
-      panel.grid.major = element_blank(),
-      panel.grid.minor = element_blank())
-
-fgcol3 <- select(img3, c("cc","value"))
-fgcol3 <- data.frame(fgcol3$value[fgcol3$cc ==1],fgcol3$value[fgcol3$cc ==2],fgcol3$value[fgcol3$cc ==3])
-fgcol3 <- rgb(fgcol3[,1],fgcol3[,2],fgcol3[,3])
-imgS3 <- img3 %>% filter(cc==1)
-g3 <- ggplot(imgS3,aes(x,y))+
-            geom_raster(aes(fill=fgcol3))+
-            scale_fill_identity()+
-            theme_void()+
-            labs(title = "Slice 3 ~ PC7 - 9") +
-            theme(plot.title = element_text(hjust = 0.5),
-            plot.tag = element_text(size=20),
-            panel.background = element_rect(fill = "white",colour = "white"),
-            plot.background = element_rect(fill = "white"),
-            panel.border = element_blank(),
-            panel.grid.major = element_blank(),
-            panel.grid.minor = element_blank())
-
-
-fgcol4 <- select(img4, c("cc","value"))
-fgcol4 <- data.frame(fgcol4$value[fgcol4$cc ==1],fgcol4$value[fgcol4$cc ==2],fgcol4$value[fgcol4$cc ==3])
-fgcol4 <- rgb(fgcol4[,1],fgcol4[,2],fgcol4[,3])
-imgS4 <- img4 %>% filter(cc==1)
-g4 <- ggplot(imgS4,aes(x,y))+
-            geom_raster(aes(fill=fgcol4))+
-            scale_fill_identity()+
-            theme_void()+
-            labs(title = "Slice 4 ~ PC10 - 12")+
-            theme(plot.title = element_text(hjust = 0.5),
-                  plot.tag = element_text(size=20),
-                  panel.background = element_rect(fill = "white",colour = "white"),
-                  plot.background = element_rect(fill = "white"),
-                  panel.border = element_blank(),
-                  panel.grid.major = element_blank(),
-                  panel.grid.minor = element_blank())
-
-fgcol5 <- select(img5, c("cc","value"))
-fgcol5 <- data.frame(fgcol5$value[fgcol5$cc ==1],fgcol5$value[fgcol5$cc ==2],fgcol5$value[fgcol5$cc ==3])
-fgcol5 <- rgb(fgcol5[,1],fgcol5[,2],fgcol5[,3])
-imgS5 <- img5 %>% filter(cc==1)
-g5 <- ggplot(imgS5,aes(x,y))+
-      geom_raster(aes(fill=fgcol5))+
-      scale_fill_identity()+
-      theme_void()+
-      labs(title = "Slice 5 ~ PC13 - 15")+
-    theme(plot.title = element_text(hjust = 0.5),
-                                    plot.tag = element_text(size=20),
-                                    panel.background = element_rect(fill = "white",colour = "white"),
-                                    plot.background = element_rect(fill = "white"),
-                                    panel.border = element_blank(),
-                                    panel.grid.major = element_blank(),
-                                    panel.grid.minor = element_blank())
-
-slices <- g1 + g2 + g3 +g4 + g5 + plot_layout(ncol = 3)
-pdf("Figure_S1_embryo_template.pdf", width = 18, height = 12)
-print(slices)
-dev.off()
-```
-
-The next sections describes smoothed images and isolated territories. These territories serve the
-basis of our finer grain analysis. In this case, we will not filter out territories as we want to
-keep all edges. This helps to avoid smoothing beads with "background". Background can be defined as
-all points in the array that do not contain any information after tesselation and rasterisation.
-We load data into Seurat object - Seurat provides convenient ways of running single cell analysis
-in R.
+### Data Loading
+Territory isolation requires the original set of beads and count matrix. We use
+this set count matrix to compute differential gene expression. Thus, we will
+load and pre-process data sets required for downstream analysis.
 
 ```{r Vesalius_DataLoading, eval=TRUE, echo=TRUE, warning= FALSE,message=FALSE}
-## Loading starting data
-################################## Slide seq Load###############################
-## Mouse brain
+
+#-----------------------------/Loading all data/-------------------------------#
+#------------------------------------------------------------------------------#
+# First we load all data sets
+# Here we load both the mouse Hippocampus and the mouse embryo
+#------------------------------------------------------------------------------#
 slideTagBrain <- "Puck_200115_08"
 slideBeadsBrain <-"~/group/slide_seqV2/Puck_200115_08_bead_locations.csv"
 slideCountsBrain <- "~/group/slide_seqV2/Puck_200115_08.digital_expression.txt.gz"
@@ -508,34 +271,93 @@ slideIPBrain <- "~/group/slide_seqV2/IP/PCA_to_RGB_log_00_2000_slice1_Puck_20011
 brainCoord <- utils::read.csv(slideBeadsBrain, header=F)
 brainCoord <- brainCoord[-1,]
 colnames(brainCoord)<- c("barcodes","xcoord","ycoord")
-## Loading barcodes using Seurat
+
 beadBrain <- ReadSlideSeq(slideBeadsBrain)
-## Unconventional loading - however required as some data sets
-## Fail to load  - This ensures all data sets can be loaded
+
 brainCounts <- read.table(slideCountsBrain, header = TRUE )
 rownames(brainCounts) <- brainCounts[,1]
 brainCounts <- brainCounts[,-1]
 
+#------------------------------------------------------------------------------#
+# We still create a Seurat object
+# This will be changed in the futur to include Vesalius objects
+# It's just Seurat is such a great package at handling single cell data
+# Hats off to the Seurat team
+#------------------------------------------------------------------------------#
 brainCounts <- CreateSeuratObject(brainCounts, assay ="Spatial")
 beadBrain <- beadBrain[Cells(x = brainCounts)]
 DefaultAssay(object = beadBrain) <- "Spatial"
 brainCounts[["slice1"]] <- beadBrain
 
+#------------------------------------------------------------------------------#
+# We keep a Raw data set. We will use the raw counts when we subset out the beads
+# in isolated territories. We want to avoid to use the values resulting from
+# overall normalisation. We want to avoid to "normalise" already normalised and
+# scaled data. This will change the results!
+#------------------------------------------------------------------------------#
 brainRaw <- brainCounts
-#brainRaw <- SCTransform(brainRaw, assay = "Spatial")
 
 
+#------------------------------------------------------------------------------#
+# Next we do the same exact thing for the embryo data
+# NOTE: we can use the same raw data for both embryo slices used in this analysis
+#------------------------------------------------------------------------------#
+slideTagEmbryo <- "Puck_190926_03"
+slideBeadsEmbryo <-"~/group/slide_seqV2/Puck_190926_03_bead_locations.csv"
+slideCountsEmbryo <- "~/group/slide_seqV2/Puck_190926_03.digital_expression.txt.gz"
+slideIPEmbryo <- "~/group/slide_seqV2/IP/PCA_to_RGB_log_00_2000_slice1_Puck_190926_03.csv"
+
+embryoCoord <- utils::read.csv(slideBeadsEmbryo, header=F)
+embryoCoord <- embryoCoord[-1,]
+colnames(embryoCoord)<- c("barcodes","xcoord","ycoord")
+
+beadEmbryo <- ReadSlideSeq(slideBeadsEmbryo)
+
+embryoCounts <- read.table(slideCountsEmbryo, header = TRUE )
+rownames(embryoCounts) <- embryoCounts[,1]
+embryoCounts <- embryoCounts[,-1]
+
+embryoCounts <- CreateSeuratObject(embryoCounts, assay ="Spatial")
+beadEmbryo <- beadEmbryo[Cells(x = embryoCounts)]
+DefaultAssay(object = beadEmbryo) <- "Spatial"
+embryoCounts[["slice1"]] <- beadEmbryo
+
+embryoRaw <- embryoCounts
+
+```
+
+### Seurat Clustering
+As we have just loaded count matrices into Seurat objects, we might as well
+quickly run a clustering analysis on slide-seqV2 spatial transcriptomic data.
+Here, we used log normalisation to stay consistent with the approach used during
+image building.
+
+```{r Seurat_clustering_run, eval = TRUE , echo=TRUE,fig.width = 13.5, fig.height = 6}
+#----------------------------/Seurat Clustering/-------------------------------#
+#------------------------------------------------------------------------------#
+# Pre-processing data using the same approaches as the one used when converting
+# PCA loadings to RGB colour space
+#------------------------------------------------------------------------------#
 brainCounts <- NormalizeData(brainCounts)
 brainCounts <- FindVariableFeatures(brainCounts, nfeatures = 2000)
 brainCounts <- ScaleData(brainCounts)
 
-### quick seurat
-
+#------------------------------------------------------------------------------#
+# Running Seurat pipeline and plotting results
+# we plot both the UMAP projections and the mapped clusters
+#------------------------------------------------------------------------------#
 seu <- RunPCA(brainCounts)
 seu <- RunUMAP(seu, dims = 1:30)
 seu <- FindNeighbors(seu, dims = 1:30)
 seu <- FindClusters(seu, resolution = 0.3, verbose = FALSE)
-seuData <- FetchData(seu, c("UMAP_1","UMAP_2","seurat_clusters")) %>% group_by(seurat_clusters) %>% mutate(xs = mean(UMAP_1), ys = mean(UMAP_2))
+seuData <- FetchData(seu, c("UMAP_1","UMAP_2","seurat_clusters")) %>%
+           group_by(seurat_clusters) %>%
+           mutate(xs = mean(UMAP_1), ys = mean(UMAP_2))
+
+#------------------------------------------------------------------------------#
+# This section just rebuilds a data frame to make it easier to plot with ggplot
+# Will probably change this... Using internal functions might not be a good idea  
+#------------------------------------------------------------------------------#
 coordSeu <- Vesalius:::.getSeuratCoordinates(seu)
 seuData <- cbind(seuData,coordSeu[,c("x","y")])
 seu_col <- length(unique(seuData$seurat_clusters))
@@ -565,48 +387,25 @@ coord_seu <- ggplot(seuData, aes(x,y,col = as.factor(seurat_clusters))) +
             labs(colour = "Cluster nr.", title = "Mouse Hippocampus - Seurat Clusters",
                 x = "X coordinates", y = "Y coordinates")
 
-pdf("seu_umap_log.pdf", width =13.5, height=6)
+#pdf("seu_umap_log.pdf", width =13.5, height=6)
 umap_seu + coord_seu
-dev.off()
+#dev.off()
 
-
-## Loading starting data
-################################## Slide seq Load###############################
-## Mouse brain
-slideTagEmbryo <- "Puck_190926_03"
-slideBeadsEmbryo <-"~/group/slide_seqV2/Puck_190926_03_bead_locations.csv"
-slideCountsEmbryo <- "~/group/slide_seqV2/Puck_190926_03.digital_expression.txt.gz"
-slideIPEmbryo <- "~/group/slide_seqV2/IP/PCA_to_RGB_log_00_2000_slice1_Puck_190926_03.csv"
-
-embryoCoord <- utils::read.csv(slideBeadsEmbryo, header=F)
-embryoCoord <- embryoCoord[-1,]
-colnames(embryoCoord)<- c("barcodes","xcoord","ycoord")
-## Loading barcodes using Seurat
-beadEmbryo <- ReadSlideSeq(slideBeadsEmbryo)
-## Unconventional loading - however required as some data sets
-## Fail to load  - This ensures all data sets can be loaded
-embryoCounts <- read.table(slideCountsEmbryo, header = TRUE )
-rownames(embryoCounts) <- embryoCounts[,1]
-embryoCounts <- embryoCounts[,-1]
-
-embryoCounts <- CreateSeuratObject(embryoCounts, assay ="Spatial")
-beadEmbryo <- beadEmbryo[Cells(x = embryoCounts)]
-DefaultAssay(object = beadEmbryo) <- "Spatial"
-embryoCounts[["slice1"]] <- beadEmbryo
-
-embryoRaw <- embryoCounts
-#embryoRaw <- SCTransform(embryoRaw, assay ="Spatial")
-
+#------------------------------------------------------------------------------#
+# Same thing as above but with the embryo data
+#------------------------------------------------------------------------------#
 embryoCounts <- NormalizeData(embryoCounts)
 embryoCounts <- ScaleData(embryoCounts)
 embryoCounts <- FindVariableFeatures(embryoCounts, nfeatures = 2000)
-### quick seurat
 
 seuEm <- RunPCA(embryoCounts)
 seuEm <- RunUMAP(seuEm, dims = 1:30)
 seuEm <- FindNeighbors(seuEm, dims = 1:30)
 seuEm <- FindClusters(seuEm, resolution = 0.3, verbose = FALSE)
-seuEmData <- FetchData(seuEm, c("UMAP_1","UMAP_2","seurat_clusters")) %>% group_by(seurat_clusters) %>% mutate(xs = mean(UMAP_1), ys = mean(UMAP_2))
+seuEmData <- FetchData(seuEm, c("UMAP_1","UMAP_2","seurat_clusters")) %>%
+             group_by(seurat_clusters) %>%
+             mutate(xs = mean(UMAP_1), ys = mean(UMAP_2))
+
 coordSeuEm <- Vesalius:::.getSeuratCoordinates(seuEm)
 seuEmData <- cbind(seuEmData,coordSeuEm[,c("x","y")])
 seuEm_col <- length(unique(seuEmData$seurat_clusters))
@@ -636,66 +435,251 @@ coord_seuEm <- ggplot(seuEmData, aes(x,y,col = as.factor(seurat_clusters))) +
             labs(colour = "Cluster nr.", title = "Mouse Embryo (E12.5) - Seurat Clusters",
                 x = "X coordinates", y = "Y coordinates")
 
-pdf("seuEm_umap_log.pdf", width =13.5, height=6)
+#pdf("seuEm_umap_log.pdf", width =13.5, height=6)
 umap_seuEm + coord_seuEm
-dev.off()
+#dev.off()
 
 
 ```
 
+## Territory isolation from Vesalius images
 
-```{r Vesalius_Run_territory_level, eval = TRUE , echo = TRUE}
-## Loading Intermediate Vesalius files
-## I saved intermediate files just in case
-## Also makes waaaaay easier for testing
+We can build an image array from the saved data frames. It should be noted that
+in this instance, we are using a different filtering threshold. We want to leave
+a bit more on the edges so the we don't smooth background instead of barcode
+values. We also reduce the size of the image (40% of original size) to reduce
+computational time.
+
+One important aspect to remember is that every function presented here returns
+a dataframe. This makes conversion a lot easier. You can use this data frame
+and load it in your favourite environment and play around with it. They
+follow the imager (Cimg) format: barcode, x, y, cc, value and meta data.
+
+cc represents the colour channel. value is the value associated to the colour
+channel. Meta data may represent different things but generally it will be
+associated to colour clusters or territories.
+
+For more information on the output of each function, please refer to the package
+vignette.  
+
+```{r Vesalius_Run_territory_level, eval = TRUE , echo = TRUE, fig.width =12.5,
+   fig.heigth =5}
+#-------------------/Territory Isolation - Hippocampus/------------------------#
+#------------------------------------------------------------------------------#
+# Loading saved data frame after PCA to RGB conversion
+#------------------------------------------------------------------------------#
+imageBrain <- utils::read.csv("~/group/slide_seqV2/IP/PCA_to_RGB_log_00_2000_slice1_Puck_200115_08.csv",
+                              header=T, stringsAsFactors=F)
+
+#------------------------------------------------------------------------------#
+# Next we build the image
+# We recommend using more than one core but here it was safer to leave it set
+# to only one core.
+#------------------------------------------------------------------------------#
+imageBrain <- buildImageArray(imageBrain,invert=T,
+                              filterThreshold = 0.999,
+                              resolution = 40, cores = 1)
+
+#------------------------------------------------------------------------------#
+# Next we equalise the histogram. We use the default BalanceSimplest method
+# Other methods are availbale and are detailed in the package vignette
+# sleft and sright describe the extent of hisogram balancing on the left and on
+# the right of the histogram
+#------------------------------------------------------------------------------#
+imageBrain <- equalizeHistogram(imageBrain,sleft = 2.5, sright=2.5,invert =T)
+
+#------------------------------------------------------------------------------#
+# Image regularisation - this considers overall variance to smooth the image
+# It can be seen as some sort of pre-smoothing approach.
+#------------------------------------------------------------------------------#
+imageBrain <- regulariseImage(imageBrain, lambda = 10,
+                              niter = 200, normalise=T)
+
+#------------------------------------------------------------------------------#
+# This image actually quite pretty and also we use these image in the sup figure
+# 1 alongside the Seurat clustering results.
+#------------------------------------------------------------------------------#
+#pdf("imageBrain_regEQ.pdf")
+imagePlot(imageBrain,as.cimg=F,cex =12)
+#dev.off()
+
+#------------------------------------------------------------------------------#
+# Now we can start to segment!
+# It should be noted that the smoothing is done internally
+# You can smooth using our smoothArray function but we essentially run that
+# function within the iterative segmentation function
+# colDepth = number of colour segments
+# smoothIter = number of smoothing rounds PRIOR to segmentation
+# methods = smoothing methods (they will be applied in the order they are given)
+# sigma = sigma for gaussian blur
+# box = size of median kernel
+# useCenter = we use only the centre pixel
+# invert = if colour should be inverted (if true then background is "white")
+#------------------------------------------------------------------------------#
+
+imageBrain <- iterativeSegmentation.array(imageBrain, colDepth = 6,
+                                          smoothIter = 20,
+                                          method = c("iso","median"),
+                                          sigma=1.5,box = 10,
+                                          useCenter = T,
+                                          invert =T)
 
 
-############################### Hippocampus ####################################
-# Loading image data
-imageBrain <- utils::read.csv("~/group/slide_seqV2/IP/PCA_to_RGB_log_00_2000_slice1_Puck_200115_08.csv", header=T, stringsAsFactors=F)
+#------------------------------------------------------------------------------#
+# Using the colour segments to extract territories
+# captureRadius = proportion of maximum distance between two beads. We use an
+# absolute distance metric so that the captureRadius is the same between all
+# territories. NOTE: this is not the same as KNN as here we don't care about
+# number of neighbours but rather the distance to neighbours.
+# minCell = minimum number of cells that should be in a territory. If below this
+# value, then we we will pool all of those territories into one called "isolated"
+#------------------------------------------------------------------------------#
+imageBrain2 <- isolateTerritories.array(imageBrain1,
+                                        captureRadius = 0.008,
+                                        minCell = 40)
 
-## Vesalius analysis /image analysis
-### Building actual image
-### NOTE inverting colour makes things slower for sure - but for consistency
-### lets keep it as is
-imageBrain <- buildImageArray(imageBrain,invert=T, filterThreshold = 0.999, resolution = 40, cores = 5,interpolation_type = 1)
-#hist EQ
-imageBrainEq <- equalizeHistogram(imageBrain,sleft = 2.5, sright=2.5,invert =T)
-# image reg
-imageBrainReg <- regulariseImage(imageBrainEq, lambda = 10, niter = 200,normalise=T)
-
-pdf("imageBrain_regEQ.pdf")
-imagePlot(imageBrainReg,as.cimg=F,cex =12)
-dev.off()
-#segmentation
-imageBrain1 <- iterativeSegmentation.array(imageBrainReg,colDepth = 6, smoothIter = 20, method = c("iso","median"),sigma=1.5,box = 10,acrossLevels = "mean",useCenter = T,invert =T)
-
-
-### Extract and pool territories
-imageBrain2 <- isolateTerritories.array(imageBrain1,method="distance",captureRadius = 0.008,minCell = 40)
-
+#------------------------------------------------------------------------------#
+# Finally some plotting
+# IMPORTANT: the "split" show all territories seperately - it just makes
+# visualisation and territory selection easier. Please refer to this plot
+# to select territories if in doubt.
+#------------------------------------------------------------------------------#
 imgSmoothed <- imagePlot(imageBrain1, as.cimg = F,cex = 15) + theme_void()
 imgTerritory <- territoryPlot(imageBrain2, randomise = TRUE,cex =15 , cex.pt=0.25) +
    theme_void()+
    theme(legend.text = element_text(size = 12),
         legend.title = element_text(size=12))
-pdf("smoother_and_territory_brain2.pdf", width = 12.5, height=5.5)
+
+#pdf("Hippocampus_smooth_and_segmented.pdf", width = 12.5, height=5.5)
 imgSmoothed +  imgTerritory
-dev.off()
+#dev.off()
 
-pdf("brain_split_territory2.pdf",width =20, height = 20)
-territoryPlot(imageBrain2,split = T,randomise = F,cex=10)
-dev.off()
-
-### Extract specific territories for further analysis
-
-#### This section returns seurat objects to run clustering
-
-CACluster <- extractTerritories(imageBrain2,brainRaw,seedID = c(19),morphologyFactor=0)
-StriaCluster <- extractTerritories(imageBrain2,brainRaw,seedID = c(45,48),morphologyFactor=13)
+#pdf("brain_split_territory2.pdf",width =20, height = 20)
+#territoryPlot(imageBrain2,split = T,randomise = F,cex=10)
+#dev.off()
 
 
-## Cluster Analayis for various sub territoriries
+#----------------------/Territory Isolation - Embryo/--------------------------#
+#------------------------------------------------------------------------------#
+# First we load both slices and build iamge arrays with RGB embeddings
+#------------------------------------------------------------------------------#
+imageEmbryo_1 <- utils::read.csv("~/group/slide_seqV2/IP/PCA_to_RGB_log_00_2000_slice1_Puck_190926_03.csv",
+                                 header=T, stringsAsFactors=F)
+imageEmbryo_1 <- buildImageArray(imageEmbryo_1,
+                                 invert=T,
+                                 filterThreshold = 0.999,
+                                 resolution = 40,
+                                 cores = 5)
+
+imageEmbryo_2 <- utils::read.csv("~/group/slide_seqV2/IP/PCA_to_RGB_log_00_2000_slice3_Puck_190926_03.csv",
+                                 header=T, stringsAsFactors=F)
+imageEmbryo_2 <- buildImageArray(imageEmbryo_2,
+                                 invert=T,
+                                 filterThreshold = 0.999,
+                                 resolution = 40,
+                                 cores = 5)
+
+#------------------------------------------------------------------------------#
+# Next we shove everything into a list because why not? and also loops
+#------------------------------------------------------------------------------#
+embryoList <- list(imageEmbryo_1,imageEmbryo_2)
+
+for(i in seq_along(embryoList)){
+
+  imageEmbryo <- embryoList[[i]]
+  #----------------------------------------------------------------------------#
+  # These steps are the same as the one described for the Hippocampus
+  #----------------------------------------------------------------------------#
+  imageEmbryo <- equalizeHistogram(imageEmbryo, sleft = 2.5, sright = 2.5,invert = T)
+  imageEmbryo <- regulariseImage(imageEmbryo,lambda =10)
+  #----------------------------------------------------------------------------#
+  # We can export the pretty pictures and we use slice one image for
+  # sup figure 1
+  #----------------------------------------------------------------------------#
+  #pdf(paste0("imageEmbryo_regEQ_",i,".pdf"))
+  imagePlot(imageEmbryo,as.cimg =F , cex =12)
+  #dev.off()
+
+  #----------------------------------------------------------------------------#
+  # Now we can segment images - here we use a slightly different smoothing
+  # approach. On top of multiple rounds of smoothing and using different methods,
+  # we also smooth across different levels (parse as vector to sigma and box).
+  # Default is to take the min pixel value between each sigma or box value
+  #----------------------------------------------------------------------------#
+  imageEmbryo <- iterativeSegmentation.array(imageEmbryo,
+                                             colDepth = 8,
+                                             smoothIter = 20,
+                                             method = c("iso","box"),
+                                             sigma = seq(0.5,2,by=0.5),
+                                             box = seq(3,9,by=2),
+                                             invert =T,
+                                             useCenter=F)
+  #----------------------------------------------------------------------------#
+  # This section is the same for the hippocampus - we use a slightly larger
+  # captureRadius. And we store in a list so we can retrieve it later
+  #----------------------------------------------------------------------------#
+  imageEmbryo <- isolateTerritories.array(imageEmbryo,
+                                          captureRadius = 0.025,minCell = 40)
+  embryoList[[i]] <- imageEmbryo
+
+  #----------------------------------------------------------------------------#
+  # Finally some plotting -
+  #----------------------------------------------------------------------------#
+  imgSmoothedEm <- imagePlot(imageEmbryo, as.cimg = F,cex = 15) + theme_void()
+  imgTerritoryEm <- territoryPlot(imageEmbryo, randomise = TRUE,cex =15 , cex.pt=0.25)+
+                    theme_void()+
+                    theme(legend.text = element_text(size = 12),
+                          legend.title = element_text(size=12))
+
+  #pdf(paste0("smoother_and_territory_embryo_slice",i,".pdf"), width = 11.5, height=5.5)
+  g <- imgSmoothedEm +  imgTerritoryEm
+  print(g)
+  #dev.off()
+
+  #pdf(paste0("embryo_split_slice",i,".pdf"),width =20, height = 20)
+  #print(territoryPlot(imageEmbryo,split = T,randomise = F,cex=10))
+  #dev.off()
+}
+
+```
+
+## Territory Clustering
+Isolated territories can be used for in depth analysis. In the manuscript, we
+focused on four example territories. In this section we will show how each
+territory was handled for further analysis.
+
+In the case of the third Ventricle and medial habenula, we actually selected two
+territories and extracted them together after some dilation. The dillation ensured
+that we filled any gaps that would remain between territories.
+
+It should be noted that all cell type or tissue type were done manually by using
+marker genes. The details of which gene was used is found in the supplementary
+table.
+
+```{r TerritoryClustering, eval = TRUE, echo = TRUE,fig.width = 8 fig.height=10}
+#----------------/Territory in depth Analysis - Hippocampus/-------------------#
+#------------------------------------------------------------------------------#
+# We can isolate the territories associated with the CA field and the third
+# ventricle and medial habenula.
+# NOTE: we applied a slight dilation to the third ventricle and medial habenula
+# This ensure that we fill in all gaps between territories
+# The morphology factor value is expressed in number of pixels
+# NOTE: Here we use brainRaw i.e. non processed count data as the pre-procesing
+# will be taken care of here.
+# seedID = territory number
+#------------------------------------------------------------------------------#
+CACluster <- extractTerritories(imageBrain,brainRaw,
+                                seedID = c(19),morphologyFactor=0)
+
+medCluster <- extractTerritories(imageBrain,brainRaw,
+                                   seedID = c(45,48),morphologyFactor=13)
+
+
+#------------------------------------------------------------------------------#
+# Clustering analysis carried out by Seurat
+# Here we use the recommended pipeline as we are clustering barcodes and not
+# producing images.
+#------------------------------------------------------------------------------#
 CACluster <- CACluster %>%
              SCTransform(assay = "Spatial") %>%
              RunPCA(dims =1:30) %>%
@@ -704,16 +688,41 @@ CACluster <- CACluster %>%
              FindClusters(resolution = 0.3)
 
 
-# Comparing clusters in CA territory
+#------------------------------------------------------------------------------#
+# Finding and extracting markers for each cluster (top 15 based on log FC)
+# This compares clusters between each other and does not consider all other
+# barcodes. Used for annotation.
+#------------------------------------------------------------------------------#
 CAMarkers <- FindAllMarkers(CACluster) %>% group_by(cluster) %>%
              top_n(15,wt = avg_logFC)
 
-CAClusterMarkers <- extractClusterMarkers(CACluster,brainCounts) %>% group_by(seedTerritory) %>% top_n(20,wt = logFC)
+#------------------------------------------------------------------------------#
+# Extracting genes that are differentially expressed in the cluster
+# after comparing those barcodes to all other barcodes. This differs from
+# the section above as we are not only considering barcodes in the isolated
+# territory but all all other territories
+# As such, we use normalised count values (brainCounts was previously preprocessed)
+# Used for annotation.
+#------------------------------------------------------------------------------#
+CAClusterMarkers <- extractClusterMarkers(CACluster,brainCounts) %>%
+                    group_by(seedTerritory) %>% top_n(20,wt = logFC)
 
+
+#------------------------------------------------------------------------------#
+# Custom plotting  with cell type annotation
+# Barcodes were annotated manually - see supplementary table 1
+# Colour come from a colour blind friendly palette
+#------------------------------------------------------------------------------#
 CA <- FetchData(CACluster, c("UMAP_1","UMAP_2","seurat_clusters"))
 
 
-CA_ISH <- c("CA1 Pyramidal Layer","CA3 Pyramidal Layer","CA1 Pyramidal Layer","CA1 Pyramidal Layer","CA2 Pyramidal Layer","Neurons","Microglia")
+CA_ISH <- c("CA1 Pyramidal Layer",
+            "CA3 Pyramidal Layer",
+            "CA1 Pyramidal Layer",
+            "CA1 Pyramidal Layer",
+            "CA2 Pyramidal Layer",
+            "Neurons",
+            "Microglia")
 coordCA <- Vesalius:::.getSeuratCoordinates(CACluster)
 CA <- cbind(CA,coordCA[,c("x","y")]) %>% group_by(seurat_clusters) %>%
       mutate(xs = mean(UMAP_1),ys = mean(UMAP_2))
@@ -722,9 +731,8 @@ lvls <- CA_ISH[as.numeric(as.character(CA$seurat_clusters))+1]
 CA$seurat_clusters <- lvls
 
 CA_col <- length(unique(CA$seurat_clusters))
-#CA_pal <- colorRampPalette(c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7"))
-#cols <- CA_pal(5)
-cols <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")[c(2,3,4,5,8)]
+cols <- c("#999999", "#E69F00", "#56B4E9", "#009E73",
+          "#F0E442", "#0072B2", "#D55E00", "#CC79A7")[c(2,3,4,5,8)]
 umap_CA <- ggplot(CA, aes(UMAP_1,UMAP_2,col = as.factor(seurat_clusters))) +
             geom_point(size = 1.2, alpha = 1) +
             theme_classic() +
@@ -755,38 +763,50 @@ coord_CA <- ggplot(CA, aes(x,y,col = as.factor(seurat_clusters))) +
             labs(colour = " ", title = " ",
                 x = "X coordinates", y = "Y coordinates")
 
-pdf("CA_umap.pdf", width =10, height=10)
-umap_CA / coord_CA
-dev.off()
 
-
-
-### NEEDS to be check and repeated!!!!
-StriaCluster <- StriaCluster %>%
+#------------------------------------------------------------------------------#
+# The same process is applied to the third ventricle and medial habenula
+#------------------------------------------------------------------------------#
+medCluster <- medCluster %>%
              SCTransform(assay = "Spatial") %>%
              RunPCA(dims =1:30) %>%
              RunUMAP(dims =1:30) %>%
              FindNeighbors()
-StriaCluster <- StriaCluster %>%FindClusters(resolution = 0.75)
+medCluster <- medCluster %>%FindClusters(resolution = 0.75)
 
-striaMarkers <- FindAllMarkers(StriaCluster) %>% group_by(cluster) %>%
+medMarkers <- FindAllMarkers(medCluster) %>% group_by(cluster) %>%
              top_n(15,wt = avg_logFC)
-striaClusterMarkers <- extractClusterMarkers(StriaCluster,brainCounts) %>%
-group_by(seedTerritory) %>% top_n(15,wt = logFC)
+medClusterMarkers <- extractClusterMarkers(medCluster,brainCounts) %>%
+                     group_by(seedTerritory) %>% top_n(15,wt = logFC)
 
-stria <- FetchData(StriaCluster, c("UMAP_1","UMAP_2","seurat_clusters"))
-stria_ISH <-c("Medial Habenula","Third Ventricle","Medial Habenula - Low","Third Ventricle - Low","Third Ventricle","Oligodendrocyte - TV","Ependymal Cells - TV","Unassigned","Oligodendrocyte - MH","Neurons","Third Ventricle - Border","Unassigned")
-coordStria <- Vesalius:::.getSeuratCoordinates(StriaCluster)
-stria <- cbind(stria,coordStria[,c("x","y")]) %>% group_by(seurat_clusters) %>%
+#------------------------------------------------------------------------------#
+# Plotting
+#------------------------------------------------------------------------------#
+med <- FetchData(medCluster, c("UMAP_1","UMAP_2","seurat_clusters"))
+med_ISH <-c("Medial Habenula",
+              "Third Ventricle",
+              "Medial Habenula - Low",
+              "Third Ventricle - Low",
+              "Third Ventricle",
+              "Oligodendrocyte - TV",
+              "Ependymal Cells - TV",
+              "Unassigned",
+              "Oligodendrocyte - MH",
+              "Neurons",
+              "Third Ventricle - Border",
+              "Unassigned")
+coordmed <- Vesalius:::.getSeuratCoordinates(medCluster)
+med <- cbind(med,coord[,c("x","y")]) %>% group_by(seurat_clusters) %>%
       mutate(xs = mean(UMAP_1),ys = mean(UMAP_2))
-lvls <- stria_ISH[as.numeric(as.character(stria$seurat_clusters))+1]
-stria$seurat_clusters <- lvls
+lvls <- med_ISH[as.numeric(as.character(med$seurat_clusters))+1]
+med$seurat_clusters <- lvls
 
-stria_col <- length(unique(stria$seurat_clusters))
-stria_pal <- colorRampPalette(c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7"))
-cols <- stria_pal(stria_col)[sample(1:stria_col)]
-#cols <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
-umap_stria <- ggplot(stria, aes(UMAP_1,UMAP_2,col = as.factor(seurat_clusters))) +
+med_col <- length(unique(med$seurat_clusters))
+med_pal <- colorRampPalette(c("#999999", "#E69F00", "#56B4E9", "#009E73",
+                                "#F0E442", "#0072B2", "#D55E00", "#CC79A7"))
+cols <- med_pal(med_col)[sample(1:med_col)]
+
+umap_med <- ggplot(med, aes(UMAP_1,UMAP_2,col = as.factor(seurat_clusters))) +
             geom_point(size = 1, alpha = 1) +
             theme_classic() +
             scale_color_manual(values =cols) +
@@ -800,7 +820,7 @@ umap_stria <- ggplot(stria, aes(UMAP_1,UMAP_2,col = as.factor(seurat_clusters)))
             labs(title = "Third Ventricle - Medial Habenula",
                               x = "UMAP 1", y = "UMAP 2")
 
-coord_stria <- ggplot(stria, aes(x,y,col = as.factor(seurat_clusters))) +
+coord_med <- ggplot(med, aes(x,y,col = as.factor(seurat_clusters))) +
             geom_point(size = 1.3, alpha = 1) +
             theme_void() +
             scale_color_manual(values = cols) +
@@ -814,60 +834,18 @@ coord_stria <- ggplot(stria, aes(x,y,col = as.factor(seurat_clusters))) +
             labs(colour = " ", title = "",
                 x = "X coordinates", y = "Y coordinates")
 
-pdf("stria_umap.pdf", width =10, height=10)
-umap_stria /coord_stria
-dev.off()
 
-```
-
-## Plotting
-
-
-
-```{r embryo_analysis, eval = TRUE, echo =TRUE}
-############################### Embryo E12.5####################################
-
-imageEmbryo_1 <- utils::read.csv("~/group/slide_seqV2/IP/PCA_to_RGB_log_00_2000_slice1_Puck_190926_03.csv", header=T, stringsAsFactors=F)
-imageEmbryo_1 <- buildImageArray(imageEmbryo_1, invert=T,filterThreshold = 0.999, resolution = 40, cores = 5,interpolation_type = 1)
-
-imageEmbryo_2 <- utils::read.csv("~/group/slide_seqV2/IP/PCA_to_RGB_log_00_2000_slice3_Puck_190926_03.csv", header=T, stringsAsFactors=F)
-imageEmbryo_2 <- buildImageArray(imageEmbryo_2, invert=T,filterThreshold = 0.999, resolution = 40, cores = 5,interpolation_type = 1)
-
-embryoList <- list(imageEmbryo_1,imageEmbryo_2)
-for(i in seq_along(embryoList)){
-
-  imageEmbryo <- embryoList[[i]]
-  imageEmbryo <- equalizeHistogram(imageEmbryo, sleft = 2.5, sright = 2.5,invert = T)
-  imageEmbryo <- regulariseImage(imageEmbryo,lambda =10)
-  pdf(paste0("imageEmbryo_regEQ_",i,".pdf"))
-  imagePlot(imageEmbryo,as.cimg =F , cex =12)
-  dev.off()
-
-
-  imageEmbryo1 <- iterativeSegmentation.array(imageEmbryo,colDepth = 8, smoothIter = 20, method = c("iso","box"),sigma = seq(0.5,2,by=0.5),box = seq(3,9,by=2),invert =T,useCenter=F)
-
-  imageEmbryo2 <- isolateTerritories.array(imageEmbryo1,method="distance",captureRadius = 0.025,minCell = 40)
-  embryoList[[i]] <- imageEmbryo2
-  imgSmoothedEm <- imagePlot(imageEmbryo1, as.cimg = F,cex = 15) + theme_void()
-  imgTerritoryEm <- territoryPlot(imageEmbryo2, randomise = TRUE,cex =15 , cex.pt=0.25)+theme_void()+
-  theme(legend.text = element_text(size = 12),
-       legend.title = element_text(size=12))
-  pdf(paste0("smoother_and_territory_embryo_slice",i,".pdf"), width = 11.5, height=5.5)
-  g <-imgSmoothedEm +  imgTerritoryEm
-  print(g)
-  dev.off()
-
-  #pdf(paste0("embryo_split_slice",i,".pdf"),width =20, height = 20)
-  #print(territoryPlot(imageEmbryo2,split = T,randomise = F,cex=10))
-  #dev.off()
-}
-
-
+#------------------/Territory in depth Analysis - Embryo/----------------------#
+#------------------------------------------------------------------------------#
+# We applied the same process to embryo isolated clusters
+#------------------------------------------------------------------------------#
 eyeCluster <- extractTerritories(embryoList[[2]],embryoCounts,seedID = 11)
 liverCluster <- extractTerritories(embryoList[[1]],embryoCounts,seedID = 7)
 
 
-## Cluster Analayis for various sub territoriries
+#------------------------------------------------------------------------------#
+# First we start with eye
+#------------------------------------------------------------------------------#
 eyeCluster <- eyeCluster %>%
               SCTransform(assay = "Spatial") %>%
               RunPCA(dims =1:30) %>%
@@ -876,44 +854,37 @@ eyeCluster <- eyeCluster %>%
               FindClusters(resolution = 0.4)
 
 
-
+#------------------------------------------------------------------------------#
+# Embryonic eye markers
+#------------------------------------------------------------------------------#
 eyeMarkers <- FindAllMarkers(eyeCluster) %>% group_by(cluster) %>%
-             top_n(15,wt = avg_logFC)
+                             top_n(15,wt = avg_logFC)
 
 eyeClusterMarkers <- extractClusterMarkers(eyeCluster,embryoCounts) %>%
-group_by(seedTerritory) %>% top_n(15,wt = logFC)
-
+                     group_by(seedTerritory) %>% top_n(15,wt = logFC)
+#------------------------------------------------------------------------------#
+# Plotting and Assigning cell types
+#------------------------------------------------------------------------------#
 eye <- FetchData(eyeCluster, c("UMAP_1","UMAP_2","seurat_clusters"))
-#eye_ISH <- c("Müller Cells - Lens Placode",
-#  "Bipolar Cells - Outer Layer",
-#  "Müller Glia Cells - Inner Lens",
-#  "Müller Glia Cells - Outer Lens",
-#  "Endothelial Cells - Lens",
-#  "Bipolar Cells - Inner Layer",
-#  "Müller Cells - Lens Placode",
-#  "Photo-receptor Cells")
 eye_ISH <- c("Primary Lens Fiber Cells",
-    "Anterior Lens Epithelial Cells",
-    "Preplacodal Lens Ectoderm Cells",
-    "Periocular Mesenchyme",
-    "Lens Vesicle Cells",
-    "Anterior Lens Epithelial Cells - L2",
-    "Lens Vesicle Cells - L2",
-    "Primary Lens Fiber Cells")
+             "Anterior Lens Epithelial Cells",
+             "Preplacodal Lens Ectoderm Cells",
+             "Periocular Mesenchyme",
+             "Lens Vesicle Cells",
+             "Anterior Lens Epithelial Cells - L2",
+             "Lens Vesicle Cells - L2",
+             "Primary Lens Fiber Cells")
 
 coordeye <- Vesalius:::.getSeuratCoordinates(eyeCluster)
 eye <- cbind(eye,coordeye[,c("x","y")]) %>% group_by(seurat_clusters) %>%
-      mutate(xs = mean(UMAP_1),ys = mean(UMAP_2))
+       mutate(xs = mean(UMAP_1),ys = mean(UMAP_2))
 
 lvls <- eye_ISH[as.numeric(as.character(eye$seurat_clusters))+1]
 eye$seurat_clusters <- lvls
 
 eye_col <- length(unique(eye$seurat_clusters))
-eye_pal <- colorRampPalette(c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7"))
-cols <- eye_pal(eye_col)[sample(1:eye_col)]
-cols <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
-#manual change because that yellow really sucks
-#cols <- cols[-4]
+cols <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442",
+          "#0072B2", "#D55E00", "#CC79A7")
 
 umap_eye <- ggplot(eye, aes(UMAP_1,UMAP_2,col = as.factor(seurat_clusters))) +
             geom_point(size = 1.2, alpha = 1) +
@@ -927,31 +898,25 @@ umap_eye <- ggplot(eye, aes(UMAP_1,UMAP_2,col = as.factor(seurat_clusters))) +
                   plot.caption = element_text(size = 20,hjust = 0),
                   plot.tag = element_text(size=20),
                   plot.margin = margin(0.5, 1.2, 0.5, 0.5, "cm")) +
-            #guides(colour = guide_legend(override.aes = list(size=4)))+
             labs(caption = "Embryonic Eye (E12.5)",
-                              x = "UMAP 1", y = "UMAP 2")
+                                              x = "UMAP 1", y = "UMAP 2")
 
 coord_eye <- ggplot(eye, aes(x,y,col = as.factor(seurat_clusters))) +
-            geom_point(size = 1.4, alpha = 1) +
-            theme_void() +
-            scale_color_manual(values = cols) +
-            theme(legend.text = element_text(size = 20),
-                  legend.position ="left",
-                  #axis.text = element_text(size = 20),
-                  #axis.title = element_text(size = 20),
-                  plot.title = element_text(size = 20),
-                  plot.tag = element_text(size=20),
-                  plot.margin = margin(0.5, 0, 0, 0, "cm")) +
-            guides(colour = guide_legend(override.aes = list(size=9)))+
+             geom_point(size = 1.4, alpha = 1) +
+             theme_void() +
+             scale_color_manual(values = cols) +
+             theme(legend.text = element_text(size = 20),
+                   legend.position ="left",
+                   plot.title = element_text(size = 20),
+                   plot.tag = element_text(size=20),
+                   plot.margin = margin(0.5, 0, 0, 0, "cm")) +
+             guides(colour = guide_legend(override.aes = list(size=9)))+
             labs(colour = "", title = "",
-                x = "X coordinates", y = "Y coordinates")
+                                x = "X coordinates", y = "Y coordinates")
 
-pdf("eye_umap.pdf", width =10, height=10)
-coord_eye /umap_eye
-dev.off()
-
-
-
+#------------------------------------------------------------------------------#
+# Now we can go for the liver
+#------------------------------------------------------------------------------#
 liverCluster <- liverCluster %>%
                 SCTransform(assay = "Spatial") %>%
                 RunPCA(dims =1:30) %>%
@@ -960,132 +925,245 @@ liverCluster <- liverCluster %>%
                 FindClusters(resolution = 0.3)
 
 
-
+#------------------------------------------------------------------------------#
+# Get Markers for the liver isolated territory
+#------------------------------------------------------------------------------#
 liverMarkers <- FindAllMarkers(liverCluster) %>% group_by(cluster) %>%
-             top_n(15,wt = avg_logFC)
+                top_n(15,wt = avg_logFC)
 
 liverClusterMarkers <- extractClusterMarkers(liverCluster,embryoCounts) %>%
-             group_by(seedTerritory) %>% top_n(15,wt = logFC)
+                      group_by(seedTerritory) %>% top_n(15,wt = logFC)
 
 
+#------------------------------------------------------------------------------#
+# Plotting and cell type annotation
+#------------------------------------------------------------------------------#
 liver <- FetchData(liverCluster, c("UMAP_1","UMAP_2","seurat_clusters"))
-#liver_ISH <- c("Hepatocyte", "Erythroid Cells","Ito Cells","Kupffer Cells","B Cells")
-liver_ISH <- c("Hepatoblast", "Hepatoblast","Mesothelial Cells","Perivenous Hepatocytes","Hepatobiliary System","Embryonic Erythrocytes")
+liver_ISH <- c("Hepatoblast",
+               "Hepatoblast",
+               "Mesothelial Cells",
+               "Perivenous Hepatocytes",
+               "Hepatobiliary System",
+               "Embryonic Erythrocytes")
 coordliver <- Vesalius:::.getSeuratCoordinates(liverCluster)
 liver <- cbind(liver,coordliver[,c("x","y")]) %>% group_by(seurat_clusters) %>%
-      mutate(xs = mean(UMAP_1),ys = mean(UMAP_2))
+         mutate(xs = mean(UMAP_1),ys = mean(UMAP_2))
 
 lvls <- liver_ISH[as.numeric(as.character(liver$seurat_clusters))+1]
 liver$seurat_clusters <- lvls
 
 liver_col <- length(unique(liver$seurat_clusters))
 
-cols <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")[c(2,3,4,5,8)]
+cols <- c("#999999", "#E69F00", "#56B4E9", "#009E73",
+         "#F0E442", "#0072B2", "#D55E00", "#CC79A7")[c(2,3,4,5,8)]
 
 umap_liver <- ggplot(liver, aes(UMAP_1,UMAP_2,col = as.factor(seurat_clusters))) +
-            geom_point(size = 1.2, alpha = 1) +
-            theme_classic() +
-            scale_color_manual(values =cols) +
-            scale_x_continuous(position ="top")+
-            theme(legend.position = "none",
-                  axis.text = element_text(size = 20),
-                  axis.title = element_text(size = 20),
-                  plot.caption = element_text(size = 20,hjust=1),
-                  plot.tag = element_text(size=20),
-                  plot.margin = margin(0.5, 0.5, 1.5, 0.5, "cm")) +
-            #guides(colour = guide_legend(override.aes = list(size=4)))+
-            labs(caption = "Embryonic Liver (E12.5)",
-                              x = "UMAP 1", y = "UMAP 2")
+              geom_point(size = 1.2, alpha = 1) +
+              theme_classic() +
+              scale_color_manual(values =cols) +
+              scale_x_continuous(position ="top")+
+              theme(legend.position = "none",
+                    axis.text = element_text(size = 20),
+                    axis.title = element_text(size = 20),
+                    plot.caption = element_text(size = 20,hjust=1),
+                    plot.tag = element_text(size=20),
+                    plot.margin = margin(0.5, 0.5, 1.5, 0.5, "cm")) +
+              labs(caption = "Embryonic Liver (E12.5)",
+                                              x = "UMAP 1", y = "UMAP 2")
 
 coord_liver <- ggplot(liver, aes(x,y,col = as.factor(seurat_clusters))) +
-            geom_point(size = 1, alpha = 1) +
+               geom_point(size = 1, alpha = 1) +
+               theme_void() +
+               scale_color_manual(values = cols) +
+               theme(legend.text = element_text(size = 20),
+                     plot.title = element_text(size = 20),
+                     plot.tag = element_text(size=20),
+                     plot.margin = margin(0.5, 0.0, 0.0, 0.0, "cm")) +
+               guides(colour = guide_legend(override.aes = list(size=9)))+
+               labs(colour = " ", title = "",
+                                x = "X coordinates", y = "Y coordinates")
+
+
+#------------------------------------------------------------------------------#
+# Finally we can build the isolated territory section of the figure
+#------------------------------------------------------------------------------#
+#pdf("fig_3_template.pdf",height=16,width=20)
+umap_CA+umap_med+coord_CA+coord_med+coord_eye+coord_liver+umap_eye+umap_liver +
+plot_layout(ncol=2,height=c(1,1.4,1.4,1))
+#dev.off()              
+
+
+
+```
+We showed that we recovered the CA2 field in the CA field isolated territory
+This was due to the fact that we could recover subtle gene expression patterns
+that were otherwise lost or overshadowed by stronger patterns. In this section,
+we show how we can visualise these expression patterns
+
+
+```{r expressionPatternCA2, eval =TRUE, echo = TRUE,fig.width =10, fig.height=4}
+#-------------------/CA2 field marker expression patterns/---------------------#
+#------------------------------------------------------------------------------#
+# First we show the overall and isolated pattern for pcp4 (as in main figure 3)
+#------------------------------------------------------------------------------#
+
+pcp4All <- viewGeneExpression(imageBrain2,brainCounts,
+                              ter = NULL, genes = "Pcp4",cex=20)+
+           theme_void() +
+           theme(legend.position='left',
+                 plot.title = element_text(hjust=0.5))
+
+pcp4 <- viewGeneExpression(imageBrain2,CACluster, genes = "Pcp4",cex=20)+
+        theme_void()+
+        theme(legend.position='right',
+              plot.title = element_text(hjust=0.5))
+pdf("pcp4.pdf",width=10,height=4)
+pcp4All + pcp4
+dev.off()
+
+#------------------------------------------------------------------------------#
+# Next we do the same thing but for supplementary figure 2
+#------------------------------------------------------------------------------#
+rgs14All <- viewGeneExpression(imageBrain2,brainCounts,
+                              ter = NULL, genes = "Rgs14",cex=20)+
             theme_void() +
-            scale_color_manual(values = cols) +
-            theme(legend.text = element_text(size = 20),
-                  #axis.text = element_text(size = 20),
-                  #axis.title = element_text(size = 20),
-                  plot.title = element_text(size = 20),
-                  plot.tag = element_text(size=20),
-                  plot.margin = margin(0.5, 0.0, 0.0, 0.0, "cm")) +
-            guides(colour = guide_legend(override.aes = list(size=9)))+
-            labs(colour = " ", title = "",
-                x = "X coordinates", y = "Y coordinates")
+            theme(legend.position='left',
+            plot.title = element_text(hjust=0.5))
+rgs14 <- viewGeneExpression(imageBrain2,CACluster,
+                            genes = "Rgs14",cex=20)+
+         theme_void()+
+         theme(legend.position='left',
+               plot.title = element_text(hjust=0.5))
 
-pdf("liver_umap.pdf", width =10, height=10)
-coord_liver /umap_liver
-dev.off()
+
+necab2All <- viewGeneExpression(imageBrain2,brainCounts,
+                                ter = NULL, genes = "Necab2",cex=20)+
+             theme_void() +
+             theme(legend.position='right',
+                   plot.title = element_text(hjust=0.5))
+necab2 <- viewGeneExpression(imageBrain2,CACluster,
+                             genes = "Necab2",cex=20)+
+          theme_void()+
+          theme(legend.position='right',
+                plot.title = element_text(hjust=0.5))
+
+
+
+#pdf("CA2_inClust_overall.pdf",width = 10,height = 4)
+rgs14All + necab2All + plot_layout(ncol=2,nrow = 1)
+#dev.off()
+
+#pdf("CA2_markers_inCluster.pdf",width = 10,height = 4)
+rgs14 + necab2 + plot_layout(ncol=2,nrow =1)
+#dev.off()
+
+
+
 
 ```
 
-```{r full_fig3, eval = T , echo = T}
-pdf("fig_3_template_2.pdf",height=18,width=15)
-umap_CA+coord_CA+umap_stria+coord_stria+umap_eye+coord_eye+umap_liver+coord_liver + plot_layout(ncol=2,width=c(1,1.3))
-dev.off()
+## Novel markers and tissue border expression
+
+The final section of the paper showed how we could extract novel markers from
+anatomical territories and how we found tissue border expression patterns. We
+also showed an example of a layering effect in the corpus callosum.
 
 
-pdf("fig_3_template.pdf",height=16,width=20)
-umap_CA+umap_stria+coord_CA+coord_stria+coord_eye+coord_liver+umap_eye+umap_liver +
-   plot_layout(ncol=2,height=c(1,1.4,1.4,1))
-dev.off()
-```
+First, we will show the code associated with the extraction of Dentate gyrus and
+the associated marker genes. In this context, we applied the same principle as
+for other isolated territories: raw counts when clustering an isolated territory
+and normalised counts when comparing to all other territories. We show the
+expression patterns of novel marker genes. We also show the clustering analysis
+of the isolated dentate gyrus as well as the layering of the territory
 
-
-
-This section is just to visualise territorries. This is useful when looking at territory
-markers. We can see which one is being compared. Could Add numeric location values But
-I fear that might get a bit crowded.
-
-
-```{r Territory_comp,eval = TRUE, echo=TRUE}
-############################### Hippocampus ####################################
-Dentate <- layerTerritory.edge(imageBrain2,29,morphologyFactor = 15)
-
-DenMarkers <- extractMarkers(imageBrain2,brainCounts,29,morphologyFactorSeed =0)
+We found two genes expressed at the border of the Dentate gyrus granule cell
+layer and the Dentate gyrus Polymorph layer. We used the Hipposeq data set to
+corroborate our results. The data can be downloaded after using the hipposeq
+online tool. They refer to the Polymorph layer as mossy cells. For consistency,
+we chose the nomencalture used by the Allen brain Atlas.
 
 
 
-DenClusterDilated <- extractTerritories(imageBrain2, brainRaw,seedID = 29,morphologyFactor = 15)
+```{r dentateGyrus,eval = TRUE, echo=TRUE}
+#----------/Dentate gyrus: novel markers and border expression/----------------#
+#------------------------------------------------------------------------------#
+# First we extract makers from the territory
+# We do not apply any morphological operator in this case
+# This is where we find C1ql2 and Lrrtm4
+#------------------------------------------------------------------------------#
+DenMarkers <- extractMarkers(imageBrain,brainCounts,29,morphologyFactorSeed =0)
+
+#------------------------------------------------------------------------------#
+# Next we run a clustering analysis on a slightly dilated dentate gyrus
+# The dilation ensures that we recover the neighbouring tissues
+#------------------------------------------------------------------------------#
+DenClusterDilated <- extractTerritories(imageBrain, brainRaw,
+                                        seedID = 29,morphologyFactor = 15)
 
 DenClusterDilated <- DenClusterDilated %>% SCTransform(assay = "Spatial") %>%
               RunPCA(dims = 1:30) %>% RunUMAP(dims = 1:30) %>%
               FindNeighbors()
 DenClusterDilated <- DenClusterDilated %>% FindClusters(resolution = 0.3)
 
-### Comparing layers
+#------------------------------------------------------------------------------#
+# We can extract marker gene from each cluster and compare each cluster
+# to all other territories
+# NOTE: for cell type annotation we used anatomical position as we just wanted
+# overall territory not specific cell types
+# We found Cst3 and Apoe here
+#------------------------------------------------------------------------------#
+denMarkersOuterSeu <- FindAllMarkers(DenClusterDilated) %>%
+                      group_by(cluster) %>%
+                      top_n(25,wt=avg_logFC)
+
+denClusterMarkers <- extractClusterMarkers(DenClusterDilated,brainRaw)%>%
+                     group_by(seedTerritory) %>% top_n(15,wt = logFC)
+
+
+#------------------------------------------------------------------------------#
+# We also layered the dentate gyrus - this was done after dilation
+# we used the same dilation as the one used in the clustering analysis
+#------------------------------------------------------------------------------#
+Dentate <- layerTerritory.edge(imageBrain,29,morphologyFactor = 15)
+
+
+#------------------------------------------------------------------------------#
+# We can compared each layer to all other layers to extract genes specifically
+# expressed in that layer - Cst3 and and Apoe are present here as well
+#------------------------------------------------------------------------------#
 totalLayers <- unique(Dentate$layer)
 
 Layered <- lapply(seq_along(totalLayers), function(idx,layers,ter,counts){
             query <- layers[!layers %in% idx]
             res <- compareLayers(ter,counts,idx,query)
             if(length(res) ==0) return(NULL)
-
-
             return(res)
 },totalLayers,Dentate,brainCounts)
 Layered <- do.call("rbind",Layered)
 
-## Quick viz of clusters
-#denMarkersSeu <- FindAllMarkers(DenCluster) %>% group_by(cluster) %>% top_n(25,wt=avg_logFC)
-denMarkersOuterSeu <- FindAllMarkers(DenClusterDilated) %>% group_by(cluster) %>% top_n(25,wt=avg_logFC)
-denClusterMarkers <- extractClusterMarkers(DenClusterDilated,brainRaw)%>%
-             group_by(seedTerritory) %>% top_n(15,wt = logFC)
-
-
-
-
+#------------------------------------------------------------------------------#
+# We now have all the data we need to do some plotting
+# We start off with the clustered dilated dentate gyrus
+# We only show the coordinates
+#------------------------------------------------------------------------------#
 
 outer <- FetchData(DenClusterDilated, c("UMAP_1","UMAP_2","seurat_clusters"))
 
 coordouter <- Vesalius:::.getSeuratCoordinates(DenClusterDilated)
 outer <- cbind(outer,coordouter[,c("x","y")]) %>% group_by(seurat_clusters) %>%
                mutate(xs = mean(UMAP_1),ys = mean(UMAP_2))
-outer_ISH <- c("DG - Granule Cell Layer", "DG - Granule Cell Layer","DG - Polymorph Layer","DG - Molecular Layer")
+
+outer_ISH <- c("DG - Granule Cell Layer",
+               "DG - Granule Cell Layer",
+               "DG - Polymorph Layer",
+               "DG - Molecular Layer")
 
 lvls <- outer_ISH[as.numeric(as.character(outer$seurat_clusters))+1]
 outer$seurat_clusters <- lvls
 outer_col <- length(unique(outer$seurat_clusters))
 
-cols <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")[c(2,3,4)]
+cols <- c("#999999", "#E69F00", "#56B4E9", "#009E73",
+          "#F0E442", "#0072B2", "#D55E00", "#CC79A7")[c(2,3,4)]
 
 coord_outer <- ggplot(outer, aes(x,y,col = as.factor(seurat_clusters))) +
                       geom_point(size = 2, alpha = 1) +
@@ -1100,62 +1178,76 @@ coord_outer <- ggplot(outer, aes(x,y,col = as.factor(seurat_clusters))) +
                       labs(colour = " ", title = " ",
                            x = " ", y = " ")
 
-
-
-
-
-
-pdf("DenMaps_umap.pdf", width =9, height=9)
+#pdf("DenMaps_umap.pdf", width =9, height=9)
 coord_outer
-#plot_layout(design = layout,height = c(1,1.5))
-dev.off()
+#dev.off()
+
+#------------------------------------------------------------------------------#
+# We plot the expression of the novel markers
+#------------------------------------------------------------------------------#
+cAll <- viewGeneExpression(imageBrain,brainCounts,ter = NULL,
+                           genes = "C1ql2",cex=25) +
+        theme_void() +
+        theme(legend.position = "left",
+              plot.margin = margin(0.5,0.5,0.5,0.5,"cm"),
+              plot.title = element_text(hjust = 1,size =25),
+              legend.text = element_text(size = 20),
+              legend.title = element_text(size = 20))
+
+lAll <- viewGeneExpression(imageBrain,brainCounts,ter = NULL,
+                           genes = "Lrrtm4",cex=25) +
+        theme_void()+
+        theme(plot.margin = margin(0.5,0.5,0.5,0.5,"cm"),
+              plot.title = element_text(hjust = 0,size =25),
+              legend.text = element_text(size = 20),
+              legend.title = element_text(size = 20))
 
 
-cAll <- viewGeneExpression(imageBrain2,brainCounts,ter = NULL, genes = "C1ql2",cex=25) +
-    theme_void() + theme(legend.position = "left",
-    plot.margin = margin(0.5,0.5,0.5,0.5,"cm"),
-    plot.title = element_text(hjust = 1,size =25),
-    legend.text = element_text(size = 20),
-    legend.title = element_text(size = 20))
 
-lAll <- viewGeneExpression(imageBrain2,brainCounts,ter = NULL, genes = "Lrrtm4",cex=25) +
-    theme_void()+ theme(plot.margin = margin(0.5,0.5,0.5,0.5,"cm"),plot.title = element_text(hjust = 0,size =25),
-    legend.text = element_text(size = 20),
-    legend.title = element_text(size = 20))
-
-
-
-pdf("denMarkers.pdf",width = 7.5,height = 6)
+#pdf("denMarkers.pdf",width = 7.5,height = 6)
 print(cAll)
 print(lAll)
-dev.off()
+#dev.off()
+
+#------------------------------------------------------------------------------#
+# We can also plot the layered expression of Cst3 and Apoe
+# genes expressed at the border between two tissues
+#------------------------------------------------------------------------------#
+cst3 <- viewLayerExpression(Dentate,brainCounts, genes = "Cst3",cex=25) +
+        theme_void() +
+        theme(legend.position = "left",
+              plot.margin = margin(0.5,0.5,0.5,0.5,"cm"),
+              plot.caption = element_text(hjust = 0.5, size = 25),
+              legend.text = element_text(size = 20),
+              legend.title = element_text(size = 20)) +
+        labs(title = " ",caption = "Cst3")
 
 
-cst3 <- viewLayerExpression(Dentate,brainCounts, genes = "Cst3",cex=25) + theme_void() +
-theme(legend.position = "left",plot.margin = margin(0.5,0.5,0.5,0.5,"cm"),
-plot.caption = element_text(hjust = 0.5, size = 25),
-legend.text = element_text(size = 20),
-legend.title = element_text(size = 20)) +
-labs(title = " ",caption = "Cst3")
+apoe <- viewLayerExpression(Dentate,brainCounts, genes = "Apoe",cex=25) +
+        theme_void()+
+        theme(legend.position = "left",
+              plot.margin = margin(0.5,0.5,0.5,0.5,"cm"),
+              plot.caption = element_text(hjust = 0, size = 25),
+              legend.text = element_text(size = 20),
+              legend.title = element_text(size = 20)) +
+        labs(title = " ",caption = "Apoe")
 
-
-apoe <- viewLayerExpression(Dentate,brainCounts, genes = "Apoe",cex=25) + theme_void()+
-theme(legend.position = "left",plot.margin = margin(0.5,0.5,0.5,0.5,"cm"),
-plot.caption = element_text(hjust = 0, size = 25),
-legend.text = element_text(size = 20),
-legend.title = element_text(size = 20)) +
-labs(title = " ",caption = "Apoe")
-
-pdf("borderdentate.pdf", width=7,height=6)
+#pdf("borderdentate.pdf", width=7,height=6)
 print(cst3)
 print(apoe)
-dev.off()
+#dev.off()
 
 
+#------------------------------------------------------------------------------#
+# Finally we can read in the Hipposeq data.
+# This data is extracted from the hipposeq online tool
+#------------------------------------------------------------------------------#
 border <- read.table("raw_data_cst_apoe.tsv", sep = "\t", header =T)
-border$sample_name <- rep(c("DG - Granule Cell layer","DG - Polymorph layer"),each =2)
+border$sample_name <- rep(c("DG - Granule Cell layer","DG - Polymorph layer"),
+                          each =2)
 border$gene_short_name <- as.factor(border$gene_short_name)
-border$gene_short_name <- factor(border$gene_short_name, levels = rev(levels(border$gene_short_name)))
+border$gene_short_name <- factor(border$gene_short_name,
+                                levels = rev(levels(border$gene_short_name)))
 bord <- ggplot(border,aes(x = gene_short_name,y = sample_name,fill =fpkmNorm))+
     geom_tile()+
     scale_fill_gradientn(colors = rev(brewer.pal(11,"Spectral")))+
@@ -1166,389 +1258,59 @@ bord <- ggplot(border,aes(x = gene_short_name,y = sample_name,fill =fpkmNorm))+
           axis.title = element_text(size = 12),
           legend.title = element_text(size =12))+
     labs(x = " ",y= "Tissue section")
-pdf("border_expression.pdf", width= 9, height = 4 )
+#pdf("border_expression.pdf", width= 9, height = 4 )
 print(bord)
-dev.off()
-```
-
-Plotting genes in that are diff regulated in a given territory
-NEED to clean this section up
-
-```{r gene_by_ter,eval = TRUE, echo = FALSE}
-pcp4All <- viewGeneExpression(imageBrain2,brainCounts,ter = NULL, genes = "Pcp4",cex=20)+
-  theme_void() + theme(legend.position='left',plot.title = element_text(hjust=0.5))
-pcp4 <- viewGeneExpression(imageBrain2,CACluster, genes = "Pcp4",cex=20)+ theme_void()+
-theme(legend.position='right',plot.title = element_text(hjust=0.5))
-pdf("pcp4.pdf",width=10,height=4)
-pcp4All + pcp4
-dev.off()
-
-
-rgs14All <- viewGeneExpression(imageBrain2,brainCounts,ter = NULL, genes = "Rgs14",cex=20)+
-   theme_void() + theme(legend.position='left',plot.title = element_text(hjust=0.5))
-rgs14 <- viewGeneExpression(imageBrain2,CACluster, genes = "Rgs14",cex=20)+ theme_void()+ theme(legend.position='left',plot.title = element_text(hjust=0.5))
-
-
-necab2All <- viewGeneExpression(imageBrain2,brainCounts,ter = NULL, genes = "Necab2",cex=20)+
-   theme_void() + theme(legend.position='right',plot.title = element_text(hjust=0.5))
-necab2 <- viewGeneExpression(imageBrain2,CACluster, genes = "Necab2",cex=20)+ theme_void()+ theme(legend.position='right',plot.title = element_text(hjust=0.5))
-
-
-
-pdf("CA2_inClust_overall.pdf",width = 10,height = 4)
-rgs14All + necab2All + plot_layout(ncol=2,nrow = 1)
-dev.off()
-
-pdf("CA2_markers_inCluster.pdf",width = 10,height = 4)
-rgs14 + necab2 + plot_layout(ncol=2,nrow =1)
-dev.off()
-
-
-
-## comp to other CA2 markers
-#ccdc3All <- viewGeneExpression(imageBrain2,brainCounts,ter = NULL, genes = "Ccdc3",cex=20)
-#ccdc3 <- viewGeneExpression(imageBrain2,CACluster, genes = "Ccdc3",cex=20)
-
-#cacng5All <- viewGeneExpression(imageBrain2,brainCounts,ter = NULL, genes = "Cacng5",cex=20)
-#cacng5 <- viewGeneExpression(imageBrain2,CACluster, genes = "Cacng5",cex=20)
-
-# Not present in count matrix
-#map3k15All <- viewGeneExpression(imageBrain2,brainCounts,ter = NULL, genes = "map3k15")
-#map3k15 <- viewGeneExpression(imageBrain2,CACluster, genes = "map3k15")
-
-#Sh3kbp1All <- viewGeneExpression(imageBrain2,brainCounts,ter = NULL, genes = "Sh3kbp1",cex=20)
-#Sh3kbp1 <- viewGeneExpression(imageBrain2,CACluster, genes = "Sh3kbp1",cex=20)
-
-#Strip2All <- viewGeneExpression(imageBrain2,brainCounts,ter = NULL, genes = "Strip2",cex=20)
-#Strip2 <- viewGeneExpression(imageBrain2,CACluster, genes = "Strip2",cex=20)
-
-
-
-#pdf("top_CA2_markers.pdf",width = 16,height=24)
-#ccdc3All + ccdc3+cacng5All+cacng5+Sh3kbp1All+Sh3kbp1 + Strip2All+Strip2+plot_layout(ncol =2)
 #dev.off()
-
-
-
-
 ```
 
+The final part of our analysis concerned itself with the Corpus Callosum. We
+isolated the Corpus Callosum and applied morphological operators to fill in the
+holes and gaps. Then, we layered this isolated territory and after extracting
+layer specific genes, we found the Kif5a gene that was highly expressed in the
+inner layers of the Corpus Callosum.
 
 
-```{r layered_subcortex, eval =T, echo =T}
-sc <- layerTerritory.edge(imageBrain2,12,morphologyFactor=c(35))
+```{r layered_subcortex, eval =T, echo =T,fig.width=9, fig.height =7}
+#-----------------/Corpus Callosum : internal expression /---------------------#
+#------------------------------------------------------------------------------#
+# First step is to dilate the territory to fill in gaps and consider
+# neighbouring territories
+#------------------------------------------------------------------------------#
+sc <- layerTerritory.edge(imageBrain,12,morphologyFactor=c(35))
 
-scMarkers <- extractMarkers(imageBrain2,brainCounts,12,morphologyFactorSeed =c(35,-35))
 
-scCluster <- extractTerritories(imageBrain2, brainRaw,seedID = 12,morphologyFactor = c(35,-35))
-
-scCluster <- scCluster %>% SCTransform(assay = "Spatial")%>%
-              RunPCA(dims = 1:30) %>% RunUMAP(dims = 1:30) %>%
-              FindNeighbors()
-scCluster <- scCluster %>% FindClusters(resolution = 0.3)
-
-scClusterDilated <- extractTerritories(imageBrain2, brainRaw,seedID = 12,morphologyFactor = c(35,-15))
-
-scClusterDilated <- scClusterDilated %>% SCTransform(assay = "Spatial") %>%
-              RunPCA(dims = 1:30) %>% RunUMAP(dims = 1:30) %>%
-              FindNeighbors()
-scClusterDilated <- scClusterDilated %>% FindClusters(resolution = 0.3)
-
-### Comparing layers
+#------------------------------------------------------------------------------#
+# Now we can find layer specific gene expresison
+# This is where we get Kif5a
+#------------------------------------------------------------------------------#
 totalLayerssc <- unique(sc$layer)
 
 Layeredsc <- lapply(seq_along(totalLayerssc), function(idx,layers,ter,counts){
-            query <- layers[!layers %in% idx]
-            res <- compareLayers(ter,counts,idx,query)
-            if(length(res) ==0) return(NULL)
-
-
-            return(res)
+                    query <- layers[!layers %in% idx]
+                    res <- compareLayers(ter,counts,idx,query)
+                    if(length(res) ==0) return(NULL)
+                    return(res)
 },totalLayerssc,sc,brainCounts)
 Layeredsc <- do.call("rbind",Layeredsc)
 
-## Quick viz of clusters
-scMarkersSeu <- FindAllMarkers(scCluster) %>% group_by(cluster) %>% top_n(25,wt=avg_logFC)
 
-scMarkersClusters <- extractClusterMarkers(scCluster,brainRaw)%>%
-             group_by(seedTerritory) %>% top_n(15,wt = logFC)
+#pdf("sc_layer_genes.pdf",width=9,height=7)
+scPlot <- viewLayerExpression(sc,brainCounts,genes = "Kif5a",cex=20)+
+          theme_void()+
+          theme(plot.margin = margin(0.5,0.5,0.5,0.5,"cm"),
+                plot.title = element_text(hjust = 0.5, size = 25),
+                legend.text = element_text(size = 10),
+                legend.title = element_text(size = 20),
+                legend.position = "bottom") +
+          labs(title ="Kif5a")
 
-scMarkersOuterSeu <- FindAllMarkers(scClusterDilated) %>% group_by(cluster) %>% top_n(25,wt=avg_logFC)
-
-scMarkersOuterSeuClusters <- extractClusterMarkers(scCluster,brainRaw)%>%
-             group_by(seedTerritory) %>% top_n(15,wt = logFC)
-
-
-innersc <- FetchData(scCluster, c("UMAP_1","UMAP_2","seurat_clusters"))
-
-coordinnersc <- Vesalius:::.getSeuratCoordinates(scCluster)
-innersc <- cbind(innersc,coordinnersc[,c("x","y")]) %>% group_by(seurat_clusters) %>%
-      mutate(xs = mean(UMAP_1),ys = mean(UMAP_2))
-inner_ISHsc <- c("Dentate Gyrus", "Dentate Gyrus","Astrocytes")
-
-#lvls <- inner_ISHsc[as.numeric(as.character(innersc$seurat_clusters))+1]
-#innersc$seurat_clusters <- lvls
-
-
-inner_colsc <- length(unique(innersc$seurat_clusters))
-inner_palsc <- colorRampPalette(brewer.pal(8, "Accent"))
-cols <- inner_palsc(9)
-
-coord_innersc <- ggplot(innersc, aes(x,y,col = as.factor(seurat_clusters))) +
-            geom_point(size = 0.25, alpha = 0.8) +
-            theme_classic() +
-            scale_color_manual(values = cols) +
-            theme(legend.text = element_text(size = 20),
-            legend.title = element_text(size = 20),
-                  axis.text = element_text(size = 20),
-                  axis.title = element_text(size = 20),
-                  plot.title = element_text(size = 20),
-                  plot.tag = element_text(size=20)) +
-            guides(colour = guide_legend(override.aes = list(size=9)))+
-            labs(colour = " ", title = "Dentate Gyrus",
-                x = "X coordinates", y = "Y coordinates")
-
-
-outersc <- FetchData(scClusterDilated, c("UMAP_1","UMAP_2","seurat_clusters"))
-
-coordoutersc <- Vesalius:::.getSeuratCoordinates(scClusterDilated)
-outersc <- cbind(outersc,coordoutersc[,c("x","y")]) %>% group_by(seurat_clusters) %>%
-               mutate(xs = mean(UMAP_1),ys = mean(UMAP_2))
-outer_ISHsc <- c("Dentate Gyrus", "Dentate Gyrus","Microglia Cells","Neurons","Neurons")
-
-#lvls <- outer_ISHsc[as.numeric(as.character(outersc$seurat_clusters))+1]
-#outersc$seurat_clusters <- lvls
-outer_colsc <- length(unique(outersc$seurat_clusters))
-outer_palsc <- colorRampPalette(brewer.pal(8, "Accent"))
-cols <- outer_palsc(9)
-
-coord_outersc <- ggplot(outersc, aes(x,y,col = as.factor(seurat_clusters))) +
-                      geom_point(size = 0.25, alpha = 0.8) +
-                      theme_classic() +
-                      scale_color_manual(values = cols) +
-                      theme(legend.text = element_text(size = 20),
-                            legend.title = element_text(size = 20),
-                            axis.text = element_text(size = 20),
-                            axis.title = element_text(size = 20),
-                            plot.title = element_text(size = 20),
-                            plot.tag = element_text(size=20)) +
-                      guides(colour = guide_legend(override.aes = list(size=9)))+
-                      labs(colour = " ", title = "Dilated Dentate Gyrus",
-                           x = "X coordinates", y = "Y coordinates")
-
-
-
-layersc <- ggplot(sc,aes(x,y)) +
-         geom_raster(aes(fill = layer))+
-         theme_classic()+
-         scale_fill_viridis()+
-         theme(legend.text = element_text(size = 20),
-         legend.title = element_text(size = 20),
-               axis.text = element_text(size = 20),
-               axis.title = element_text(size = 20),
-               plot.title = element_text(size = 20),
-               plot.tag = element_text(size=20)) +
-         guides(colour = guide_legend(override.aes = list(size=9)))+
-         labs(colour = "Layer nr.", title = " Dilated and Layered Dentate Gyrus",
-             x = "X coordinates", y = "Y coordinates")
-
-
-layout <- "
-ABC
-"
-
-
-pdf("sc_layer.pdf", width =20, height=7)
-coord_innersc +coord_outersc+  layersc +plot_layout(design = layout,height = c(1,1.5))
-dev.off()
-
-
-pdf("sc_layer_genes.pdf",width=9,height=7)
-viewLayerExpression(sc,brainCounts,genes = "Kif5a",cex=20)+ theme_void()+
-    theme(plot.margin = margin(0.5,0.5,0.5,0.5,"cm"),
-          plot.title = element_text(hjust = 0.5, size = 25),
-          legend.text = element_text(size = 10),
-          legend.title = element_text(size = 20),
-          legend.position = "bottom") +
-    labs(title ="Kif5a")
-
-dev.off()
+#dev.off()
 
 ```
 
 
-
-
-
-## Running other pucks
-
-```{r otherPucks, eval = T, echo = T}
-files <- list.files("~/group/slide_seqV2/IP",pattern ="PCA_to_RGB_log_00_2000_slice1")
-tag <- sapply(strsplit(files,"PCA_to_RGB_log_00_2000_slice1_"),"[[",2)
-
-files <- paste0("~/group/slide_seqV2/IP/",files)
-
-filterThresh <- c(0.99,0.997,0.997,0.999,0.999,0.999,0.999)
-eq <- c(1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5)
-depth <- c(10,seq(100,8,l=2),7,7,9,9,7)
-sm <- c(18,20,20,20,20,20,20)
-sig <- list(seq(0.5,1.5,l=5),seq(0.25,1.75,l=5),seq(0.25,1.75,l=5),seq(0.25,1.75,l=5),seq(0.25,1.75,l=5),seq(0.25,1.75,l=5),seq(0.25,1.75,l=5))
-b <- list(seq(3,7),seq(3,7),seq(3,7),seq(3,7),seq(3,7),seq(3,7),seq(3,9))
-across <- c("mean","mean","mean","mean","mean","mean","mean")
-cr <- c(0.015,0.015,0.015,0.015,0.015,0.015,0.015)
-minC <- c(30,30,30,30,30,30,30)
-for(i in seq_along(files)){
-    image <- read.csv(files[i])
-    image <- buildImageArray(image,invert=T,filterThreshold=0.999,resolution=40,cores=5,interpolation_type =1)
-    image <- equalizeHistogram(image,sleft = 1.5, sright=1.5,invert =TRUE)
-    image <- regulariseImage(image, lambda = 10, niter = 200,normalise=T)
-    ### Colour histogram eq
-
-    ## Testing image reg
-    write.csv(image, file =paste0("territories_",tag[i]), quote =F,row.names =F)
-    image2 <- iterativeSegmentation.array(image,colDepth = 9, smoothIter = 20, method = c("iso","median"),sigma=seq(0.25,1.75,l=3),box = seq(3,9,by=2),acrossLevels = "mean",useCenter = T,invert =T)
-    image3 <- isolateTerritories.array(image2,method="distance",captureRadius = 0.015,minCell = 30)
-
-    iplot <- imagePlot(image2, as.cimg = F,cex = 15)
-    terPlot <- territoryPlot(image3, randomise = TRUE,cex =15 , cex.pt=0.25)
-    plotName <- paste0("territoryPlot",gsub(".csv","",tag[i]),".pdf")
-    pdf(plotName, width = 14, height=6)
-    g <-iplot +  terPlot
-    print(g)
-    dev.off()
-
-}
-
-```
-
-
-## Neuro Dev genes in the Dentate Gyrus
-
-
-```{r neuro_dev, eval = T , echo = T}
-neuro_dev <- c("Ki67","Mcm2","Pcna","Phh3","Rr","Blbp","Gfap","Nestin","Vimentin","Tbr2",
-               "Sox2","Pax6","Dcx","Mash1","NeuroD1","Psa-NCAM","Reelin","Tbr1","NeuN","Nse","Tuj1","Iba1","Olig2","S100",
-               "Prox1","Cr","Ph3","BrdU","FoxO3","Tlx","Bhlh","Hes5","Rest","Nrsf","Glast","Eaat1","Glt2","Cnpase")
-
-allGenes <- vector("list",length(neuro_dev)*2)
-count <-1
-for(i in seq_along(neuro_dev)){
-    loc <- viewGeneExpression(imageBrain,brainCounts, genes = neuro_dev[i])
-    loc2 <- viewGeneExpression(imageBrain,DenCluster, genes = neuro_dev[i])
-    allGenes[[count]] <- loc
-    count <- count +1
-    allGenes[[count]] <- loc2
-    count <- count +1
-    print(i)
-
-}
-allGenes <- allGenes[!sapply(allGenes,is.null)]
-pdf("neuro_dev.pdf",width = 18,height=15)
-   numPlots = length(neuro_dev)*2
-   up <- 1
-  for(j in seq(1,5)){
-      # Make the panel
-      plotCols <- 4
-      plotRows <- 4
-
-      # Set up the page
-      grid.newpage()
-      pushViewport(viewport(layout = grid.layout(plotRows, plotCols)))
-      vplayout <- function(x, y) viewport(layout.pos.row = x, layout.pos.col = y)
-
-      # Make each plot, in the correct location
-      for (i in 1:16) {
-          curRow = ceiling(i/plotCols)
-          curCol = (i-1) %% plotCols + 1
-          print(allGenes[[up]], vp = vplayout(curRow, curCol ))
-          up <- up +1
-      }
-}
-dev.off()
-
-################### Running Dentate genes
-markers <- DenMarkers$genes
-numPlots <- ceiling(length(markers)/16)
-up <- 1
-for(j in seq(1,numPlots)){
-  filename <- paste0("dentate_Markers",j,".pdf")
-
-  pdf(filename,width = 18,height=15)
-      # Make the panel
-      plotCols <- 4
-      plotRows <- 4
-
-      # Set up the page
-      grid.newpage()
-      pushViewport(viewport(layout = grid.layout(plotRows, plotCols)))
-      vplayout <- function(x, y) viewport(layout.pos.row = x, layout.pos.col = y)
-
-      # Make each plot, in the correct location
-      for (i in 1:16) {
-          curRow = ceiling(i/plotCols)
-          curCol = (i-1) %% plotCols + 1
-          print(viewGeneExpression(imageBrain,brainCounts, genes = markers[up]), vp = vplayout(curRow, curCol ))
-          up <- up +1
-      }
-}
-dev.off()
-
-
-# Running Dentate layer genes
-
-LayeredGenes <- Layered$genes
-numPlots <- ceiling(length(LayeredGenes)/16)
-up <- 1
-
-for(j in seq(1,numPlots)){
-      # Make the panel
-      filename <- paste0("dentate_layer_exp",j,".pdf")
-      pdf(filename,width = 18,height=15)
-      plotCols <- 4
-      plotRows <- 4
-
-      # Set up the page
-      grid.newpage()
-      pushViewport(viewport(layout = grid.layout(plotRows, plotCols)))
-      vplayout <- function(x, y) viewport(layout.pos.row = x, layout.pos.col = y)
-
-      # Make each plot, in the correct location
-      for (i in 1:16) {
-          curRow = ceiling(i/plotCols)
-          curCol = (i-1) %% plotCols + 1
-          print(viewLayerExpression(Dentate,brainCounts, genes = LayeredGenes[up]), vp = vplayout(curRow, curCol ))
-          up <- up +1
-      }
-      dev.off()
-}
-
-
-
-
-
-layerGenes <- Layeredsc$genes
-numPlots <- ceiling(length(layerGenes)/16)
-up <- 1
-for(j in seq(1,numPlots)){
-      filename <- paste0("corpus_callus_layer",j,".pdf")
-      pdf(filename , width = 15,height = 13)
-      # Make the panel
-      plotCols <- 4
-      plotRows <- 4
-
-      # Set up the page
-      grid.newpage()
-      pushViewport(viewport(layout = grid.layout(plotRows, plotCols)))
-      vplayout <- function(x, y) viewport(layout.pos.row = x, layout.pos.col = y)
-
-      # Make each plot, in the correct location
-      for (i in 1:16) {
-          curRow = ceiling(i/plotCols)
-          curCol = (i-1) %% plotCols + 1
-          print(viewLayerExpression(sc,brainCounts, genes = layerGenes[up]), vp = vplayout(curRow, curCol ))
-          up <- up +1
-      }
-    dev.off()
-}
-
-```
+# Conclusion
+This concludes the analysis walkthrough for the Vesalius paper. All plots were
+produced using this script. However, all figures were then put together
+independently (using power point). All images are taken from the Allen brain
+Atlas and many image/plots were rotated to better fit the Allen brain Atlas images.
