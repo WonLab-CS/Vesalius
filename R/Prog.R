@@ -183,3 +183,9 @@
     t <- Sys.time()
     cat( paste(t," Generating layers\n"))
 }
+
+.checkVes <- function(sliceID,verbose =TRUE){
+    if(!verbose) return(NULL)
+    t <- Sys.time()
+    cat(paste(t," Checking Vesalius Input - Using slice ",sliceID, "\n"))
+}

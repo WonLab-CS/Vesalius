@@ -26,10 +26,22 @@
 #' Level 2 : each list element is R G B channel for that slice
 #' Level 3 : numeric vectors containing colour code for each barcode
 
-rgbPCA<- function(slide,SO,slices = 1,adjusted = FALSE,rgbWeight=FALSE,countWeight = FALSE, conserveSparse = TRUE, trim = 0,verbose=TRUE){
+rgbPCA<- function(SO,slices = 1,adjusted = FALSE,rgbWeight=FALSE,countWeight = FALSE, conserveSparse = TRUE,verbose=TRUE){
 
 
     .simpleBar(verbose)
+    #--------------------------------------------------------------------------#
+    # First we get the count values
+    #--------------------------------------------------------------------------#
+    if(is(SO) == "Seurat"){
+        if(DefaultAssay(SO) == "Spatial"){
+            slide <- SO@assays$Spatial@counts
+        } else if(DefaultAssay(counts) == "SCT"){
+            slide <- SO@assays$SCT@counts
+        }
+    } else {
+       stop("SO is not a Seurat Object.")
+    }
     #--------------------------------------------------------------------------#
     # Sparse matrices are more memory efficient but also slower
     #--------------------------------------------------------------------------#
@@ -155,6 +167,22 @@ rgbPCA<- function(slide,SO,slices = 1,adjusted = FALSE,rgbWeight=FALSE,countWeig
     # Level 2 : each list element is R G B channel for that slice
     # Level 3 : numeric vectors containing colour code for each barcode
     #--------------------------------------------------------------------------#
+    #--------------------------------------------------------------------------#
+    # We can use this list to get the coordinates and assign the RGB coulours
+    # to their correct location
+    #--------------------------------------------------------------------------#
+
+    coordinates <- .getSeuratCoordinates(SO)
+    image_slice <- lapply(seq_along(image_slice),.assignRGBtoPixel,
+                          image_slice,coordinates)
+
+    if(length(image_slice) >1){
+       image_slice <- do.call("rbind",image_slice)
+    } else {
+       image_slice[[1]]
+    }
+
+
     .simpleBar(verbose)
     return(image_slice)
 }
@@ -173,104 +201,36 @@ rgbPCA<- function(slide,SO,slices = 1,adjusted = FALSE,rgbWeight=FALSE,countWeig
 #' @return a data frame with five columns: barcodes (barcode names), xcoord (x coordinates),
 #' ycoord (y coordinates), R (Red colour channel),G (Green colour channel) ,and B (Blue Colour channel).
 
-assignRGBtoPixel <- function(rgb,coordinates, na.rm = TRUE){
-    # for each slice find coresponding barcodes
+.assignRGBtoPixel <- function(idx,rgb,coordinates, na.rm = TRUE){
+    #--------------------------------------------------------------------------#
+    # This is just to create a data frame with colour channel and colour value
+    # This follows the cimg format
+    # we will also add a slice clause
+    #--------------------------------------------------------------------------#
+    tmp <- vector("list", 3)
+    rgb <- rgb[[idx]]
     for(i in seq_along(rgb)){
         code <- rep(NA,nrow(coordinates))
-        locs <- match(coordinates$barcodes,names(rgb[[i]]))
+        locs <- match(rownames(coordinates),names(rgb[[i]]))
         code[!is.na(locs)] <- rgb[[i]][locs[!is.na(locs)]]
-        coordinates <- data.frame(coordinates,code)
+        tmp[[i]] <- data.frame(rownames(coordinates),
+                               coordinates[,c("x","y")],
+                               rep(i,length(code)),
+                               code,
+                               rep(idx,length(code)))
 
     }
-    colnames(coordinates) <- c("barcodes","xcoord","ycoord","R","G","B")
+    tmp <- do.call("rbind", tmp)
+    colnames(tmp) <- c("barcodes","x","y","cc","value","slice")
     if(na.rm){
-        coordinates <- coordinates[!is.na(coordinates$R),]
+        tmp <- tmp[!is.na(tmp$value),]
     }
-    # Data frame with barcode name, x/y coordinates and associated RGB colour code
-    return(coordinates)
+
+    return(tmp)
 }
 
 
 
-
-
-
-assingRGBtoPixelQuickBlock <- function(rgb, coordinates,resolution = 200,drop =TRUE,na.rm =TRUE){
-  # for each slide find coresponding cooridinates
-  for(i in seq_along(rgb)){
-      code <- rep(NA,nrow(coordinates))
-      locs <- match(coordinates$barcodes,names(rgb[[i]]))
-      code[!is.na(locs)] <- rgb[[i]][locs[!is.na(locs)]]
-      coordinates <- data.frame(coordinates,code)
-
-  }
-  colnames(coordinates) <- c("barcodes","xcoord","ycoord","R","G","B")
-  if(na.rm){
-      coordinates <- coordinates[!is.na(coordinates$R),]
-  }
-  ### this is going to be a pain
-  ### Type coersion - has the tendency of converting values to "factors"
-  ### Useful but a real pain in this case
-  for(cols in seq(2,ncol(coordinates))){
-    coordinates[,cols] <- as.numeric(as.character(coordinates[,cols]))
-  }
-
-  ### Building template Sparse Matrix for each pixel
-  rgbMat <- Matrix(0,ncol=3,nrow = resolution * resolution)
-  ## Matrix index in long format
-  idx <- rep(seq(1,resolution), each = resolution)
-  idy <- rep(seq(1,resolution), times = resolution)
-  ## Barcode templates
-  barcode <- rep("NONE",resolution * resolution)
-  ## Coordinate chunking
-  xcor <- seq(min(coordinates$xcoord), max(coordinates$xcoord),length.out = resolution+1) - min(coordinates$xcoord) + 1
-  ycor <- seq(min(coordinates$ycoord), max(coordinates$ycoord),length.out = resolution+1) - min(coordinates$ycoord) + 1
-
-  for(cols in seq_len(resolution)){
-
-     for(rows in seq_len(resolution)){
-       print(paste(cols,rows))
-           ## Finding all barcodes in each "pixel"
-          xtmp <- which(coordinates$xcoord >= xcor[cols] & coordinates$xcoord <= xcor[cols+1])
-          ytmp <- which(coordinates$ycoord >= ycor[rows] & coordinates$ycoord <= ycor[rows+1])
-          inter <- intersect(xtmp,ytmp)
-          pos <- which(idx == cols & idy == rows)
-          if(length(inter) == 0){
-            ## just in case pixels are "empty" in terms of beads
-            next()
-          }
-          ## average colours over all barcodes in pixel
-          temp <- apply(coordinates[inter,c("R","G","B")],2,mean)
-          # Assigne new colour code to its location in the sparse matrix
-          rgbMat[pos,] <- as.matrix(temp, ncol = 3)
-          ## adding all barcodes associated to that pixel to the barcode tag
-          barcode[pos] <- paste0(barcode[pos],coordinates[inter,"barcodes"],sep = "_",collapse ="_")
-
-
-     }
-  }
-  colnames(rgbMat) <- c("R","G","B")
-
-  ## Removing all white/ black pixel -
-  ## These represent empty spaces and are not required to rebuild the matrix
-  if(drop){
-    zeros <- apply(rgbMat,1,sum) != 0
-
-    rgbMat <- rgbMat[zeros,]
-
-    idx <- idx[zeros]
-    idy <- idy[zeros]
-    barcode <- barcode[zeros]
-  }
-
-  ## Return a data frame with the barcode list for each pixel,
-  ## x and y coordinates in the matrix and
-  ## the colour assigned to that matrix coordinate
-
-  rgbMat <- data.frame(barcode,idx,idy,rgbMat)
-  return(rgbMat)
-
-}
 
 
 #' buildImageArray creating an Image array from coloured coordinates
@@ -289,88 +249,70 @@ assingRGBtoPixelQuickBlock <- function(rgb, coordinates,resolution = 200,drop =T
 #' Note that the slice dimension is required by the \code{imager} package.
 #' @return a 4 dimensional array - convertable to \code{cimg} objects.
 
-buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,
+buildImageArray <- function(coordinates,sliceID = 1,invert=FALSE,na.rm = TRUE,
                             resolution = 100,filterThreshold=0.999,interpolation_type =1,
                             cores=1, verbose = TRUE){
-    .simpleBar(verbose)
+  .simpleBar(verbose)
   #----------------------------------------------------------------------------#
-  # Class checks - this will be removed once S4 classes are functional
+  # check data too see if it contains right slices
+  # We will run everything on one slice first and then just rebuild at the end
+  # at least we don't need to run tesselation on each slice
   #----------------------------------------------------------------------------#
 
-  if(is.null(rgb)){
-      if(!any(colnames(coordinates) %in% c("R","G","B"))){
-        stop("Coordinates do not contain colour values")
-      }
-  } else if(!class(rgb) == "list"){
-      stop("RGB - Unrecognised format")
-  } else if(!is.null(rgb) & class(rgb)=="list") {
-    .assignCoordinates(verbose)
-    for(i in seq_along(rgb)){
-        code <- rep(NA,nrow(coordinates))
-        locs <- match(coordinates$barcodes,names(rgb[[i]]))
-        code[!is.na(locs)] <- rgb[[i]][locs[!is.na(locs)]]
-        coordinates <- data.frame(coordinates,code)
-
-    }
-    colnames(coordinates) <- c("barcodes","xcoord","ycoord","R","G","B")
-    if(na.rm){
-        coordinates <- coordinates[!is.na(coordinates$R),]
-    }
-  }
+  coordinates <- .checkVesalius(coordinates, sliceID,verbose)
 
   #----------------------------------------------------------------------------#
   # Type changed
   #----------------------------------------------------------------------------#
   .typeChange(verbose)
-  for(cols in seq(2,ncol(coordinates))){
-    coordinates[,cols] <- as.numeric(as.character(coordinates[,cols]))
-  }
-
-
-
+  coordinates$value <- as.numeric(coordinates$value)
+  coordinates$cc <- as.integer(coordinates$cc)
   #----------------------------------------------------------------------------#
   # Inverting colours
   #----------------------------------------------------------------------------#
   if(invert){
       .invertCols(verbose)
-      coordinates$R <- 1 - coordinates$R
-      coordinates$G <- 1 - coordinates$G
-      coordinates$B <- 1 - coordinates$B
+      coordinates$value <- 1 - coordinates$value
   }
-
-
-
-
 
   #----------------------------------------------------------------------------#
   # Removing all "outer point" - tend to make tesselation messy
   #----------------------------------------------------------------------------#
   if(filterThreshold <1){
     .distanceBeads(verbose)
-    idx <- seq_len(nrow(coordinates))
+    #--------------------------------------------------------------------------#
+    # We only need one "set" of coordinates - once we have distance metrics
+    # we can filter out on all other
+    # Let's just assume for now there might be more than one slice
+    #--------------------------------------------------------------------------#
+    tmp <- coordinates %>% filter(cc ==1)
+    idx <- seq_len(nrow(tmp))
     minDist <- parallel::mclapply(idx, function(idx,mat){
-                        xo <- mat$xcoord[idx]
-                        yo <- mat$ycoord[idx]
-                        xp <- mat$xcoord
-                        yp <- mat$ycoord
+                        xo <- mat$x[idx]
+                        yo <- mat$y[idx]
+                        xp <- mat$x
+                        yp <- mat$y
                         distance <- sqrt((abs(xp-xo))^2 + (abs(yp-yo))^2)
                         distance <- distance[distance !=0]
                         distance <- sort(distance,decreasing = FALSE)[1:25]
                         return(mean(distance))
-    }, coordinates, mc.cores=cores)
+    }, tmp, mc.cores=cores)
     minDist <- unlist(minDist)
     distanceThrehsold <- quantile(minDist,filterThreshold)
+    keeps  <- tmp$barcodes[minDist <= distanceThrehsold]
+    tmp <- tmp %>% filter(barcodes %in% keeps)
+  } else {
+    tmp <- coordinates %>% filter(cc ==1)
 
-    coordinates <- coordinates[minDist <= distanceThrehsold,]
   }
-
-
   #----------------------------------------------------------------------------#
   # TESSELATION TIME!
+  # Only need to tesslated on one slice - all the other will be the same tiles
+  # We will do all the replacements later
   #----------------------------------------------------------------------------#
   .tess(verbose)
-  tesselation <- deldir::deldir(x = as.numeric(coordinates$xcoord),
-                                y = as.numeric(coordinates$ycoord))
+  tesselation <- deldir::deldir(x = as.numeric(tmp$x),
+                                y = as.numeric(tmp$y))
 
   #----------------------------------------------------------------------------#
   # Extracting Voronoi/dirichlet tessaltion - not intested in Delauney
@@ -382,29 +324,21 @@ buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,
   tessV <- tessV[!tessV$bp1 & !tessV$bp2,]
   #tessV <- .filterTesselation(tessV)
   ## Contains original data - just to ensure that that indeces line up
-  ogCoord <- cbind(coordinates,tesselation$summary)
-
-
-
+  coord <- cbind(tmp,tesselation$summary)
   #----------------------------------------------------------------------------#
   # This section is equivalent to triangle rasterisation
   #----------------------------------------------------------------------------#
   .raster(verbose)
   allIdx <- parallel::mclapply(seq_len(nrow(tessV)),Vesalius:::.fillTesselation,
-    tess = tessV,coord= ogCoord,mc.cores = cores)
-
-
+    tess = tessV,coord= coord,
+    ogCoord = coordinates,
+    mc.cores = cores)
 
   #----------------------------------------------------------------------------#
   # Filtering triangle that exceed max tile size
   #----------------------------------------------------------------------------#
-
-
   allIdx <- .imageBuild(allIdx,filterThreshold,verbose)
 
-
-  #.findCenter(verbose)
-  #allIdx <- .findTileCenters(allIdx,ogCoord)
   #----------------------------------------------------------------------------#
   # Rebuilding new cooirdinates based on tesselation borders
   # cooridinates are shifted for both tesselation cooridantes and starting coord
@@ -428,6 +362,30 @@ buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,
 
 }
 
+
+.checkVesalius <- function(coordinates, sliceID,verbose){
+    #--------------------------------------------------------------------------#
+    # First let's check if we have multiple slice in input data
+    #--------------------------------------------------------------------------#
+
+    slices <- unique(coordinates$slice)
+    inSlice <- slices %in% sliceID
+
+    #--------------------------------------------------------------------------#
+    # Let's do some checks
+    #--------------------------------------------------------------------------#
+    if(sum(inSlice) > 1){
+        warning("More than one slice provided! Only lowest slice value will be used",
+               immediate. = TRUE)
+    } else if(sum(inSlice) <1){
+        stop("SliceID is not present in coordinates.")
+    }
+    .checkVes(min(sliceID),verbose)
+    coordinates <- coordinates %>% filter(slice == min(sliceID))
+
+    return(coordinates)
+
+}
 
 
 .resShift <- function(image,resolution = 50,interpolation_type = 1,na.rm=TRUE){
@@ -464,84 +422,7 @@ buildImageArray <- function(coordinates,rgb=NULL,invert=FALSE,na.rm = TRUE,
   return(img)
 }
 
-regulariseImage <- function(image,lambda =1, niter=100,
-      method = "TVL2.FiniteDifference",normalise =TRUE,na.rm=TRUE,invert=TRUE,verbose=TRUE){
-    .simpleBar(verbose)
 
-    #----------------------------------------------------------------------------#
-    if(invert){
-      #------------------------------------------------------------------------#
-      ## This is effing clonky
-      ## Probably need to re work this
-      ## It works but it just sucks that I have to rebuild the whole thing
-      ## Unless.... I "hack" the as.cimg function and add an argument myself?
-      ## That just sounds like a stupid idea with extra steps.
-      #------------------------------------------------------------------------#
-      .invertCols()
-      img <- image %>%
-             select(c("x","y","cc","value")) %>%
-             as.cimg %>%
-             as.data.frame
-      nonImg <- paste0(image$x,"_",image$y)
-      inImg <- paste0(img$x,"_",img$y)
-      img[!inImg %in% nonImg,"value"] <- 1
-      img <- img %>% as.cimg() %>% imsplit("c")
-    } else {
-      img <-image %>% select(c("x","y","cc","value")) %>% as.cimg %>% imsplit("c")
-    }
-    .reg(verbose)
-    img <- lapply(img, .regularise, lambda, niter,method, normalise) %>%
-           imappend("c")
-
-    img <- tibble(as.data.frame(img))
-    #----------------------------------------------------------------------------#
-    # Adding meta data
-    #----------------------------------------------------------------------------#
-    img <- right_join(img, image, by  = c("x","y","cc")) %>%
-           select(c("barcodes","x","y","cc","value.x","tile")) %>% distinct()
-    colnames(img) <- c("barcodes","x","y","cc","value","tile")
-    #----------------------------------------------------------------------------#
-    # remove NAs
-    #----------------------------------------------------------------------------#
-    if(na.rm){
-        img <- img %>% na.exclude()
-    }
-    .simpleBar(verbose)
-    return(img)
-}
-
-
-.regularise <- function(img,lambda, niter,method, normalise){
-    #--------------------------------------------------------------------------#
-    # might need to change the normalise part
-    # it doesn't seem it works well
-    # or at all for that matter
-    #--------------------------------------------------------------------------#
-    img <- denoise2(as.matrix(img), lambda = lambda, niter = niter,
-           method = method,normalize = F)
-    if(normalise){
-        img <- (img - min(img)) / (max(img) - min(img))
-    }
-    return(as.cimg(img))
-}
-
-
-
-### This really sucks
-### This is really slow - it takes fuckiong five minutes
-###
-.findTileCenters <- function(allIdx,ogCoord){
-    ogCoord$x <- round(ogCoord$x)
-    ogCoord$y <- round(ogCoord$y)
-
-    allIdxCenters <- paste0(allIdx$barcodes,"_",allIdx$x,"_",allIdx$y)
-    ogCoordCenters <- paste0(ogCoord$barcodes,"_",ogCoord$x,"_",ogCoord$y)
-
-    loc <- match(ogCoordCenters,allIdxCenters)
-    allIdx$tile <- 0
-    allIdx$tile[loc]<-1
-    return(allIdx)
-}
 
 
 .imageBuild <- function(allIdx, filterThreshold,verbose){
@@ -591,7 +472,7 @@ regulariseImage <- function(image,lambda =1, niter=100,
 
 }
 
-.fillTesselation <- function(idx,tess,coord){
+.fillTesselation <- function(idx,tess,coord,ogCoord){
     #--------------------------------------------------------------------------#
     ## Get data
     #--------------------------------------------------------------------------#
@@ -599,11 +480,17 @@ regulariseImage <- function(image,lambda =1, niter=100,
 
     #--------------------------------------------------------------------------#
     ## First split data between both triangles
+    # Why am idoing this? Not sure to be honest
+    # could be good to refactor this as well
+    # I think it was so I could use multi core at a higher level
+    # Yep that was it. I could run both triangles in parallel
+    # But it would not decrease comp time that much and we don't want to mess
+    # around with weird core scheduling and what not
     #--------------------------------------------------------------------------#
-    t1 <- .fillTesselationTriangle(allEdge,coord,tri = 1)
+    t1 <- .fillTesselationTriangle(allEdge,coord,ogCoord,tri = 1)
     a1 <- nrow(t1)
 
-    t2 <- .fillTesselationTriangle(allEdge,coord,tri = 2)
+    t2 <- .fillTesselationTriangle(allEdge,coord,ogCoord,tri = 2)
     a2 <- nrow(t2)
 
 
@@ -615,7 +502,7 @@ regulariseImage <- function(image,lambda =1, niter=100,
 
 }
 
-.fillTesselationTriangle <- function(allEdge,coord,tri){
+.fillTesselationTriangle <- function(allEdge,coord,ogCoord,tri){
   if(tri ==1){
 
     #--------------------------------------------------------------------------#
@@ -641,19 +528,17 @@ regulariseImage <- function(image,lambda =1, niter=100,
     cell <- point.in.polygon(maxPolygonX,maxPolygonY,x,y)
     maxX <- maxPolygonX[cell %in% c(1,2,3)]
     maxY <- maxPolygonY[cell %in% c(1,2,3)]
-    value <- c(rep(coord[allEdge$ind1,"R"],length(maxX)),
-               rep(coord[allEdge$ind1,"G"],length(maxX)),
-               rep(coord[allEdge$ind1,"B"],length(maxX)))
 
-    cc <- rep(1:3,each = length(maxX))
+    ccVals <- ogCoord[ogCoord$barcodes == coord$barcodes[allEdge$ind1],c("cc","value")]
+    ccVals <- ccVals[rep(seq_len(nrow(ccVals)),each = length(maxX)),]
     maxX <- rep(maxX, times = 3)
     maxY <- rep(maxY, times = 3)
     barcode <- rep(coord[allEdge$ind1,"barcodes"],length(maxX))
     cent <- which(maxX == round(coord[allEdge$ind1,"x"]) & maxY == round(coord[allEdge$ind1,"y"]))
     centers <- rep(0, length(maxX))
     centers[cent] <- 1
-    if(length(cent) == 0)browser()
-    allIn <- data.frame(barcode,maxX,maxY,cc,value,centers)
+
+    allIn <- data.frame(barcode,maxX,maxY,ccVals,centers)
     colnames(allIn) <- c("barcodes","x","y","cc","value","tile")
     return(allIn)
 
@@ -681,20 +566,49 @@ regulariseImage <- function(image,lambda =1, niter=100,
     cell <- point.in.polygon(maxPolygonX,maxPolygonY,x,y)
     maxX <- maxPolygonX[cell %in% c(1,2,3)]
     maxY <- maxPolygonY[cell %in% c(1,2,3)]
-    value <- c(rep(coord[allEdge$ind2,"R"],length(maxX)),
-               rep(coord[allEdge$ind2,"G"],length(maxX)),
-               rep(coord[allEdge$ind2,"B"],length(maxX)))
-    cc <- rep(1:3,each = length(maxX))
+    ccVals <- ogCoord[ogCoord$barcodes == coord$barcodes[allEdge$ind2],c("cc","value")]
+    ccVals <- ccVals[rep(seq_len(nrow(ccVals)),each =length(maxX)),]
     maxX <- rep(maxX, times = 3)
     maxY <- rep(maxY, times = 3)
     barcode <- rep(coord[allEdge$ind2,"barcodes"],length(maxX))
     cent <- which(maxX == round(coord[allEdge$ind2,"x"]) & maxY == round(coord[allEdge$ind2,"y"]))
     centers <- rep(0, length(maxX))
     centers[cent] <- 1
-    if(length(cent) == 0)browser()
-    allIn <- data.frame(barcode,maxX,maxY,cc,value,centers)
+    allIn <- data.frame(barcode,maxX,maxY,ccVals,centers)
     colnames(allIn) <- c("barcodes","x","y","cc","value","tile")
     return(allIn)
+  }
+
+}
+
+
+
+
+
+exportRGB.csv <- function(coordinates,file = NULL,slice = NULL, split = TRUE){
+  if(!is.null(slice)){
+      coordinates <- coordinates[coordinates$slice %in% slice]
+  }
+  if(split){
+      coordinates <- split(coordinates,coordinates$slice)
+      for(i in seq_along(coordinates)){
+          if(is.null(file[1L])){
+              file <- paste0("pca_to_rgb_slice",coordinates[[i]]$slice[1L],
+                           ".csv")
+              write.csv(coordinates[[i]], file = file,row.names=F)
+          }else{
+              if(length(file) <length(coordinates)){
+                 stop("Not enough file names provided")
+              }
+
+              write.csv(coordinates[[i]], file = file[i],row.names=F)
+          }
+      }
+  } else {
+      if(is.null(file)){
+          file <- paste0("pca_to_rgb.csv")
+      }
+      write.csv(coordinates, file = file , row.names =F)
   }
 
 }

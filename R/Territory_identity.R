@@ -28,15 +28,12 @@ extractAllMarkers <- function(image,counts,method = "wilcox",
     .simpleBar(verbose)
     .checkCounts(verbose)
     #--------------------------------------------------------------------------#
-    # Check class of counts and determine approach based on that
+    # Get counts
     #--------------------------------------------------------------------------#
-    if(is(counts) == "Seurat"){
-        if(DefaultAssay(counts) == "Spatial"){
-            counts <- counts@assays$Spatial@counts
-        } else if(DefaultAssay(counts) == "SCT"){
-            counts <- counts@assays$SCT@counts
-        }
+    if(is(counts)=="Seurat"){
+      counts <- GetAssayData(counts, slot = "data")
     }
+
     #--------------------------------------------------------------------------#
     # Let's split the image into seed territories
     #--------------------------------------------------------------------------#
@@ -95,14 +92,10 @@ extractMarkers <- function(image,counts,seed = NULL,query = NULL,
     .simpleBar(verbose)
     .checkCounts(verbose)
     #--------------------------------------------------------------------------#
-    # Check class of counts and determine approach based on that
+    # Get counts
     #--------------------------------------------------------------------------#
-    if(is(counts) == "Seurat"){
-        if(DefaultAssay(counts) == "Spatial"){
-            counts <- counts@assays$Spatial@counts
-        } else if(DefaultAssay(counts) == "SCT"){
-            counts <- counts@assays$SCT@counts
-        }
+    if(is(counts)=="Seurat"){
+      counts <- GetAssayData(counts, slot = "data")
     }
 
     #--------------------------------------------------------------------------#
@@ -172,14 +165,10 @@ extractClusterMarkers <- function(cluster,counts,
     .simpleBar(verbose)
     .checkCounts(verbose)
     #--------------------------------------------------------------------------#
-    # Check class of counts and determine approach based on that
+    # Get counts
     #--------------------------------------------------------------------------#
-    if(is(counts) == "Seurat"){
-        if(DefaultAssay(counts) == "Spatial"){
-            counts <- counts@assays$Spatial@counts
-        } else if(DefaultAssay(counts) == "SCT"){
-            counts <- counts@assays$SCT@counts
-        }
+    if(is(counts)=="Seurat"){
+      counts <- GetAssayData(counts, slot = "data")
     }
 
     #--------------------------------------------------------------------------#
@@ -219,7 +208,7 @@ extractClusterMarkers <- function(cluster,counts,
 
 
 
-territoryMorphing <- function(territories,morphologyFactor,image,verbose){
+territoryMorphing <- function(territories,morphologyFactor,image,verbose=TRUE){
 
 
       .morph(verbose)
@@ -387,7 +376,7 @@ territoryMorphing <- function(territories,morphologyFactor,image,verbose){
       # Set to default assay or reduction based
       #------------------------------------------------------------------------#
       newCount <- lapply(object, function(x){
-                  return(x@assays$Spatial@counts)
+                  return(GetAssayData(x,slot ="data"))
       })
     } else if(by == "territory"){
       #------------------------------------------------------------------------#
@@ -395,7 +384,7 @@ territoryMorphing <- function(territories,morphologyFactor,image,verbose){
       # Normalised counts ! This is important and will need to change the code accordingly
       # This just considers normalised data
       #------------------------------------------------------------------------#
-      newCount <- object@assays$Spatial@counts
+      newCount <- GetAssayData(object, slot ="data")
     } else {
       #------------------------------------------------------------------------#
       # Placeholder for now
@@ -496,9 +485,16 @@ subSetTerritories <- function(territories,seurat){
 ##### NOT in USE for now
 ##### This has some interesting benifits but this whole function needs to be
 ##### re worked anyway.
-compareClusters <- function(ref,seedCluster,queryCluster,seed = NULL,query = NULL,method = "wilcox",
+compareClusters <- function(counts,seedCluster,queryCluster,seed = NULL,query = NULL,method = "wilcox",
   logFC = 0.25, pval = 0.05,minPct = 0.05,minCell = 10,verbose=TRUE){
       .simpleBar(verbose)
+      #------------------------------------------------------------------------#
+      # Get counts
+      #------------------------------------------------------------------------#
+      .checkCounts(verbose)
+      if(is(counts)=="Seurat"){
+        counts <- GetAssayData(counts, slot = "data")
+      }
       #------------------------------------------------------------------------#
       # First let's set up seed cells
       # For now we will consider that if seed is null then you want to compare
@@ -506,13 +502,16 @@ compareClusters <- function(ref,seedCluster,queryCluster,seed = NULL,query = NUL
       #------------------------------------------------------------------------#
       .seedSelect(verbose)
       if(!is.null(seed)){
-        seedCluster <- FetchData(seedCluster,c("seurat_clusters")) %>% filter(seurat_clusters %in% seed)
+        seedCluster <- FetchData(seedCluster,c("seurat_clusters")) %>%
+        filter(seurat_clusters %in% seed)
+        seedCluster <- counts[,rownames(seedCluster)]
+        seedID <- paste0(seed, collapse ="",sep=" ")
       } else {
         seedCluster <- FetchData(seedCluster,c("seurat_clusters"))
+        seedCluster <- counts[,rownames(seedCluster)]
+        seedID <- "All"
       }
 
-      seedCluster <- data.frame(rownames(seedCluster),seedCluster)
-      colnames(seedCluster) <- c("barcodes","territory")
       #------------------------------------------------------------------------#
       # Same thing with query cells
       # For now we will consider that if seed is null then you want to compare
@@ -520,34 +519,28 @@ compareClusters <- function(ref,seedCluster,queryCluster,seed = NULL,query = NUL
       #------------------------------------------------------------------------#
       .querySelect(verbose)
       if(!is.null(query)){
-          queryCluster <- FetchData(queryCluster,c("seurat_clusters")) %>% filter(seurat_clusters %in% query)
+          queryCluster <- FetchData(queryCluster,c("seurat_clusters")) %>%
+          filter(seurat_clusters %in% query)
+          queryCluster <- counts[,rownames(queryCluster)]
+          queryID <- paste0(query,sep = " ", collapse ="")
       } else {
           queryCluster <- FetchData(queryCluster,c("seurat_clusters"))
+          queryCluster <- counts[,rownames(queryCluster)]
+          queryID <- "All"
       }
 
-      queryCluster <- data.frame(rownames(queryCluster),queryCluster)
-      colnames(queryCluster) <- c("barcodes","territory")
       #------------------------------------------------------------------------#
-      # Now we can subset the refence
-      # First we check if it is seurat or count matrix
+      # Setting up dat in right format to be parsed to VesDeg
       #------------------------------------------------------------------------#
-      .checkCounts(verbose)
-      if(is(ref) == "Seurat"){
-          if(DefaultAssay(ref) == "Spatial"){
-              ref <- ref@assays$Spatial@counts
-          } else if(DefaultAssay(ref) == "SCT"){
-              ref <- ref@assays$SCT@counts
-          }
-      }
-      #------------------------------------------------------------------------#
-      # get counts for seed and query
-      #------------------------------------------------------------------------#
+
       .degProg(verbose)
-      deg<- .VesaliusDEG.grouped(counts =ref,seedTer =seedCluster,
-                                 queryTer = queryCluster,
-                                 logFC= logFC,pval = pval,
-                                 minPct = minPct,minCell = minCell,method=method,
-                                 verbose = verbose)
+      deg<- .VesaliusDEG(seed = seedCluster, query= queryCluster,
+                         seedID =seedID,
+                         queryID = queryID,
+                         logFC= logFC,pval = pval,
+                         minPct = minPct,minCell = minCell,
+                         method=method,
+                         verbose = verbose)
       cat("\n")
       .simpleBar(verbose)
       return(deg)
@@ -583,13 +576,11 @@ compareClusters <- function(ref,seedCluster,queryCluster,seed = NULL,query = NUL
       # Prep counts for deg
       #------------------------------------------------------------------------#
       .checkCounts(verbose)
-      if(is(counts) == "Seurat"){
-          if(DefaultAssay(counts) == "Spatial"){
-              counts <- counts@assays$Spatial@counts
-          } else if(DefaultAssay(counts) == "SCT"){
-              counts <- counts@assays$SCT@counts
-          }
-      }
+      #--------------------------------------------------------------------------#
+      # Get counts
+      #--------------------------------------------------------------------------#
+      counts <- GetAssayData(counts, slot = "data")
+
       #------------------------------------------------------------------------#
       # Now we can loop over layers
       #------------------------------------------------------------------------#

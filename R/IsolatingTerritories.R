@@ -152,6 +152,75 @@ ecdf.eq <- function(im){
 }
 
 
+
+
+
+
+
+regulariseImage <- function(image,lambda =1, niter=100,
+      method = "TVL2.FiniteDifference",normalise =TRUE,na.rm=TRUE,invert=TRUE,verbose=TRUE){
+    .simpleBar(verbose)
+
+    #----------------------------------------------------------------------------#
+    if(invert){
+      #------------------------------------------------------------------------#
+      ## This is effing clonky
+      ## Probably need to re work this
+      ## It works but it just sucks that I have to rebuild the whole thing
+      ## Unless.... I "hack" the as.cimg function and add an argument myself?
+      ## That just sounds like a stupid idea with extra steps.
+      #------------------------------------------------------------------------#
+      .invertCols()
+      img <- image %>%
+             select(c("x","y","cc","value")) %>%
+             as.cimg %>%
+             as.data.frame
+      nonImg <- paste0(image$x,"_",image$y)
+      inImg <- paste0(img$x,"_",img$y)
+      img[!inImg %in% nonImg,"value"] <- 1
+      img <- img %>% as.cimg() %>% imsplit("c")
+    } else {
+      img <-image %>% select(c("x","y","cc","value")) %>% as.cimg %>% imsplit("c")
+    }
+    .reg(verbose)
+    img <- lapply(img, .regularise, lambda, niter,method, normalise) %>%
+           imappend("c")
+
+    img <- tibble(as.data.frame(img))
+    #----------------------------------------------------------------------------#
+    # Adding meta data
+    #----------------------------------------------------------------------------#
+    img <- right_join(img, image, by  = c("x","y","cc")) %>%
+           select(c("barcodes","x","y","cc","value.x","tile")) %>% distinct()
+    colnames(img) <- c("barcodes","x","y","cc","value","tile")
+    #----------------------------------------------------------------------------#
+    # remove NAs
+    #----------------------------------------------------------------------------#
+    if(na.rm){
+        img <- img %>% na.exclude()
+    }
+    .simpleBar(verbose)
+    return(img)
+}
+
+
+.regularise <- function(img,lambda, niter,method, normalise){
+    #--------------------------------------------------------------------------#
+    # might need to change the normalise part
+    # it doesn't seem it works well
+    # or at all for that matter
+    #--------------------------------------------------------------------------#
+    img <- denoise2(as.matrix(img), lambda = lambda, niter = niter,
+           method = method,normalize = F)
+    if(normalise){
+        img <- (img - min(img)) / (max(img) - min(img))
+    }
+    return(as.cimg(img))
+}
+
+
+
+
 #' iterativeSegmentation - collapse and smooth points into colour startingSegements
 #' @param img data frame containing RGB code for each bead
 #' @param colDepth numeric describing final number of colour segments in image

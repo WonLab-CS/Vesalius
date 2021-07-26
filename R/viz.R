@@ -138,13 +138,7 @@ viewGeneExpression <- function(image,counts,ter = NULL, genes = NULL,
     #------------------------------------------------------------------------#
     counts <- subset(counts,cells = barcodes)
     if(is(counts) == "Seurat"){
-        if(DefaultAssay(counts) == "Spatial"){
-            counts <- counts@assays$Spatial@counts
-
-        } else if(DefaultAssay(counts) == "SCT"){
-            counts <- counts@assays$SCT@counts
-
-        }
+        counts <- GetAssayData(counts, slot = "data")
     }
     type <- "Expression"
 
@@ -215,13 +209,7 @@ viewLayerExpression <- function(image,counts,genes = NULL,normalise =TRUE,cex =1
     #------------------------------------------------------------------------#
     counts <- subset(counts,cells = barcodes)
     if(is(counts) == "Seurat"){
-        if(DefaultAssay(counts) == "Spatial"){
-            counts <- counts@assays$Spatial@counts
-
-        } else if(DefaultAssay(counts) == "SCT"){
-            counts <- counts@assays$SCT@counts
-
-        }
+        counts <- GetAssayData(counts, slot = "data")
     }
 
 
@@ -264,7 +252,7 @@ viewLayerExpression <- function(image,counts,genes = NULL,normalise =TRUE,cex =1
     # There might be a cleaner way of doing This
     # Should I norm over all counts?
     #--------------------------------------------------------------------------#
-    
+
     if(normalise){
         image$counts <- (image$counts - min(image$counts)) /
                          (max(image$counts) - min(image$counts))
@@ -281,4 +269,104 @@ viewLayerExpression <- function(image,counts,genes = NULL,normalise =TRUE,cex =1
           labs(title = genes,fill = "Mean Expression",
                x = "X coordinates", y = "Y coordinates")
     return(ge)
+}
+
+
+
+viewClusterExpression <- function(cluster,gene = NULL,allPoints=NULL,
+    clusterID=NULL,regularise = FALSE,normalise = TRUE,cex =10){
+
+    if(class(cluster) == "list"){
+      barcodes <- unlist(lapply(cluster,Cells))
+      clusters <- unlist(lapply(cluster,FetchData,"seurat_clusters"))
+      coord <- do.call("rbind",lapply(cluster,.getSeuratCoordinates))[,c("x","y")]
+    } else {
+      barcodes <- Cells(cluster)
+      clusters <- FetchData(cluster,"seurat_clusters")
+      coord <- .getSeuratCoordinates(cluster)[,c("x","y")]
+      coord <- coord[match(barcodes,rownames(coord)),]
+      cluster <- list(cluster)
+    }
+
+    #------------------------------------------------------------------------#
+    # Extract counts from the seurat object
+    # This will need to be cleaned up later
+    #------------------------------------------------------------------------#
+    counts <- lapply(cluster,GetAssayData,slot = "data")
+    type <- "Expression"
+
+    #--------------------------------------------------------------------------#
+    # Getting genes - For now it will stay as null
+    # I could add multiple gene viz and what not
+    # And yes I know it would be better to be consitent between tidyr and base
+    #--------------------------------------------------------------------------#
+    if(is.null(gene)){
+        stop("Please specifiy which gene you would like to visualize")
+    } else {
+        #----------------------------------------------------------------------#
+        # will need some regex here probs
+        #----------------------------------------------------------------------#
+        inCount <- lapply(counts,function(x,gene){rownames(x) == gene},gene =gene)
+        #----------------------------------------------------------------------#
+        # Just in case the gene is not present
+        # this should probably be cleaned up
+        # will need to be changed to allow for multiple elements
+        #----------------------------------------------------------------------#
+        checks <- any(sapply(inCount,sum) ==0)
+        if(checks){
+            warning(paste(genes," is not present in count matrix. Returning NULL"),immediate.=T)
+            return(NULL)
+        }
+
+        counts <- unlist(mapply(function(x,inCount){x[inCount,]},counts,inCount,SIMPLIFY=F))
+        counts <- counts[!is.na(match(names(counts),barcodes))]
+
+        counts <- data.frame(barcodes,coord,clusters,counts)
+        colnames(counts) <-c("barcodes","x","y","Clusters","counts")
+        if(!is.null(clusterID)){
+            counts <- counts %>% filter(Clusters %in% clusterID)
+        }
+        if(normalise){
+            counts$counts <- (counts$counts - min(counts$counts)) /
+                             (max(counts$counts) - min(counts$counts))
+            type <- "Norm. Expression"
+        }
+
+    }
+
+    if(!is.null(allPoints)){
+        allPoints <- .getSeuratCoordinates(allPoints)
+        allPoints <- allPoints[!allPoints$cells %in% counts$barcodes,]
+        ge <- ggplot()+
+              geom_point(data = counts,aes(x=x,y=y,shape =Clusters,col =counts),size = cex *0.03)+
+              scale_color_gradientn(colors = rev(brewer.pal(11,"Spectral")))+
+              geom_point(data = allPoints , aes(x,y),alpha =0.075,fill="lightGrey",size =cex* 0.01,show.legend=F)+
+              theme_classic()+
+              theme(axis.text = element_text(size = cex ),
+                    axis.title = element_text(size = cex),
+                    legend.title = element_text(size = cex),
+                    legend.text = element_text(size = cex),
+                    plot.title = element_text(size=cex)) +
+              labs(title = gene,col = type,
+                   x = "X coordinates", y = "Y coordinates")+
+              guides(shape = guide_legend(override.aes = list(size=cex * 0.5)))
+        return(ge)
+    } else {
+      ge <- ggplot(counts, aes(x,y))+
+            geom_point(data = counts,aes(x=x,y=y,shape = Clusters,col = counts))+
+            scale_color_gradientn(colors = rev(brewer.pal(11,"Spectral")))+
+            theme_classic()+
+            theme(axis.text = element_text(size = cex ),
+                  axis.title = element_text(size = cex),
+                  legend.title = element_text(size = cex),
+                  legend.text = element_text(size = cex),
+                  plot.title = element_text(size=cex)) +
+            labs(title = gene,col = type,
+                 x = "X coordinates", y = "Y coordinates")+
+            guides(shape = guide_legend(override.aes = list(size=cex * 0.5)))
+      return(ge)
+    }
+
+
+
 }
