@@ -4,27 +4,49 @@
 
 #-------------------------/Territory identity/---------------------------------#
 
-#' extractIdentity compute differentially expressed genes for each territory
-#' @param image a dataframe conatining territory information
-#' @param counts count matrix - either matrix, sparse matrix or seurat object
-#' This matrix should contain genes as rownames and cells/barcodes as colnames
-#' @param method character describing the statistical test to use in order to extract
-#' Differentially expressed genes
-#' @param logFC numeric describing minimum log fold change value for diff gene expression
-#' @param pval numeric bound between 0 and 1 defining minimum p value for Differentially
-#' expressed genes
-#' @param minPct numeric defining the minimum percentage of cells that should contain
-#' any given gene.
-#' @param dilationFactor positive Integer describing the extent of territory growth
-#' @param cores numeric describing the number of cores used for the analyis.
-#' @details To add
-#' @return A data.frame (tibble) containing differentially expressed genes as well
-#' p.value, logFC, seedPct (percentage of cells containing gene in first group), queryPct
-#' (percentage of cells containing gene in second group), seedTerritory (territory used as group 1)
-#' queryTerritory ( territory value that is compared to seed territory)
+#' extractAllMarkers compute differential gene expression for each territory
+#' @param image a dataframe containing territory information
+#' @param counts seurat object containing counts. Alternatively, matrix or 
+#' sparse matrix. Colnames as barcodes and rownames as genes.
+#' @param method character describing the statistical test to use in order to 
+#' extract differential gene expression (currently only wilcox and t.test)
+#' @param logFC numeric describing minimum log fold change value for 
+#' differential gene expression. Default set at 0.25.
+#' @param pval numeric for pval threshold. Default set at 0.05
+#' @param minPct numeric defining the minimum percentage of cells that should 
+#' contain any given gene.
+#' @param minBar integer defining minimum number of barcodes in a territory. 
+#' @param morphologyFactor Integer or vector of integers describing growth or
+#' shrink rate of territories.
+#' @param cores numeric describing the number of cores used for the analysis.
+#' @param verbose logical - progress message output
+#' @details extractAllMarkers function compares a territory after any 
+#' morphological operator to all remaining barcodes. 
+#' If one of territory sets does not contain enough 
+#' barcodes, \code{extractMarkers} will return NULL. For example, if you dilate 
+#' a territory (let's say you want to grow each territory by 5 pixels - 
+#' morphologyFactor = 5),the seed territory will be dilated and compared to all 
+#' remaining barcodes that not part of this new dilated territory. 
+#' 
+#' For further details on territory Morphology - refer to 
+#' \code{territoryMorphology}
+#' @return A data.frame (tibble) containing differential gene expression as well
+#' p.value, 
+#' logFC, 
+#' seedPct (percentage of cells containing gene in first group),
+#' queryPct (percentage of cells containing gene in second group), 
+#' seedTerritory (territory used as group 1)
+#' queryTerritory (territory used as group 2)
+#' @examples
+#'\dontrun{
+#' data("Vesalius")
+#'
+#'
+#' }
 
 extractAllMarkers <- function(image,counts,method = "wilcox",
-  logFC = 0.25, pval = 0.05,minPct = 0.05,minCell = 10,dilationFactor=0,cores = 1){
+  logFC = 0.25, pval = 0.05,minPct = 0.05,minBar = 10,morphologyFactor=0,
+  cores = 1,verbose = TRUE){
     .simpleBar(verbose)
     .checkCounts(verbose)
     #--------------------------------------------------------------------------#
@@ -52,7 +74,7 @@ extractAllMarkers <- function(image,counts,method = "wilcox",
               filter(tile ==1 & territory %in% seedTerritory[i])
         } else {
             seed <- territories[[i]] %>% filter(territory %in% seedTerritory[i])
-            seed <- territoryMorphing(seed,dilationFactor,image,verbose)
+            seed <- territoryMorphing(seed,morphologyFactor,image,verbose)
             seed <- filter(seed, tile ==1)
         }
         #----------------------------------------------------------------------#
@@ -71,7 +93,7 @@ extractAllMarkers <- function(image,counts,method = "wilcox",
         # Let's do some diff expression analysis
         #----------------------------------------------------------------------#
         deg <- .VesaliusDEG(seed,query,seedTerritory[i],"Remaining",method,
-            logFC,pval,minPct,minCell,verbose)
+            logFC,pval,minPct,minBar,verbose)
         territories[[i]] <- deg
       }
       #------------------------------------------------------------------------#
@@ -84,10 +106,60 @@ extractAllMarkers <- function(image,counts,method = "wilcox",
 
   }
 
+#' extractMarkers compute differential gene expression between selected 
+#' territories.
+#' @param image a dataframe containing territory information
+#' @param counts seurat object containing counts. Alternatively, matrix or 
+#' sparse matrix. Colnames as barcodes and rownames as genes.
+#' @param seed Integer or vector of integers describing territories to be 
+#' included in group 1 for differential gene expression analysis.
+#' @param query Integer or vector of integers describing territories to be 
+#' included in group 2 for differential gene expression analysis. Default = NULL
+#' @param method character describing the statistical test to use in order to 
+#' extract differantial gene expression (currently only wilcox and t.test)
+#' @param logFC numeric describing minimum log fold change value for 
+#' differential gene expression. Default set at 0.25.
+#' @param pval numeric for pval threshold. Default set at 0.05
+#' @param minPct numeric defining the minimum percentage of cells that should 
+#' contain any given gene.
+#' @param minBar integer defining minimum number of barcodes in a territory. 
+#' @param morphologyFactorSeed Integer or vector of integers describing growth 
+#' or shrink rate of seed territories
+#' @param morphologyFactorQuery Integer or vector of integers describing growth 
+#' or shrink rate of query territories
+#' @param verbose logical - progress message output
+#' @details extractMarkers compares a set of selected territories to another set 
+#' of selected territories. If one of territory sets does not contain enough 
+#' barcodes, \code{extractMarkers} will return NULL. 
+#' 
+#' A seed territory (or territories) should always be 
+#' provided. Query territories can be left as the default NULL. In this case,
+#' the seed territory will be compared to all remaining barcodes that are NOT 
+#' present in the seed. Otherwise, seed territories will be compared to query 
+#' territories after any morphological operations 
+#' (see \code{territoryMorphology}. 
+#' 
+#' extractMarkers provides a way to manipulate each set of territories 
+#' independtly as described in \code{morphologyFactorSeed} and 
+#' \code{morphologyFactorQuery.}
+#' 
+#' @return A data.frame (tibble) containing differential gene expression as well
+#' p.value, 
+#' logFC, 
+#' seedPct (percentage of cells containing gene in first group),
+#' queryPct (percentage of cells containing gene in second group), 
+#' seedTerritory (territory used as group 1)
+#' queryTerritory (territory used as group 2)
+#' @examples
+#'\dontrun{
+#' data("Vesalius")
+#'
+#'
+#' }
 
 
 extractMarkers <- function(image,counts,seed = NULL,query = NULL,
-     method = "wilcox",logFC = 0.25, pval = 0.05,minPct = 0.05,minCell = 10,
+     method = "wilcox",logFC = 0.25, pval = 0.05,minPct = 0.05,minBar = 10,
      morphologyFactorSeed = 0,morphologyFactorQuery = 0,verbose=TRUE){
     .simpleBar(verbose)
     .checkCounts(verbose)
@@ -99,14 +171,15 @@ extractMarkers <- function(image,counts,seed = NULL,query = NULL,
     }
 
     #--------------------------------------------------------------------------#
-    # setting up seed territoy counts
+    # setting up seed territory counts
     #--------------------------------------------------------------------------#
     .seedSelect(verbose)
     if(is.null(seed)){
-        stop("Please supply a seed as numeric values describing territory identity")
+        stop("Please supply a seed as numeric values describing territory 
+             identity")
     }
     #--------------------------------------------------------------------------#
-    # getting tmp to use as template when getting query territorires
+    # getting tmp to use as template when getting query territories
     #--------------------------------------------------------------------------#
     tmp <- seed
     #--------------------------------------------------------------------------#
@@ -153,15 +226,53 @@ extractMarkers <- function(image,counts,seed = NULL,query = NULL,
     #--------------------------------------------------------------------------#
     .degProg(verbose)
     deg <- .VesaliusDEG(seed,query,seedID,queryID,method,
-        logFC,pval,minPct,minCell,verbose)
+        logFC,pval,minPct,minBar,verbose)
     cat("\n")
    .simpleBar(verbose)
    return(deg)
 
 }
 
+
+#' extractClusterMarkers compute differential gene expression between clusters 
+#' and remaning barcodes 
+#' @param cluster a Seurat object containing clusters of an isolated territory
+#' @param counts seurat object containing counts. Alternatively, matrix or 
+#' sparse matrix. Colnames as barcodes and rownames as genes.
+#' @param method character describing the statistical test to use in order to 
+#' extract differential gene expression (currently only wilcox and t.test)
+#' @param logFC numeric describing minimum log fold change value for 
+#' differential gene expression. Default set at 0.25.
+#' @param pval numeric for pval threshold. Default set at 0.05
+#' @param minPct numeric defining the minimum percentage of cells that should 
+#' contain any given gene.
+#' @param minBar integer defining minimum number of barcodes in a territory. 
+#' @param verbose logical - progress message output
+#' @details extractClusterMarkers compares clusters to all remaining barcodes.
+#' If a territory is isolated (see \code{extractTerritories}) for further 
+#' analysis, Seurat can provide a cluster analysis of the isolated territory. 
+#' Seurat will compared clusters between each other within the isolated 
+#' territory. However, in some cases, it can be useful to compared the barcodes 
+#' present in a Seurat cluster to all remaining barcodes. This provides overall 
+#' differences in expression within the cluster as opposed to differential 
+#' expression between isolated clusters. 
+#'
+#' @return A data.frame (tibble) containing differential gene expression as well
+#' p.value, 
+#' logFC, 
+#' seedPct (percentage of cells containing gene in first group),
+#' queryPct (percentage of cells containing gene in second group), 
+#' seedTerritory (territory used as group 1)
+#' queryTerritory (territory used as group 2)
+#' @examples
+#'\dontrun{
+#' data("Vesalius")
+#'
+#'
+#' }
 extractClusterMarkers <- function(cluster,counts,
-     method = "wilcox",logFC = 0.25, pval = 0.05,minPct = 0.05,minCell = 10,verbose=TRUE){
+     method = "wilcox",logFC = 0.25, pval = 0.05,minPct = 0.05,minBar = 10,
+     verbose=TRUE){
     .simpleBar(verbose)
     .checkCounts(verbose)
     #--------------------------------------------------------------------------#
@@ -193,7 +304,7 @@ extractClusterMarkers <- function(cluster,counts,
         query <- counts[,!colnames(counts) %in% tmp]
         .degProg(verbose)
         deg[[i]] <- .VesaliusDEG(seed,query,clustNum[i],"Remaining",method,
-            logFC,pval,minPct,minCell,verbose)
+            logFC,pval,minPct,minBar,verbose)
     }
     deg <- do.call("rbind", deg)
     cat("\n")
@@ -206,66 +317,21 @@ extractClusterMarkers <- function(cluster,counts,
 
 
 
-
-
-territoryMorphing <- function(territories,morphologyFactor,image,verbose=TRUE){
-
-
-      .morph(verbose)
-      #------------------------------------------------------------------#
-      # First we define territory limits and add a little on each
-      # side - this ensures that we won't be clipping any parts of the
-      # territory
-      #------------------------------------------------------------------#
-      seed <- territories %>% mutate(value=1)
-
-
-      ymin <- ifelse((min(seed$y) - max(abs(morphologyFactor)) *2) <=0,1,
-         min(seed$y) - morphologyFactor *2)
-      xmin <- ifelse((min(seed$x) - max(abs(morphologyFactor)) *2) <=0,1,
-         min(seed$x) - max(abs(morphologyFactor)) *2)
-      ymax <- max(seed$y) + max(abs(morphologyFactor)) * 2
-      xmax <- max(seed$x) + max(abs(morphologyFactor)) * 2
-      #------------------------------------------------------------------#
-      # Now we convert add buffer boundaeries, covert to grey scale a
-      #------------------------------------------------------------------#
-      seed <- seed %>% select(c("x","y","cc","value")) %>%
-              rbind(.,c(xmin,ymin,1,0),c(xmax,ymax,1,0)) %>%
-              as.cimg() %>% grayscale()
-      #------------------------------------------------------------------#
-      # Now we can do the morphing - grow, erode, clean and fill
-      # For some reason I need to create mf seperately
-      # maybe due to the fact that the grow/shrink function
-      # is parsing weird stuff to imager/C++ ?
-      #------------------------------------------------------------------#
-      for(i in seq_along(morphologyFactor)){
-          mf <- abs(morphologyFactor[i])
-          if(morphologyFactor[i] >=0){
-              seed <- grow(seed,mf)
-          } else {
-              seed <- shrink(seed, mf)
-          }
-      }
-      #------------------------------------------------------------------#
-      # Next we rebuild the image data frame with dilated
-      #------------------------------------------------------------------#
-      seed <- seed %>% as.data.frame()
-      seed <- inner_join(seed,image,by = c("x","y"))%>%
-             select(c("barcodes","x","y","cc.y","z","tile",
-                      "cluster","territory"))%>%
-             filter(cc.y ==1)
-      colnames(seed) <- c("barcodes","x","y","cc","value","tile",
-                         "cluster","territory")
-
-     return(seed)
-
-}
-
-
-
+# Internal differantial gene expression function. Essentially all other DEG 
+# Functions will call this one function to do diff analysis. 
+# seed = group1 count data 
+# query = group 2 count data 
+# seedID = territory ID's for group 1
+# queryID = territory ID's for group 2
+# method = DEG stat method 
+# logFC = fold change threshold 
+# pval = p value threshold 
+# minPct = minimum percentage of barcodes that should contain a given gene 
+# minBar = minimum number of barcodes present in a territory 
+# verbose  = progress message output 
 
 .VesaliusDEG <- function(seed,query,seedID,queryID,method,logFC,
-    pval,minPct,minCell,verbose =T){
+    pval,minPct,minBar,verbose =T){
     .degEachProg(seedID,queryID,verbose)
     #--------------------------------------------------------------------------#
     # We assume here that we are parsing cleaned up version of each object
@@ -283,11 +349,11 @@ territoryMorphing <- function(territories,morphologyFactor,image,verbose=TRUE){
         warning(paste0("Territory ",queryID," does not contain enough cells.\n
         Territory will be skipped"),call.=FALSE)
         return(NULL)
-    } else if(dimSeed[2L] < minCell){
+    } else if(dimSeed[2L] < minBar){
         warning(paste0("Territory ",seedID," does not contain enough cells.\n
         Territory will be skipped"),call.=FALSE)
         return(NULL)
-    } else if(dimQuery[2L] < minCell){
+    } else if(dimQuery[2L] < minBar){
         warning(paste0("Territory ",queryID," does not contain enough cells.\n
         Territory will be skipped"),call.=FALSE)
         return(NULL)
@@ -349,71 +415,34 @@ territoryMorphing <- function(territories,morphologyFactor,image,verbose=TRUE){
 
 
 
-# Extracting count values for each cell in a cluster/territory
-.getGeneCounts <- function(object,by){
-    #--------------------------------------------------------------------------#
-    # This is just some cleaning and data extraction
-    # Note that this code relies on Seurat code
-    # This will need to be changed when refactoring
-    #--------------------------------------------------------------------------#
-    if(by == "cluster"){
-      clusters <- FetchData(object,"seurat_clusters")
-      #------------------------------------------------------------------------#
-      # Get all barcodes associated with each cluster
-      #------------------------------------------------------------------------#
-      barcodes <- lapply(unique(clusters$seurat_clusters),function(idx,obj){
-                return(WhichCells(obj,idx))
-      }, object)
-      #------------------------------------------------------------------------#
-      # Get counts associated to each clusters
-      #------------------------------------------------------------------------#
-      counts <- lapply(barcodes, function(bar,obj){
-                return(subset(obj, cells = bar))
-      })
-      #------------------------------------------------------------------------#
-      # Rebuild subsetted count matrix
-      ## Will need to change this for more felxibility
-      # Set to default assay or reduction based
-      #------------------------------------------------------------------------#
-      newCount <- lapply(object, function(x){
-                  return(GetAssayData(x,slot ="data"))
-      })
-    } else if(by == "territory"){
-      #------------------------------------------------------------------------#
-      # Just return all cells for that territory
-      # Normalised counts ! This is important and will need to change the code accordingly
-      # This just considers normalised data
-      #------------------------------------------------------------------------#
-      newCount <- GetAssayData(object, slot ="data")
-    } else {
-      #------------------------------------------------------------------------#
-      # Placeholder for now
-      #------------------------------------------------------------------------#
-      newCount <- NULL
-    }
 
 
-    return(newCount)
+#' extractTerritories provides a Seurat object from a Vesalius Territory 
+#' @param image a data.frame containing territory information
+#' @param seurat Seurat object. Contains all barcodes present on the spatial 
+#' transcrtiptomic assay. 
+#' @param seedID integer or vector of integers describing territories that 
+#' should be extracted. 
+#' @param morphologyFactor Integer or vector of integers describing growth or
+#' shrink rate of territories. Only applied if seedID is provided. 
+#' @param minBar integer describing minimum number of barcodes in a territory 
+#' set.
+#' @param verbose logical - progress message output
+#' @param cores numeric describing the number of cores used for the analysis.
+#' @details Once territories have been isolated from Vesalius images, the 
+#' \code{extractTerritories} provides a convenient way to extract a set of 
+#' territories, apply morphological operators, and return a Seurat object for 
+#' further analysis. This Seurat Object can be analysed using Seurat's 
+#' recommended pipeline. 
+#' @return A Seurat oject containing barcodes taken from territory set. 
+#' @examples
+#' \dontrun{
+#' data("Vesalius")
+#' }
+#' 
 
-}
-
-
-.bindCounts <- function(territories,counts){
-    #--------------------------------------------------------------------------#
-    # Binding all count matrices together and filling all the "gaps"
-    #--------------------------------------------------------------------------#
-
-    cells <- unlist(lapply(territories,colnames))
-    counts <- counts[,cells]
-    return(counts)
-}
-
-
-### Cant remember why I took this approach
-### Lets keep it ultra simple for now
-### Dont create this intermediate object only if required
 extractTerritories <- function(image,seurat,seedID = NULL,morphologyFactor = 0,
-                               minCell = 10, verbose = TRUE,cores = 1){
+                               minBar = 10, verbose = TRUE,cores = 1){
     .simpleBar(verbose)
     #--------------------------------------------------------------------------#
     # if combine is null we consider that we want to have all
@@ -421,18 +450,21 @@ extractTerritories <- function(image,seurat,seedID = NULL,morphologyFactor = 0,
     #--------------------------------------------------------------------------#
     if(is.null(seedID)){
         .extractTerProg("all",verbose)
-        territories <- image %>% filter(tile == 1) %>% distinct(barcodes, .keep_all = FALSE)
+        territories <- image %>% filter(tile == 1) %>% 
+            distinct(barcodes, .keep_all = FALSE)
         territories <- split(territories, territories$territory)
         #----------------------------------------------------------------------#
         # Revert back to fine grain if inage array was reduced
         #----------------------------------------------------------------------#
         if(morphologyFactor != 0){
-           cat("No seedID specified - Territory Dilation will not be applied.\n")
+           cat("No seedID specified - 
+               Territory Dilation will not be applied.\n")
         }
-        cells <- sapply(territories,nrow) > minCell
+        cells <- sapply(territories,nrow) > minBar
         territories <- territorries[cells]
         territories <- lapply(territories,"$",territory)
-        territories <- parallel::mclapply(territories,subSetTerritories,seurat,mc.cores= cores)
+        territories <- parallel::mclapply(territories,subSetTerritories,seurat,
+                                          mc.cores= cores)
         .simpleBar(verbose)
         return(territories)
     } else {
@@ -442,7 +474,8 @@ extractTerritories <- function(image,seurat,seedID = NULL,morphologyFactor = 0,
         #----------------------------------------------------------------------#
         .extractTerProg(seedID,verbose)
         territories <- image %>% filter(territory %in% seedID)
-        territories <- territoryMorphing(territories,morphologyFactor,image,verbose)
+        territories <- territoryMorphing(territories,morphologyFactor,image,
+                                         verbose)
         territories <- filter(territories,tile == 1)  %>%
             distinct(barcodes,.keep_all=F)
         territories <- territories$barcodes
@@ -451,11 +484,12 @@ extractTerritories <- function(image,seurat,seedID = NULL,morphologyFactor = 0,
         # Revert back to fine graind and return null if territory does not
         # Contain enough cells - in this case throw in a warning
         #----------------------------------------------------------------------#
-        #territories <- .fineGrain(territories,minCell)
+        #territories <- .fineGrain(territories,minBar)
 
-        if(length(territories) < minCell){
+        if(length(territories) < minBar){
 
-            warning("Territory selection does not contain enough cells - NULL returned",
+            warning("Territory selection does not contain enough cells - 
+                    NULL returned",
                   immediate. = TRUE)
             .simpleBar(verbose)
             return(NULL)
@@ -471,22 +505,52 @@ extractTerritories <- function(image,seurat,seedID = NULL,morphologyFactor = 0,
 }
 
 
-subSetTerritories <- function(territories,seurat){
-    #--------------------------------------------------------------------------#
-    # Simplified version for now
-    # It might be worth while getting away from seurat later
-    # essentially this is a template function
-    #--------------------------------------------------------------------------#
 
-    seurat <- subset(seurat, cells = territories)
-    return(seurat)
-}
+#' compareClusters computes differential gene expression between seurat clusters 
+#' @param counts seurat object containing ALL counts. Alternatively, matrix or 
+#' sparse matrix of all counts. Colnames as barcodes and rownames as genes.
+#' @param seedCluster Seurat Object of seed clusters
+#' @param queryCluster Seurat Object of query clusters
+#' @param seed integer describing the Seurat cluster (in seed - group 1) to be 
+#' used for Differential expression analysis. Default NULL 
+#' @param query integer describing the Seurat cluster (in query - group 2) to be 
+#' used for Differential expression analysis. Default NULL
+#' @param method character describing the statistical test to use in order to 
+#' extract differential gene expression (currently only wilcox and t.test)
+#' @param logFC numeric describing minimum log fold change value for 
+#' differential gene expression. Default set at 0.25.
+#' @param pval numeric for pval threshold. Default set at 0.05
+#' @param minPct numeric defining the minimum percentage of cells that should 
+#' contain any given gene.
+#' @param minBar integer defining minimum number of barcodes in a territory. 
+#' @param verbose logical - progress message output.
+#' @details Territory isolation provides a convenient way to investigate 
+#' the finer detail of anatomy and cellular spatial distribution. In some case, 
+#' two territories separated in 2D space may contain barcodes that cluster 
+#' together and are described by similar cell type labels. The 
+#' \code{compareClusters} functions compares clusters in different territories
+#' between each other. The count values are the overall count values that have 
+#' been normalized, scaled and centered all together. This ensure that the 
+#' barcodes are comparable. The territory isolation and clustering serves as a 
+#' way to isolate a specific set of barcodes that will be used for differential 
+#' gene expression analysis. 
+#' @return A data.frame (tibble) containing differential gene expression as well
+#' p.value, 
+#' logFC, 
+#' seedPct (percentage of cells containing gene in first group),
+#' queryPct (percentage of cells containing gene in second group), 
+#' seedTerritory (territory used as group 1)
+#' queryTerritory (territory used as group 2)
+#' @examples
+#'\dontrun{
+#' data("Vesalius")
+#'
+#'
+#' }
 
-##### NOT in USE for now
-##### This has some interesting benifits but this whole function needs to be
-##### re worked anyway.
-compareClusters <- function(counts,seedCluster,queryCluster,seed = NULL,query = NULL,method = "wilcox",
-  logFC = 0.25, pval = 0.05,minPct = 0.05,minCell = 10,verbose=TRUE){
+compareClusters <- function(counts,seedCluster,queryCluster,seed = NULL,
+                            query = NULL,method = "wilcox",
+  logFC = 0.25, pval = 0.05,minPct = 0.05,minBar = 10,verbose=TRUE){
       .simpleBar(verbose)
       #------------------------------------------------------------------------#
       # Get counts
@@ -538,7 +602,7 @@ compareClusters <- function(counts,seedCluster,queryCluster,seed = NULL,query = 
                          seedID =seedID,
                          queryID = queryID,
                          logFC= logFC,pval = pval,
-                         minPct = minPct,minCell = minCell,
+                         minPct = minPct,minBar = minBar,
                          method=method,
                          verbose = verbose)
       cat("\n")
@@ -547,11 +611,56 @@ compareClusters <- function(counts,seedCluster,queryCluster,seed = NULL,query = 
   }
 
 
-  compareLayers <- function(layers,counts,l1 = NULL, l2 = NULL, method = "wilcox",
-    logFC = 0.25, pval = 0.05,minPct = 0.05,minCell = 10,verbose=TRUE){
+#' compareLayers computes differential gene expression between territory layers
+#' @param layers data.frame containing layered territory information
+#' (See \code{layerTerritory.edge} and \code{layerTerritory.concave})
+#' @param counts seurat object containing counts. Alternatively, matrix or 
+#' sparse matrix. Colnames as barcodes and rownames as genes.
+#' @param l1 integer or vector of integers indicating layers to be contained in 
+#' group 1. Default NULL - If NULL will compare all layers independently 
+#' @param l2 integer or vector of integers indicating layers to be contained in 
+#' group 2. If NULL will compare all layers independently 
+#' @param method character describing the statistical test to use in order to 
+#' extract differential gene expression (currently only wilcox and t.test)
+#' @param logFC numeric describing minimum log fold change value for 
+#' differential gene expression. Default set at 0.25.
+#' @param pval numeric for pval threshold. Default set at 0.05
+#' @param minPct numeric defining the minimum percentage of cells that should 
+#' contain any given gene.
+#' @param minBar integer defining minimum number of barcodes in a territory. 
+#' @param verbose logical - progress message output.
+#' @details Territory isolation provides a convenient way to investigate 
+#' the finer detail of anatomy and cellular spatial distribution. Image 
+#' representation of territories provides a convenient way to manipulate 
+#' territories such as dividing a territory into layers. Vesalius provides two
+#' method to layer a territory : \code{layerTerritory.edge} and 
+#' \code{layerTerritory.concave}. The output of both function returns a data 
+#' frame with layer information. The \code{compareLayers} compares a layer or 
+#' layer sets between each other. If both l1 and l2 layers are left to NULL,
+#' each layer will be compared to each other layer on at a time. 
+#' To compare one layer to all other layers, specific layer ID's should be 
+#' specified.
+#' @return A data.frame (tibble) containing differential gene expression as well
+#' p.value, 
+#' logFC, 
+#' seedPct (percentage of cells containing gene in first group),
+#' queryPct (percentage of cells containing gene in second group), 
+#' seedTerritory (territory used as group 1)
+#' queryTerritory (territory used as group 2)
+#' @examples
+#'\dontrun{
+#' data("Vesalius")
+#'
+#'
+#' }
+
+compareLayers <- function(layers,counts,l1 = NULL, l2 = NULL, method = "wilcox",
+    logFC = 0.25, pval = 0.05,minPct = 0.05,minBar = 10,verbose=TRUE){
       #------------------------------------------------------------------------#
       # Ayo now we comapre layers
       # First thing is to get layers so lets start with layer 1
+      # Will need to update so there is no overlap.
+      # relevant if you set one of the l1/l2 layers as NULL
       #------------------------------------------------------------------------#
       .simpleBar(verbose)
       if(!is.null(l1)){
@@ -576,10 +685,12 @@ compareClusters <- function(counts,seedCluster,queryCluster,seed = NULL,query = 
       # Prep counts for deg
       #------------------------------------------------------------------------#
       .checkCounts(verbose)
-      #--------------------------------------------------------------------------#
+      #------------------------------------------------------------------------#
       # Get counts
-      #--------------------------------------------------------------------------#
-      counts <- GetAssayData(counts, slot = "data")
+      #------------------------------------------------------------------------#
+      if(is(counts)=="Seurat"){
+        counts <- GetAssayData(counts, slot = "data")
+      }
 
       #------------------------------------------------------------------------#
       # Now we can loop over layers
@@ -596,7 +707,7 @@ compareClusters <- function(counts,seedCluster,queryCluster,seed = NULL,query = 
               deg[[counter]] <- .VesaliusDEG(tmp1,tmp2,tmpID1,tmpID2,
                                                 method = method,
                                                 logFC=logFC,pval = pval,
-                                                minPct= minPct,minCell=minCell,
+                                                minPct= minPct,minBar=minBar,
                                                 verbose=verbose)
           }
       }

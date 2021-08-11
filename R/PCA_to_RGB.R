@@ -4,29 +4,50 @@
 
 #---------------------/PCA RGB Functions/--------------------------------------#
 
-#' Embed PCA loading to RGB colour space
-#' @param slide gene count matrix with barcodes as columns and genes as rows
-#' @param SO Seurat Object after normalisation, scaling and finding variable features.
-#' The description of how to build Seurat Objects is described in the Seurat Vignettes.
+#' Embed PCA loadings into RGB colour space
+#' @param SO Seurat Object after normalisation, scaling and 
+#' finding variable features. 
 #' @param slices number of PCA slices to consider (Integer/numeric).
 #' Slice 1 will embed PC 1 to PC3, slice 2 will embed PC4 to PC6, etc
-#' @param adjusted logical indicating if RGB code should be adjusted to rgb (rgb coordinate)
-#' @param countWeight logical describing if colour embeding should be weighted by count number.
-#' @param conserveSparse logical indicating if sparse matrix format should be conserved.
-#' @param trim numeric describing the quantile at which coulour histogram should be trimmed (two tailed).
-#' Default set to 0 where no histogram trimming will be applied.
-#' @details rgbPCA embeds PCA loadings in the RGB colour space by cumulative summing of PCA loadings for all gene
-#' present on every bead. The absolute values of PCA loading are used for the summation.
-#' The cumulative sum is then normalise in order to bound scores between 0 and 1. If countWegiht
-#' is set to TRUE, loading value for each genes (per bead) are multiplied by the count number of that gene for each bead.
-#' It should be noted that this process is only applied to genes present on a bead/spot. There is no consideration for
-#' genes that are not present on the bead/spot.
-#' @return a list with three different levels.
-#' Level 1 : each list element is a different slice
-#' Level 2 : each list element is R G B channel for that slice
-#' Level 3 : numeric vectors containing colour code for each barcode
+#' @param adjusted logical indicating if RGB code should be adjusted to 
+#' colour contribution per channel. 
+#' @param rgbWeight logical indicating if RGB channels should be weighted by 
+#' the variance associated to the PC it used for embedding. 
+#' @param countWeight logical describing if colour embedding 
+#' should be weighted by count number.
+#' @param conserveSparse logical indicating if sparse matrix format 
+#' should be conserved.
+#' @param verbose logical - progress message output. 
+#' @details The core concept of Vesalius is to embed PCA loading values into
+#' the RGB colour space. This is achieved by:
+#' 
+#' \deqn{ B_{(c,i)} = \sum_{i=1} \mid L_(c,i) \mid }
+#' 
+#' with B_((i,c)), barcode i in color channel c and L, the loading values 
+#' associated to barcode i in color channel c. 
+#' Notice that we take the absolute value of PCA loadings. 
+#' In this case, we are only interested in variance and 
+#' not direction of variance. 
+#' 
+#' Barcode values are then min/max normalised to ensure that all colour 
+#' codes ranged from 0 to 1.
+#' 
+#' @return Returns a Vesalius data.frame with "barcodes","x","y","cc",
+#' "value","slice"
+#' Slice represents the PC slice represented.  
+#' @examples 
+#' \dontrun{
+#' data(Vesalius)
+#' }
 
-rgbPCA<- function(SO,slices = 1,adjusted = FALSE,rgbWeight=FALSE,countWeight = FALSE, conserveSparse = TRUE,verbose=TRUE){
+
+rgbPCA<- function(SO,
+                  slices = 1,
+                  adjusted = FALSE,
+                  rgbWeight=FALSE,
+                  countWeight = FALSE,
+                  conserveSparse = TRUE,
+                  verbose=TRUE){
 
 
     .simpleBar(verbose)
@@ -68,7 +89,7 @@ rgbPCA<- function(SO,slices = 1,adjusted = FALSE,rgbWeight=FALSE,countWeight = F
     # Variance by PC is use to weight the channels
     # Same Principle is used when converting colour to grey scale
     #--------------------------------------------------------------------------#
-      loadings <-Loadings(pca[["pca"]])[,seq(slice_start[sl], slice_start[sl]+2)]
+      loadings<-Loadings(pca[["pca"]])[,seq(slice_start[sl], slice_start[sl]+2)]
 
       if(rgbWeight){
         .pcadj(verbose,sl)
@@ -188,19 +209,7 @@ rgbPCA<- function(SO,slices = 1,adjusted = FALSE,rgbWeight=FALSE,countWeight = F
 }
 
 
-#' Assigning the RGB colour code to its specific barcode location
-#'
-#' @param rgb list of colour codes in the format describe in the Detail section.  Output of rgbPCA.
-#' @param coordinates data frame containing x and y coordinates of barcodes
-#' @param na.rm logical describing if NA should be removed
-#' @details assignRGBtoPixel remaps the colour code to x/y coordinates. \code{rgb} is the output of \code{rgbPCA}.
-#' As such, it should be a list with three different levels.
-#' Level 1 : each list element is a different slice
-#' Level 2 : each list element is R G B channel for that slice
-#' Level 3 : numeric vectors containing colour code for each barcode
-#' @return a data frame with five columns: barcodes (barcode names), xcoord (x coordinates),
-#' ycoord (y coordinates), R (Red colour channel),G (Green colour channel) ,and B (Blue Colour channel).
-
+#Internal to assign colour code back to its location
 .assignRGBtoPixel <- function(idx,rgb,coordinates, na.rm = TRUE){
     #--------------------------------------------------------------------------#
     # This is just to create a data frame with colour channel and colour value
@@ -235,23 +244,67 @@ rgbPCA<- function(SO,slices = 1,adjusted = FALSE,rgbWeight=FALSE,countWeight = F
 
 #' buildImageArray creating an Image array from coloured coordinates
 #'
-#' @param coordninates data.frame containing the coordinatesof each spot/bead.
-#' If colour coordinates were previosuly computed this data.frame may also contain
-#' the RGB colour code associated to each location.
-#' @param rgb list containing colour code for each bead. Required if colour
-#' is not already contained in \code{coordinates}.
-#' @param invert logical describing if colour pattern should be inverted (i.e 1-R,1-G,1-B)
+#' @param coordinates a Vesalius data.frame with "barcodes","x","y","cc",
+#' "value","slice". Output from \code{rgbPCA}.
+#' @param sliceID integer - PC slice used in image building. Only one value!
+#' @param invert logical describing if colour pattern should be inverted 
+#' (i.e 1-R,1-G,1-B)
 #' @param na.rm logical indicating if NA should be removed from bead list.
-#' @param cores numeric describing number of cores used (Default = 1)
-#' @param verbose logical describing if progress message should be displayed in consolde
-#' @details In order to build an Image type object, it is require to create a 4
-#' dimensional array with rows as x coordinates, columns as y coordinates, slices and colour channels.
-#' Note that the slice dimension is required by the \code{imager} package.
-#' @return a 4 dimensional array - convertable to \code{cimg} objects.
+#' @param resolution numeric (range 0 - 100) describing a percentage of original 
+#' image size. Used to reduce image size. 
+#' @param filterThreshold numeric (range 0 -1) describing the quantile threshold 
+#' at which barcodes and tiles should be retained (seed details)
+#' @param interpolation_type Method of interpolation during image resizing:
+#' \describe{
+#'    \item{-1}{no interpolation: raw memory resizing.}
+#'    \item{0}{no interpolation: additional space is filled according to 
+#'             boundary_conditions.}
+#'    \item{1}{Nearest-neighbor interpolation}
+#'    \item{2}{moving average interpolation}
+#'    \item{3}{linear interpolation}
+#'    \item{4}{grid interpolation}
+#'    \item{5}{cubic interpolation}
+#'    \item{6}{lanczos interpolation}
+#' } 
+#'
+#' @param cores integer describing number of cores used (Default = 1)
+#' @param verbose logical - progress message output. 
+#' @details Vesalius converts PCA loading values into an RGB colour code 
+#' associated with a coordinates on a Spatial Transcriptomic Assay. The 
+#' \code{buildImageArray} converts coloured coordinates into an actual image 
+#' via the use of Voronoi diagrams and Tile rasterisation. 
+#' 
+#' Each barcodes coordinate is used as the center point of a voronoi tile and 
+#' an artificial "box" is created surrounding barcode coordinates. This 
+#' creates superfluous tiles that can be detrimental to further analysis.
+#' To remove excessive tiles, Vesalius takes a two step process. First, Vesalius 
+#' removes any barcode that is too far away from other barcodes (likely stray 
+#' barcodes). Second, Vesalius filters out tiles that are tied to the outer box 
+#' and that exceed a certain area threshold. These triangles are nearly always 
+#' related to boundary tiles. Both of these filtering steps are controlled via 
+#' the \code{filterThreshold} argument. 
+#' 
+#' A filterThreshold of 0.99 means that 99 \% or barcodes and tile triangles 
+#' will be retained. 
+#' 
+#'
+#' @return Returns a Vesalius data.frame with "barcodes","x","y","cc",
+#' "value",and "tile".
+#' @examples 
+#' \dontrun{
+#' data(Vesalius)
+#' }
 
-buildImageArray <- function(coordinates,sliceID = 1,invert=FALSE,na.rm = TRUE,
-                            resolution = 100,filterThreshold=0.999,interpolation_type =1,
-                            cores=1, verbose = TRUE){
+
+buildImageArray <- function(coordinates,
+                            sliceID = 1,
+                            invert=FALSE,
+                            na.rm = TRUE,
+                            resolution = 100,
+                            filterThreshold=0.999,
+                            interpolation_type =1,
+                            cores=1, 
+                            verbose = TRUE){
   .simpleBar(verbose)
   #----------------------------------------------------------------------------#
   # check data too see if it contains right slices
@@ -375,8 +428,9 @@ buildImageArray <- function(coordinates,sliceID = 1,invert=FALSE,na.rm = TRUE,
     # Let's do some checks
     #--------------------------------------------------------------------------#
     if(sum(inSlice) > 1){
-        warning("More than one slice provided! Only lowest slice value will be used",
-               immediate. = TRUE)
+        warning("More than one slice provided! 
+                 Only lowest slice value will be used",
+                immediate. = TRUE)
     } else if(sum(inSlice) <1){
         stop("SliceID is not present in coordinates.")
     }
@@ -529,12 +583,14 @@ buildImageArray <- function(coordinates,sliceID = 1,invert=FALSE,na.rm = TRUE,
     maxX <- maxPolygonX[cell %in% c(1,2,3)]
     maxY <- maxPolygonY[cell %in% c(1,2,3)]
 
-    ccVals <- ogCoord[ogCoord$barcodes == coord$barcodes[allEdge$ind1],c("cc","value")]
+    ccVals <- ogCoord[ogCoord$barcodes == coord$barcodes[allEdge$ind1],
+                      c("cc","value")]
     ccVals <- ccVals[rep(seq_len(nrow(ccVals)),each = length(maxX)),]
     maxX <- rep(maxX, times = 3)
     maxY <- rep(maxY, times = 3)
     barcode <- rep(coord[allEdge$ind1,"barcodes"],length(maxX))
-    cent <- which(maxX == round(coord[allEdge$ind1,"x"]) & maxY == round(coord[allEdge$ind1,"y"]))
+    cent <- which(maxX == round(coord[allEdge$ind1,"x"]) & 
+                  maxY == round(coord[allEdge$ind1,"y"]))
     centers <- rep(0, length(maxX))
     centers[cent] <- 1
 
@@ -566,12 +622,14 @@ buildImageArray <- function(coordinates,sliceID = 1,invert=FALSE,na.rm = TRUE,
     cell <- point.in.polygon(maxPolygonX,maxPolygonY,x,y)
     maxX <- maxPolygonX[cell %in% c(1,2,3)]
     maxY <- maxPolygonY[cell %in% c(1,2,3)]
-    ccVals <- ogCoord[ogCoord$barcodes == coord$barcodes[allEdge$ind2],c("cc","value")]
+    ccVals <- ogCoord[ogCoord$barcodes == coord$barcodes[allEdge$ind2],
+                      c("cc","value")]
     ccVals <- ccVals[rep(seq_len(nrow(ccVals)),each =length(maxX)),]
     maxX <- rep(maxX, times = 3)
     maxY <- rep(maxY, times = 3)
     barcode <- rep(coord[allEdge$ind2,"barcodes"],length(maxX))
-    cent <- which(maxX == round(coord[allEdge$ind2,"x"]) & maxY == round(coord[allEdge$ind2,"y"]))
+    cent <- which(maxX == round(coord[allEdge$ind2,"x"]) & 
+                  maxY == round(coord[allEdge$ind2,"y"]))
     centers <- rep(0, length(maxX))
     centers[cent] <- 1
     allIn <- data.frame(barcode,maxX,maxY,ccVals,centers)
@@ -583,9 +641,25 @@ buildImageArray <- function(coordinates,sliceID = 1,invert=FALSE,na.rm = TRUE,
 
 
 
+#' exportRGB.csv export RGB coordinates as csv. 
+#' @param coordinates Vesalius data.frame with barcodes, x, y, cc, value,and 
+#' slice.
+#' @param file character - file name or vector of files names if multiple slices
+#' will be exported.
+#' @param slice integer - slice to be exported
+#' @param split logical - If TRUE, slices will be exported in separately 
+#' @details Export rgb colour code using slice information. If no file name or 
+#' file names are provided, Vesalius will use its internal file name 
+#' (pca_to_rgb.csv). 
+#' 
+#' If one or more slice is provided, slice number will be included in file name.
+#' If split is true, indvidual files for each selected files will be created. 
+#' @return csv file at desired location containing rgb coloured coordinates. 
 
-
-exportRGB.csv <- function(coordinates,file = NULL,slice = NULL, split = TRUE){
+exportRGB.csv <- function(coordinates,
+                          file = NULL,
+                          slice = NULL, 
+                          split = TRUE){
   if(!is.null(slice)){
       coordinates <- coordinates[coordinates$slice %in% slice]
   }

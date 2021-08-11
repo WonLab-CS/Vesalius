@@ -1,7 +1,30 @@
 ################################################################################
 ############################   ST package        ###############################
 ################################################################################
-imagePlot <- function(image, as.cimg = TRUE,cex=1){
+
+#' imagePlot - Vesalius image plotting 
+#' @param image a Vesalius data frame containing at least 
+#' barcodes, x, y, cc, value
+#' @param as.cimg logical - If TRUE, will plot directly using cimg plotting. 
+#' If FALSE, will produce a ggplot object. 
+#' @param cex numeric - font and point size resizing factor.
+#' @details Vesalius provides basic plotting functions. This function 
+#' only shows Vesalius images (i.e. using true embedded colours or segmented 
+#' colours). 
+#' 
+#' Currently, we advise to use as.cimg as false for custom plots. 
+#' 
+#' As Vesalius nearly always returns data frames, custom plots are left to 
+#' the discretion of the user. 
+#' @return cimg plot or ggplot object 
+#' @examples 
+#' \dontrun{
+#' data(Vesalius)
+#' }
+
+imagePlot <- function(image, 
+                      as.cimg = TRUE,
+                      cex=1){
     if(as.cimg){
         plot(as.cimg(image[,c("x","y","cc","value")]))
     } else {
@@ -29,10 +52,30 @@ imagePlot <- function(image, as.cimg = TRUE,cex=1){
 
 
 
+#' territoryPlot plotting Vesalius territories 
+#' @param territories a Vesalius data frame conatining territory information
+#' (i.e. containing the terriotry column)
+#' @param split logical - If TRUE, territories will be plotted in 
+#' separate panels
+#' @param randomise logical - If TRUE, colour palette will be randomised. 
+#' @param cex numeric describing font size multiplier.
+#' @param cex.pt numeric describing point size multiplier.
+#' @details Territory plots show all territories in false colour after they 
+#' have been isolated from a Vesalius image.
+#' @return a ggplot object 
+#' @examples 
+#' \dontrun{
+#' data(Vesalius)
+#' }
 
-territoryPlot <- function(territories, split = FALSE,randomise = TRUE,cex=1,cex.pt=0.25){
+territoryPlot <- function(territories, 
+                          split = FALSE,
+                          randomise = TRUE,
+                          cex=1,
+                          cex.pt=0.25){
     #--------------------------------------------------------------------------#
-    # Dirty ggplot - this is just a quick and dirty plot to show what it look like
+    # Dirty ggplot - this is just a quick and dirty plot to show what it look 
+    # like
     # At the moment - I thinking the user should make their own
     # Not a prority for custom plotting functions
     #--------------------------------------------------------------------------#
@@ -77,7 +120,6 @@ territoryPlot <- function(territories, split = FALSE,randomise = TRUE,cex=1,cex.
     } else {
       terPlot <- ggplot(ter, aes(x,y,col = territory)) +
                  geom_point(size= cex.pt, alpha = 0.65)+
-                 #geom_point(data = iso ,aes(x,y,col = territory),size = 0.25,alpha = 0.65)+
                  theme_classic() +
                  scale_color_manual(values = ter_col)+
                  theme(legend.text = element_text(size = cex *1.2),
@@ -95,7 +137,10 @@ territoryPlot <- function(territories, split = FALSE,randomise = TRUE,cex=1,cex.
 }
 
 
-cellProportion <- function(image){
+
+# Not in use at the moment 
+# Might add in futur iterations of the packages 
+.cellProportion <- function(image){
     prop <- FetchData(image,"seurat_clusters") %>% table %>% as.data.frame
     colnames(prop) <- c("Cell","Cell Proportion")
 
@@ -112,33 +157,74 @@ cellProportion <- function(image){
 
 }
 
-viewGeneExpression <- function(image,counts,ter = NULL, genes = NULL,
-    regularise = FALSE,normalise = TRUE,cex =10){
+
+#' viewGeneExpression - plot gene expression.
+#' @param image a Vesalius data frame containing barcodes, x, y, cc, value, 
+#' cluster, and territory.  
+#' @param counts count matrix - either matrix, sparse matrix or seurat object
+#' This matrix should contain genes as rownames and cells/barcodes as colnames
+#' @param ter integer - Territory ID in which gene expression will be viewed. If
+#' NULL, all territories will be selected. 
+#' @param genes character - gene of interest (only on gene at a time)
+#' @param normalise logical - If TRUE, gene expression values will be min/max 
+#' normalised.
+#' @param cex numeric - font size modulator
+#' @details Visualization of gene expression in all or in selected territories. 
+#' Gene expression is shown "as is". This means that if no transformation 
+#' is applied to the data then normalized raw count will be shown. 
+#' 
+#' If normalization and scaling have been applied, normalized counts will be 
+#' shown. 
+#' 
+#' This also applies to any data transformation applied on the count matrix 
+#' or the Seurat object. 
+#' 
+#' We recommend using Seurat Objects. 
+#' 
+#' NOTE : You might be promoted to use geom_tiles instead of geom_raster. 
+#' However - this will increase file size to unreasonable heights. 
+#' @return a ggplot object (geom_raster)
+#' @examples 
+#' \dontrun{
+#' data(Vesalius)
+#' }
+
+
+viewGeneExpression <- function(image,
+                               counts,
+                               ter = NULL, 
+                               genes = NULL,
+                               normalise = TRUE,
+                               cex =10){
     #--------------------------------------------------------------------------#
     # We will assume that you parse the image with all pixel for now
     # if no territory is specified gene expression on all
     # First let's get the territory
     #--------------------------------------------------------------------------#
     if(!is.null(ter)){
-      image <- filter(image, territory %in% as.character(ter)) %>% select(c("barcodes","x","y"))
+      image <- filter(image, territory %in% as.character(ter)) %>% 
+               select(c("barcodes","x","y"))
 
     }
-    #------------------------------------------------------------------------#
+    #--------------------------------------------------------------------------#
     # Next lets get the unique barcodes associated to the selected territories
     # Not great but it gets the job done I guess
-    #------------------------------------------------------------------------#
+    #--------------------------------------------------------------------------#
     barcodes <- image %>% distinct(barcodes, .keep_all = FALSE)
     barcodes <- barcodes$barcodes
 
 
 
-    #------------------------------------------------------------------------#
+    #--------------------------------------------------------------------------#
     # Extract counts from the seurat object
     # This will need to be cleaned up later
-    #------------------------------------------------------------------------#
-    counts <- subset(counts,cells = barcodes)
+    #--------------------------------------------------------------------------#
+    
     if(is(counts) == "Seurat"){
+        counts <- subset(counts,cells = barcodes)
         counts <- GetAssayData(counts, slot = "data")
+    } else {
+        counts <- counts[,barcodes]
     }
     type <- "Expression"
 
@@ -159,7 +245,8 @@ viewGeneExpression <- function(image,counts,ter = NULL, genes = NULL,
         # this should probably be cleaned up
         #----------------------------------------------------------------------#
         if(sum(inCount) == 0){
-            warning(paste(genes," is not present in count matrix. Returning NULL"),immediate.=T)
+            warning(paste(genes," is not present in count matrix. 
+                          Returning NULL"),immediate.=T)
             return(NULL)
         }
 
@@ -194,7 +281,45 @@ viewGeneExpression <- function(image,counts,ter = NULL, genes = NULL,
 }
 
 
-viewLayerExpression <- function(image,counts,genes = NULL,normalise =TRUE,cex =10){
+#' viewGeneExpression - plot gene expression in layered Vesalius territories
+#' @param image a Vesalius data frame containing barcodes, x, y, cc, value, 
+#' cluster, and territory.  
+#' @param counts count matrix - either matrix, sparse matrix or seurat object
+#' This matrix should contain genes as rownames and cells/barcodes as colnames
+#' @param genes character - gene of interest (only on gene at a time)
+#' @param normalise logical - If TRUE, gene expression values will be min/max 
+#' normalised.
+#' @param cex numeric - font size modulator
+#' @details Visualization of gene expression a layered territory. 
+#' After isolation or a territory, Vesalius can apply territory layering. The
+#' expression shown here describes the mean expression in each layer. 
+#' 
+#' Gene expression is shown "as is". This means that if no transformation 
+#' is applied to the data then normalized raw count will be used for each layer. 
+#' 
+#' If normalization and scaling have been applied, normalized counts will be 
+#' used for each layer 
+#' 
+#' This also applies to any data transformation applied on the count matrix 
+#' or the Seurat object. 
+#' 
+#' We recommend using Seurat Objects. 
+#' 
+#' NOTE : You might be promoted to use geom_tiles instead of geom_raster. 
+#' However - this will increase file size to unreasonable heights. 
+#' 
+#' @return a ggplot object (geom_raster)
+#' @examples 
+#' \dontrun{
+#' data(Vesalius)
+#' }
+
+
+viewLayerExpression <- function(image,
+                                counts,
+                                genes = NULL,
+                                normalise =TRUE,
+                                cex =10){
 
     #------------------------------------------------------------------------#
     # Next lets get the unique barcodes associated to the selected territories
@@ -230,7 +355,8 @@ viewLayerExpression <- function(image,counts,genes = NULL,normalise =TRUE,cex =1
         # this should probably be cleaned up
         #----------------------------------------------------------------------#
         if(sum(inCount) == 0){
-            warning(paste(genes," is not present in count matrix. Returning NULL"),immediate.=T)
+            warning(paste(genes," is not present in count matrix. 
+                          Returning NULL"),immediate.=T)
             return(NULL)
         }
 
@@ -272,101 +398,3 @@ viewLayerExpression <- function(image,counts,genes = NULL,normalise =TRUE,cex =1
 }
 
 
-
-viewClusterExpression <- function(cluster,gene = NULL,allPoints=NULL,
-    clusterID=NULL,regularise = FALSE,normalise = TRUE,cex =10){
-
-    if(class(cluster) == "list"){
-      barcodes <- unlist(lapply(cluster,Cells))
-      clusters <- unlist(lapply(cluster,FetchData,"seurat_clusters"))
-      coord <- do.call("rbind",lapply(cluster,.getSeuratCoordinates))[,c("x","y")]
-    } else {
-      barcodes <- Cells(cluster)
-      clusters <- FetchData(cluster,"seurat_clusters")
-      coord <- .getSeuratCoordinates(cluster)[,c("x","y")]
-      coord <- coord[match(barcodes,rownames(coord)),]
-      cluster <- list(cluster)
-    }
-
-    #------------------------------------------------------------------------#
-    # Extract counts from the seurat object
-    # This will need to be cleaned up later
-    #------------------------------------------------------------------------#
-    counts <- lapply(cluster,GetAssayData,slot = "data")
-    type <- "Expression"
-
-    #--------------------------------------------------------------------------#
-    # Getting genes - For now it will stay as null
-    # I could add multiple gene viz and what not
-    # And yes I know it would be better to be consitent between tidyr and base
-    #--------------------------------------------------------------------------#
-    if(is.null(gene)){
-        stop("Please specifiy which gene you would like to visualize")
-    } else {
-        #----------------------------------------------------------------------#
-        # will need some regex here probs
-        #----------------------------------------------------------------------#
-        inCount <- lapply(counts,function(x,gene){rownames(x) == gene},gene =gene)
-        #----------------------------------------------------------------------#
-        # Just in case the gene is not present
-        # this should probably be cleaned up
-        # will need to be changed to allow for multiple elements
-        #----------------------------------------------------------------------#
-        checks <- any(sapply(inCount,sum) ==0)
-        if(checks){
-            warning(paste(genes," is not present in count matrix. Returning NULL"),immediate.=T)
-            return(NULL)
-        }
-
-        counts <- unlist(mapply(function(x,inCount){x[inCount,]},counts,inCount,SIMPLIFY=F))
-        counts <- counts[!is.na(match(names(counts),barcodes))]
-
-        counts <- data.frame(barcodes,coord,clusters,counts)
-        colnames(counts) <-c("barcodes","x","y","Clusters","counts")
-        if(!is.null(clusterID)){
-            counts <- counts %>% filter(Clusters %in% clusterID)
-        }
-        if(normalise){
-            counts$counts <- (counts$counts - min(counts$counts)) /
-                             (max(counts$counts) - min(counts$counts))
-            type <- "Norm. Expression"
-        }
-
-    }
-
-    if(!is.null(allPoints)){
-        allPoints <- .getSeuratCoordinates(allPoints)
-        allPoints <- allPoints[!allPoints$cells %in% counts$barcodes,]
-        ge <- ggplot()+
-              geom_point(data = counts,aes(x=x,y=y,shape =Clusters,col =counts),size = cex *0.03)+
-              scale_color_gradientn(colors = rev(brewer.pal(11,"Spectral")))+
-              geom_point(data = allPoints , aes(x,y),alpha =0.075,fill="lightGrey",size =cex* 0.01,show.legend=F)+
-              theme_classic()+
-              theme(axis.text = element_text(size = cex ),
-                    axis.title = element_text(size = cex),
-                    legend.title = element_text(size = cex),
-                    legend.text = element_text(size = cex),
-                    plot.title = element_text(size=cex)) +
-              labs(title = gene,col = type,
-                   x = "X coordinates", y = "Y coordinates")+
-              guides(shape = guide_legend(override.aes = list(size=cex * 0.5)))
-        return(ge)
-    } else {
-      ge <- ggplot(counts, aes(x,y))+
-            geom_point(data = counts,aes(x=x,y=y,shape = Clusters,col = counts))+
-            scale_color_gradientn(colors = rev(brewer.pal(11,"Spectral")))+
-            theme_classic()+
-            theme(axis.text = element_text(size = cex ),
-                  axis.title = element_text(size = cex),
-                  legend.title = element_text(size = cex),
-                  legend.text = element_text(size = cex),
-                  plot.title = element_text(size=cex)) +
-            labs(title = gene,col = type,
-                 x = "X coordinates", y = "Y coordinates")+
-            guides(shape = guide_legend(override.aes = list(size=cex * 0.5)))
-      return(ge)
-    }
-
-
-
-}

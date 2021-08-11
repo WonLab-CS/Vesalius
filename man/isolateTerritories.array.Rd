@@ -2,26 +2,68 @@
 % Please edit documentation in R/IsolatingTerritories.R
 \name{isolateTerritories.array}
 \alias{isolateTerritories.array}
-\title{isolating territories from spatial transcriptomic data}
+\title{isolating territories from segmented Vesalius images}
 \usage{
-isolateTerritories.array(img, dropRadius = 0.025, colDepth = 12)
+isolateTerritories.array(
+  image,
+  method = c("distance"),
+  captureRadius = 0.025,
+  global = TRUE,
+  minBar = 10,
+  verbose = TRUE
+)
 }
 \arguments{
-\item{img}{data frame with barcodes, xcoord, ycoord, R, G, and B as coloumns}
+\item{image}{data.frame - Vesalius formatted data.frame (i.e. barcodes,
+x,y,cc,value,tile) - Segmentation must have been applied beforehand!}
 
-\item{dropRadius}{numeric describing the proportion of total distance to consider when pooling beads together}
+\item{method}{character describing barcode pooling method. 
+Currently, only "distance" availble}
+
+\item{captureRadius}{numeric - proportion of maximum distance between 
+barcodes that will be used to pool barcodes together (range 0 - 1).}
+
+\item{global}{logical - If TRUE, territories will be numbered across all 
+colour segments. If FALSE, territories will be numbered within each colour 
+segment.}
+
+\item{minBar}{integer - minimum number of barcodes allowed in each territory}
+
+\item{verbose}{logical - progress message output.}
 }
 \value{
-a data frame with barcodes, xcoord, ycoord, R, G, B, cluster number, territory number within that cluster.
+Returns a Vesalius data.frame with "barcodes","x","y","cc",
+"value","tile","cluster","territory".
+"cluster" represents the colour segment the pixel belongs to and "territory" 
+describe the tissue territory after pooling.
 }
 \description{
-isolating territories from spatial transcriptomic data
+isolating territories from segmented Vesalius images
 }
 \details{
-In order to select territories, colours will be collapsed into \code{colDepth} number of
-dominant colours. For each colour, territories will be isolated based on distance between point.
-The \code{dropRadius} represents the proportion of total distance (x and y values may differ) to use in order
-to pool beads/spots together. The algorithm selects a point and pools all neighboring beads into a territory.
-The process is applied to the nearest neighbors until no more points can be pooled into the territory.
-If beads remain for a given colour, the process is repeated until all beads/spots are put into a territory.
+Segmented images in the form of a Vesalius formatted data frame are
+further separated into territories. This is accomplished by pooling barcodes 
+that are associated with a colour cluster into territories based on the 
+distance between each barcode. 
+
+First, \code{isolateTerritories.array} considers the maximum distance 
+between all beads. The captureRadius will define which proportion of this 
+distance should be considered. 
+
+Second, a seed barcode will be selected and all barcodes that are within the
+capture distance of the seed barcode with be pooled together. This process 
+is then applied on barcodes that have been selected in this manner. The
+process is repeated until all barcodes have been pooled into a territory. 
+If there are still barcodes remaining, a new seed barcode is selected and the
+whole process is repeated. NOTE : Territory isolation is applied to each 
+colour segment independently. 
+
+If a territory does not contain enough barcodes, it will be pooled into the 
+isolated territory. This territory contains all isolated territories 
+regardless of colour cluster of origin.
+}
+\examples{
+\dontrun{
+data(Vesalius)
+}
 }

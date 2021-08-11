@@ -5,23 +5,72 @@
 #----------------------/Isolating Territories/---------------------------------#
 
 
-#' Smoothing image array - wrapper function for imager smoothing functions
-#' @param img 4 dimensional array or cimg object
-#' @param method character describing smoothing method to use "median" , "iso"  or "box"
-#' @param sigma numeric - standard deviation associated with the isoblur
-#' @param box numeric describing box size (centered around center pixel) for smoothing
-#' @param threshold numeric - discard pixels that are too low in value (see \code{medianblur})
-#' @param neuman logical describing If Neumann boundary conditions should be used,
-#' Dirichlet otherwise (default true, Neumann)
+#' Apply iterative smoothing to Vesalius images
+#' @param image a Vesalius data frame 
+#' (containing at least barcodes, x, y, cc, value) or a cimg object.
+#' @param method character describing smoothing method to use "median" , 
+#' "iso"  or "box"
+#' @param iter numeric - number of smoothing iteration
+#' @param sigma numeric - standard deviation associated with isoblur (Gaussian)
+#' @param box numeric describing box size (centered around center pixel) 
+#' for smoothing
+#' @param threshold numeric - discard pixels that are too low in value (cutoff 
+#' threshold only applied in box/median blurs).
+#' @param neuman logical describing If Neumann boundary conditions should be 
+#' used, Dirichlet otherwise (default true, Neumann)
 #' @param gaussian logical - use gaussian filter
 #' @param na.rm logical describing if NA values should be removed
-#' @param iter numeric describing number of smoothing rounds to apply to image
-#' @details Applying smoothing to image data.
-#' @return Array or cimg object after bieng smoothed
-smoothArray <- function(img,method = c("median","iso","box"),
-                        sigma = 1, box = 20, threshold=0, neuman=TRUE,
-                        gaussian=TRUE,na.rm=FALSE, acrossLevels = "min",
-                        iter = 1,verbose = TRUE,invert = FALSE){
+#' @param acrossLevels character - method used to account for multiple smoothing
+#' levels (see details). Select from: "min","mean", "max"
+#' @param invert logical - If TRUE, colours will be inverted i.e. 1 - colorValue
+#' (background set to 1 instead of 0).
+#' @param verbose logical - progress message output.
+#' @details Images produced by Vesalius should be smoothed in order to retrieve 
+#' territories. The \code{smoothArray} function provides multiple ways to smooth
+#' an image array. 
+#' 
+#' First, consider the smoothing method : median, iso ,or box. Median and box
+#' both require the \code{box} argument to be set according to your needs. 
+#' Median converts all pixels surronding a center pixel to the median value of
+#' the selected box. Box converts all pixels to the value of the center pixel. 
+#' Iso applies a gaussian blur and is modulated by the \code{sigma} argument.
+#' 
+#' Both the \code{box} and \code{sigma} arguments can take more than one value.
+#' Both may take a vector of positive numeric values. During every smoothing
+#' iteration, Vesalius will map this vector over multiple copies of the image
+#' and summarize the final smoothed image by taking values across different 
+#' levels. The levels are: min, max, and mean. Min will take the lowest pixel 
+#' value (in all three colour channels) across all levels. Max will take the 
+#' the highest pixel value (in all three colour channels) across levels. Mean
+#' will take the average pixel value (in all three colour channels) across 
+#' levels.
+#' 
+#' The optimal smoothing values will depend on the question at hand and which 
+#' territories you wish to extract. 
+#' 
+#' NOTE: this function is applied internally in the 
+#' \code{iterativeSegmentation.array} function.
+#' 
+#' For more information, we suggest reading through the imager vignette. 
+#'  
+#' @return Returns a Vesalius data.frame with "barcodes","x","y","cc",
+#' "value","tile",...
+#' @examples 
+#' \dontrun{
+#' data(Vesalius)
+#' }
+smoothArray <- function(image,
+                        method = c("median","iso","box"),
+                        iter = 1,
+                        sigma = 1, 
+                        box = 20, 
+                        threshold=0, 
+                        neuman=TRUE,
+                        gaussian=TRUE,
+                        na.rm=FALSE, 
+                        acrossLevels = "min",
+                        invert = FALSE,
+                        verbose = TRUE){
     #--------------------------------------------------------------------------#
     # Class check
     #--------------------------------------------------------------------------#
@@ -60,21 +109,21 @@ smoothArray <- function(img,method = c("median","iso","box"),
         #----------------------------------------------------------------------#
         # This might seem strange but when doing a lot of smoothing there is
         # directionality bias. This introduces a shift in pixels and colour
-        # To avoid this problem we can rotate the image. Heaby smoothing often
-        # required to get large territories
+        # To avoid this problem we can rotate the image. 
         #----------------------------------------------------------------------#
         if(i %% 2 == 0){
             imgCopy <- imrotate(imgCopy,180)
         }
         for(j in method){
           imgCopy <- switch(j,
-                            "median" = map_il(box,~medianblur(imgCopy,.,threshold)),
-                            "iso" = map_il(sigma,~isoblur(imgCopy,.,neuman,gaussian,na.rm)),
-                            "box" = map_il(box,~boxblur(imgCopy,.,neuman)))
+                     "median" = map_il(box,~medianblur(imgCopy,.,threshold)),
+                     "iso" = map_il(sigma,~isoblur(imgCopy,.,
+                                                   neuman,gaussian,na.rm)),
+                     "box" = map_il(box,~boxblur(imgCopy,.,neuman)))
           imgCopy <- switch(acrossLevels,
-                            "min" = parmin(imgCopy),
-                            "max" = parmax(imgCopy),
-                            "mean" = average(imgCopy))
+                     "min" = parmin(imgCopy),
+                     "max" = parmax(imgCopy),
+                     "mean" = average(imgCopy))
         }
         if(i %% 2 == 0){
             imgCopy <- imrotate(imgCopy,180)
@@ -84,7 +133,9 @@ smoothArray <- function(img,method = c("median","iso","box"),
 
     imgCopy <- as.data.frame(imgCopy)
 
-
+    #--------------------------------------------------------------------------#
+    # Rebuild the smoothed image to a Vesalius data frame 
+    #--------------------------------------------------------------------------#
 
     img <- right_join(imgCopy, img, by  = c("x","y","cc")) %>%
            select(c("barcodes","x","y","cc","value.x","tile")) %>% tibble
@@ -97,10 +148,53 @@ smoothArray <- function(img,method = c("median","iso","box"),
 
 
 
+#' equalizeHistogram image enhancement via colour histogram equalization.
+#' @param image data.frame - Vesalius formatted data.frame (i.e. barcodes,
+#' x,y,cc,value,...)
+#' @param type character - histogram EQ type. Select from: BalanceSimplest,
+#' EqualizePiecewise, SPE, EqualizeDP, EqualizeADP, ECDF (see details)
+#' @param N numeric describing how each colour channel will be mapped back to 
+#' the image (Higher N = Higher greyscale contrast).
+#' Used with EqualizePiecewise
+#' @param smax numeric - upper limit if contrast stretching. 
+#' Used with EqualizePiecewise
+#' @param sleft numeric - Range 0 - 100. Percentage of pixel to be saturated on
+#' the left side of the histogram. Used with BalanceSimplest
+#' @param sright numeric - Range 0 - 100. Percentage of pixel to be saturated on
+#' the right side of the histogram. Used with BalanceSimplest
+#' @param lambda numeric - strength of background correction.
+#' Used with SPE (Screened Poisson Equation).
+#' @param up numeric - color value threshold in the upper limit. 
+#' Used with EqualizeDP.
+#' @param down numeric color value threshold in the lower limit. 
+#' Used with EqualizeDP.
+#' @param invert logical - If TRUE, colours will be inverted i.e. 1 - colorValue
+#' (background set to 1 instead of 0).
+#' @param verbose logical - progress message output.
+#' @details Histogram equalization ensures that image details are amplified. 
+#' In turn, territories may be extract with greater precision. We recommend 
+#' balancing the histogram prior to smoothing. 
+#' 
+#' For further details on each method described here, please refer to 
+#' \href{imagerExtra Vignette}{https://cran.r-project.org/web/packages/imagerExtra/vignettes/gettingstarted.html}
+#' @return Returns a Vesalius data.frame with "barcodes","x","y","cc",
+#' "value","tile",...
+#' @examples 
+#' \dontrun{
+#' data(Vesalius)
+#' }
 
-equalizeHistogram <- function(image, type = "BalanceSimplest",N=1,smax=1,
-                         sleft =1,sright =1,lambda=0.1,up=100, down = 10,
-                         range = c(0,1),invert=FALSE,verbose=TRUE){
+equalizeHistogram <- function(image, 
+                              type = "BalanceSimplest",
+                              N=1,
+                              smax=1,
+                              sleft =1,
+                              sright =1,
+                              lambda=0.1,
+                              up=100, 
+                              down = 10,
+                              invert=FALSE,
+                              verbose=TRUE){
     .simpleBar(verbose)
     if(invert){
       #------------------------------------------------------------------------#
@@ -120,22 +214,26 @@ equalizeHistogram <- function(image, type = "BalanceSimplest",N=1,smax=1,
       img[!inImg %in% nonImg,"value"] <- 1
       img <- img %>% as.cimg() %>% imsplit("c")
     } else {
-      img <-image %>% select(c("x","y","cc","value")) %>% as.cimg %>% imsplit("c")
+      img <-image %>% select(c("x","y","cc","value")) %>% 
+            as.cimg %>% 
+            imsplit("c")
     }
     .eq(verbose)
     #--------------------------------------------------------------------------#
-    # Equalizing histogram - dpending on the image different methods will
+    # Equalizing histogram - depending on the image different methods will
     # work differently. It worth keeping in mind that these are made and
-    # optimised for real images. BalanceSimplest seems to be the best for our
-    # pseudo images...
+    # optimized for real images. 
     #--------------------------------------------------------------------------#
     img <- switch(type,
-                    "EqualizePiecewise" = lapply(img,EqualizePiecewise,N) %>% imappend("c"),
-                    "BalanceSimplest" = lapply(img,BalanceSimplest,sleft,sright,range) %>% imappend("c"),
-                    "SPE" = lapply(img,SPE,lambda) %>% imappend("c"),
-                    "EqualizeDP"  = lapply(img,EqualizeDP,down,up) %>% imappend("c"),
-                    "EqualizeADP" = lapply(img,EqualizeADP) %>% imappend("c"),
-                    "ECDF" = lapply(img,ecdf.eq) %>% imappend("c"))
+           "EqualizePiecewise" = lapply(img,EqualizePiecewise,N) %>% 
+                                 imappend("c"),
+           "BalanceSimplest" = lapply(img,BalanceSimplest,sleft,sright,
+                                      range = c(0,1)) %>% 
+                               imappend("c"),
+           "SPE" = lapply(img,SPE,lambda) %>% imappend("c"),
+           "EqualizeDP"  = lapply(img,EqualizeDP,down,up) %>% imappend("c"),
+           "EqualizeADP" = lapply(img,EqualizeADP) %>% imappend("c"),
+           "ECDF" = lapply(img,.ecdf.eq) %>% imappend("c"))
     .rebuildDF(verbose)
     img <- as.data.frame(img)
     img <- right_join(img, image, by  = c("x","y","cc")) %>%
@@ -146,8 +244,9 @@ equalizeHistogram <- function(image, type = "BalanceSimplest",N=1,smax=1,
     return(img)
 }
 
-
-ecdf.eq <- function(im){
+# Internal function related to ECDF historgram eq. 
+# It is just for formatting really
+.ecdf.eq <- function(im){
    return(as.cimg(ecdf(im)(im),dim=dim(im)))
 }
 
@@ -156,12 +255,47 @@ ecdf.eq <- function(im){
 
 
 
+#' regulariseImage denoise Vesalius images via variance regularization
+#' @param image data.frame - Vesalius formatted data.frame (i.e. barcodes,
+#' x,y,cc,value,tile,...)
+#' @param lambda numeric - positive real numbers describing regularization 
+#' parameter (see details)
+#' @param niter numeric - number of variance regularization iterations 
+#' (Default = 100)
+#' @param method character - regularization method. 
+#' Select from: "TVL2.FiniteDifference","TVL1.PrimalDual",and "TVL2.PrimalDual"
+#' (see details)
+#' @param normalise logical - If TRUE, regularized colour values will be
+#' min max normalised. 
+#' @param na.rm logical - If TRUE, NAs are removed 
+#' @param invert logical - If TRUE, colours will be inverted i.e. 1 - colorValue
+#' (background set to 1 instead of 0).
+#' @param verbose logical - progress message output.
+#' @details Image regularization can be seen as a form of image denoising. 
+#' Details on each method can be found in the tvR package under the denoise2
+#' function \href{tvR}{https://cran.r-project.org/web/packages/tvR/tvR.pdf}.
+#' 
+#' We recommend using the TVL2.FiniteDifference method. 
+#' 
+#' @return Returns a Vesalius data.frame with "barcodes","x","y","cc",
+#' "value","tile",etc
+#' @examples 
+#' \dontrun{
+#' data(Vesalius)
+#' }
 
-regulariseImage <- function(image,lambda =1, niter=100,
-      method = "TVL2.FiniteDifference",normalise =TRUE,na.rm=TRUE,invert=TRUE,verbose=TRUE){
+
+regulariseImage <- function(image,
+                            lambda =1, 
+                            niter=100,
+                            method = "TVL2.FiniteDifference",
+                            normalise =TRUE,
+                            na.rm=TRUE,
+                            invert=TRUE,
+                            verbose=TRUE){
     .simpleBar(verbose)
 
-    #----------------------------------------------------------------------------#
+    #--------------------------------------------------------------------------#
     if(invert){
       #------------------------------------------------------------------------#
       ## This is effing clonky
@@ -180,22 +314,28 @@ regulariseImage <- function(image,lambda =1, niter=100,
       img[!inImg %in% nonImg,"value"] <- 1
       img <- img %>% as.cimg() %>% imsplit("c")
     } else {
-      img <-image %>% select(c("x","y","cc","value")) %>% as.cimg %>% imsplit("c")
+      img <-image %>% select(c("x","y","cc","value")) %>% as.cimg %>% 
+            imsplit("c")
     }
     .reg(verbose)
+    #--------------------------------------------------------------------------#
+    # now we can do some var reg! 
+    # Will add the imager denoising function as well 
+    # regularisation is essentially denoising anyway 
+    #--------------------------------------------------------------------------#
     img <- lapply(img, .regularise, lambda, niter,method, normalise) %>%
            imappend("c")
 
     img <- tibble(as.data.frame(img))
-    #----------------------------------------------------------------------------#
+    #--------------------------------------------------------------------------#
     # Adding meta data
-    #----------------------------------------------------------------------------#
+    #--------------------------------------------------------------------------#
     img <- right_join(img, image, by  = c("x","y","cc")) %>%
            select(c("barcodes","x","y","cc","value.x","tile")) %>% distinct()
     colnames(img) <- c("barcodes","x","y","cc","value","tile")
-    #----------------------------------------------------------------------------#
+    #--------------------------------------------------------------------------#
     # remove NAs
-    #----------------------------------------------------------------------------#
+    #--------------------------------------------------------------------------#
     if(na.rm){
         img <- img %>% na.exclude()
     }
@@ -203,6 +343,7 @@ regulariseImage <- function(image,lambda =1, niter=100,
     return(img)
 }
 
+# Internal regularise function.
 
 .regularise <- function(img,lambda, niter,method, normalise){
     #--------------------------------------------------------------------------#
@@ -221,41 +362,77 @@ regulariseImage <- function(image,lambda =1, niter=100,
 
 
 
-#' iterativeSegmentation - collapse and smooth points into colour startingSegements
-#' @param img data frame containing RGB code for each bead
-#' @param colDepth numeric describing final number of colour segments in image
-#' @param segIter numeric describing number of segmentation iterations
-#' @param smoothIter numeric describing number of smoothing iterations
-#' @param startingSegements numeric describing the number of initial colour segments to consider.
-#' @param method character describing the smoothing method to be used (median , iso or box)
-#' @param sigma numeric - standard deviation associated with the isoblur
-#' @param box numeric describing box size (centered around center pixel) for smoothing
-#' @param threshold numeric - discard pixels that are too low in value (see \code{medianblur})
-#' @param neuman logical describing If Neumann boundary conditions should be used,
-#' Dirichlet otherwise (default true, Neumann)
+#' iterativeSegmentation.array - image segmentation via iterative application 
+#' of kmeans clustering. 
+#' @param image data.frame - Vesalius formatted data.frame (i.e. barcodes,
+#' x,y,cc,value,...)
+#' @param colDepth integer or vector of positive integers. 
+#' Colour depth used for segmentation. (see details)
+#' @param smoothIter integer - number of smoothing iterations
+#' @param method character describing smoothing method to use "median" , 
+#' "iso"  or "box"
+#' @param acrossLevels character - method used to account for multiple smoothing
+#' levels (see details). Select from: "min","mean", "max"
+#' @param sigma numeric - standard deviation associated with isoblur (Gaussian)
+#' @param box numeric describing box size (centered around a center pixel) 
+#' for smoothing
+#' @param threshold numeric - discard pixels that are too low in value (cutoff 
+#' threshold only applied in box/median blurs).
+#' @param neuman logical describing If Neumann boundary conditions should be 
+#' used, Dirichlet otherwise (default true, Neumann)
 #' @param gaussian logical - use gaussian filter
+#' @param useCenter logical - If TRUE, only the center pixel value will be used
+#' during segmentation. If FALSE, all pixels will be used (see details)
 #' @param na.rm logical describing if NA values should be removed
-#' @param verbose logical indicating if progress messages should be outputed to console.
-#' @details For each iteration, the algorithm collapse the colour space into n colour segments.
-#' Then, smoothing is applied to nearest neighbours. The process is repeated for each iteration.
-#' Note that the number of segments from starting segments to final colour depth follows the following
-#' Function : \code{seq(startingSegements,colDepth+1,length.out = iter)}
-#' @return a data frame containing RGB code for each bead.
+#' @param invert logical - If TRUE, colours will be inverted 
+#' i.e. 1 - colourValue (background set to 1 instead of 0).
+#' @param verbose logical - progress message output.
+#' @details Once images have been produced by Vesalius, applying image 
+#' segmentation ensure a reduction in colour complexity. The colDepth argument 
+#' describes the number of colour segments to select in the image. It should 
+#' be noted that this function can take a vector of positive integers. This 
+#' becomes handy if you wish to gradually decrease the colour complexity. It is
+#' generally recommend to use a vector of decreasing colDepth values. 
+#' 
+#' The segmentation process is always proceeded by smoothing and multiple rounds
+#' may be applied. The segmentation process uses kmeans clustering with k number
+#' of cluster being represented by colDepth values. 
+#' 
+#' The segmentation process can be applied on all pixel or only center pixels. 
+#' Center pixels are described by the value in the "tile" column in a Vesalius 
+#' data frame. Every pixel with a value of 1 in the "tile" column corresponds 
+#' to the original barcode location in the Spatial Transcriptomic Assay 
+#' (i.e. Original coordinates) before tesselation and rasterisation
+#' (see \code{buildImageArray})
+#
+#' @return Returns a Vesalius data.frame with "barcodes","x","y","cc",
+#' "value","tile","cluster".
+#' Cluster represents the colour segement the pixel belongs to. 
+#' @examples 
+#' \dontrun{
+#' data(Vesalius)
+#' }
 
-iterativeSegmentation.array <- function(img,colDepth = 10,
+iterativeSegmentation.array <- function(image,
+                                        colDepth = 10,
                                         smoothIter = 1,
                                         method = c("median","iso","box"),
                                         acrossLevels = "min",
-                                        sigma = 1, box = 20, threshold=0, neuman=TRUE,
-                                        gaussian=TRUE, useCenter=TRUE, na.rm=FALSE,
+                                        sigma = 1, 
+                                        box = 20, 
+                                        threshold=0, 
+                                        neuman=TRUE,
+                                        gaussian=TRUE, 
+                                        useCenter=TRUE, 
+                                        na.rm=FALSE,
                                         invert = FALSE,
                                         verbose = TRUE){
 
   .simpleBar(verbose)
   #----------------------------------------------------------------------------#
-  # Comverting image to data.frame
+  # Converting image to data.frame
   # Need to check how things work here
-  ## could be cleaner if you just go back and forth between data frame and cimg
+  # could be cleaner if you just go back and forth between data frame and cimg
   #----------------------------------------------------------------------------#
   if(is.cimg(img)){
       img <- as.data.frame(img)
@@ -269,9 +446,8 @@ iterativeSegmentation.array <- function(img,colDepth = 10,
 
 
     #--------------------------------------------------------------------------#
-    # Segmentation is done by using kmeans clustering
-    # We will only run clustering on 1 pixel of each tile
-    # This will ensure faster run time and cleaner results
+    # Lets smooooooth this image 
+    # insert https://www.youtube.com/watch?v=4TYv2PhG89A&ab_channel=SadeVEVO
     #--------------------------------------------------------------------------#
     img <- smoothArray(img,method =method,sigma = sigma, box = box,
                        threshold=threshold, neuman=neuman, gaussian=gaussian,
@@ -283,14 +459,15 @@ iterativeSegmentation.array <- function(img,colDepth = 10,
     .seg(j,verbose)
     cat("\n")
     if(useCenter){
-      tmpImg <- img %>% filter(tile == 1) %>% group_by(cc) %>% distinct(barcodes,.keep_all = TRUE)
+      tmpImg <- img %>% 
+                filter(tile == 1) %>% 
+                group_by(cc) %>% 
+                distinct(barcodes,.keep_all = TRUE)
 
-      #--------------------------------------------------------------------------#
+      #------------------------------------------------------------------------#
       # clustering with each colour together
-      # It cause issues down the line
-      # How do you recombine unique colours backtogether
-      # If you can find a new way of doing iot great but in the mean time...
-      #--------------------------------------------------------------------------#
+      # Clustering colours individually is just a pain. 
+      #------------------------------------------------------------------------#
       colours <- select(tmpImg, c("cc","value"))
       colours <- data.frame(colours$value[colours$cc ==1],
                             colours$value[colours$cc ==2],
@@ -306,15 +483,18 @@ iterativeSegmentation.array <- function(img,colDepth = 10,
       }
 
 
-      #--------------------------------------------------------------------------#
+      #------------------------------------------------------------------------#
       # Replacing values in original image
-      #--------------------------------------------------------------------------#
+      #------------------------------------------------------------------------#
 
       img <- inner_join(img,tmpImg, by = c("barcodes","cc")) %>%
              select(c("barcodes","x.x","y.x","cc","value.y","tile.x","cluster"))
 
       colnames(img) <- c("barcodes","x","y","cc","value","tile","cluster")
     } else {
+      #------------------------------------------------------------------------#
+      # Now lets do the same thing but where we use all values 
+      #------------------------------------------------------------------------#
       colours <- select(img, c("cc","value"))
       colours <- data.frame(colours$value[colours$cc ==1],
                             colours$value[colours$cc ==2],
@@ -329,6 +509,17 @@ iterativeSegmentation.array <- function(img,colDepth = 10,
           img$cluster[img$cc == i] <- cluster
           img$value[img$cc == i] <- Kcenters[cluster,i]
       }
+      #------------------------------------------------------------------------#
+      # This section is so we don't end up having barcode associated with 
+      # multiple clusters/segments. 
+      # There are a lot of pixel associated to each barcode. When smoothing 
+      # it is possible that some pixel will be assigned to a different segment 
+      # than the center pixel. This is a pain to deal with in later steps 
+      # instead: take mean value per barcode and take the cluster that is the 
+      # most represented as the cluster value that we will use
+      # this is mostly relevant when using useCentre =F and multiple colDepth 
+      # values. 
+      #------------------------------------------------------------------------#
       img <- img %>% group_by(cc,barcodes) %>%
            mutate(value = mean(value),cluster = .top_cluster(cluster)) %>%
            ungroup
@@ -340,15 +531,18 @@ iterativeSegmentation.array <- function(img,colDepth = 10,
   return(img)
 }
 
-.intKmeans <- function(img,depth,cluster = TRUE){
-    if(cluster){
-      k <- kmeans(img,depth, iter.max = 200)$cluster
-    } else {
-      k <- kmeans(img,depth, iter.max = 200)
-      k <- as.vector(k$centers)[k$cluster]
-    }
-    return(k)
-}
+#.intKmeans <- function(img,depth,cluster = TRUE){
+ #   if(cluster){
+  #    k <- kmeans(img,depth, iter.max = 200)$cluster
+  #  } else {
+   #   k <- kmeans(img,depth, iter.max = 200)
+    #  k <- as.vector(k$centers)[k$cluster]
+    #}
+    #return(k)
+#}
+
+# Internal function to get to most represnted cluster 
+# will be used to assign one and only one cluster value to a barcode 
 
 .top_cluster <- function(cluster){
     top <- table(cluster)
@@ -358,20 +552,54 @@ iterativeSegmentation.array <- function(img,colDepth = 10,
 
 
 
-#' isolating territories from spatial transcriptomic data
-#' @param img data frame with barcodes, xcoord, ycoord, R, G, and B as coloumns
-#' @param dropRadius numeric describing the proportion of total distance to consider when pooling beads together
-#' @details In order to select territories, colours will be collapsed into \code{colDepth} number of
-#' dominant colours. For each colour, territories will be isolated based on distance between point.
-#' The \code{dropRadius} represents the proportion of total distance (x and y values may differ) to use in order
-#' to pool beads/spots together. The algorithm selects a point and pools all neighboring beads into a territory.
-#' The process is applied to the nearest neighbors until no more points can be pooled into the territory.
-#' If beads remain for a given colour, the process is repeated until all beads/spots are put into a territory.
-#' @return a data frame with barcodes, xcoord, ycoord, R, G, B, cluster number, territory number within that cluster.
+#' isolating territories from segmented Vesalius images
+#' @param image data.frame - Vesalius formatted data.frame (i.e. barcodes,
+#' x,y,cc,value,tile) - Segmentation must have been applied beforehand!
+#' @param method character describing barcode pooling method. 
+#' Currently, only "distance" availble
+#' @param captureRadius numeric - proportion of maximum distance between 
+#' barcodes that will be used to pool barcodes together (range 0 - 1).
+#' @param global logical - If TRUE, territories will be numbered across all 
+#' colour segments. If FALSE, territories will be numbered within each colour 
+#' segment. 
+#' @param minBar integer - minimum number of barcodes allowed in each territory 
+#' @param verbose logical - progress message output. 
+#' @details Segmented images in the form of a Vesalius formatted data frame are
+#' further separated into territories. This is accomplished by pooling barcodes 
+#' that are associated with a colour cluster into territories based on the 
+#' distance between each barcode. 
+#' 
+#' First, \code{isolateTerritories.array} considers the maximum distance 
+#' between all beads. The captureRadius will define which proportion of this 
+#' distance should be considered. 
+#' 
+#' Second, a seed barcode will be selected and all barcodes that are within the
+#' capture distance of the seed barcode with be pooled together. This process 
+#' is then applied on barcodes that have been selected in this manner. The
+#' process is repeated until all barcodes have been pooled into a territory. 
+#' If there are still barcodes remaining, a new seed barcode is selected and the
+#' whole process is repeated. NOTE : Territory isolation is applied to each 
+#' colour segment independently. 
+#' 
+#' If a territory does not contain enough barcodes, it will be pooled into the 
+#' isolated territory. This territory contains all isolated territories 
+#' regardless of colour cluster of origin. 
+#' 
+#' @return Returns a Vesalius data.frame with "barcodes","x","y","cc",
+#' "value","tile","cluster","territory".
+#' "cluster" represents the colour segment the pixel belongs to and "territory" 
+#' describe the tissue territory after pooling. 
+#' @examples 
+#' \dontrun{
+#' data(Vesalius)
+#' }
 
-isolateTerritories.array <- function(img, method = c("distance"),
-                                     captureRadius = 0.025,global=TRUE,
-                                     minCell = 10,verbose =TRUE){
+isolateTerritories.array <- function(image, 
+                                     method = c("distance"),
+                                     captureRadius = 0.025,
+                                     global = TRUE,
+                                     minBar = 10,
+                                     verbose =TRUE){
 
     #--------------------------------------------------------------------------#
     # Compute real capture Radius
@@ -403,7 +631,8 @@ isolateTerritories.array <- function(img, method = c("distance"),
       tmp <- filter(img,cluster == clust[i] & cc == 1)
 
       ter <- switch(method[1L],
-                    "distance" = .distancePooling.array(tmp,captureRadius,minCell),
+                    "distance" = .distancePooling.array(tmp,captureRadius,
+                                                        minCell),
                     "neighbor" = .neighborPooling.array(tmp,captureRadius),
                     "watershed" = .watershedPooling.array(tmpImg))
       #------------------------------------------------------------------------#
@@ -439,35 +668,13 @@ isolateTerritories.array <- function(img, method = c("distance"),
     return(img)
 }
 
-.globaliseTerritories <- function(img,seurat=FALSE){
-    if(!seurat){
-      imgTmp <- img %>% filter(territory != "isolated")
-      ter <- paste0(imgTmp$cluster,"_", imgTmp$territory)
-      allTer <- unique(ter)
-      ter <- seq_along(allTer)[match(ter,allTer)]
-      img$territory[img$territory != "isolated"] <- ter
-      return(img)
-    } else {
-      imgTmp <- img %>% filter(territory != "isolated")
-      ter <- paste0(img$seurat_clusters,"_", img$territory)
-      allTer <- unique(ter)
-      ter <- seq_along(allTer)[match(ter,allTer)]
-      img$seurat_clusters[img$territory != "isolated"] <- ter
-      return(img)
-    }
 
-
-}
 
 
 .distancePooling.array <- function(img,captureRadius,minCell){
     #--------------------------------------------------------------------------#
     # Select center point of each tile for only one channel
     # Dont need to run it for all channels
-    # !!!!! Hot fix - this will need to chnaged upstream !!!!!
-    # it is possible to have a colour cluster that does not have any center beads
-    # This is generally an artifact of smoothing and not using center for the
-    # segmentation. This mainly occurs when colours are inverted
     #--------------------------------------------------------------------------#
 
     imgCopy <- img %>% filter(tile == 1) %>% distinct(barcodes,.keep_all = TRUE)
@@ -515,33 +722,64 @@ isolateTerritories.array <- function(img, method = c("distance"),
     count <- 1
 
     while(length(barcodes) >0){
+         #---------------------------------------------------------------------#
+         # First lets select a random barcode in the colour segment 
+         # And create a pool of barcodes to select based on capture radius 
+         # This first while loop checks if there are still barcodes 
+         # left in the colour segment
+         #---------------------------------------------------------------------#
           tmp <- distanceMatrix[,sample(barcodes,1)]
           pool <- names(tmp)[tmp <= captureRadius]
           inter <- pool
           converge <- FALSE
 
           while(!converge){
+            #------------------------------------------------------------------#
+            # This while loop checks if all possible barcodes have been pooled 
+            # into the current territory 
+            #------------------------------------------------------------------#
               if(length(inter)==1){
+                  #------------------------------------------------------------#
+                  # when there is only one barcodes
+                  # remove barcode from pool and move on 
+                  #------------------------------------------------------------#
                   territories[[count]] <- pool
                   barcodes <- barcodes[!barcodes %in% pool]
                   count <- count + 1
                   converge <- TRUE
               } else {
+                  #------------------------------------------------------------#
+                  # Get a new pool from the distance matrix 
+                  # and check which ones are within capture radius 
+                  #------------------------------------------------------------#
                   newPool <- distanceMatrix[,inter]
 
-                  newPool <- unique(unlist(lapply(seq_len(ncol(newPool)), function(idx,np,captureRadius){
+                  newPool <- unique(unlist(lapply(seq_len(ncol(newPool)), 
+                                           function(idx,np,captureRadius){
 
-                                            res <- rownames(np)[np[,idx] <= captureRadius]
+                                            res <- rownames(np)[np[,idx] <= 
+                                                                captureRadius]
                                             return(res)
                                           },newPool,captureRadius)))
-
+                  #------------------------------------------------------------#
+                  # check which barcodes in the new pool overlap with 
+                  # the ones in the full pool 
+                  # If there is a perfect overlap then there are no new bacodes
+                  # to pool into a territory 
+                  #------------------------------------------------------------#
                   overlap <- newPool %in% pool
 
                   if(sum(overlap) != length(newPool)){
-
+                        #------------------------------------------------------# 
+                        # There are still some new barcodes to pool
+                        # lets do some more looping then 
+                        #------------------------------------------------------# 
                         pool <- unique(c(pool,newPool[!overlap]))
                         inter <- unique(newPool[!overlap])
                   } else {
+                        #------------------------------------------------------# 
+                        # it is done ! no more barcodes for this territory
+                        #------------------------------------------------------# 
                         territories[[count]] <- pool
                         count <- count +1
                         barcodes <- barcodes[!barcodes %in% pool]
@@ -573,8 +811,12 @@ isolateTerritories.array <- function(img, method = c("distance"),
 }
 
 
-### Selecting similar colours from
-selectSimilar <- function(image,territory = NULL,threshold = "auto"){
+
+# Currently not exported 
+# This function is interesting for territory isolation 
+# but needs to be reworked 
+# TODO : test this function more in depth 
+.selectSimilar <- function(image,territory = NULL,threshold = "auto"){
     #--------------------------------------------------------------------------#
     # Getting seed colour fron each territories
     # maybe base r would be faster in this case ??
@@ -615,307 +857,4 @@ selectSimilar <- function(image,territory = NULL,threshold = "auto"){
     }
 
     return(byTer)
-}
-
-
-
-
-.fineGrain <- function(territories,minCell,combine =FALSE){
-    ### To be removed ? might not be worthwhile to keep this section
-    #if(combine){
-      #--------------------------------------------------------------------------#
-      # Consider what you need to change for min cell and genes?
-      #--------------------------------------------------------------------------#
-
-      #allTags <- strsplit(territories$barcodes,"_")
-      #allLength <- sapply(allTags, length)
-
-      #territories <- rep(territories$territory, times = allLength)
-      #return(data.frame("barcodes" = unlist(allTags),"territory"= territories))
-
-    #} else {
-      #--------------------------------------------------------------------------#
-      # Split all barcode tags by seperator
-      #--------------------------------------------------------------------------#
-      #territories<- territories %>% filter(tile == 1) %>% distinct(barcodes,.keep_all = TRUE)
-
-      allTags <- unlist(strsplit(territories$barcodes,"_"))
-      if(length(allTags) <= minCell){
-          return(NULL)
-      } else {
-        return(allTags)
-      }
-
-    #}
-
-
-}
-
-
-
-### might be dropped in final version
-addTerritories <- function(dat,coordinates = NULL, global = TRUE){
-
-    ters <- names(dat)
-
-    dat <- lapply(seq_along(ters), function(idx,ters,dat){
-                  dat[[idx]]$territory <- ters[idx]
-                  return(dat[[idx]])
-    },ters,dat)
-
-    if(!is.null(coordinates)){
-        dat <- mapply(function(dat,coordinates){
-                      tmp <- cbind(dat,coordinates[,c("x","y")])
-                      return(tmp)
-        },dat,coordinates, SIMPLIFY = FALSE)
-    }
-
-
-    dat <- do.call("rbind",dat)
-    if(global){
-      dat <- .globaliseTerritories(dat, seurat = TRUE)
-    }
-
-    return(dat)
-}
-
-.getSeuratCoordinates <- function(seurat){
-    return(seurat@images$slice1@coordinates)
-}
-
-
-
-
-layerTerritory.concave <- function(image,seedTerritory = NULL,layerDepth = NULL,concavity=1,
-  length_threshold=0, morphologyFactor = 3,captureRadius=0.2,minCell = 10, verbose =TRUE){
-
-    .simpleBar(verbose)
-
-    #--------------------------------------------------------------------------#
-    # Get pixels that are part of that territory
-    #--------------------------------------------------------------------------#
-    .seedSelect(verbose)
-    ter <- image %>% filter(territory %in% seedTerritory)
-    image <- filter(image,cc == 1)
-
-    #--------------------------------------------------------------------------#
-    # Splitting territory if it consists of multiple sub territories
-    # Otherwise the concave hulling parameters become tricky to tune
-    # not ideal - will need to fix and improve
-    #--------------------------------------------------------------------------#
-
-    pooled <- isolateTerritories.array(ter, method = c("distance"),
-                                         captureRadius = captureRadius,global=TRUE,
-                                         minCell = minCell,verbose =FALSE)
-    colnames(pooled)[colnames(pooled) == "territory"] <- "subTerritory"
-
-    pooled <- split(pooled, pooled$subTerritory)
-
-    for(te in seq_along(pooled)){
-      layer <- list()
-      #------------------------------------------------------------------------#
-      # Next for convenience we will convert to grey scale and dillate
-      # as Default lets set dillation to 3 pixels
-      #------------------------------------------------------------------------#
-      .dilate(verbose)
-      ter <- pooled[[te]]
-      ter <- ter %>% select(c("x","y","cc","value")) %>%
-             as.cimg %>% grayscale %>% grow(morphologyFactor)
-      #------------------------------------------------------------------------#
-      # Once we have dilated we can start iterative layayering
-      # We will do this on tile centers and that is what we really care about
-      # First let's convert back to a data frame and add back the barcodes and what
-      #not
-      #------------------------------------------------------------------------#
-      .rebuildDF(verbose)
-
-      ter <- as.data.frame(ter)
-      ter <- right_join(ter,pooled[[te]],by = c("x","y"))
-      ter <- inner_join(ter, image,by = c("x","y")) %>%
-             select(c("barcodes.x","x","y","cluster.x","territory","subTerritory","tile.y"))
-      colnames(ter) <-c("barcodes","x","y","cluster","territory","subTerritory","tile")
-      ter <- ter %>% filter(tile == 1)
-
-      #------------------------------------------------------------------------#
-      # Next we will iteratively pool beads into single layers
-      #------------------------------------------------------------------------#
-      .layerTer(verbose)
-      counter <- 1
-
-      while(nrow(ter)>0){
-          edge <- concaveman::concaveman(as.matrix(ter[,c("x","y")]),
-                                concavity,length_threshold)
-          colnames(edge) <- c("x","y")
-          edge <- inner_join(as.data.frame(edge), ter, by = c("x","y"))
-          edge$layer <- counter
-          ter <- filter(ter,!barcodes %in% edge$barcodes)
-          layer[[counter]] <- edge
-
-          counter <- counter +1
-      }
-      layer <- do.call("rbind",layer)
-      #------------------------------------------------------------------------#
-      # Now we can pool layers together to equal the desired layer number
-      # with a few checks for the number of layers
-      #------------------------------------------------------------------------#
-      layers <- unique(layer$layer)
-      if(!is.null(layerDepth)){
-          if(length(layers) < layerDepth){
-              warning("Layer depth exceeds layers in Territory - using layers in territories", immediate. = TRUE)
-
-          } else {
-              idx <- floor(seq(1,length(layers), length.out = layerDepth +1))
-              for(i in seq(1,length.out = layerDepth)){
-                  layer$layer[layer$layer %in% seq(idx[i], idx[i+1])] <- i
-              }
-          }
-      }
-
-      pooled[[te]] <- layer
-
-    }
-
-    pooled <- do.call("rbind", pooled)
-
-    .simpleBar(verbose)
-    return(pooled)
-
-
-}
-
-
-layerTerritory.edge <- function(image,seedTerritory = NULL,layerDepth = NULL,
-  morphologyFactor = 3,verbose =TRUE){
-
-    .simpleBar(verbose)
-
-    #--------------------------------------------------------------------------#
-    # Get pixels that are part of that territory
-    # and prepare df for image transformations
-    # adding extra layer so we don't loose any information
-    # There is a whole lot of empty space but I'll keep for Now
-    # Removing it is trivial but I need the original coordinates and barcodes
-    # I will use the dilaltion factor as a way of expanding the image
-    # Initial image set up
-    #--------------------------------------------------------------------------#
-    .seedSelect(verbose)
-    ter <- image %>% filter(territory %in% seedTerritory) %>% mutate(value=1)
-
-    ymin <- ifelse((min(ter$y) - max(abs(morphologyFactor)) *2) <=0,1,
-        min(ter$y) - max(abs(morphologyFactor)) *2)
-    xmin <- ifelse((min(ter$x) - max(abs(morphologyFactor)) *2) <=0,1,
-        min(ter$x) - max(abs(morphologyFactor)) *2)
-    ymax <- max(ter$y) + max(abs(morphologyFactor)) * 2
-    xmax <- max(ter$x) + max(abs(morphologyFactor)) * 2
-
-
-    #--------------------------------------------------------------------------#
-    # Dilate territory to ensure that we cover the outer layers as well
-    #--------------------------------------------------------------------------#
-    .morph(verbose)
-    terTmp <- ter %>% select(c("x","y","cc","value")) %>%
-              rbind(.,c(xmin,ymin,1,0),c(xmax,ymax,1,0)) %>%
-              as.cimg %>% grayscale()
-    for(i in seq_along(morphologyFactor)){
-        mf <- abs(morphologyFactor[i])
-        if(morphologyFactor[i] >=0){
-            terTmp <- grow(terTmp,mf)
-        } else {
-            terTmp <- shrink(terTmp, mf)
-        }
-    }
-
-    terForLoop <- terTmp %>% as.data.frame()
-
-    terForLoop <- inner_join(terForLoop,image,by = c("x","y"))%>%
-           select(c("barcodes","x","y","cc.y","z","tile","cluster","territory"))%>%
-           filter(cc.y ==1)
-    colnames(terForLoop) <- c("barcodes","x","y","cc","value","tile","cluster","territory")
-    ter <- terForLoop
-    colnames(ter) <- c("barcodes","x","y","cc","value","tile","cluster","territory")
-
-
-    #--------------------------------------------------------------------------#
-    # Now we can get edges of shape and compare this to tiles
-    # and pool this "edge" into layers
-    #--------------------------------------------------------------------------#
-
-    .layerTer(verbose)
-    counter <- 1
-    layer <- list()
-    while(nrow(terForLoop)>0){
-      grad <- terTmp  %>%
-              imgradient("xy") %>%
-              enorm() %>%
-              add() %>%
-              sqrt() %>%
-              grow(1) %>%
-              as.cimg() %>%
-              as.data.frame() %>%
-              filter(value >0)
-      #------------------------------------------------------------------------#
-      # getting barcodes from territory
-      #------------------------------------------------------------------------#
-
-      edge <- inner_join(grad,terForLoop, by = c("x","y")) %>%
-                        select(c("barcodes"))
-
-      #------------------------------------------------------------------------#
-      # Resizing ter - removing barcodes that are part of the edge
-      #------------------------------------------------------------------------#
-
-      terForLoop <- filter(terForLoop, !barcodes %in% unique(edge$barcodes))
-
-      #------------------------------------------------------------------------#
-      # Rebuilding an image but adding a little extra space
-      #------------------------------------------------------------------------#
-      if(nrow(terForLoop)>0){
-      ymin <- ifelse((min(terForLoop$y) - max(abs(morphologyFactor)) *2) <=0,1,
-          min(terForLoop$y) - max(abs(morphologyFactor)) *2)
-      xmin <- ifelse((min(terForLoop$x) - max(abs(morphologyFactor)) *2) <=0,1,
-          min(terForLoop$x) - max(abs(morphologyFactor)) *2)
-      ymax <- max(terForLoop$y) + max(abs(morphologyFactor)) * 2
-      xmax <- max(terForLoop$x) + max(abs(morphologyFactor)) * 2
-
-      terTmp <- terForLoop %>% select(c("x","y","cc","value")) %>%
-                rbind(.,c(xmin,ymin,1,0),c(xmax,ymax,1,0)) %>%
-                as.cimg
-      }
-      #------------------------------------------------------------------------#
-      # Adding edge to layer list and counting up
-      #------------------------------------------------------------------------#
-      layer[[counter]] <- unique(edge$barcodes)
-      counter <- counter +1
-
-    }
-
-    #--------------------------------------------------------------------------#
-    # Now we can add the layers to the original territory
-    # A rename layer if required
-    #--------------------------------------------------------------------------#
-
-    ter$layer <-0
-    for(lay in seq_along(layer)){
-
-        ter$layer[ter$barcodes %in% layer[[lay]]] <- lay
-    }
-
-    #--------------------------------------------------------------------------#
-    # Finally we can split the different layers if we want to combine
-    #--------------------------------------------------------------------------#
-    layers <- unique(ter$layer)
-    if(!is.null(layerDepth)){
-        if(length(layers) < layerDepth){
-            warning("Layer depth exceeds layers in Territory - using layers in territories", immediate. = TRUE)
-
-        } else {
-            idx <- floor(seq(1,length(layers), length.out = layerDepth +1))
-            for(i in seq(1,length.out = layerDepth)){
-                ter$layer[ter$layer %in% seq(idx[i], idx[i+1])] <- i
-            }
-        }
-    }
-    .simpleBar(verbose)
-
-    return(ter)
 }

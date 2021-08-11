@@ -2,46 +2,93 @@
 % Please edit documentation in R/IsolatingTerritories.R
 \name{smoothArray}
 \alias{smoothArray}
-\title{Smoothing image array - wrapper function for imager smoothing functions}
+\title{Apply iterative smoothing to Vesalius images}
 \usage{
 smoothArray(
-  img,
+  image,
   method = c("median", "iso", "box"),
+  iter = 1,
   sigma = 1,
   box = 20,
   threshold = 0,
   neuman = TRUE,
   gaussian = TRUE,
   na.rm = FALSE,
-  iter = 1
+  acrossLevels = "min",
+  invert = FALSE,
+  verbose = TRUE
 )
 }
 \arguments{
-\item{img}{4 dimensional array or cimg object}
+\item{image}{a Vesalius data frame 
+(containing at least barcodes, x, y, cc, value) or a cimg object.}
 
-\item{method}{character describing smoothing method to use "median" , "iso"  or "box"}
+\item{method}{character describing smoothing method to use "median" , 
+"iso"  or "box"}
 
-\item{sigma}{numeric - standard deviation associated with the isoblur}
+\item{iter}{numeric - number of smoothing iteration}
 
-\item{box}{numeric describing box size (centered around center pixel) for smoothing}
+\item{sigma}{numeric - standard deviation associated with isoblur (Gaussian)}
 
-\item{threshold}{numeric - discard pixels that are too low in value (see \code{medianblur})}
+\item{box}{numeric describing box size (centered around center pixel) 
+for smoothing}
 
-\item{neuman}{logical describing If Neumann boundary conditions should be used,
-Dirichlet otherwise (default true, Neumann)}
+\item{threshold}{numeric - discard pixels that are too low in value (cutoff 
+threshold only applied in box/median blurs).}
+
+\item{neuman}{logical describing If Neumann boundary conditions should be 
+used, Dirichlet otherwise (default true, Neumann)}
 
 \item{gaussian}{logical - use gaussian filter}
 
 \item{na.rm}{logical describing if NA values should be removed}
 
-\item{iter}{numeric describing number of smoothing rounds to apply to image}
+\item{acrossLevels}{character - method used to account for multiple smoothing
+levels (see details). Select from: "min","mean", "max"}
+
+\item{invert}{logical - If TRUE, colours will be inverted i.e. 1 - colorValue
+(background set to 1 instead of 0).}
+
+\item{verbose}{logical - progress message output.}
 }
 \value{
-Array or cimg object after bieng smoothed
+Returns a Vesalius data.frame with "barcodes","x","y","cc",
+"value","tile",...
 }
 \description{
-Smoothing image array - wrapper function for imager smoothing functions
+Apply iterative smoothing to Vesalius images
 }
 \details{
-Applying smoothing to image data.
+Images produced by Vesalius should be smoothed in order to retrieve 
+territories. The \code{smoothArray} function provides multiple ways to smooth
+an image array. 
+
+First, consider the smoothing method : median, iso ,or box. Median and box
+both require the \code{box} argument to be set according to your needs. 
+Median converts all pixels surronding a center pixel to the median value of
+the selected box. Box converts all pixels to the value of the center pixel. 
+Iso applies a gaussian blur and is modulated by the \code{sigma} argument.
+
+Both the \code{box} and \code{sigma} arguments can take more than one value.
+Both may take a vector of positive numeric values. During every smoothing
+iteration, Vesalius will map this vector over multiple copies of the image
+and summarize the final smoothed image by taking values across different 
+levels. The levels are: min, max, and mean. Min will take the lowest pixel 
+value (in all three colour channels) across all levels. Max will take the 
+the highest pixel value (in all three colour channels) across levels. Mean
+will take the average pixel value (in all three colour channels) across 
+levels.
+
+The optimal smoothing values will depend on the question at hand and which 
+territories you wish to extract. 
+
+NOTE: this function is applied internally in the 
+\code{iterativeSegmentation.array} function.
+
+For more information, we suggest reading through the imager vignette.
+}
+\examples{
+\dontrun{
+data(Vesalius)
+}
 }

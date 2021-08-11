@@ -8,12 +8,10 @@ Description: Vesalius helps dissecting tissue anatomy from spatial transcriptomi
     data. Vesalius embeds Principle component loading values in RGB colour space without prior
     knowlede of marker genes associated to tissues. Some more stuff
 License: GPL-3
-Collate: FindNN.R
-    IsolatingTerritories.R
-    LoadingData.R
+Collate:IsolatingTerritories.R
+    morph.R
+    misc.R
     PCA_to_RGB.R
-    processing.R
-    VesaliusObjects.R
     Prog.R
     Territory_identity.R
     viz.R

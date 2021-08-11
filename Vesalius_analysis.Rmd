@@ -10,9 +10,10 @@ output:
 # Preface
 
 The purpose of this file is to demonstrate the the workflow used to produce
-the Vesalius paper. This file contains all code related to the manuscript as well
-as comments of the code itself. It should be noted that we save intermediate files
-to ensure that we can re-run sections without needing to run the whole code.
+the Vesalius paper. This file contains all code related to the manuscript as
+well as comments of the code itself.
+
+It should be noted that we save and use intermediate files in this work flow.
 Please ensure that you modify the path towards files accordingly.
 
 # Set up
@@ -31,16 +32,13 @@ library(Seurat)
 library(ggplot2)
 library(patchwork)
 library(viridis)
-library(cowplot)
-library(magick)
 library(RColorBrewer)
 library(dplyr)
 library(tvR)
-library(kableExtra)
 library(grid)
 
 
-### For some reasom rmarkdown::render fails to load basic functions so:
+# Standard libraries - just in case you are a command line fiend
 library(utils)
 library(stats)
 library(graphics)
@@ -55,19 +53,13 @@ set.seed(1)
 ## RGB embeddings
 The first step of the Vesalius algorithm is to load and pre-process spatial
 transcriptomic data. For this manuscript, we used slide-seqV2 data provided on
-the (Single Cell Portal)[https://singlecell.broadinstitute.org/single_cell/study/SCP948/robust-decomposition-of-cell-type-mixtures-in-spatial-transcriptomics#study-download]. Our analysis mainly focused on the mouse Hippocampus and the mouse
-embryo (E12.5).
+the (Single Cell Portal)[https://singlecell.broadinstitute.org/single_cell/study/SCP948/robust-decomposition-of-cell-type-mixtures-in-spatial-transcriptomics#study-download]. Our analysis mainly focused on the mouse
+brain and embryo (E12.5).
 
 Once the data has been loaded and pre-processed (log normalisation, scaling,
-Finding variable features - handled by Seurat), the data can be parsed to Vesalius
-for embedding into the RGB colour space.
+Finding variable features - handled by Seurat), the data can be parsed to
+Vesalius for embedding into the RGB colour space.
 
-Vesalius decomposes PCA loadings into slices of three PCs. The first slice
-represents PC1 to PC3, slice two represents PC4 to PC6, etc. For mouse
-Hippocampus, we only use the first slice. For mouse embryo, we extract territories
-from slice 1 and slice 3. In this section, we run the first three slice for both
-data sets. While this is not necessary, it just made more convenient to stick
-everything into a for loop.
 
 
 ```{r RGB_Embedding, eval = TRUE, echo = TRUE}
@@ -117,12 +109,8 @@ IP <- "~/group/slide_seqV2/IP/"
 for(i in seq_along(slideTag)){
   message(paste("Loading Bead file",slideTag[i]))
   #----------------------------------------------------------------------------#
-  # We will need the barcode locations for later
+  # Loading coordinates
   #----------------------------------------------------------------------------#
-  btmp <- utils::read.csv(slideBeads[i], header=T)
-  #btmp <- btmp[,c("barcodes","xcoord","ycoord")]
-  #colnames(btmp)<- c("barcodes","xcoord","ycoord")
-  ## Loading barcodes using Seurat
   bead <- ReadSlideSeq(slideBeads[i])
 
 
@@ -135,10 +123,6 @@ for(i in seq_along(slideTag)){
   rownames(ctmp) <- ctmp[,1]
   ctmp <- ctmp[,-1]
 
-  #----------------------------------------------------------------------------#
-  # Copy of count matrix for later use
-  #----------------------------------------------------------------------------#
-  sl <- ctmp
 
   #----------------------------------------------------------------------------#
   # Creating seurat spatial object
@@ -169,8 +153,8 @@ for(i in seq_along(slideTag)){
   # an x and y coordinates. We refer to these coordinates as pixels
   #----------------------------------------------------------------------------#
   #----------------------------------------------------------------------------#
-  # We export the coordinates for later use. This file the basis of image
-  # creation. e
+  # We export the coordinates for later use. This file is the basis of image
+  # creation.
   #----------------------------------------------------------------------------#
 
   filenames <- paste0(IP,"PCA_to_RGB_log_",nfeatures,
@@ -180,7 +164,7 @@ for(i in seq_along(slideTag)){
 
 }
 
-## Adding garbage collector maybe?
+
 
 ```
 
@@ -196,7 +180,8 @@ run.
 #------------------------------------------------------------------------------#
 # Loading the intermediate file
 #------------------------------------------------------------------------------#
-imageSlide <- utils::read.csv("~/group/slide_seqV2/IP/PCA_to_RGB_log_2000_slice1_Puck_200115_08.csv",header=T, stringsAsFactors=F)
+imageSlide <- utils::read.csv("~/group/slide_seqV2/IP/PCA_to_RGB_log_2000_slice1_Puck_200115_08.csv",
+                              header = TRUE, stringsAsFactors = FALSE)
 
 #------------------------------------------------------------------------------#
 # Converting coordinates and colours to and RGB image
@@ -218,18 +203,20 @@ print(Vesalius_image)
 #dev.off()
 ```
 As seen in the code above, we select a filter threshold. This filter threshold
-ensures that we remove tessellation artefacts. The tessellation algorithm extends
-the coordinate system to create a box around all the barcode coordinates.
+ensures that we remove tessellation artefacts. The tessellation algorithm
+extends the coordinate system to create a box around all barcode
+coordinates.
+
 It creates tiles that are tied to the external box and we want to filter these
-tiles as well as the tile that are too large. The `filterThreshold`describes the
-quantile at which tile areas should be discarded. The same `filterThreshold` to
-is applied to points that are to far away from other points (i.e. stray beads).
+tiles as well as the tile that are too large. The `filterThreshold` describes
+the quantile at which tile areas should be discarded.
+The same `filterThreshold` to is applied to points that are to far away from
+other points (i.e. stray beads).
 
 Note the `resolution` argument is set to 100. This argument determines if the
 image must be resize. The larger the image the higher the resolution but the
 slower the analysis. For this section, we only want to demonstrate the direct
-output of building RGB images from transcrtiptional profiles. For later sections,
-we will use a lower resolution.
+output of building RGB images from transcrtiptional profiles.
 
 
 ## Image building for territory isolation
@@ -242,7 +229,7 @@ memory. Not all blocks are thus independent from each other.
 
 ### Data Loading
 Territory isolation requires the original set of beads and count matrix. We use
-this set count matrix to compute differential gene expression. Thus, we will
+this count matrix to compute differential gene expression. Thus, we will
 load and pre-process data sets required for downstream analysis.
 
 ```{r Vesalius_DataLoading, eval=TRUE, echo=TRUE, warning= FALSE,message=FALSE}
@@ -269,8 +256,7 @@ brainCounts <- brainCounts[,-1]
 
 #------------------------------------------------------------------------------#
 # We still create a Seurat object
-# This will be changed in the futur to include Vesalius objects
-# It's just Seurat is such a great package at handling single cell data
+# It's just that Seurat is such a great package to handling single cell data
 # Hats off to the Seurat team
 #------------------------------------------------------------------------------#
 brainCounts <- CreateSeuratObject(brainCounts, assay ="Spatial")
@@ -279,17 +265,18 @@ DefaultAssay(object = beadBrain) <- "Spatial"
 brainCounts[["slice1"]] <- beadBrain
 
 #------------------------------------------------------------------------------#
-# We keep a Raw data set. We will use the raw counts when we subset out the beads
-# in isolated territories. We want to avoid to use the values resulting from
-# overall normalisation. We want to avoid to "normalise" already normalised and
-# scaled data. This will change the results!
+# We keep a Raw data set. We will use the raw counts when we subset out the
+# beads in isolated territories. We want to avoid using the values resulting
+# from overall normalisation.
+# We want to avoid to "normalise" already normalised and scaled data.
 #------------------------------------------------------------------------------#
 brainRaw <- brainCounts
 
 
 #------------------------------------------------------------------------------#
 # Next we do the same exact thing for the embryo data
-# NOTE: we can use the same raw data for both embryo slices used in this analysis
+# NOTE: we can use the same raw data for both embryo slices used in
+# this analysis
 #------------------------------------------------------------------------------#
 slideTagEmbryo <- "Puck_190926_03"
 slideBeadsEmbryo <-"~/group/slide_seqV2/Puck_190926_03_bead_locations.csv"
@@ -319,8 +306,7 @@ embryoRaw <- embryoCounts
 As we have just loaded count matrices into Seurat objects, we might as well
 quickly run a clustering analysis on slide-seqV2 spatial transcriptomic data.
 Here, we used log normalisation to stay consistent with the approach used during
-image building. We use Seurat to handle data as Seurat has already a highly
-optimised packing for single cell data. Essentially, why re-invent the wheel?
+image building.
 
 ```{r Seurat_clustering_run, eval = TRUE , echo=TRUE,fig.width = 13.5, fig.height = 6}
 #----------------------------/Seurat Clustering/-------------------------------#
@@ -345,10 +331,9 @@ seuData <- FetchData(seu, c("UMAP_1","UMAP_2","seurat_clusters")) %>%
            mutate(xs = mean(UMAP_1), ys = mean(UMAP_2))
 
 #------------------------------------------------------------------------------#
-# This section just rebuilds a data frame to make it easier to plot with ggplot
-# Will probably change this... Using internal functions might not be a good idea  
+# This section just rebuilds a data frame to make it easier to plot with ggplot  
 #------------------------------------------------------------------------------#
-coordSeu <- Vesalius:::.getSeuratCoordinates(seu)
+coordSeu <- Vesalius:::getSeuratCoordinates(seu)
 seuData <- cbind(seuData,coordSeu[,c("x","y")])
 seu_col <- length(unique(seuData$seurat_clusters))
 seu_pal <- colorRampPalette(brewer.pal(8, "Accent"))
@@ -449,8 +434,6 @@ cc represents the colour channel. value is the value associated to the colour
 channel. Meta data may represent different things but generally it will be
 associated to colour clusters or territories.
 
-For more information on the output of each function, please refer to the package
-vignette.  
 
 ```{r Vesalius_Run_territory_level, eval = TRUE , echo = TRUE, fig.width =12.5,fig.heigth =5}
 #-------------------/Territory Isolation - Hippocampus/------------------------#
@@ -462,31 +445,29 @@ imageBrain <- utils::read.csv("~/group/slide_seqV2/IP/PCA_to_RGB_log_2000_slice1
 
 #------------------------------------------------------------------------------#
 # Next we build the image
-# We recommend using more than one core but here it was safer to leave it set
-# to only one core.
+# We recommend using more than one core.
 #------------------------------------------------------------------------------#
 imageBrain <- buildImageArray(imageBrain,invert=T,
                               filterThreshold = 0.9975,
-                              resolution = 40, cores = 5)
+                              resolution = 40, cores = 1)
 
 #------------------------------------------------------------------------------#
 # Next we equalise the histogram. We use the default BalanceSimplest method
 # Other methods are availbale and are detailed in the package vignette
-# sleft and sright describe the extent of hisogram balancing on the left and on
-# the right of the histogram
+# sleft and sright describe the extent of histogram balancing on the left and on
+# the right of the histogram.
 #------------------------------------------------------------------------------#
 imageBrain <- equalizeHistogram(imageBrain,sleft = 2.5, sright=2.5,invert =T)
 
 #------------------------------------------------------------------------------#
 # Image regularisation - this considers overall variance to smooth the image
-# It can be seen as some sort of pre-smoothing approach.
 #------------------------------------------------------------------------------#
 imageBrain <- regulariseImage(imageBrain, lambda = 10,
                               niter = 200, normalise=T)
 
 #------------------------------------------------------------------------------#
-# This image actually quite pretty and also we use these image in the sup figure
-# 1 alongside the Seurat clustering results.
+# This image actually quite pretty so you can have a look using one of the
+# Vesalius plotting functions.
 #------------------------------------------------------------------------------#
 #pdf("imageBrain_regEQ.pdf")
 #imagePlot(imageBrain,as.cimg=F,cex =12)
@@ -520,12 +501,13 @@ imageBrain <- iterativeSegmentation.array(imageBrain, colDepth = 6,
 # absolute distance metric so that the captureRadius is the same between all
 # territories. NOTE: this is not the same as KNN as here we don't care about
 # number of neighbours but rather the distance to neighbours.
-# minCell = minimum number of cells that should be in a territory. If below this
-# value, then we we will pool all of those territories into one called "isolated"
+# minBar = minimum number of cells that should be in a territory. If below this
+# value, then we we will pool all of those territories into one territory
+# called "isolated"
 #------------------------------------------------------------------------------#
 imageBrain <- isolateTerritories.array(imageBrain,
                                         captureRadius = 0.008,
-                                        minCell = 40)
+                                        minBar = 40)
 
 #------------------------------------------------------------------------------#
 # Finally some plotting
@@ -540,19 +522,19 @@ imgTerritory <- territoryPlot(imageBrain, randomise = TRUE,cex =15 , cex.pt=0.25
          legend.title = element_text(size=12),
          legend.position = "left")
 
-pdf("Hippocampus_smooth_and_segmented.pdf", width = 7.5, height=5.5)
+#pdf("Hippocampus_smooth_and_segmented.pdf", width = 7.5, height=5.5)
 imgTerritory
-dev.off()
+#dev.off()
 
 #pdf("brain_split_territory2.pdf",width =20, height = 20)
-#territoryPlot(imageBrain2,split = T,randomise = F,cex=10)
+territoryPlot(imageBrain2,split = T,randomise = F,cex=10)
 #dev.off()
 
 
 #----------------------/Territory Isolation - Embryo/--------------------------#
 #------------------------------------------------------------------------------#
-# First we load both slices and build iamge arrays with RGB embeddings
-# We are mainly interest in slice three as we use slice three to isolte the eye
+# First we load both slices and build image arrays with RGB embeddings
+# We are mainly interest in slice three as we use slice three to isolate the eye
 # That being said we will also run Vesalius on slice 1 to demonstrate territory
 # isolation in the embryo
 #------------------------------------------------------------------------------#
@@ -578,17 +560,18 @@ imageEmbryo1 <- buildImageArray(imageEmbryo1,
 #----------------------------------------------------------------------------#
 # These steps are the same as the one described for the Hippocampus
 #----------------------------------------------------------------------------#
-imageEmbryo <- equalizeHistogram(imageEmbryo, sleft = 2.5, sright = 2.5,invert = T)
-imageEmbryo1 <- equalizeHistogram(imageEmbryo1, sleft = 2.5, sright = 2.5,invert = T)
+imageEmbryo <- equalizeHistogram(imageEmbryo,
+                                 sleft = 2.5, sright = 2.5,invert = T)
+imageEmbryo1 <- equalizeHistogram(imageEmbryo1,
+                                  sleft = 2.5, sright = 2.5,invert = T)
 imageEmbryo <- regulariseImage(imageEmbryo,lambda =10)
 imageEmbryo1 <- regulariseImage(imageEmbryo1,lambda =10)
 #----------------------------------------------------------------------------#
-# We can export the pretty pictures and we use slice one image for
-# sup figure 1
+# We can export the pretty pictures
 #----------------------------------------------------------------------------#
-pdf(paste0("imageEmbryo_regEQ_PC1_3.pdf"))
-imagePlot(imageEmbryo1,as.cimg =F , cex =12)
-dev.off()
+#pdf(paste0("imageEmbryo_regEQ_PC1_3.pdf"))
+#imagePlot(imageEmbryo1,as.cimg =F , cex =12)
+#dev.off()
 
 #----------------------------------------------------------------------------#
 # Now we can segment images - here we use a slightly different smoothing
@@ -615,13 +598,13 @@ imageEmbryo1 <- iterativeSegmentation.array(imageEmbryo1,
                                            useCenter=F)
 #----------------------------------------------------------------------------#
 # This section is the same for the hippocampus - we use a slightly larger
-# captureRadius. And we store in a list so we can retrieve it later
+# captureRadius.
 #----------------------------------------------------------------------------#
 imageEmbryo <- isolateTerritories.array(imageEmbryo,
-                                        captureRadius = 0.025,minCell = 40)
+                                        captureRadius = 0.025,minBar = 40)
 
 imageEmbryo1 <- isolateTerritories.array(imageEmbryo1,
-                                        captureRadius = 0.025,minCell = 40)
+                                        captureRadius = 0.025,minBar = 40)
 
 
 #----------------------------------------------------------------------------#
@@ -633,57 +616,59 @@ imgTerritoryEm <- territoryPlot(imageEmbryo, randomise = TRUE,cex =15 , cex.pt=0
                   theme(legend.text = element_text(size = 12),
                         legend.title = element_text(size=12))
 
-pdf(paste0("smoother_and_territory_embryo_slice3.pdf"), width = 7, height=5.5)
+#pdf(paste0("smoother_and_territory_embryo_slice3.pdf"), width = 7, height=5.5)
 g <- imgTerritoryEm
 print(g)
-dev.off()
+#dev.off()
 
-  #pdf(paste0("embryo_split_slice",i,".pdf"),width =20, height = 20)
-  #print(territoryPlot(imageEmbryo,split = T,randomise = F,cex=10))
-  #dev.off()
+#pdf(paste0("embryo_split_slice",i,".pdf"),width =20, height = 20)
+#print(territoryPlot(imageEmbryo,split = T,randomise = F,cex=10))
+#dev.off()
+
 imgSmoothedEm1 <- imagePlot(imageEmbryo1, as.cimg = F,cex = 15) + theme_void()
 imgTerritoryEm1 <- territoryPlot(imageEmbryo1, randomise = TRUE,cex =15 , cex.pt=0.25)+
                     theme_void()+
                     theme(legend.text = element_text(size = 12),
                           legend.title = element_text(size=12))
 
-pdf(paste0("smoother_and_territory_embryo_slice1.pdf"), width = 7, height=5.5)
+#pdf(paste0("smoother_and_territory_embryo_slice1.pdf"), width = 7, height=5.5)
 g1<- imgTerritoryEm1
 print(g1)
-dev.off()
+#dev.off()
 
 ```
 
 ## Territory Clustering
 Isolated territories can be used for in depth analysis. In the manuscript, we
-focused on four example territories. In this section we will show how each
+focused on three example territories. In this section we will show how each
 territory was handled for further analysis.
 
-In the case of the third Ventricle and medial habenula, we actually selected two
-territories and extracted them together after some dilation. The dillation ensured
-that we filled any gaps that would remain between territories.
-
 It should be noted that all cell type or tissue type were done manually by using
-marker genes. The details of which gene was used is found in the supplementary
-table.
+marker genes.
 
 ```{r TerritoryClustering, eval = TRUE, echo = TRUE,fig.width = 8, fig.height=10}
 #----------------/Territory in depth Analysis - Hippocampus/-------------------#
 #------------------------------------------------------------------------------#
 # We can isolate the territories associated with the CA field and the third
-# ventricle and medial habenula.
+# ventricle and medial habenula and the embryonic eye.
+#
 # NOTE: we applied a slight dilation to the third ventricle and medial habenula
-# This ensure that we fill in all gaps between territories
+# This ensures that we fill in all gaps between territories
 # The morphology factor value is expressed in number of pixels
-# NOTE: Here we use brainRaw i.e. non processed count data as the pre-procesing
+#
+# NOTE: Here use brainRaw i.e. non processed count data as the "pre-procesing"
 # will be taken care of here.
 # seedID = territory number
+#
+# NOTE: Sorry another note... but seedID may vary depending on your starting
+# seed. Use the territoryPlot function with split = TRUE to visualize
+# all territories independently and select the desired territories.
 #------------------------------------------------------------------------------#
 CACluster <- extractTerritories(imageBrain,brainRaw,
                                 seedID = c(19),morphologyFactor=0)
 
 medCluster <- extractTerritories(imageBrain,brainRaw,
-                                   seedID = c(46,48),morphologyFactor=15)
+                                 seedID = c(46,47),morphologyFactor=15)
 
 
 #------------------------------------------------------------------------------#
@@ -721,8 +706,8 @@ CAClusterMarkers <- extractClusterMarkers(CACluster,brainCounts) %>%
 
 #------------------------------------------------------------------------------#
 # Custom plotting  with cell type annotation
-# Barcodes were annotated manually - see supplementary table 1
-# Colour come from a colour blind friendly palette
+# Barcodes were annotated manually - see supplementary table 1 in manuscript
+# Colour comes from a colour blind friendly palette
 #------------------------------------------------------------------------------#
 CA <- FetchData(CACluster, c("UMAP_1","UMAP_2","seurat_clusters"))
 
@@ -734,7 +719,7 @@ CA_ISH <- c("CA1 Pyramidal Layer",
             "CA2 Pyramidal Layer",
             "Neurons",
             "Microglia")
-coordCA <- Vesalius:::.getSeuratCoordinates(CACluster)
+coordCA <- Vesalius:::getSeuratCoordinates(CACluster)
 CA <- cbind(CA,coordCA[,c("x","y")]) %>% group_by(seurat_clusters) %>%
       mutate(xs = mean(UMAP_1),ys = mean(UMAP_2))
 
@@ -784,15 +769,23 @@ medCluster <- medCluster %>%
              RunPCA(dims =1:30) %>%
              RunUMAP(dims =1:30) %>%
              FindNeighbors()
-medCluster <- medCluster %>%FindClusters(resolution = 0.75)
+medCluster <- medCluster %>%FindClusters(resolution = 0.85)
 
 medMarkers <- FindAllMarkers(medCluster) %>% group_by(cluster) %>%
              top_n(25,wt = avg_logFC)
 medClusterMarkers <- extractClusterMarkers(medCluster,brainCounts) %>%
                      group_by(seedTerritory) %>% top_n(25,wt = logFC)
 
+#------------------------------------------------------------------------------#
+# Here we compare cluster between each other and more specifically clusters
+# associated with the medial habenula and the third ventricle.
+# This is where we get compartment specific gene expression
+# medComp = medial habenula
+# tvCompt = third ventricle
+#------------------------------------------------------------------------------#
 medComp <- FindMarkers(medCluster,ident.1 = 1, ident.2 = 2)
-tvCompt <- FindMarkers(medCluster,ident.1 =c(0,11,5),ident.2=3)
+tvCompt <- FindMarkers(medCluster,ident.1 =c(0,11,4),ident.2=2)
+
 #------------------------------------------------------------------------------#
 # Plotting
 #------------------------------------------------------------------------------#
@@ -809,7 +802,7 @@ med_ISH <-c("Third Ventricle",
               "Neuron",
               "Unassigned",
               "Third Ventricle")
-coordmed <- Vesalius:::.getSeuratCoordinates(medCluster)
+coordmed <- Vesalius:::getSeuratCoordinates(medCluster)
 med <- cbind(med,coordmed[,c("x","y")]) %>% group_by(seurat_clusters) %>%
       mutate(xs = mean(UMAP_1),ys = mean(UMAP_2))
 lvls <- med_ISH[as.numeric(as.character(med$seurat_clusters))+1]
@@ -881,6 +874,10 @@ eyeMarkers <- FindAllMarkers(eyeCluster) %>% group_by(cluster) %>%
 eyeClusterMarkers <- extractClusterMarkers(eyeCluster,embryoCounts) %>%
                      group_by(seedTerritory) %>% top_n(15,wt = logFC)
 
+#------------------------------------------------------------------------------#
+# Here we compare cluster between each other and more specifically clusters
+# associated with different cell type layers in the embryonic eye.
+#------------------------------------------------------------------------------#
 epiComp <- FindMarkers(eyeCluster,ident.1 = 1, ident.2 = 5)
 lensComp <- FindMarkers(eyeCluster,ident.1 =4,ident.2=6)
 #------------------------------------------------------------------------------#
@@ -937,26 +934,27 @@ coord_eye <- ggplot(eye, aes(x,y,col = as.factor(seurat_clusters))) +
 
 #------------------------------------------------------------------------------#
 # Finally we can build the isolated territory section of the figure
+# if you want everything in one plot
 #------------------------------------------------------------------------------#
-pdf("fig_3_template.pdf",height=10,width=24)
+#pdf("fig_3_template.pdf",height=10,width=24)
 umap_CA+umap_med +umap_eye+ coord_CA+coord_med+coord_eye +plot_layout(ncol=3,height=c(1,1.2))
-dev.off()              
+#dev.off()              
 #------------------------------------------------------------------------------#
 # Indiv plots
 #------------------------------------------------------------------------------#
-pdf("CA_field.pdf",width = 10, height=12)
+#pdf("CA_field.pdf",width = 10, height=12)
 coord_CA + umap_CA + plot_layout(ncol=1)
-dev.off()
+#dev.off()
 
 
-pdf("med.pdf", width = 10,height=12)
+#pdf("med.pdf", width = 10,height=12)
 umap_med + coord_med + plot_layout(ncol=1)
-dev.off()
+#dev.off()
 
 
-pdf("Eye.pdf", width =15, height = 6)
+#pdf("Eye.pdf", width =15, height = 6)
 umap_eye + coord_eye + plot_layout(ncol =2)
-dev.off()
+#dev.off()
 
 
 ```
@@ -978,13 +976,14 @@ pcp4All <- viewGeneExpression(imageBrain,brainCounts,
            theme(legend.position='bottom',
                  plot.title = element_text(hjust=0.5))
 
+# Only in CA field
 #pcp4 <- viewGeneExpression(imageBrain,CACluster, genes = "Pcp4",cex=20)+
 #        theme_void()+
 #        theme(legend.position='bottom',
 #              plot.title = element_text(hjust=0.5))
-pdf("pcp4.pdf",width=5,height=5)
+#pdf("pcp4.pdf",width=5,height=5)
 pcp4All
-dev.off()
+#dev.off()
 
 #------------------------------------------------------------------------------#
 # Next we do the same thing but for supplementary figure 2
@@ -1014,20 +1013,21 @@ necab2 <- viewGeneExpression(imageBrain,CACluster,
 
 
 
-pdf("CA2_inClust_overall.pdf",width = 10,height = 4)
+#pdf("CA2_inClust_overall.pdf",width = 10,height = 4)
 rgs14All + necab2All + plot_layout(ncol=2,nrow = 1)
-dev.off()
+#dev.off()
 
-pdf("CA2_markers_inCluster.pdf",width = 10,height = 4)
+#pdf("CA2_markers_inCluster.pdf",width = 10,height = 4)
 rgs14 + necab2 + plot_layout(ncol=2,nrow =1)
-dev.off()
+#dev.off()
 
 
 
 
 ```
 
-Differentially expressed genes between layers in the eye
+We can also visualise differentially expressed genes between layers in the eye.
+
 ```{r eye_markers, eval = TRUE, echo=TRUE}
 
 Cryba4 <- viewGeneExpression(imageEmbryo,eyeCluster,
@@ -1067,7 +1067,7 @@ dev.off()
 
 ```
 
-## Novel markers and tissue border expression
+## Tissue markers and tissue border expression
 
 The final section of the paper showed how we could extract markers from
 anatomical territories and how we found tissue border expression patterns. We
@@ -1075,15 +1075,7 @@ also showed an example of a layering effect in the corpus callosum.
 
 
 First, we will show the code associated with the extraction of Dentate gyrus and
-the associated marker genes. In this context, we applied the same principle as
-for other isolated territories: raw counts when clustering an isolated territory
-and normalised counts when comparing to all other territories. We show the
-expression patterns of marker genes. We also show the clustering analysis
-of the isolated dentate gyrus as well as the layering of the territory
-
-
-
-
+the associated marker genes.
 
 ```{r dentateGyrus,eval = TRUE, echo=TRUE}
 #----------/Dentate gyrus: novel markers and border expression/----------------#
@@ -1092,12 +1084,13 @@ of the isolated dentate gyrus as well as the layering of the territory
 # We do not apply any morphological operator in this case but we will pool
 # territories to remove anything that is non contiguous
 #------------------------------------------------------------------------------#
-imageDentate <- imageBrain %>% filter(territory ==29) %>% isolateTerritories.array(captureRadius=0.025)
+imageDentate <- imageBrain %>%
+                filter(territory ==29) %>%
+                isolateTerritories.array(captureRadius=0.025)
 DenMarkers <- extractMarkers(imageDentate,brainCounts,1,morphologyFactorSeed = 0)
 
 #------------------------------------------------------------------------------#
 # Next we run a clustering analysis on the dentate gyrus
-# The dilation ensures that we recover the neighbouring tissues
 #------------------------------------------------------------------------------#
 DenCluster <- extractTerritories(imageDentate, brainRaw,
                                         seedID = 1,morphologyFactor = 0)
@@ -1112,7 +1105,6 @@ DenCluster <- DenCluster %>% FindClusters(resolution = 0.3)
 # to all other territories
 # NOTE: for cell type annotation we used anatomical position as we just wanted
 # overall territory not specific cell types
-# We found Cst3 and Apoe here
 #------------------------------------------------------------------------------#
 denMarkersOuterSeu <- FindAllMarkers(DenCluster) %>%
                       group_by(cluster) %>%
@@ -1126,19 +1118,19 @@ denClusterMarkers <- extractClusterMarkers(DenCluster,brainCounts)%>%
 
 #------------------------------------------------------------------------------#
 # We now have all the data we need to do some plotting
-# We start off with the clustered dilated dentate gyrus
+# We start off with the clustered dentate gyrus
 # We only show the coordinates
 #------------------------------------------------------------------------------#
 
 outer <- FetchData(DenCluster, c("UMAP_1","UMAP_2","seurat_clusters"))
 
-coordouter <- Vesalius:::.getSeuratCoordinates(DenCluster)
+coordouter <- Vesalius:::getSeuratCoordinates(DenCluster)
 outer <- cbind(outer,coordouter[,c("x","y")]) %>% group_by(seurat_clusters) %>%
                mutate(xs = mean(UMAP_1),ys = mean(UMAP_2))
 
 outer_ISH <- c("DG - Granule Cell Layer",
                "DG - Granule Cell Layer",
-               "DG - Polymorph Layer")
+               "DG - Sub-Granular Zone")
 
 lvls <- outer_ISH[as.numeric(as.character(outer$seurat_clusters))+1]
 outer$seurat_clusters <- lvls
@@ -1160,12 +1152,12 @@ coord_outer <- ggplot(outer, aes(x,y,col = as.factor(seurat_clusters))) +
                labs(colour = " ", title = " ",
                            x = " ", y = " ")
 
-pdf("DenMaps_umap.pdf", width =9, height=9)
+#pdf("DenMaps_umap.pdf", width =9, height=9)
 coord_outer
-dev.off()
+#dev.off()
 
 #------------------------------------------------------------------------------#
-# We plot the expression of the novel markers
+# We plot the expression of the territory markers
 #------------------------------------------------------------------------------#
 cAll <- viewGeneExpression(imageBrain,brainCounts,ter = NULL,
                            genes = "C1ql2",cex=25) +
@@ -1186,12 +1178,12 @@ lAll <- viewGeneExpression(imageBrain,brainCounts,ter = NULL,
 
 
 
-pdf("denMarkersC1.pdf",width = 7.5,height = 6)
+#pdf("denMarkersC1.pdf",width = 7.5,height = 6)
 print(cAll)
-dev.off()
-pdf("denMarkersStxbp6.pdf",width = 7.5,height = 6)
+#dev.off()
+#pdf("denMarkersStxbp6.pdf",width = 7.5,height = 6)
 print(lAll)
-dev.off()
+#dev.off()
 
 
 
@@ -1200,7 +1192,7 @@ dev.off()
 The final part of our analysis concerned itself with the Corpus Callosum. We
 isolated the Corpus Callosum and applied morphological operators to fill in the
 holes and gaps. Then, we layered this isolated territory and after extracting
-layer specific genes, we found the Kif5a and Stmn4 gene that was highly
+layer specific genes, we found the Kif5a and Stmn4 genes that were highly
 expressed in the inner layers of the Corpus Callosum.
 
 
@@ -1215,7 +1207,6 @@ sc <- layerTerritory.edge(imageBrain,11,morphologyFactor=c(35),layerDepth =10)
 
 #------------------------------------------------------------------------------#
 # Now we can find layer specific gene expresison
-# This is where we get Kif5a
 #------------------------------------------------------------------------------#
 totalLayerssc <- unique(sc$layer)
 
@@ -1228,7 +1219,7 @@ Layeredsc <- lapply(seq_along(totalLayerssc), function(idx,layers,ter,counts){
 Layeredsc <- do.call("rbind",Layeredsc)
 Layeredsc <- filter(Layeredsc ,logFC >0)
 
-pdf("sc_layer_genes.pdf",width=9,height=7)
+#pdf("sc_layer_genes.pdf",width=9,height=7)
 scPlot <- viewLayerExpression(sc,brainCounts,genes = "Kif5a",cex=20)+
           theme_void()+
           theme(plot.margin = margin(0.5,0.5,0.5,0.5,"cm"),
@@ -1238,8 +1229,8 @@ scPlot <- viewLayerExpression(sc,brainCounts,genes = "Kif5a",cex=20)+
                 legend.position = "bottom") +
           labs(title ="Kif5a")
 scPlot
-dev.off()
-pdf("sc_layer_genes2.pdf",width=9,height=7)
+#dev.off()
+#pdf("sc_layer_genes2.pdf",width=9,height=7)
 scPlot2 <- viewLayerExpression(sc,brainCounts,genes = "Stmn4",cex=20)+
           theme_void()+
           theme(plot.margin = margin(0.5,0.5,0.5,0.5,"cm"),
@@ -1249,186 +1240,15 @@ scPlot2 <- viewLayerExpression(sc,brainCounts,genes = "Stmn4",cex=20)+
                 legend.position = "bottom") +
           labs(title ="Stmn4")
 scPlot2
-dev.off()
+#dev.off()
 
 ```
 
-## Location dependant expression
-Here we test diff expression between two different spatial locations
 
-```{r LocDependantDEG, eval =TRUE, echo =TRUE}
-#------------------------------------------------------------------------------#
-# First lets get the territories - we will add some dilation to one just fill
-# in some holes
-#------------------------------------------------------------------------------#
-loc1 <- extractTerritories(imageBrain,brainRaw,seedID = c(55,57),morphologyFactor = 0)
-
-loc2 <- extractTerritories(imageBrain,brainRaw,30, morphologyFactor = 0)
-
-#------------------------------------------------------------------------------#
-# Cluster loc 1
-#------------------------------------------------------------------------------#
-loc1Cluster <- loc1 %>% SCTransform(assay = "Spatial") %>%
-               RunPCA(dims = 1:30) %>% RunUMAP(dims = 1:30) %>%
-               FindNeighbors()
-loc1Cluster <- loc1Cluster %>% FindClusters(resolution = 0.3)
-#------------------------------------------------------------------------------#
-# Get marker for loc 1
-#------------------------------------------------------------------------------#
-loc1Mark <- FindAllMarkers(loc1Cluster) %>% group_by(cluster) %>%
-           top_n(20,wt=avg_logFC)
-loc1ClustMark <- extractClusterMarkers(loc1Cluster,brainCounts) %>%
-                 group_by(seedTerritory) %>%
-                top_n(25,wt = logFC)
-
-lvl1<- c("Neuron","Oligodendrocyte","Astrocytes")
-
-
-#------------------------------------------------------------------------------#
-#  Cluster loc 2
-#------------------------------------------------------------------------------#
-loc2Cluster <- loc2 %>% SCTransform(assay = "Spatial") %>%
-              RunPCA(dims = 1:30) %>% RunUMAP(dims = 1:30) %>%
-              FindNeighbors()
-loc2Cluster <- loc2Cluster %>% FindClusters(resolution = 0.2)
-
-#------------------------------------------------------------------------------#
-# Get markers from loc2 only one cluster so we compare to all other territorires
-#------------------------------------------------------------------------------#
-loc2ClustMark <- extractClusterMarkers(loc2Cluster,brainCounts) %>%
-                 group_by(seedTerritory) %>%
-                 top_n(25,wt = logFC)
-lvl2 <- c("Oligodendrocyte")
-
-
-
-#------------------------------------------------------------------------------#
-# comparing dem clusterinos
-#------------------------------------------------------------------------------#
-oligoComp <- compareClusters(counts = brainCounts,
-                             seedCluster = loc1Cluster,
-                             queryCluster = loc2Cluster,
-                             seed = 1,
-                             query = 0)
-#------------------------------------------------------------------------------#
-# get data and add new levels and lets add some counts
-#------------------------------------------------------------------------------#
-#loc1Dat <- FetchData(loc1Cluster, c("UMAP_1","UMAP_2","seurat_clusters"))
-#loc2Dat <- FetchData(loc2Cluster, c("UMAP_1","UMAP_2","seurat_clusters"))
-
-lvl1 <- lvl1[as.numeric(as.character(loc1Cluster$seurat_clusters))+1]
-loc1Cluster@meta.data$seurat_clusters <- lvl1
-
-lvl2 <- lvl2[as.numeric(as.character(loc2Cluster$seurat_clusters))+1]
-loc2Cluster@meta.data$seurat_clusters <- lvl2
-#------------------------------------------------------------------------------#
-# get coordinates and add them to df
-#------------------------------------------------------------------------------#
-#coord1<- Vesalius:::.getSeuratCoordinates(loc1Cluster)
-#loc1Dat <- cbind(loc1Dat,coord1[,c("x","y")])
-#coord2<- Vesalius:::.getSeuratCoordinates(loc2Cluster)
-#loc2Dat <- cbind(loc2Dat,coord2[,c("x","y")])
-
-
-#------------------------------------------------------------------------------#
-# Lets plot these mofos
-#------------------------------------------------------------------------------#
-gfap <- viewClusterExpression(list(loc1Cluster,loc2Cluster),"Gfap",brainCounts,clusterID="Oligodendrocyte")+
-       theme_void()+
-       theme(legend.text = element_text(size = 10),
-             legend.position = "none",
-             legend.title = element_text(size = 10),
-             plot.title = element_text(size = 15,hjust =0.5),
-             plot.tag = element_text(size=10))
-
-
-
-
-p <- viewClusterExpression(list(loc1Cluster,loc2Cluster),"Pcp4",brainCounts,clusterID="Oligodendrocyte")+
-        theme_void()+
-        theme(legend.text = element_text(size = 10),
-              legend.position = "none",
-              legend.title = element_text(size = 10),
-              plot.title = element_text(size = 15,hjust =0.5),
-              plot.tag = element_text(size=10))
-
-
-p1 <- viewClusterExpression(loc1Cluster,"Pcp4",clusterID = "Oligodendrocyte")+
-      theme_void()+
-      theme(legend.text = element_text(size = 10),
-              legend.position = "none",
-              legend.title = element_text(size = 10),
-              plot.title = element_text(size = 15,hjust =0.5),
-              plot.tag = element_text(size=10),
-              panel.background = element_rect(fill = "#23395E",
-                                  colour = "#23395E"))
-p2 <- viewClusterExpression(loc2Cluster,"Pcp4",clusterID = "Oligodendrocyte")+
-      theme_void()+
-      theme(legend.text = element_text(size = 10),
-            legend.position = "none",
-            legend.title = element_text(size = 10),
-            plot.title = element_text(size = 15,hjust =0.5),
-            plot.tag = element_text(size=10),
-            panel.background = element_rect(fill = "#23395E",
-                                colour = "#23395E"))
-gfap1 <- viewClusterExpression(loc1Cluster,"Gfap",clusterID = "Oligodendrocyte")+
-        theme_void()+
-        theme(legend.text = element_text(size = 10),
-              legend.position = "none",
-              legend.title = element_text(size = 10),
-              plot.title = element_text(size = 15,hjust =0.5),
-              plot.tag = element_text(size=10),
-              panel.background = element_rect(fill = "#23395E",
-                                  colour = "#23395E"))
-
-gfap2 <- viewClusterExpression(loc2Cluster,"Gfap",clusterID = "Oligodendrocyte")+
-         theme_void()+
-         theme(legend.text = element_text(size = 10),
-               legend.position = "none",
-               legend.title = element_text(size = 10),
-               plot.title = element_text(size = 15,hjust =0.5),
-               plot.tag = element_text(size=10),
-               panel.background = element_rect(fill = "#23395E",
-                                   colour = "#23395E"))
-
-
-gAll <- viewGeneExpression(imageBrain,brainCounts,ter = NULL,
-                                                      genes = "Gfap",cex=25) +
-        theme_void()+
-        theme(legend.position = "right",
-              plot.title = element_text(hjust = 0.5,size =15),
-              legend.text = element_text(size = 15),
-              legend.title = element_text(size = 15))
-
-pAll <- viewGeneExpression(imageBrain,brainCounts,ter = NULL,
-                                       genes = "Pcp4",cex=25) +
-        theme_void()+
-        theme(legend.position = "right",
-        plot.title = element_text(hjust = 0.5,size =15),
-        legend.text = element_text(size = 15),
-        legend.title = element_text(size = 15))
-
-layout <- "
-ABC
-ADC
-EFG
-EHG"
-
-pdf("diffLoc_clusters.pdf",width=15, height =10)
-gfap + gfap1 + gAll + gfap2 + p + p1 +pAll +p2 + plot_layout(design = layout,width =c(1,0.75,1))
-dev.off()
-
-
-
-
-
-
-
-
-```
 
 # Conclusion
-This concludes the analysis walkthrough for the Vesalius paper. All plots were
-produced using this script. However, all figures were then put together
-independently (using power point). All images are taken from the Allen brain
-Atlas and many image/plots were rotated to better fit the Allen brain Atlas images.
+This concludes the analysis related to the Vesalius paper. All figures and
+table are produced using the analysis and plots produced here.
+
+All ISH images are taken from the Allen Brain Atlas and thus are not part of
+this pipeline.

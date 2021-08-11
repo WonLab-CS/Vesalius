@@ -2,51 +2,64 @@
 % Please edit documentation in R/PCA_to_RGB.R
 \name{rgbPCA}
 \alias{rgbPCA}
-\title{Embed PCA loading to RGB colour space}
+\title{Embed PCA loadings into RGB colour space}
 \usage{
 rgbPCA(
-  slide,
   SO,
   slices = 1,
   adjusted = FALSE,
   rgbWeight = FALSE,
   countWeight = FALSE,
   conserveSparse = TRUE,
-  trim = 0
+  verbose = TRUE
 )
 }
 \arguments{
-\item{slide}{gene count matrix with barcodes as columns and genes as rows}
-
-\item{SO}{Seurat Object after normalisation, scaling and finding variable features.
-The description of how to build Seurat Objects is described in the Seurat Vignettes.}
+\item{SO}{Seurat Object after normalisation, scaling and 
+finding variable features.}
 
 \item{slices}{number of PCA slices to consider (Integer/numeric).
 Slice 1 will embed PC 1 to PC3, slice 2 will embed PC4 to PC6, etc}
 
-\item{adjusted}{logical indicating if RGB code should be adjusted to rgb (rgb coordinate)}
+\item{adjusted}{logical indicating if RGB code should be adjusted to 
+colour contribution per channel.}
 
-\item{countWeight}{logical describing if colour embeding should be weighted by count number.}
+\item{rgbWeight}{logical indicating if RGB channels should be weighted by 
+the variance associated to the PC it used for embedding.}
 
-\item{conserveSparse}{logical indicating if sparse matrix format should be conserved.}
+\item{countWeight}{logical describing if colour embedding 
+should be weighted by count number.}
 
-\item{trim}{numeric describing the quantile at which coulour histogram should be trimmed (two tailed).
-Default set to 0 where no histogram trimming will be applied.}
+\item{conserveSparse}{logical indicating if sparse matrix format 
+should be conserved.}
+
+\item{verbose}{logical - progress message output.}
 }
 \value{
-a list with three different levels.
-Level 1 : each list element is a different slice
-Level 2 : each list element is R G B channel for that slice
-Level 3 : numeric vectors containing colour code for each barcode
+Returns a Vesalius data.frame with "barcodes","x","y","cc",
+"value","slice"
+Slice represents the PC slice represented.
 }
 \description{
-Embed PCA loading to RGB colour space
+Embed PCA loadings into RGB colour space
 }
 \details{
-rgbPCA embeds PCA loadings in the RGB colour space by cumulative summing of PCA loadings for all gene
-present on every bead. The absolute values of PCA loading are used for the summation.
-The cumulative sum is then normalise in order to bound scores between 0 and 1. If countWegiht
-is set to TRUE, loading value for each genes (per bead) are multiplied by the count number of that gene for each bead.
-It should be noted that this process is only applied to genes present on a bead/spot. There is no consideration for
-genes that are not present on the bead/spot.
+The core concept of Vesalius is to embed PCA loading values into
+the RGB colour space. This is achieved by:
+
+\deqn{ B_{(c,i)} = \sum_{i=1} \mid L_(c,i) \mid }
+
+with B_((i,c)), barcode i in color channel c and L, the loading values 
+associated to barcode i in color channel c. 
+Notice that we take the absolute value of PCA loadings. 
+In this case, we are only interested in variance and 
+not direction of variance. 
+
+Barcode values are then min/max normalised to ensure that all colour 
+codes ranged from 0 to 1.
+}
+\examples{
+\dontrun{
+data(Vesalius)
+}
 }
