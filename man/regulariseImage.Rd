@@ -19,13 +19,13 @@ regulariseImage(
 \item{image}{data.frame - Vesalius formatted data.frame (i.e. barcodes,
 x,y,cc,value,tile,...)}
 
-\item{lambda}{numeric - positive real numbers describing regularization 
+\item{lambda}{numeric - positive real numbers describing regularization
 parameter (see details)}
 
-\item{niter}{numeric - number of variance regularization iterations 
+\item{niter}{numeric - number of variance regularization iterations
 (Default = 100)}
 
-\item{method}{character - regularization method. 
+\item{method}{character - regularization method.
 Select from: "TVL2.FiniteDifference","TVL1.PrimalDual",and "TVL2.PrimalDual"
 (see details)}
 
@@ -47,7 +47,7 @@ Returns a Vesalius data.frame with "barcodes","x","y","cc",
 regulariseImage denoise Vesalius images via variance regularization
 }
 \details{
-Image regularization can be seen as a form of image denoising. 
+Image regularization can be seen as a form of image denoising.
 Details on each method can be found in the tvR package under the denoise2
 function \href{tvR}{https://cran.r-project.org/web/packages/tvR/tvR.pdf}.
 

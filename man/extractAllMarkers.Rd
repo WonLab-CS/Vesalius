@@ -20,18 +20,18 @@ extractAllMarkers(
 \arguments{
 \item{image}{a dataframe containing territory information}
 
-\item{counts}{seurat object containing counts. Alternatively, matrix or 
+\item{counts}{seurat object containing counts. Alternatively, matrix or
 sparse matrix. Colnames as barcodes and rownames as genes.}
 
-\item{method}{character describing the statistical test to use in order to 
+\item{method}{character describing the statistical test to use in order to
 extract differential gene expression (currently only wilcox and t.test)}
 
-\item{logFC}{numeric describing minimum log fold change value for 
+\item{logFC}{numeric describing minimum log fold change value for
 differential gene expression. Default set at 0.25.}
 
 \item{pval}{numeric for pval threshold. Default set at 0.05}
 
-\item{minPct}{numeric defining the minimum percentage of cells that should 
+\item{minPct}{numeric defining the minimum percentage of cells that should
 contain any given gene.}
 
 \item{minBar}{integer defining minimum number of barcodes in a territory.}
@@ -45,10 +45,10 @@ shrink rate of territories.}
 }
 \value{
 A data.frame (tibble) containing differential gene expression as well
-p.value, 
-logFC, 
+p.value,
+logFC,
 seedPct (percentage of cells containing gene in first group),
-queryPct (percentage of cells containing gene in second group), 
+queryPct (percentage of cells containing gene in second group),
 seedTerritory (territory used as group 1)
 queryTerritory (territory used as group 2)
 }
@@ -56,15 +56,15 @@ queryTerritory (territory used as group 2)
 extractAllMarkers compute differential gene expression for each territory
 }
 \details{
-extractAllMarkers function compares a territory after any 
-morphological operator to all remaining barcodes. 
-If one of territory sets does not contain enough 
-barcodes, \code{extractMarkers} will return NULL. For example, if you dilate 
-a territory (let's say you want to grow each territory by 5 pixels - 
-morphologyFactor = 5),the seed territory will be dilated and compared to all 
-remaining barcodes that not part of this new dilated territory. 
+extractAllMarkers function compares a territory after any
+morphological operator to all remaining barcodes.
+If one of territory sets does not contain enough
+barcodes, \code{extractMarkers} will return NULL. For example, if you dilate
+a territory (let's say you want to grow each territory by 5 pixels -
+morphologyFactor = 5),the seed territory will be dilated and compared to all
+remaining barcodes that not part of this new dilated territory.
 
-For further details on territory Morphology - refer to 
+For further details on territory Morphology - refer to
 \code{territoryMorphology}
 }
 \examples{

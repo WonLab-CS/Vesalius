@@ -2,7 +2,7 @@
 % Please edit documentation in R/IsolatingTerritories.R
 \name{iterativeSegmentation.array}
 \alias{iterativeSegmentation.array}
-\title{iterativeSegmentation.array - image segmentation via iterative application 
+\title{iterativeSegmentation.array - image segmentation via iterative application
 of kmeans clustering.}
 \usage{
 iterativeSegmentation.array(
@@ -26,12 +26,12 @@ iterativeSegmentation.array(
 \item{image}{data.frame - Vesalius formatted data.frame (i.e. barcodes,
 x,y,cc,value,...)}
 
-\item{colDepth}{integer or vector of positive integers. 
+\item{colDepth}{integer or vector of positive integers.
 Colour depth used for segmentation. (see details)}
 
 \item{smoothIter}{integer - number of smoothing iterations}
 
-\item{method}{character describing smoothing method to use "median" , 
+\item{method}{character describing smoothing method to use "median" ,
 "iso"  or "box"}
 
 \item{acrossLevels}{character - method used to account for multiple smoothing
@@ -39,13 +39,13 @@ levels (see details). Select from: "min","mean", "max"}
 
 \item{sigma}{numeric - standard deviation associated with isoblur (Gaussian)}
 
-\item{box}{numeric describing box size (centered around a center pixel) 
+\item{box}{numeric describing box size (centered around a center pixel)
 for smoothing}
 
-\item{threshold}{numeric - discard pixels that are too low in value (cutoff 
+\item{threshold}{numeric - discard pixels that are too low in value (cutoff
 threshold only applied in box/median blurs).}
 
-\item{neuman}{logical describing If Neumann boundary conditions should be 
+\item{neuman}{logical describing If Neumann boundary conditions should be
 used, Dirichlet otherwise (default true, Neumann)}
 
 \item{gaussian}{logical - use gaussian filter}
@@ -55,7 +55,7 @@ during segmentation. If FALSE, all pixels will be used (see details)}
 
 \item{na.rm}{logical describing if NA values should be removed}
 
-\item{invert}{logical - If TRUE, colours will be inverted 
+\item{invert}{logical - If TRUE, colours will be inverted
 i.e. 1 - colourValue (background set to 1 instead of 0).}
 
 \item{verbose}{logical - progress message output.}
@@ -66,25 +66,25 @@ Returns a Vesalius data.frame with "barcodes","x","y","cc",
 Cluster represents the colour segement the pixel belongs to.
 }
 \description{
-iterativeSegmentation.array - image segmentation via iterative application 
+iterativeSegmentation.array - image segmentation via iterative application
 of kmeans clustering.
 }
 \details{
-Once images have been produced by Vesalius, applying image 
-segmentation ensure a reduction in colour complexity. The colDepth argument 
-describes the number of colour segments to select in the image. It should 
-be noted that this function can take a vector of positive integers. This 
+Once images have been produced by Vesalius, applying image
+segmentation ensure a reduction in colour complexity. The colDepth argument
+describes the number of colour segments to select in the image. It should
+be noted that this function can take a vector of positive integers. This
 becomes handy if you wish to gradually decrease the colour complexity. It is
-generally recommend to use a vector of decreasing colDepth values. 
+generally recommend to use a vector of decreasing colDepth values.
 
 The segmentation process is always proceeded by smoothing and multiple rounds
 may be applied. The segmentation process uses kmeans clustering with k number
-of cluster being represented by colDepth values. 
+of cluster being represented by colDepth values.
 
-The segmentation process can be applied on all pixel or only center pixels. 
-Center pixels are described by the value in the "tile" column in a Vesalius 
-data frame. Every pixel with a value of 1 in the "tile" column corresponds 
-to the original barcode location in the Spatial Transcriptomic Assay 
+The segmentation process can be applied on all pixel or only center pixels.
+Center pixels are described by the value in the "tile" column in a Vesalius
+data frame. Every pixel with a value of 1 in the "tile" column corresponds
+to the original barcode location in the Spatial Transcriptomic Assay
 (i.e. Original coordinates) before tesselation and rasterisation
 (see \code{buildImageArray})
 }

@@ -25,11 +25,11 @@ x,y,cc,value,...)}
 \item{type}{character - histogram EQ type. Select from: BalanceSimplest,
 EqualizePiecewise, SPE, EqualizeDP, EqualizeADP, ECDF (see details)}
 
-\item{N}{numeric describing how each colour channel will be mapped back to 
+\item{N}{numeric describing how each colour channel will be mapped back to
 the image (Higher N = Higher greyscale contrast).
 Used with EqualizePiecewise}
 
-\item{smax}{numeric - upper limit if contrast stretching. 
+\item{smax}{numeric - upper limit if contrast stretching.
 Used with EqualizePiecewise}
 
 \item{sleft}{numeric - Range 0 - 100. Percentage of pixel to be saturated on
@@ -41,10 +41,10 @@ the right side of the histogram. Used with BalanceSimplest}
 \item{lambda}{numeric - strength of background correction.
 Used with SPE (Screened Poisson Equation).}
 
-\item{up}{numeric - color value threshold in the upper limit. 
+\item{up}{numeric - color value threshold in the upper limit.
 Used with EqualizeDP.}
 
-\item{down}{numeric color value threshold in the lower limit. 
+\item{down}{numeric color value threshold in the lower limit.
 Used with EqualizeDP.}
 
 \item{invert}{logical - If TRUE, colours will be inverted i.e. 1 - colorValue
@@ -60,11 +60,11 @@ Returns a Vesalius data.frame with "barcodes","x","y","cc",
 equalizeHistogram image enhancement via colour histogram equalization.
 }
 \details{
-Histogram equalization ensures that image details are amplified. 
-In turn, territories may be extract with greater precision. We recommend 
-balancing the histogram prior to smoothing. 
+Histogram equalization ensures that image details are amplified.
+In turn, territories may be extract with greater precision. We recommend
+balancing the histogram prior to smoothing.
 
-For further details on each method described here, please refer to 
+For further details on each method described here, please refer to
 \href{imagerExtra Vignette}{https://cran.r-project.org/web/packages/imagerExtra/vignettes/gettingstarted.html}
 }
 \examples{

@@ -15,22 +15,22 @@ rgbPCA(
 )
 }
 \arguments{
-\item{SO}{Seurat Object after normalisation, scaling and 
+\item{SO}{Seurat Object after normalisation, scaling and
 finding variable features.}
 
 \item{slices}{number of PCA slices to consider (Integer/numeric).
 Slice 1 will embed PC 1 to PC3, slice 2 will embed PC4 to PC6, etc}
 
-\item{adjusted}{logical indicating if RGB code should be adjusted to 
+\item{adjusted}{logical indicating if RGB code should be adjusted to
 colour contribution per channel.}
 
-\item{rgbWeight}{logical indicating if RGB channels should be weighted by 
+\item{rgbWeight}{logical indicating if RGB channels should be weighted by
 the variance associated to the PC it used for embedding.}
 
-\item{countWeight}{logical describing if colour embedding 
+\item{countWeight}{logical describing if colour embedding
 should be weighted by count number.}
 
-\item{conserveSparse}{logical indicating if sparse matrix format 
+\item{conserveSparse}{logical indicating if sparse matrix format
 should be conserved.}
 
 \item{verbose}{logical - progress message output.}
@@ -49,13 +49,13 @@ the RGB colour space. This is achieved by:
 
 \deqn{ B_{(c,i)} = \sum_{i=1} \mid L_(c,i) \mid }
 
-with B_((i,c)), barcode i in color channel c and L, the loading values 
-associated to barcode i in color channel c. 
-Notice that we take the absolute value of PCA loadings. 
-In this case, we are only interested in variance and 
-not direction of variance. 
+with B_((i,c)), barcode i in color channel c and L, the loading values
+associated to barcode i in color channel c.
+Notice that we take the absolute value of PCA loadings.
+In this case, we are only interested in variance and
+not direction of variance.
 
-Barcode values are then min/max normalised to ensure that all colour 
+Barcode values are then min/max normalised to ensure that all colour
 codes ranged from 0 to 1.
 }
 \examples{

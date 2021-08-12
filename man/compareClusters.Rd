@@ -19,28 +19,28 @@ compareClusters(
 )
 }
 \arguments{
-\item{counts}{seurat object containing ALL counts. Alternatively, matrix or 
+\item{counts}{seurat object containing ALL counts. Alternatively, matrix or
 sparse matrix of all counts. Colnames as barcodes and rownames as genes.}
 
 \item{seedCluster}{Seurat Object of seed clusters}
 
 \item{queryCluster}{Seurat Object of query clusters}
 
-\item{seed}{integer describing the Seurat cluster (in seed - group 1) to be 
+\item{seed}{integer describing the Seurat cluster (in seed - group 1) to be
 used for Differential expression analysis. Default NULL}
 
-\item{query}{integer describing the Seurat cluster (in query - group 2) to be 
+\item{query}{integer describing the Seurat cluster (in query - group 2) to be
 used for Differential expression analysis. Default NULL}
 
-\item{method}{character describing the statistical test to use in order to 
+\item{method}{character describing the statistical test to use in order to
 extract differential gene expression (currently only wilcox and t.test)}
 
-\item{logFC}{numeric describing minimum log fold change value for 
+\item{logFC}{numeric describing minimum log fold change value for
 differential gene expression. Default set at 0.25.}
 
 \item{pval}{numeric for pval threshold. Default set at 0.05}
 
-\item{minPct}{numeric defining the minimum percentage of cells that should 
+\item{minPct}{numeric defining the minimum percentage of cells that should
 contain any given gene.}
 
 \item{minBar}{integer defining minimum number of barcodes in a territory.}
@@ -49,10 +49,10 @@ contain any given gene.}
 }
 \value{
 A data.frame (tibble) containing differential gene expression as well
-p.value, 
-logFC, 
+p.value,
+logFC,
 seedPct (percentage of cells containing gene in first group),
-queryPct (percentage of cells containing gene in second group), 
+queryPct (percentage of cells containing gene in second group),
 seedTerritory (territory used as group 1)
 queryTerritory (territory used as group 2)
 }
@@ -60,15 +60,15 @@ queryTerritory (territory used as group 2)
 compareClusters computes differential gene expression between seurat clusters
 }
 \details{
-Territory isolation provides a convenient way to investigate 
-the finer detail of anatomy and cellular spatial distribution. In some case, 
-two territories separated in 2D space may contain barcodes that cluster 
-together and are described by similar cell type labels. The 
+Territory isolation provides a convenient way to investigate
+the finer detail of anatomy and cellular spatial distribution. In some case,
+two territories separated in 2D space may contain barcodes that cluster
+together and are described by similar cell type labels. The
 \code{compareClusters} functions compares clusters in different territories
-between each other. The count values are the overall count values that have 
-been normalized, scaled and centered all together. This ensure that the 
-barcodes are comparable. The territory isolation and clustering serves as a 
-way to isolate a specific set of barcodes that will be used for differential 
+between each other. The count values are the overall count values that have
+been normalized, scaled and centered all together. This ensure that the
+barcodes are comparable. The territory isolation and clustering serves as a
+way to isolate a specific set of barcodes that will be used for differential
 gene expression analysis.
 }
 \examples{

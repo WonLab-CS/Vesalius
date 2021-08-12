@@ -17,16 +17,16 @@ extractTerritories(
 \arguments{
 \item{image}{a data.frame containing territory information}
 
-\item{seurat}{Seurat object. Contains all barcodes present on the spatial 
+\item{seurat}{Seurat object. Contains all barcodes present on the spatial
 transcrtiptomic assay.}
 
-\item{seedID}{integer or vector of integers describing territories that 
+\item{seedID}{integer or vector of integers describing territories that
 should be extracted.}
 
 \item{morphologyFactor}{Integer or vector of integers describing growth or
 shrink rate of territories. Only applied if seedID is provided.}
 
-\item{minBar}{integer describing minimum number of barcodes in a territory 
+\item{minBar}{integer describing minimum number of barcodes in a territory
 set.}
 
 \item{verbose}{logical - progress message output}
@@ -40,10 +40,10 @@ A Seurat oject containing barcodes taken from territory set.
 extractTerritories provides a Seurat object from a Vesalius Territory
 }
 \details{
-Once territories have been isolated from Vesalius images, the 
-\code{extractTerritories} provides a convenient way to extract a set of 
-territories, apply morphological operators, and return a Seurat object for 
-further analysis. This Seurat Object can be analysed using Seurat's 
+Once territories have been isolated from Vesalius images, the
+\code{extractTerritories} provides a convenient way to extract a set of
+territories, apply morphological operators, and return a Seurat object for
+further analysis. This Seurat Object can be analysed using Seurat's
 recommended pipeline.
 }
 \examples{

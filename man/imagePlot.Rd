@@ -7,10 +7,10 @@
 imagePlot(image, as.cimg = TRUE, cex = 1)
 }
 \arguments{
-\item{image}{a Vesalius data frame containing at least 
+\item{image}{a Vesalius data frame containing at least
 barcodes, x, y, cc, value}
 
-\item{as.cimg}{logical - If TRUE, will plot directly using cimg plotting. 
+\item{as.cimg}{logical - If TRUE, will plot directly using cimg plotting.
 If FALSE, will produce a ggplot object.}
 
 \item{cex}{numeric - font and point size resizing factor.}
@@ -22,13 +22,13 @@ cimg plot or ggplot object
 imagePlot - Vesalius image plotting
 }
 \details{
-Vesalius provides basic plotting functions. This function 
-only shows Vesalius images (i.e. using true embedded colours or segmented 
-colours). 
+Vesalius provides basic plotting functions. This function
+only shows Vesalius images (i.e. using true embedded colours or segmented
+colours).
 
-Currently, we advise to use as.cimg as false for custom plots. 
+Currently, we advise to use as.cimg as false for custom plots.
 
-As Vesalius nearly always returns data frames, custom plots are left to 
+As Vesalius nearly always returns data frames, custom plots are left to
 the discretion of the user.
 }
 \examples{

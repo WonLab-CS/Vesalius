@@ -14,7 +14,7 @@ viewGeneExpression(
 )
 }
 \arguments{
-\item{image}{a Vesalius data frame containing barcodes, x, y, cc, value, 
+\item{image}{a Vesalius data frame containing barcodes, x, y, cc, value,
 cluster, and territory.}
 
 \item{counts}{count matrix - either matrix, sparse matrix or seurat object
@@ -25,7 +25,7 @@ NULL, all territories will be selected.}
 
 \item{genes}{character - gene of interest (only on gene at a time)}
 
-\item{normalise}{logical - If TRUE, gene expression values will be min/max 
+\item{normalise}{logical - If TRUE, gene expression values will be min/max
 normalised.}
 
 \item{cex}{numeric - font size modulator}
@@ -37,19 +37,19 @@ a ggplot object (geom_raster)
 viewGeneExpression - plot gene expression.
 }
 \details{
-Visualization of gene expression in all or in selected territories. 
-Gene expression is shown "as is". This means that if no transformation 
-is applied to the data then normalized raw count will be shown. 
+Visualization of gene expression in all or in selected territories.
+Gene expression is shown "as is". This means that if no transformation
+is applied to the data then normalized raw count will be shown.
 
-If normalization and scaling have been applied, normalized counts will be 
-shown. 
+If normalization and scaling have been applied, normalized counts will be
+shown.
 
-This also applies to any data transformation applied on the count matrix 
-or the Seurat object. 
+This also applies to any data transformation applied on the count matrix
+or the Seurat object.
 
-We recommend using Seurat Objects. 
+We recommend using Seurat Objects.
 
-NOTE : You might be promoted to use geom_tiles instead of geom_raster. 
+NOTE : You might be promoted to use geom_tiles instead of geom_raster.
 However - this will increase file size to unreasonable heights.
 }
 \examples{

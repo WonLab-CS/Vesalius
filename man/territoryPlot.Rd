@@ -16,7 +16,7 @@ territoryPlot(
 \item{territories}{a Vesalius data frame conatining territory information
 (i.e. containing the terriotry column)}
 
-\item{split}{logical - If TRUE, territories will be plotted in 
+\item{split}{logical - If TRUE, territories will be plotted in
 separate panels}
 
 \item{randomise}{logical - If TRUE, colour palette will be randomised.}
@@ -32,7 +32,7 @@ a ggplot object
 territoryPlot plotting Vesalius territories
 }
 \details{
-Territory plots show all territories in false colour after they 
+Territory plots show all territories in false colour after they
 have been isolated from a Vesalius image.
 }
 \examples{

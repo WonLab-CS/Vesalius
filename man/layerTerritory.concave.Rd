@@ -25,16 +25,16 @@ x,y,cc,value,cluster, territory)}
 \item{layerDepth}{integer describing maximum number of layers}
 
 \item{concavity}{numeric describing concavity of the territory. 1 for highly
-detailed structures. At higher values the territory will be considered as 
+detailed structures. At higher values the territory will be considered as
 a convex hull.}
 
-\item{length_threshold}{numeric describing the minimum distance between 
+\item{length_threshold}{numeric describing the minimum distance between
 points to be considered during hulling. High values = simpler shapes}
 
-\item{morphologyFactor}{integer or vector of integers describing growth 
+\item{morphologyFactor}{integer or vector of integers describing growth
 and/or shrink extent.}
 
-\item{captureRadius}{numeric - proportion of maximum distance between 
+\item{captureRadius}{numeric - proportion of maximum distance between
 barcodes that will be used to pool barcodes together (range 0 - 1).}
 
 \item{minBar}{integer - minimum number of barcodes allowed in each territory}
@@ -50,16 +50,16 @@ Layer describes the layer to which a barcode belongs.
 layerTerritory.concave layers selected territories using concave hulling
 }
 \details{
-To divide a territory into layers, one approach is to use concave 
+To divide a territory into layers, one approach is to use concave
 hulling. This approach considers all barcodes locations (only center pixels)
-as points on a 2D grid and extracts the "outer" layer of barcodes. 
+as points on a 2D grid and extracts the "outer" layer of barcodes.
 
-This outer layer is extracted and defined as the first layer of the 
+This outer layer is extracted and defined as the first layer of the
 territory. The process is applied until no more barcodes can be pooled into
-a layer. 
+a layer.
 
-It should be noted that due to the geometrical nature of this approach, 
-sub-territories are isolated prior to concave hulling to ensure that the 
+It should be noted that due to the geometrical nature of this approach,
+sub-territories are isolated prior to concave hulling to ensure that the
 hulling is only applied to contiguous barcodes (defined by captureRadius).
 }
 \examples{

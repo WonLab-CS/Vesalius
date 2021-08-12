@@ -2,7 +2,7 @@
 % Please edit documentation in R/Territory_identity.R
 \name{extractClusterMarkers}
 \alias{extractClusterMarkers}
-\title{extractClusterMarkers compute differential gene expression between clusters 
+\title{extractClusterMarkers compute differential gene expression between clusters
 and remaning barcodes}
 \usage{
 extractClusterMarkers(
@@ -19,18 +19,18 @@ extractClusterMarkers(
 \arguments{
 \item{cluster}{a Seurat object containing clusters of an isolated territory}
 
-\item{counts}{seurat object containing counts. Alternatively, matrix or 
+\item{counts}{seurat object containing counts. Alternatively, matrix or
 sparse matrix. Colnames as barcodes and rownames as genes.}
 
-\item{method}{character describing the statistical test to use in order to 
+\item{method}{character describing the statistical test to use in order to
 extract differential gene expression (currently only wilcox and t.test)}
 
-\item{logFC}{numeric describing minimum log fold change value for 
+\item{logFC}{numeric describing minimum log fold change value for
 differential gene expression. Default set at 0.25.}
 
 \item{pval}{numeric for pval threshold. Default set at 0.05}
 
-\item{minPct}{numeric defining the minimum percentage of cells that should 
+\item{minPct}{numeric defining the minimum percentage of cells that should
 contain any given gene.}
 
 \item{minBar}{integer defining minimum number of barcodes in a territory.}
@@ -39,25 +39,25 @@ contain any given gene.}
 }
 \value{
 A data.frame (tibble) containing differential gene expression as well
-p.value, 
-logFC, 
+p.value,
+logFC,
 seedPct (percentage of cells containing gene in first group),
-queryPct (percentage of cells containing gene in second group), 
+queryPct (percentage of cells containing gene in second group),
 seedTerritory (territory used as group 1)
 queryTerritory (territory used as group 2)
 }
 \description{
-extractClusterMarkers compute differential gene expression between clusters 
+extractClusterMarkers compute differential gene expression between clusters
 and remaning barcodes
 }
 \details{
 extractClusterMarkers compares clusters to all remaining barcodes.
-If a territory is isolated (see \code{extractTerritories}) for further 
-analysis, Seurat can provide a cluster analysis of the isolated territory. 
-Seurat will compared clusters between each other within the isolated 
-territory. However, in some cases, it can be useful to compared the barcodes 
-present in a Seurat cluster to all remaining barcodes. This provides overall 
-differences in expression within the cluster as opposed to differential 
+If a territory is isolated (see \code{extractTerritories}) for further
+analysis, Seurat can provide a cluster analysis of the isolated territory.
+Seurat will compared clusters between each other within the isolated
+territory. However, in some cases, it can be useful to compared the barcodes
+present in a Seurat cluster to all remaining barcodes. This provides overall
+differences in expression within the cluster as opposed to differential
 expression between isolated clusters.
 }
 \examples{

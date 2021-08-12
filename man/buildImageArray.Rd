@@ -22,21 +22,21 @@ buildImageArray(
 
 \item{sliceID}{integer - PC slice used in image building. Only one value!}
 
-\item{invert}{logical describing if colour pattern should be inverted 
+\item{invert}{logical describing if colour pattern should be inverted
 (i.e 1-R,1-G,1-B)}
 
 \item{na.rm}{logical indicating if NA should be removed from bead list.}
 
-\item{resolution}{numeric (range 0 - 100) describing a percentage of original 
+\item{resolution}{numeric (range 0 - 100) describing a percentage of original
 image size. Used to reduce image size.}
 
-\item{filterThreshold}{numeric (range 0 -1) describing the quantile threshold 
+\item{filterThreshold}{numeric (range 0 -1) describing the quantile threshold
 at which barcodes and tiles should be retained (seed details)}
 
 \item{interpolation_type}{Method of interpolation during image resizing:
 \describe{
    \item{-1}{no interpolation: raw memory resizing.}
-   \item{0}{no interpolation: additional space is filled according to 
+   \item{0}{no interpolation: additional space is filled according to
             boundary_conditions.}
    \item{1}{Nearest-neighbor interpolation}
    \item{2}{moving average interpolation}
@@ -58,22 +58,22 @@ Returns a Vesalius data.frame with "barcodes","x","y","cc",
 buildImageArray creating an Image array from coloured coordinates
 }
 \details{
-Vesalius converts PCA loading values into an RGB colour code 
-associated with a coordinates on a Spatial Transcriptomic Assay. The 
-\code{buildImageArray} converts coloured coordinates into an actual image 
-via the use of Voronoi diagrams and Tile rasterisation. 
+Vesalius converts PCA loading values into an RGB colour code
+associated with a coordinates on a Spatial Transcriptomic Assay. The
+\code{buildImageArray} converts coloured coordinates into an actual image
+via the use of Voronoi diagrams and Tile rasterisation.
 
-Each barcodes coordinate is used as the center point of a voronoi tile and 
-an artificial "box" is created surrounding barcode coordinates. This 
+Each barcodes coordinate is used as the center point of a voronoi tile and
+an artificial "box" is created surrounding barcode coordinates. This
 creates superfluous tiles that can be detrimental to further analysis.
-To remove excessive tiles, Vesalius takes a two step process. First, Vesalius 
-removes any barcode that is too far away from other barcodes (likely stray 
-barcodes). Second, Vesalius filters out tiles that are tied to the outer box 
-and that exceed a certain area threshold. These triangles are nearly always 
-related to boundary tiles. Both of these filtering steps are controlled via 
-the \code{filterThreshold} argument. 
+To remove excessive tiles, Vesalius takes a two step process. First, Vesalius
+removes any barcode that is too far away from other barcodes (likely stray
+barcodes). Second, Vesalius filters out tiles that are tied to the outer box
+and that exceed a certain area threshold. These triangles are nearly always
+related to boundary tiles. Both of these filtering steps are controlled via
+the \code{filterThreshold} argument.
 
-A filterThreshold of 0.99 means that 99 \% or barcodes and tile triangles 
+A filterThreshold of 0.99 means that 99 \% or barcodes and tile triangles
 will be retained.
 }
 \examples{

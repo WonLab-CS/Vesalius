@@ -20,7 +20,7 @@ x,y,cc,value,cluster, territory)}
 
 \item{layerDepth}{integer describing maximum number of layers}
 
-\item{morphologyFactor}{integer or vector of integers describing growth 
+\item{morphologyFactor}{integer or vector of integers describing growth
 and/or shrink extent.}
 
 \item{verbose}{logical - progress message output.}
@@ -34,14 +34,14 @@ Layer describes the layer to which a barcode belongs.
 extractIdentity compute differentially expressed genes for each territory
 }
 \details{
-To divide a territory into layers, one approach is to use edge 
-detection. Terriotries are converted to a black and white image containing 
-only the territories of interest. Sobel edge detection is applied along the 
-x and y axis and all barcodes sharing a pixel with the edge are pooled into 
+To divide a territory into layers, one approach is to use edge
+detection. Terriotries are converted to a black and white image containing
+only the territories of interest. Sobel edge detection is applied along the
+x and y axis and all barcodes sharing a pixel with the edge are pooled into
 a layer. The process is applied until no more barcodes can be pooled into
-a layer. 
+a layer.
 
-Morphological operators are applied to the isolated territory prior to 
+Morphological operators are applied to the isolated territory prior to
 layering (see \code{territoryMorphing}).
 }
 \examples{

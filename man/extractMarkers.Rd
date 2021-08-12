@@ -2,7 +2,7 @@
 % Please edit documentation in R/Territory_identity.R
 \name{extractMarkers}
 \alias{extractMarkers}
-\title{extractMarkers compute differential gene expression between selected 
+\title{extractMarkers compute differential gene expression between selected
 territories.}
 \usage{
 extractMarkers(
@@ -23,63 +23,63 @@ extractMarkers(
 \arguments{
 \item{image}{a dataframe containing territory information}
 
-\item{counts}{seurat object containing counts. Alternatively, matrix or 
+\item{counts}{seurat object containing counts. Alternatively, matrix or
 sparse matrix. Colnames as barcodes and rownames as genes.}
 
-\item{seed}{Integer or vector of integers describing territories to be 
+\item{seed}{Integer or vector of integers describing territories to be
 included in group 1 for differential gene expression analysis.}
 
-\item{query}{Integer or vector of integers describing territories to be 
+\item{query}{Integer or vector of integers describing territories to be
 included in group 2 for differential gene expression analysis. Default = NULL}
 
-\item{method}{character describing the statistical test to use in order to 
+\item{method}{character describing the statistical test to use in order to
 extract differantial gene expression (currently only wilcox and t.test)}
 
-\item{logFC}{numeric describing minimum log fold change value for 
+\item{logFC}{numeric describing minimum log fold change value for
 differential gene expression. Default set at 0.25.}
 
 \item{pval}{numeric for pval threshold. Default set at 0.05}
 
-\item{minPct}{numeric defining the minimum percentage of cells that should 
+\item{minPct}{numeric defining the minimum percentage of cells that should
 contain any given gene.}
 
 \item{minBar}{integer defining minimum number of barcodes in a territory.}
 
-\item{morphologyFactorSeed}{Integer or vector of integers describing growth 
+\item{morphologyFactorSeed}{Integer or vector of integers describing growth
 or shrink rate of seed territories}
 
-\item{morphologyFactorQuery}{Integer or vector of integers describing growth 
+\item{morphologyFactorQuery}{Integer or vector of integers describing growth
 or shrink rate of query territories}
 
 \item{verbose}{logical - progress message output}
 }
 \value{
 A data.frame (tibble) containing differential gene expression as well
-p.value, 
-logFC, 
+p.value,
+logFC,
 seedPct (percentage of cells containing gene in first group),
-queryPct (percentage of cells containing gene in second group), 
+queryPct (percentage of cells containing gene in second group),
 seedTerritory (territory used as group 1)
 queryTerritory (territory used as group 2)
 }
 \description{
-extractMarkers compute differential gene expression between selected 
+extractMarkers compute differential gene expression between selected
 territories.
 }
 \details{
-extractMarkers compares a set of selected territories to another set 
-of selected territories. If one of territory sets does not contain enough 
-barcodes, \code{extractMarkers} will return NULL. 
+extractMarkers compares a set of selected territories to another set
+of selected territories. If one of territory sets does not contain enough
+barcodes, \code{extractMarkers} will return NULL.
 
-A seed territory (or territories) should always be 
+A seed territory (or territories) should always be
 provided. Query territories can be left as the default NULL. In this case,
-the seed territory will be compared to all remaining barcodes that are NOT 
-present in the seed. Otherwise, seed territories will be compared to query 
-territories after any morphological operations 
-(see \code{territoryMorphology}. 
+the seed territory will be compared to all remaining barcodes that are NOT
+present in the seed. Otherwise, seed territories will be compared to query
+territories after any morphological operations
+(see \code{territoryMorphology}.
 
-extractMarkers provides a way to manipulate each set of territories 
-independtly as described in \code{morphologyFactorSeed} and 
+extractMarkers provides a way to manipulate each set of territories
+independtly as described in \code{morphologyFactorSeed} and
 \code{morphologyFactorQuery.}
 }
 \examples{

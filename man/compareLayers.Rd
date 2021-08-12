@@ -21,24 +21,24 @@ compareLayers(
 \item{layers}{data.frame containing layered territory information
 (See \code{layerTerritory.edge} and \code{layerTerritory.concave})}
 
-\item{counts}{seurat object containing counts. Alternatively, matrix or 
+\item{counts}{seurat object containing counts. Alternatively, matrix or
 sparse matrix. Colnames as barcodes and rownames as genes.}
 
-\item{l1}{integer or vector of integers indicating layers to be contained in 
+\item{l1}{integer or vector of integers indicating layers to be contained in
 group 1. Default NULL - If NULL will compare all layers independently}
 
-\item{l2}{integer or vector of integers indicating layers to be contained in 
+\item{l2}{integer or vector of integers indicating layers to be contained in
 group 2. If NULL will compare all layers independently}
 
-\item{method}{character describing the statistical test to use in order to 
+\item{method}{character describing the statistical test to use in order to
 extract differential gene expression (currently only wilcox and t.test)}
 
-\item{logFC}{numeric describing minimum log fold change value for 
+\item{logFC}{numeric describing minimum log fold change value for
 differential gene expression. Default set at 0.25.}
 
 \item{pval}{numeric for pval threshold. Default set at 0.05}
 
-\item{minPct}{numeric defining the minimum percentage of cells that should 
+\item{minPct}{numeric defining the minimum percentage of cells that should
 contain any given gene.}
 
 \item{minBar}{integer defining minimum number of barcodes in a territory.}
@@ -47,10 +47,10 @@ contain any given gene.}
 }
 \value{
 A data.frame (tibble) containing differential gene expression as well
-p.value, 
-logFC, 
+p.value,
+logFC,
 seedPct (percentage of cells containing gene in first group),
-queryPct (percentage of cells containing gene in second group), 
+queryPct (percentage of cells containing gene in second group),
 seedTerritory (territory used as group 1)
 queryTerritory (territory used as group 2)
 }
@@ -58,16 +58,16 @@ queryTerritory (territory used as group 2)
 compareLayers computes differential gene expression between territory layers
 }
 \details{
-Territory isolation provides a convenient way to investigate 
-the finer detail of anatomy and cellular spatial distribution. Image 
-representation of territories provides a convenient way to manipulate 
+Territory isolation provides a convenient way to investigate
+the finer detail of anatomy and cellular spatial distribution. Image
+representation of territories provides a convenient way to manipulate
 territories such as dividing a territory into layers. Vesalius provides two
-method to layer a territory : \code{layerTerritory.edge} and 
-\code{layerTerritory.concave}. The output of both function returns a data 
-frame with layer information. The \code{compareLayers} compares a layer or 
+method to layer a territory : \code{layerTerritory.edge} and
+\code{layerTerritory.concave}. The output of both function returns a data
+frame with layer information. The \code{compareLayers} compares a layer or
 layer sets between each other. If both l1 and l2 layers are left to NULL,
-each layer will be compared to each other layer on at a time. 
-To compare one layer to all other layers, specific layer ID's should be 
+each layer will be compared to each other layer on at a time.
+To compare one layer to all other layers, specific layer ID's should be
 specified.
 }
 \examples{

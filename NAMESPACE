@@ -1,10 +1,19 @@
-import("parallel","Seurat")
+import("Seurat","imager","dplyr",  "tidyr","ggplot2")
 importFrom("grDevices", "rainbow", "rgb","colorRampPalette")
 importFrom("graphics", "hist.default", "par", "points", "rect", "text")
-importFrom("stats", "kmeans", "median", "quantile","ecdf", "filter", "na.exclude", "p.adjust",
-           "t.test", "var", "wilcox.test")
+importFrom("stats", "kmeans", "median", "quantile","ecdf",
+           "na.exclude", "p.adjust","t.test", "var", "wilcox.test")
 importFrom("utils", "tail")
 importFrom("Matrix","Matrix")
 importFrom("methods", "is", "new")
 importFrom("utils", "write.csv")
+importFrom("deldir","deldir")
+importFrom("tvR","denoise2")
+importFrom("sp","point.in.polygon")
+importFrom("concaveman","concaveman")
+importFrom("imagerExtra","EqualizePiecewise","BalanceSimplest",
+           "SPE","EqualizeDP","EqualizeADP")
+importFrom("Matrix","Matrix")
+importFrom("RColorBrewer","brewer.pal")
+importFrom("parallel","mclapply","mcmapply")
 exportPattern("^[[:alpha:]]+")

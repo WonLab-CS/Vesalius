@@ -175,7 +175,7 @@
 .morph <- function(verbose =TRUE){
     if(!verbose) return(NULL)
     t <- Sys.time()
-    cat( paste(t," Converting to pixset and dilating territory \n"))
+    cat( paste(t," Converting to pixset and morphing territory \n"))
 }
 
 .layerTer <- function(verbose =TRUE){

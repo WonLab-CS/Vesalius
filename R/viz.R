@@ -2,27 +2,27 @@
 ############################   ST package        ###############################
 ################################################################################
 
-#' imagePlot - Vesalius image plotting 
-#' @param image a Vesalius data frame containing at least 
+#' imagePlot - Vesalius image plotting
+#' @param image a Vesalius data frame containing at least
 #' barcodes, x, y, cc, value
-#' @param as.cimg logical - If TRUE, will plot directly using cimg plotting. 
-#' If FALSE, will produce a ggplot object. 
+#' @param as.cimg logical - If TRUE, will plot directly using cimg plotting.
+#' If FALSE, will produce a ggplot object.
 #' @param cex numeric - font and point size resizing factor.
-#' @details Vesalius provides basic plotting functions. This function 
-#' only shows Vesalius images (i.e. using true embedded colours or segmented 
-#' colours). 
-#' 
-#' Currently, we advise to use as.cimg as false for custom plots. 
-#' 
-#' As Vesalius nearly always returns data frames, custom plots are left to 
-#' the discretion of the user. 
-#' @return cimg plot or ggplot object 
-#' @examples 
+#' @details Vesalius provides basic plotting functions. This function
+#' only shows Vesalius images (i.e. using true embedded colours or segmented
+#' colours).
+#'
+#' Currently, we advise to use as.cimg as false for custom plots.
+#'
+#' As Vesalius nearly always returns data frames, custom plots are left to
+#' the discretion of the user.
+#' @return cimg plot or ggplot object
+#' @examples
 #' \dontrun{
 #' data(Vesalius)
 #' }
 
-imagePlot <- function(image, 
+imagePlot <- function(image,
                       as.cimg = TRUE,
                       cex=1){
     if(as.cimg){
@@ -52,29 +52,29 @@ imagePlot <- function(image,
 
 
 
-#' territoryPlot plotting Vesalius territories 
+#' territoryPlot plotting Vesalius territories
 #' @param territories a Vesalius data frame conatining territory information
 #' (i.e. containing the terriotry column)
-#' @param split logical - If TRUE, territories will be plotted in 
+#' @param split logical - If TRUE, territories will be plotted in
 #' separate panels
-#' @param randomise logical - If TRUE, colour palette will be randomised. 
+#' @param randomise logical - If TRUE, colour palette will be randomised.
 #' @param cex numeric describing font size multiplier.
 #' @param cex.pt numeric describing point size multiplier.
-#' @details Territory plots show all territories in false colour after they 
+#' @details Territory plots show all territories in false colour after they
 #' have been isolated from a Vesalius image.
-#' @return a ggplot object 
-#' @examples 
+#' @return a ggplot object
+#' @examples
 #' \dontrun{
 #' data(Vesalius)
 #' }
 
-territoryPlot <- function(territories, 
+territoryPlot <- function(territories,
                           split = FALSE,
                           randomise = TRUE,
                           cex=1,
                           cex.pt=0.25){
     #--------------------------------------------------------------------------#
-    # Dirty ggplot - this is just a quick and dirty plot to show what it look 
+    # Dirty ggplot - this is just a quick and dirty plot to show what it look
     # like
     # At the moment - I thinking the user should make their own
     # Not a prority for custom plotting functions
@@ -138,53 +138,54 @@ territoryPlot <- function(territories,
 
 
 
-# Not in use at the moment 
-# Might add in futur iterations of the packages 
-.cellProportion <- function(image){
-    prop <- FetchData(image,"seurat_clusters") %>% table %>% as.data.frame
-    colnames(prop) <- c("Cell","Cell Proportion")
+# Not in use at the moment
+# Might add in futur iterations of the packages
+#.cellProportion <- function(image){
+#    prop <- FetchData(image,"seurat_clusters") %>% table %>% as.data.frame
+#    colnames(prop) <- c("Cell","Cell Proportion")
 
-    ter_col <- nrow(prop)
-    ter_pal <- colorRampPalette(brewer.pal(8, "Accent"))
-    ter_col <- ter_pal(ter_col)
+#    ter_col <- nrow(prop)
+#    ter_pal <- colorRampPalette(brewer.pal(8, "Accent"))
+#    ter_col <- ter_pal(ter_col)
 
-    treemap(prop,
-            index="Cell",
-            vSize="Cell Proportion",
-            type="index",
-            palette = ter_col
-            )
+#    treemap(prop,
+#            index="Cell",
+#            vSize="Cell Proportion",
+#            type="index",
+#            palette = ter_col
+#            )
+#}
 
-}
+
 
 
 #' viewGeneExpression - plot gene expression.
-#' @param image a Vesalius data frame containing barcodes, x, y, cc, value, 
-#' cluster, and territory.  
+#' @param image a Vesalius data frame containing barcodes, x, y, cc, value,
+#' cluster, and territory.
 #' @param counts count matrix - either matrix, sparse matrix or seurat object
 #' This matrix should contain genes as rownames and cells/barcodes as colnames
 #' @param ter integer - Territory ID in which gene expression will be viewed. If
-#' NULL, all territories will be selected. 
+#' NULL, all territories will be selected.
 #' @param genes character - gene of interest (only on gene at a time)
-#' @param normalise logical - If TRUE, gene expression values will be min/max 
+#' @param normalise logical - If TRUE, gene expression values will be min/max
 #' normalised.
 #' @param cex numeric - font size modulator
-#' @details Visualization of gene expression in all or in selected territories. 
-#' Gene expression is shown "as is". This means that if no transformation 
-#' is applied to the data then normalized raw count will be shown. 
-#' 
-#' If normalization and scaling have been applied, normalized counts will be 
-#' shown. 
-#' 
-#' This also applies to any data transformation applied on the count matrix 
-#' or the Seurat object. 
-#' 
-#' We recommend using Seurat Objects. 
-#' 
-#' NOTE : You might be promoted to use geom_tiles instead of geom_raster. 
-#' However - this will increase file size to unreasonable heights. 
+#' @details Visualization of gene expression in all or in selected territories.
+#' Gene expression is shown "as is". This means that if no transformation
+#' is applied to the data then normalized raw count will be shown.
+#'
+#' If normalization and scaling have been applied, normalized counts will be
+#' shown.
+#'
+#' This also applies to any data transformation applied on the count matrix
+#' or the Seurat object.
+#'
+#' We recommend using Seurat Objects.
+#'
+#' NOTE : You might be promoted to use geom_tiles instead of geom_raster.
+#' However - this will increase file size to unreasonable heights.
 #' @return a ggplot object (geom_raster)
-#' @examples 
+#' @examples
 #' \dontrun{
 #' data(Vesalius)
 #' }
@@ -192,7 +193,7 @@ territoryPlot <- function(territories,
 
 viewGeneExpression <- function(image,
                                counts,
-                               ter = NULL, 
+                               ter = NULL,
                                genes = NULL,
                                normalise = TRUE,
                                cex =10){
@@ -202,7 +203,7 @@ viewGeneExpression <- function(image,
     # First let's get the territory
     #--------------------------------------------------------------------------#
     if(!is.null(ter)){
-      image <- filter(image, territory %in% as.character(ter)) %>% 
+      image <- filter(image, territory %in% as.character(ter)) %>%
                select(c("barcodes","x","y"))
 
     }
@@ -219,7 +220,7 @@ viewGeneExpression <- function(image,
     # Extract counts from the seurat object
     # This will need to be cleaned up later
     #--------------------------------------------------------------------------#
-    
+
     if(is(counts) == "Seurat"){
         counts <- subset(counts,cells = barcodes)
         counts <- GetAssayData(counts, slot = "data")
@@ -245,7 +246,7 @@ viewGeneExpression <- function(image,
         # this should probably be cleaned up
         #----------------------------------------------------------------------#
         if(sum(inCount) == 0){
-            warning(paste(genes," is not present in count matrix. 
+            warning(paste(genes," is not present in count matrix.
                           Returning NULL"),immediate.=T)
             return(NULL)
         }
@@ -282,34 +283,34 @@ viewGeneExpression <- function(image,
 
 
 #' viewGeneExpression - plot gene expression in layered Vesalius territories
-#' @param image a Vesalius data frame containing barcodes, x, y, cc, value, 
-#' cluster, and territory.  
+#' @param image a Vesalius data frame containing barcodes, x, y, cc, value,
+#' cluster, and territory.
 #' @param counts count matrix - either matrix, sparse matrix or seurat object
 #' This matrix should contain genes as rownames and cells/barcodes as colnames
 #' @param genes character - gene of interest (only on gene at a time)
-#' @param normalise logical - If TRUE, gene expression values will be min/max 
+#' @param normalise logical - If TRUE, gene expression values will be min/max
 #' normalised.
 #' @param cex numeric - font size modulator
-#' @details Visualization of gene expression a layered territory. 
+#' @details Visualization of gene expression a layered territory.
 #' After isolation or a territory, Vesalius can apply territory layering. The
-#' expression shown here describes the mean expression in each layer. 
-#' 
-#' Gene expression is shown "as is". This means that if no transformation 
-#' is applied to the data then normalized raw count will be used for each layer. 
-#' 
-#' If normalization and scaling have been applied, normalized counts will be 
-#' used for each layer 
-#' 
-#' This also applies to any data transformation applied on the count matrix 
-#' or the Seurat object. 
-#' 
-#' We recommend using Seurat Objects. 
-#' 
-#' NOTE : You might be promoted to use geom_tiles instead of geom_raster. 
-#' However - this will increase file size to unreasonable heights. 
-#' 
+#' expression shown here describes the mean expression in each layer.
+#'
+#' Gene expression is shown "as is". This means that if no transformation
+#' is applied to the data then normalized raw count will be used for each layer.
+#'
+#' If normalization and scaling have been applied, normalized counts will be
+#' used for each layer
+#'
+#' This also applies to any data transformation applied on the count matrix
+#' or the Seurat object.
+#'
+#' We recommend using Seurat Objects.
+#'
+#' NOTE : You might be promoted to use geom_tiles instead of geom_raster.
+#' However - this will increase file size to unreasonable heights.
+#'
 #' @return a ggplot object (geom_raster)
-#' @examples 
+#' @examples
 #' \dontrun{
 #' data(Vesalius)
 #' }
@@ -355,7 +356,7 @@ viewLayerExpression <- function(image,
         # this should probably be cleaned up
         #----------------------------------------------------------------------#
         if(sum(inCount) == 0){
-            warning(paste(genes," is not present in count matrix. 
+            warning(paste(genes," is not present in count matrix.
                           Returning NULL"),immediate.=T)
             return(NULL)
         }
@@ -396,5 +397,3 @@ viewLayerExpression <- function(image,
                x = "X coordinates", y = "Y coordinates")
     return(ge)
 }
-
-

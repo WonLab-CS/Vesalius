@@ -1,6 +1,6 @@
 ---
-title: "Vignette Title"
-author: "Vignette Author"
+title: "Vesalius: Quick Start"
+author: "Patrick C.N. Martin"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
@@ -15,51 +15,162 @@ knitr::opts_chunk$set(
   comment = "#>"
 )
 ```
+# Vesalius: Quick Start
 
-Vignettes are long form documentation commonly included in packages. Because they are part of the distribution of the package, they need to be as compact as possible. The `html_vignette` output type provides a custom style sheet (and tweaks some options) to ensure that the resulting html is as small as possible. The `html_vignette` format:
+Do you like to live in the fast lane? Do you sigh every time you see a long
+vignette? Do you wish there was a TLDR on everything?
 
-- Never uses retina figures
-- Has a smaller default figure size
-- Uses a custom CSS stylesheet instead of the default Twitter Bootstrap style
+I understand.
 
-## Vignette Info
+Welcome to the Vesalius quick start!
 
-Note the various macros within the `vignette` section of the metadata block above. These are required in order to instruct R how to build the vignette. Note that you should change the `title` field and the `\VignetteIndexEntry` to match the title of your vignette.
+In this vignette, you will find a **very** short guide on how to work with Vesalius.
+Vesalius provides an internal data set taken from real Spatial transcrtiptomic
+data. For an in depth view of Vesalius, please refer to Vesalius_Analysis.Rmd.
 
-## Styles
+For all intents and purposes, this is a dummy data set and should only be used
+to get a feel for the Vesalius package. We strongly advise you to use real and
+complete data sets to fully understand the Vesalius package and its benefits.  
 
-The `html_vignette` template includes a basic CSS theme. To override this theme you can specify your own CSS in the document metadata as follows:
+# Introduction
+Vesalius is a tool to perform high-resolution in silico anatomization and
+molecular characterization from ST data without requiring companion images.
 
-    output: 
-      rmarkdown::html_vignette:
-        css: mystyles.css
+This is achieved by converting ST data into images: PCA loading values are
+embedded into RGB colour channels by taking the sum of the absolute value of all
+loading values associated to each bead on the ST array.
 
-## Figures
+Image analysis techniques are applied to the image and anatomical territories
+can subsequently be extracted.
 
-The figure sizes have been customised so that you can easily put two images side-by-side. 
+# Loading
 
-```{r, fig.show='hold'}
-plot(1:10)
-plot(10:1)
+First, let's load the package and the data. Data originates from slide-seqV2
+data (availble at (Single Cell Portal)[https://singlecell.broadinstitute.org/single_cell/study/SCP948/robust-decomposition-of-cell-type-mixtures-in-spatial-transcriptomics#study-download]).
+
+For sake of simplicity, Vesalius takes a small subset of this data set and
+stores it in the form of a Seurat object.
+
+```{r loading, eval = TRUE, echo = TRUE}
+library(vesalius)
+data(vesalius)
+ls()
 ```
 
-You can enable figure captions by `fig_caption: yes` in YAML:
+# Pre-processing
+Second, we pre-process the data using Seurat
 
-    output:
-      rmarkdown::html_vignette:
-        fig_caption: yes
+```{r preprocessing, eval = TRUE, echo = TRUE}
+# First create a copy of raw data for later use
+# When working on isolated territories, we want to run pre-processing
+# on raw counts not on already transformed counts.
+copy <- vesalius
 
-Then you can use the chunk option `fig.cap = "Your figure caption."` in **knitr**.
+# Preprocessing Spatial transcriptomic data
+vesalius <- NormalizeData(vesalius)
+vesalius <- FindVariableFeatures(vesalius, nfeatures = 2000)
+vesalius <- ScaleData(vesalius)
 
-## More Examples
-
-You can write math expressions, e.g. $Y = X\beta + \epsilon$, footnotes^[A footnote here.], and tables, e.g. using `knitr::kable()`.
-
-```{r, echo=FALSE, results='asis'}
-knitr::kable(head(mtcars, 10))
 ```
 
-Also a quote using `>`:
+# RGB to PCA
+Third, we convert a count matrix (stored in a Seurat object) to RGB coded
+coordinates. We will only produce one slice (i.e. PC1 to PC3)
 
-> "He who gives up [code] safety for [code] speed deserves neither."
-([via](https://twitter.com/hadleywickham/status/504368538874703872))
+```{r rgbtopca, eval = TRUE, echo = TRUE}
+vesalius <- rgbPCA(vesalius,slices = 1)
+```
+
+# Building an Image
+Forth, we create an actual image by using a combination of voronoi diagrams and
+tile rasterisation.
+
+```{r buildImage,eval = TRUE, echo = TRUE,fig.height = 6, fig.width = 6}
+vesalius <- buildImageArray(vesalius, sliceID = 1, invert =T)
+
+
+# Let's have a look shall we?
+Vesalius_image <- imagePlot(vesalius,as.cimg =FALSE) + theme_void()
+
+
+print(Vesalius_image)
+
+```
+
+# Applying Image Analysis techniques
+Firth, we can apply image analysis techniques such as histogram equalisation,
+variance regularisation, smoothing and segmentation.
+
+```{r imageAnalysis, eval = TRUE , echo = TRUE}
+# Histogram EQ
+vesalius <- equalizeHistogram(vesalius,sleft = 2.5, sright=2.5,invert =T)
+
+
+# Variance regularisation
+vesalius <- regulariseImage(vesalius, lambda = 10,
+                            niter = 200, normalise=T)
+
+
+# Smoothing
+# !!!Optional!!! -
+vesalius <- smoothArray(vesalius,method = "box", box = 1)
+
+# Segmentation
+# This function provides smoothing internally.
+vesalius <- iterativeSegmentation.array(vesalius,
+                                        colDepth = 6,
+                                        smoothIter = 20,
+                                        method = c("iso","median"),
+                                        sigma=1.5,
+                                        box = 10,
+                                        useCenter = T,
+                                        invert =T)
+
+
+# Isolating territories from colour segments
+vesalius <- isolateTerritories.array(vesalius,
+                                     captureRadius = 0.1,
+                                     minBar = 1)
+
+vesalius
+
+```
+
+# Visualisation
+Sixth, we can visualise the territories.
+
+```{r viz, eval = TRUE, echo = TRUE, fig.width = 6, fig.height = 6}
+# Let's have a look!
+imgTerritory <- territoryPlot(vesalius, randomise = TRUE,cex =15 , cex.pt=2)
+
+
+
+print(imgTerritory)
+
+
+
+```  
+
+# Territory extraction and markers
+
+Finally, we can extract territories to run a more in depth analysis. This returns
+a Seurat object all selected territories.
+
+
+```{r extract, eval = TRUE, echo=TRUE}
+# extract terriotry from seurat object
+ter <- extractTerritories(vesalius,copy,seedID= 1)
+ter
+
+# get all markers related to all territories
+all <- extractAllMarkers(vesalius,copy)
+head(all)
+
+# get markers associated with on or more territories
+one <- extractMarkers(vesalius, copy, seed = c(1))
+head(one)
+
+# comparing territories
+two <- extractMarkers(vesalius, copy, seed = c(1), query = c(2,3))
+head(two)
+```

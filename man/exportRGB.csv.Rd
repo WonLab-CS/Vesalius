@@ -7,7 +7,7 @@
 exportRGB.csv(coordinates, file = NULL, slice = NULL, split = TRUE)
 }
 \arguments{
-\item{coordinates}{Vesalius data.frame with barcodes, x, y, cc, value,and 
+\item{coordinates}{Vesalius data.frame with barcodes, x, y, cc, value,and
 slice.}
 
 \item{file}{character - file name or vector of files names if multiple slices
@@ -24,9 +24,9 @@ csv file at desired location containing rgb coloured coordinates.
 exportRGB.csv export RGB coordinates as csv.
 }
 \details{
-Export rgb colour code using slice information. If no file name or 
-file names are provided, Vesalius will use its internal file name 
-(pca_to_rgb.csv). 
+Export rgb colour code using slice information. If no file name or
+file names are provided, Vesalius will use its internal file name
+(pca_to_rgb.csv).
 
 If one or more slice is provided, slice number will be included in file name.
 If split is true, indvidual files for each selected files will be created.

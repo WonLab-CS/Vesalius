@@ -10,7 +10,7 @@ territoryMorphing(territories, morphologyFactor, image, verbose = TRUE)
 \item{territories}{data.frame - Vesalius formatted data.frame (i.e. barcodes,
 x,y,cc,value,cluster, territory) only containing territories of interest.}
 
-\item{morphologyFactor}{integer or vector of integers describing growth 
+\item{morphologyFactor}{integer or vector of integers describing growth
 and/or shrink extent.}
 
 \item{image}{data.frame - Vesalius formatted data.frame (i.e. barcodes,
@@ -21,8 +21,8 @@ x,y,cc,value,cluster, territory) containing all territories.}
 \value{
 Returns a Vesalius data.frame with "barcodes","x","y","cc",
 "value","tile","cluster", and "territory".
-This data.frame will contain the new territory after morphological operators 
-and will contain barcodes associated with other territories and colour 
+This data.frame will contain the new territory after morphological operators
+and will contain barcodes associated with other territories and colour
 segments.
 }
 \description{
@@ -30,11 +30,11 @@ territoryMorphing applies morphological operators to a set of territoriees
 }
 \details{
 Territory morphing can manipulate territories by growing, shrinking,
-filling, and cleaning territories. 
+filling, and cleaning territories.
 Growing = Positive integers - Territory will be dilated by x number of pixels
-Shrinking = Negative integers - Territory will be contracted by x number of 
+Shrinking = Negative integers - Territory will be contracted by x number of
 pixels
-Filling = grow followed by shrink. 
+Filling = grow followed by shrink.
 Cleaning = shrink followed by grow.
 }
 \examples{

@@ -6,25 +6,25 @@
 
 #' territoryMorphing applies morphological operators to a set of territoriees
 #' @param territories data.frame - Vesalius formatted data.frame (i.e. barcodes,
-#' x,y,cc,value,cluster, territory) only containing territories of interest. 
-#' @param morphologyFactor integer or vector of integers describing growth 
+#' x,y,cc,value,cluster, territory) only containing territories of interest.
+#' @param morphologyFactor integer or vector of integers describing growth
 #' and/or shrink extent.
 #' @param image data.frame - Vesalius formatted data.frame (i.e. barcodes,
 #' x,y,cc,value,cluster, territory) containing all territories.
 #' @param verbose logical - progress message output.
 #' @details Territory morphing can manipulate territories by growing, shrinking,
-#' filling, and cleaning territories. 
+#' filling, and cleaning territories.
 #' Growing = Positive integers - Territory will be dilated by x number of pixels
-#' Shrinking = Negative integers - Territory will be contracted by x number of 
+#' Shrinking = Negative integers - Territory will be contracted by x number of
 #' pixels
-#' Filling = grow followed by shrink. 
+#' Filling = grow followed by shrink.
 #' Cleaning = shrink followed by grow.
 #' @return Returns a Vesalius data.frame with "barcodes","x","y","cc",
 #' "value","tile","cluster", and "territory".
-#' This data.frame will contain the new territory after morphological operators 
-#' and will contain barcodes associated with other territories and colour 
+#' This data.frame will contain the new territory after morphological operators
+#' and will contain barcodes associated with other territories and colour
 #' segments.
-#' @examples 
+#' @examples
 #' \dontrun{
 #' data(Vesalius)
 #' }
@@ -87,36 +87,36 @@ territoryMorphing <- function(territories,
 
 #' layerTerritory.concave layers selected territories using concave hulling
 #' @param image data.frame - Vesalius formatted data.frame (i.e. barcodes,
-#' x,y,cc,value,cluster, territory) 
+#' x,y,cc,value,cluster, territory)
 #' @param seedTerritory integer describing which territory should be layered
 #' @param layerDepth integer describing maximum number of layers
 #' @param concavity numeric describing concavity of the territory. 1 for highly
-#' detailed structures. At higher values the territory will be considered as 
-#' a convex hull. 
-#' @param length_threshold numeric describing the minimum distance between 
-#' points to be considered during hulling. High values = simpler shapes 
-#' @param morphologyFactor integer or vector of integers describing growth 
+#' detailed structures. At higher values the territory will be considered as
+#' a convex hull.
+#' @param length_threshold numeric describing the minimum distance between
+#' points to be considered during hulling. High values = simpler shapes
+#' @param morphologyFactor integer or vector of integers describing growth
 #' and/or shrink extent.
-#' @param captureRadius numeric - proportion of maximum distance between 
+#' @param captureRadius numeric - proportion of maximum distance between
 #' barcodes that will be used to pool barcodes together (range 0 - 1).
-#' @param minBar integer - minimum number of barcodes allowed in each territory 
-#' @param verbose logical - progress message output. 
-#' @details To divide a territory into layers, one approach is to use concave 
+#' @param minBar integer - minimum number of barcodes allowed in each territory
+#' @param verbose logical - progress message output.
+#' @details To divide a territory into layers, one approach is to use concave
 #' hulling. This approach considers all barcodes locations (only center pixels)
-#' as points on a 2D grid and extracts the "outer" layer of barcodes. 
-#' 
-#' This outer layer is extracted and defined as the first layer of the 
+#' as points on a 2D grid and extracts the "outer" layer of barcodes.
+#'
+#' This outer layer is extracted and defined as the first layer of the
 #' territory. The process is applied until no more barcodes can be pooled into
-#' a layer. 
-#' 
-#' It should be noted that due to the geometrical nature of this approach, 
-#' sub-territories are isolated prior to concave hulling to ensure that the 
+#' a layer.
+#'
+#' It should be noted that due to the geometrical nature of this approach,
+#' sub-territories are isolated prior to concave hulling to ensure that the
 #' hulling is only applied to contiguous barcodes (defined by captureRadius).
-#' 
+#'
 #' @return Returns a Vesalius data.frame with "barcodes","x","y","cc",
 #' "value","tile","cluster","territory" and "layer".
-#' Layer describes the layer to which a barcode belongs. 
-#' @examples 
+#' Layer describes the layer to which a barcode belongs.
+#' @examples
 #' \dontrun{
 #' data(Vesalius)
 #' }
@@ -125,10 +125,10 @@ layerTerritory.concave <- function(image,
                                    seedTerritory = NULL,
                                    layerDepth = NULL,
                                    concavity=1,
-                                   length_threshold=0, 
+                                   length_threshold=0,
                                    morphologyFactor = 3,
                                    captureRadius=0.2,
-                                   minBar = 10, 
+                                   minBar = 10,
                                    verbose =TRUE){
 
     .simpleBar(verbose)
@@ -161,7 +161,7 @@ layerTerritory.concave <- function(image,
       # Next for convenience we will convert to grey scale and dillate
       # as Default lets set dillation to 3 pixels
       #------------------------------------------------------------------------#
-      .dilate(verbose)
+      .morph(verbose)
       ter <- pooled[[te]]
       ter <- ter %>% select(c("x","y","cc","value")) %>%
              as.cimg %>% grayscale %>% grow(morphologyFactor)
@@ -232,26 +232,26 @@ layerTerritory.concave <- function(image,
 
 #' extractIdentity compute differentially expressed genes for each territory
 #' @param image data.frame - Vesalius formatted data.frame (i.e. barcodes,
-#' x,y,cc,value,cluster, territory) 
+#' x,y,cc,value,cluster, territory)
 #' @param seedTerritory integer describing which territory should be layered
 #' @param layerDepth integer describing maximum number of layers
-#' @param morphologyFactor integer or vector of integers describing growth 
+#' @param morphologyFactor integer or vector of integers describing growth
 #' and/or shrink extent.
-#' @param verbose logical - progress message output. 
-#' @details To divide a territory into layers, one approach is to use edge 
-#' detection. Terriotries are converted to a black and white image containing 
-#' only the territories of interest. Sobel edge detection is applied along the 
-#' x and y axis and all barcodes sharing a pixel with the edge are pooled into 
+#' @param verbose logical - progress message output.
+#' @details To divide a territory into layers, one approach is to use edge
+#' detection. Terriotries are converted to a black and white image containing
+#' only the territories of interest. Sobel edge detection is applied along the
+#' x and y axis and all barcodes sharing a pixel with the edge are pooled into
 #' a layer. The process is applied until no more barcodes can be pooled into
-#' a layer. 
-#' 
-#' Morphological operators are applied to the isolated territory prior to 
+#' a layer.
+#'
+#' Morphological operators are applied to the isolated territory prior to
 #' layering (see \code{territoryMorphing}).
-#' 
+#'
 #' @return Returns a Vesalius data.frame with "barcodes","x","y","cc",
 #' "value","tile","cluster","territory" and "layer".
-#' Layer describes the layer to which a barcode belongs. 
-#' @examples 
+#' Layer describes the layer to which a barcode belongs.
+#' @examples
 #' \dontrun{
 #' data(Vesalius)
 #' }
@@ -384,7 +384,7 @@ layerTerritory.edge <- function(image,
     layers <- unique(ter$layer)
     if(!is.null(layerDepth)){
         if(length(layers) < layerDepth){
-            warning("Layer depth exceeds layers in Territory - 
+            warning("Layer depth exceeds layers in Territory -
                      Using layers in territories", immediate. = TRUE)
 
         } else {

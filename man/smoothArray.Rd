@@ -20,23 +20,23 @@ smoothArray(
 )
 }
 \arguments{
-\item{image}{a Vesalius data frame 
+\item{image}{a Vesalius data frame
 (containing at least barcodes, x, y, cc, value) or a cimg object.}
 
-\item{method}{character describing smoothing method to use "median" , 
+\item{method}{character describing smoothing method to use "median" ,
 "iso"  or "box"}
 
 \item{iter}{numeric - number of smoothing iteration}
 
 \item{sigma}{numeric - standard deviation associated with isoblur (Gaussian)}
 
-\item{box}{numeric describing box size (centered around center pixel) 
+\item{box}{numeric describing box size (centered around center pixel)
 for smoothing}
 
-\item{threshold}{numeric - discard pixels that are too low in value (cutoff 
+\item{threshold}{numeric - discard pixels that are too low in value (cutoff
 threshold only applied in box/median blurs).}
 
-\item{neuman}{logical describing If Neumann boundary conditions should be 
+\item{neuman}{logical describing If Neumann boundary conditions should be
 used, Dirichlet otherwise (default true, Neumann)}
 
 \item{gaussian}{logical - use gaussian filter}
@@ -59,30 +59,30 @@ Returns a Vesalius data.frame with "barcodes","x","y","cc",
 Apply iterative smoothing to Vesalius images
 }
 \details{
-Images produced by Vesalius should be smoothed in order to retrieve 
+Images produced by Vesalius should be smoothed in order to retrieve
 territories. The \code{smoothArray} function provides multiple ways to smooth
-an image array. 
+an image array.
 
 First, consider the smoothing method : median, iso ,or box. Median and box
-both require the \code{box} argument to be set according to your needs. 
+both require the \code{box} argument to be set according to your needs.
 Median converts all pixels surronding a center pixel to the median value of
-the selected box. Box converts all pixels to the value of the center pixel. 
+the selected box. Box converts all pixels to the value of the center pixel.
 Iso applies a gaussian blur and is modulated by the \code{sigma} argument.
 
 Both the \code{box} and \code{sigma} arguments can take more than one value.
 Both may take a vector of positive numeric values. During every smoothing
 iteration, Vesalius will map this vector over multiple copies of the image
-and summarize the final smoothed image by taking values across different 
-levels. The levels are: min, max, and mean. Min will take the lowest pixel 
-value (in all three colour channels) across all levels. Max will take the 
+and summarize the final smoothed image by taking values across different
+levels. The levels are: min, max, and mean. Min will take the lowest pixel
+value (in all three colour channels) across all levels. Max will take the
 the highest pixel value (in all three colour channels) across levels. Mean
-will take the average pixel value (in all three colour channels) across 
+will take the average pixel value (in all three colour channels) across
 levels.
 
-The optimal smoothing values will depend on the question at hand and which 
-territories you wish to extract. 
+The optimal smoothing values will depend on the question at hand and which
+territories you wish to extract.
 
-NOTE: this function is applied internally in the 
+NOTE: this function is applied internally in the
 \code{iterativeSegmentation.array} function.
 
 For more information, we suggest reading through the imager vignette.
