@@ -30,9 +30,9 @@ Vesalius provides an internal data set taken from real Spatial Transcriptomic
 data. This can be used as a dummy data set to get a feel for the Vesalius
 workflow.
 
-The "Fast start" guide can be found (here)[https://github.com/patrickCNMartin/Vesalius/blob/main/vignettes/Vesalius.Rmd]
+The "Fast start" guide can be found [here](https://github.com/patrickCNMartin/Vesalius/blob/main/vignettes/Vesalius.Rmd)
 
-An in depth view of the Vesalius workflow can be found (here)[https://github.com/patrickCNMartin/Vesalius/blob/main/Vesalius_analysis.Rmd]. This contains the entire analysis related to
+An in depth view of the Vesalius workflow can be found [here](https://github.com/patrickCNMartin/Vesalius/blob/main/Vesalius_analysis.Rmd). This contains the entire analysis related to
 the Vesalius (biRxiv pre-print).
 
 NOTE: The in depth analysis file, contains path to files that should be changed
