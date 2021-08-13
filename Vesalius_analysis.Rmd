@@ -383,7 +383,7 @@ seuEmData <- FetchData(seuEm, c("UMAP_1","UMAP_2","seurat_clusters")) %>%
              group_by(seurat_clusters) %>%
              mutate(xs = mean(UMAP_1), ys = mean(UMAP_2))
 
-coordSeuEm <- Vesalius:::.getSeuratCoordinates(seuEm)
+coordSeuEm <- Vesalius:::getSeuratCoordinates(seuEm)
 seuEmData <- cbind(seuEmData,coordSeuEm[,c("x","y")])
 seuEm_col <- length(unique(seuEmData$seurat_clusters))
 seuEm_pal <- colorRampPalette(brewer.pal(8, "Accent"))
