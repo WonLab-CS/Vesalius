@@ -141,7 +141,7 @@ Sixth, we can visualise the territories.
 
 ```{r viz, eval = TRUE, echo = TRUE, fig.width = 6, fig.height = 6}
 # Let's have a look!
-imgTerritory <- territoryPlot(vesalius, randomise = TRUE,cex =15 , cex.pt=2)
+imgTerritory <- territoryPlot(vesalius, randomise = TRUE,cex =15 , cex.pt=3.5)
 
 
 
@@ -154,7 +154,8 @@ print(imgTerritory)
 # Territory extraction and markers
 
 Finally, we can extract territories to run a more in depth analysis. This returns
-a Seurat object all selected territories.
+a Seurat object all selected territories. We can also find differential gene
+expression between territories.
 
 
 ```{r extract, eval = TRUE, echo=TRUE}

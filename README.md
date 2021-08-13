@@ -1,15 +1,46 @@
 # Vesalius
 
-Welcome to the Vesalius GitHub page! Currently the package is being refactored for increased ease of use. 
-
-We are sorry for any inconvenience. If you have any comments or questions, don't hesitate to open an issue or send an email to:
-
-patrick.martin@bric.ku.dk
+Welcome to the Vesalius GitHub page!
 
 
-## News 
-* Improved manual pages 
-* Simplified Vignette for a quick start 
-* Container objects 
-* Internal data for an even quicker start
- 
+## What is Vesalius ?
+Vesalius is an R package to decipher tissue anatomy by embracing various
+image analysis techniques for high-resolution ST data. Vesalius identifies
+spatially expressed genes linked to the morphology of tissue structures.
+
+## How to install Vesalius?
+
+If you do not have `devtools` already installed, please do so beforehand.
+
+```
+install.packages("devtools")
+```  
+Ensure that the library has been loaded
+```
+library(devtools)
+```
+Install Vesalius via GitHub
+```
+install_github("patrickCNMartin/Vesalius")
+
+```
+
+## How to use Vesalius?
+Vesalius provides an internal data set taken from real Spatial Transcriptomic
+data. This can be used as a dummy data set to get a feel for the Vesalius
+workflow.
+
+The "Fast start" guide can be found (here)[https://github.com/patrickCNMartin/Vesalius/blob/main/vignettes/Vesalius.Rmd]
+
+An in depth view of the Vesalius workflow can be found (here)[https://github.com/patrickCNMartin/Vesalius/blob/main/Vesalius_analysis.Rmd]. This contains the entire analysis related to
+the Vesalius (biRxiv pre-print).
+
+NOTE: The in depth analysis file, contains path to files that should be changed
+accordingly.
+
+
+## What's next?
+The Vesalius package is in its early stage of development. We would ask you to
+share with us any bugs, concerns, or features you wish to see implemented.
+
+Please open a GitHub issue or send an email to Patrick Martin (patrick.martin@bric.ku.dk)
