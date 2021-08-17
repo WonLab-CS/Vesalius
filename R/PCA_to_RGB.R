@@ -190,6 +190,7 @@ rgbPCA<- function(SO,
     #--------------------------------------------------------------------------#
 
     coordinates <- getSeuratCoordinates(SO)
+    
     image_slice <- lapply(seq_along(image_slice),.assignRGBtoPixel,
                           image_slice,coordinates)
 
