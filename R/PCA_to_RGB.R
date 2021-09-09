@@ -190,7 +190,7 @@ rgbPCA<- function(SO,
     #--------------------------------------------------------------------------#
 
     coordinates <- getSeuratCoordinates(SO)
-    
+
     image_slice <- lapply(seq_along(image_slice),.assignRGBtoPixel,
                           image_slice,coordinates)
 
@@ -480,6 +480,7 @@ buildImageArray <- function(coordinates,
     #--------------------------------------------------------------------------#
     # First get area and extract distribution
     #--------------------------------------------------------------------------#
+    
     if(filterThreshold <1){
       .filter(verbose)
       triArea1 <- sapply(allIdx,function(x){

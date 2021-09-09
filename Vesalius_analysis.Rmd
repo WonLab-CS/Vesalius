@@ -28,7 +28,7 @@ as we had in the paper.
 
 ## Libraries
 ```{r loadings, eval = TRUE, echo=TRUE, message=FALSE, warning=FALSE}
-library(Vesalius)
+library(vesalius)
 library(imagerExtra)
 library(Seurat)
 library(ggplot2)
@@ -37,6 +37,7 @@ library(viridis)
 library(RColorBrewer)
 library(dplyr)
 library(tvR)
+library(sp)
 library(grid)
 
 
@@ -489,7 +490,7 @@ imageBrain <- regulariseImage(imageBrain, lambda = 10,
 # invert = if colour should be inverted (if true then background is "white")
 #------------------------------------------------------------------------------#
 
-imageBrain <- iterativeSegmentation.array(imageBrain, colDepth = 6,
+imageBrain <- iterativeSegmentation.array(imageBrain, colDepth = 12,
                                           smoothIter = 20,
                                           method = c("iso","median"),
                                           sigma=1.5,box = 10,
