@@ -239,7 +239,7 @@ equalizeHistogram <- function(image,
            "ECDF" = lapply(img,.ecdf.eq) %>% imappend("c"))
     .rebuildDF(verbose)
     img <- as.data.frame(img)
-    if(!"cc" %in% colnames(image)) image$cc <- 1
+    if(!"cc" %in% colnames(img)) img$cc <- 1
     img <- right_join(img, image, by  = c("x","y","cc")) %>%
            select(c("barcodes","x","y","cc","value.x","tile")) %>% tibble
 
@@ -466,7 +466,7 @@ iterativeSegmentation.array <- function(image,
     .seg(j,verbose)
     cat("\n")
     if(useCenter){
-      
+
       tmpImg <- image %>%
                 filter(tile == 1) %>%
                 group_by(cc) %>%
