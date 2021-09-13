@@ -454,6 +454,13 @@ buildImageArray <- function(coordinates,
 
   img <- tibble(as.data.frame(img))
   #----------------------------------------------------------------------------#
+  # Gray scale looses the cc column so adding it back in for later
+  #----------------------------------------------------------------------------#
+  if(!"cc" %in% colnames(img)){
+     img <- data.frame(img[,c("x","y")],rep(1,nrow(img)),img$value)
+     colnames(img) <- c("x", "y", "cc", "value")
+  }
+  #----------------------------------------------------------------------------#
   # Scaling original coordinates and joining them the new table
   # This is so dumb - why did I not think of this before...
   #----------------------------------------------------------------------------#
@@ -480,7 +487,7 @@ buildImageArray <- function(coordinates,
     #--------------------------------------------------------------------------#
     # First get area and extract distribution
     #--------------------------------------------------------------------------#
-    
+
     if(filterThreshold <1){
       .filter(verbose)
       triArea1 <- sapply(allIdx,function(x){

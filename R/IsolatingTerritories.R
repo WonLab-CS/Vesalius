@@ -76,6 +76,7 @@ smoothArray <- function(image,
     #--------------------------------------------------------------------------#
 
     if(!is.cimg(image)){
+      if(!"cc" %in% colnames(image)) image$cc <- 1
       imgCopy <- as.cimg(select(image, c("x", "y", "cc", "value")))
     }else {
       imgCopy <- image
@@ -132,7 +133,7 @@ smoothArray <- function(image,
     }
 
     imgCopy <- as.data.frame(imgCopy)
-
+    if(!"cc" %in% colnames(imgCopy)) imgCopy$cc <- 1
     #--------------------------------------------------------------------------#
     # Rebuild the smoothed image to a Vesalius data frame
     #--------------------------------------------------------------------------#
@@ -205,6 +206,7 @@ equalizeHistogram <- function(image,
       ## That just sounds like a stupid idea with extra steps.
       #------------------------------------------------------------------------#
       .invertCols()
+      if(!"cc" %in% colnames(image)) image$cc <- 1
       img <- image %>%
              select(c("x","y","cc","value")) %>%
              as.cimg %>%
@@ -214,6 +216,7 @@ equalizeHistogram <- function(image,
       img[!inImg %in% nonImg,"value"] <- 1
       img <- img %>% as.cimg() %>% imsplit("c")
     } else {
+      if(!"cc" %in% colnames(image)) image$cc <- 1
       img <-image %>% select(c("x","y","cc","value")) %>%
             as.cimg %>%
             imsplit("c")
@@ -236,6 +239,7 @@ equalizeHistogram <- function(image,
            "ECDF" = lapply(img,.ecdf.eq) %>% imappend("c"))
     .rebuildDF(verbose)
     img <- as.data.frame(img)
+    if(!"cc" %in% colnames(image)) image$cc <- 1
     img <- right_join(img, image, by  = c("x","y","cc")) %>%
            select(c("barcodes","x","y","cc","value.x","tile")) %>% tibble
 
@@ -305,6 +309,7 @@ regulariseImage <- function(image,
       ## That just sounds like a stupid idea with extra steps.
       #------------------------------------------------------------------------#
       .invertCols()
+      if(!"cc" %in% colnames(image)) image$cc <- 1
       img <- image %>%
              select(c("x","y","cc","value")) %>%
              as.cimg %>%
@@ -314,6 +319,7 @@ regulariseImage <- function(image,
       img[!inImg %in% nonImg,"value"] <- 1
       img <- img %>% as.cimg() %>% imsplit("c")
     } else {
+      if(!"cc" %in% colnames(image)) image$cc <- 1
       img <-image %>% select(c("x","y","cc","value")) %>% as.cimg %>%
             imsplit("c")
     }
@@ -327,6 +333,7 @@ regulariseImage <- function(image,
            imappend("c")
 
     img <- tibble(as.data.frame(img))
+    if(!"cc" %in% colnames(img)) img$cc <- 1
     #--------------------------------------------------------------------------#
     # Adding meta data
     #--------------------------------------------------------------------------#
@@ -459,6 +466,7 @@ iterativeSegmentation.array <- function(image,
     .seg(j,verbose)
     cat("\n")
     if(useCenter){
+      
       tmpImg <- image %>%
                 filter(tile == 1) %>%
                 group_by(cc) %>%
