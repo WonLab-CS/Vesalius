@@ -414,7 +414,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <span id="cb1-42"><a href="#cb1-42"></a><span class="co">#&gt; Loading required package: rmarkdown</span></span>
 <span id="cb1-43"><a href="#cb1-43"></a><span class="co">#&gt; Warning: replacing previous import &#39;imager::fill&#39; by &#39;tidyr::fill&#39; when loading</span></span>
 <span id="cb1-44"><a href="#cb1-44"></a><span class="co">#&gt; &#39;vesalius&#39;</span></span>
-<span id="cb1-45"><a href="#cb1-45"></a><span class="kw">data</span>(vesalius)</span>
+<span id="cb1-45"><a href="#cb1-45"></a><span class="kw">data</span>(vesalius,<span class="dt">package =</span> <span class="st">&quot;vesalius&quot;</span>)</span>
 <span id="cb1-46"><a href="#cb1-46"></a><span class="kw">ls</span>()</span>
 <span id="cb1-47"><a href="#cb1-47"></a><span class="co">#&gt; [1] &quot;vesalius&quot;</span></span></code></pre></div>
 </div>
@@ -437,9 +437,9 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <p>Third, we convert a count matrix (stored in a Seurat object) to RGB coded coordinates. We will only produce one slice (i.e. PC1 to PC3)</p>
 <div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1"></a>vesalius &lt;-<span class="st"> </span><span class="kw">rgbPCA</span>(vesalius,<span class="dt">slices =</span> <span class="dv">1</span>)</span>
 <span id="cb3-2"><a href="#cb3-2"></a><span class="co">#&gt; #------------------------------------------------------------------------# </span></span>
-<span id="cb3-3"><a href="#cb3-3"></a><span class="co">#&gt; 2021-10-01 13:38:29  Running Principle Component Analysis in 1 slices </span></span>
-<span id="cb3-4"><a href="#cb3-4"></a><span class="co">#&gt; 2021-10-01 13:38:29  Converting Loading Values to RGB in slice 1 </span></span>
-<span id="cb3-5"><a href="#cb3-5"></a><span class="co">#&gt; 2021-10-01 13:38:37  Normalising RGB values </span></span>
+<span id="cb3-3"><a href="#cb3-3"></a><span class="co">#&gt; 2021-10-01 16:10:53  Running Principle Component Analysis in 1 slices </span></span>
+<span id="cb3-4"><a href="#cb3-4"></a><span class="co">#&gt; 2021-10-01 16:10:53  Converting Loading Values to RGB in slice 1 </span></span>
+<span id="cb3-5"><a href="#cb3-5"></a><span class="co">#&gt; 2021-10-01 16:11:00  Normalising RGB values </span></span>
 <span id="cb3-6"><a href="#cb3-6"></a><span class="co">#&gt; #------------------------------------------------------------------------#</span></span></code></pre></div>
 </div>
 <div id="building-an-image" class="section level1">
@@ -447,13 +447,13 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <p>Forth, we create an actual image by using a combination of voronoi diagrams and tile rasterisation.</p>
 <div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1"></a>vesalius &lt;-<span class="st"> </span><span class="kw">buildImageArray</span>(vesalius, <span class="dt">sliceID =</span> <span class="dv">1</span>, <span class="dt">invert =</span>T)</span>
 <span id="cb4-2"><a href="#cb4-2"></a><span class="co">#&gt; #------------------------------------------------------------------------# </span></span>
-<span id="cb4-3"><a href="#cb4-3"></a><span class="co">#&gt; 2021-10-01 13:38:37  Checking Vesalius Input - Using slice  1 </span></span>
-<span id="cb4-4"><a href="#cb4-4"></a><span class="co">#&gt; 2021-10-01 13:38:37  Class coersion to numeric </span></span>
-<span id="cb4-5"><a href="#cb4-5"></a><span class="co">#&gt; 2021-10-01 13:38:37  Inverting Colours </span></span>
-<span id="cb4-6"><a href="#cb4-6"></a><span class="co">#&gt; 2021-10-01 13:38:37  Filtering outlier beads </span></span>
-<span id="cb4-7"><a href="#cb4-7"></a><span class="co">#&gt; 2021-10-01 13:38:37  Generating Voronoi Tesselation </span></span>
-<span id="cb4-8"><a href="#cb4-8"></a><span class="co">#&gt; 2021-10-01 13:38:37  Rasterising Tiles </span></span>
-<span id="cb4-9"><a href="#cb4-9"></a><span class="co">#&gt; 2021-10-01 13:38:44  Filtering Triangles that exceed area threshold</span></span>
+<span id="cb4-3"><a href="#cb4-3"></a><span class="co">#&gt; 2021-10-01 16:11:00  Checking Vesalius Input - Using slice  1 </span></span>
+<span id="cb4-4"><a href="#cb4-4"></a><span class="co">#&gt; 2021-10-01 16:11:00  Class coersion to numeric </span></span>
+<span id="cb4-5"><a href="#cb4-5"></a><span class="co">#&gt; 2021-10-01 16:11:00  Inverting Colours </span></span>
+<span id="cb4-6"><a href="#cb4-6"></a><span class="co">#&gt; 2021-10-01 16:11:00  Filtering outlier beads </span></span>
+<span id="cb4-7"><a href="#cb4-7"></a><span class="co">#&gt; 2021-10-01 16:11:00  Generating Voronoi Tesselation </span></span>
+<span id="cb4-8"><a href="#cb4-8"></a><span class="co">#&gt; 2021-10-01 16:11:00  Rasterising Tiles </span></span>
+<span id="cb4-9"><a href="#cb4-9"></a><span class="co">#&gt; 2021-10-01 16:11:06  Filtering Triangles that exceed area threshold</span></span>
 <span id="cb4-10"><a href="#cb4-10"></a><span class="co">#&gt; #------------------------------------------------------------------------#</span></span>
 <span id="cb4-11"><a href="#cb4-11"></a></span>
 <span id="cb4-12"><a href="#cb4-12"></a></span>
@@ -470,14 +470,14 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1"></a><span class="co"># Histogram EQ</span></span>
 <span id="cb5-2"><a href="#cb5-2"></a>vesalius &lt;-<span class="st"> </span><span class="kw">equalizeHistogram</span>(vesalius,<span class="dt">sleft =</span> <span class="fl">2.5</span>, <span class="dt">sright=</span><span class="fl">2.5</span>,<span class="dt">invert =</span>T)</span>
 <span id="cb5-3"><a href="#cb5-3"></a><span class="co">#&gt; #------------------------------------------------------------------------# </span></span>
-<span id="cb5-4"><a href="#cb5-4"></a><span class="co">#&gt; 2021-10-01 13:38:50  Inverting Colours</span></span>
+<span id="cb5-4"><a href="#cb5-4"></a><span class="co">#&gt; 2021-10-01 16:11:13  Inverting Colours</span></span>
 <span id="cb5-5"><a href="#cb5-5"></a><span class="co">#&gt; Warning in as.cimg.data.frame(.): Guessing image dimensions from maximum</span></span>
 <span id="cb5-6"><a href="#cb5-6"></a><span class="co">#&gt; coordinate values</span></span>
 <span id="cb5-7"><a href="#cb5-7"></a></span>
 <span id="cb5-8"><a href="#cb5-8"></a><span class="co">#&gt; Warning in as.cimg.data.frame(.): Guessing image dimensions from maximum</span></span>
 <span id="cb5-9"><a href="#cb5-9"></a><span class="co">#&gt; coordinate values</span></span>
-<span id="cb5-10"><a href="#cb5-10"></a><span class="co">#&gt; 2021-10-01 13:38:53  Equalizing Histogram </span></span>
-<span id="cb5-11"><a href="#cb5-11"></a><span class="co">#&gt; 2021-10-01 13:38:54  Rebuilding Data Frame from image </span></span>
+<span id="cb5-10"><a href="#cb5-10"></a><span class="co">#&gt; 2021-10-01 16:11:16  Equalizing Histogram </span></span>
+<span id="cb5-11"><a href="#cb5-11"></a><span class="co">#&gt; 2021-10-01 16:11:16  Rebuilding Data Frame from image </span></span>
 <span id="cb5-12"><a href="#cb5-12"></a><span class="co">#&gt; #------------------------------------------------------------------------#</span></span>
 <span id="cb5-13"><a href="#cb5-13"></a></span>
 <span id="cb5-14"><a href="#cb5-14"></a></span>
@@ -485,13 +485,13 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <span id="cb5-16"><a href="#cb5-16"></a>vesalius &lt;-<span class="st"> </span><span class="kw">regulariseImage</span>(vesalius, <span class="dt">lambda =</span> <span class="dv">10</span>,</span>
 <span id="cb5-17"><a href="#cb5-17"></a>                            <span class="dt">niter =</span> <span class="dv">200</span>, <span class="dt">normalise=</span>T)</span>
 <span id="cb5-18"><a href="#cb5-18"></a><span class="co">#&gt; #------------------------------------------------------------------------# </span></span>
-<span id="cb5-19"><a href="#cb5-19"></a><span class="co">#&gt; 2021-10-01 13:38:56  Inverting Colours</span></span>
+<span id="cb5-19"><a href="#cb5-19"></a><span class="co">#&gt; 2021-10-01 16:11:18  Inverting Colours</span></span>
 <span id="cb5-20"><a href="#cb5-20"></a><span class="co">#&gt; Warning in as.cimg.data.frame(.): Guessing image dimensions from maximum</span></span>
 <span id="cb5-21"><a href="#cb5-21"></a><span class="co">#&gt; coordinate values</span></span>
 <span id="cb5-22"><a href="#cb5-22"></a></span>
 <span id="cb5-23"><a href="#cb5-23"></a><span class="co">#&gt; Warning in as.cimg.data.frame(.): Guessing image dimensions from maximum</span></span>
 <span id="cb5-24"><a href="#cb5-24"></a><span class="co">#&gt; coordinate values</span></span>
-<span id="cb5-25"><a href="#cb5-25"></a><span class="co">#&gt; 2021-10-01 13:38:59  Regularising Image </span></span>
+<span id="cb5-25"><a href="#cb5-25"></a><span class="co">#&gt; 2021-10-01 16:11:21  Regularising Image </span></span>
 <span id="cb5-26"><a href="#cb5-26"></a><span class="co">#&gt; #------------------------------------------------------------------------#</span></span>
 <span id="cb5-27"><a href="#cb5-27"></a></span>
 <span id="cb5-28"><a href="#cb5-28"></a></span>
@@ -500,7 +500,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <span id="cb5-31"><a href="#cb5-31"></a>vesalius &lt;-<span class="st"> </span><span class="kw">smoothArray</span>(vesalius,<span class="dt">method =</span> <span class="st">&quot;box&quot;</span>, <span class="dt">box =</span> <span class="dv">1</span>)</span>
 <span id="cb5-32"><a href="#cb5-32"></a><span class="co">#&gt; Warning in as.cimg.data.frame(select(image, c(&quot;x&quot;, &quot;y&quot;, &quot;cc&quot;, &quot;value&quot;))):</span></span>
 <span id="cb5-33"><a href="#cb5-33"></a><span class="co">#&gt; Guessing image dimensions from maximum coordinate values</span></span>
-<span id="cb5-34"><a href="#cb5-34"></a><span class="co">#&gt; 2021-10-01 13:39:12  Smoothing Iteration  1 </span></span>
+<span id="cb5-34"><a href="#cb5-34"></a><span class="co">#&gt; 2021-10-01 16:11:32  Smoothing Iteration  1 </span></span>
 <span id="cb5-35"><a href="#cb5-35"></a></span>
 <span id="cb5-36"><a href="#cb5-36"></a><span class="co"># Segmentation</span></span>
 <span id="cb5-37"><a href="#cb5-37"></a><span class="co"># This function provides smoothing internally.</span></span>
@@ -515,32 +515,32 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <span id="cb5-46"><a href="#cb5-46"></a><span class="co">#&gt; #------------------------------------------------------------------------#</span></span>
 <span id="cb5-47"><a href="#cb5-47"></a><span class="co">#&gt; Warning in as.cimg.data.frame(select(image, c(&quot;x&quot;, &quot;y&quot;, &quot;cc&quot;, &quot;value&quot;))):</span></span>
 <span id="cb5-48"><a href="#cb5-48"></a><span class="co">#&gt; Guessing image dimensions from maximum coordinate values</span></span>
-<span id="cb5-49"><a href="#cb5-49"></a><span class="co">#&gt; 2021-10-01 13:39:14  Inverting Colours</span></span>
+<span id="cb5-49"><a href="#cb5-49"></a><span class="co">#&gt; 2021-10-01 16:11:34  Inverting Colours</span></span>
 <span id="cb5-50"><a href="#cb5-50"></a><span class="co">#&gt; Warning in as.cimg.data.frame(.): Guessing image dimensions from maximum</span></span>
 <span id="cb5-51"><a href="#cb5-51"></a><span class="co">#&gt; coordinate values</span></span>
 <span id="cb5-52"><a href="#cb5-52"></a><span class="co">#&gt; Warning in as.cimg.data.frame(imgCopy): Guessing image dimensions from maximum</span></span>
 <span id="cb5-53"><a href="#cb5-53"></a><span class="co">#&gt; coordinate values</span></span>
-<span id="cb5-54"><a href="#cb5-54"></a><span class="co">#&gt; 2021-10-01 13:39:17  Smoothing Iteration  1 </span></span>
-<span id="cb5-55"><a href="#cb5-55"></a><span class="dv">2021-10-01</span> <span class="dv">13</span><span class="op">:</span><span class="dv">39</span><span class="op">:</span><span class="dv">19</span>  Smoothing Iteration  <span class="dv">2</span> </span>
-<span id="cb5-56"><a href="#cb5-56"></a><span class="dv">2021-10-01</span> <span class="dv">13</span><span class="op">:</span><span class="dv">39</span><span class="op">:</span><span class="dv">21</span>  Smoothing Iteration  <span class="dv">3</span> </span>
-<span id="cb5-57"><a href="#cb5-57"></a><span class="dv">2021-10-01</span> <span class="dv">13</span><span class="op">:</span><span class="dv">39</span><span class="op">:</span><span class="dv">23</span>  Smoothing Iteration  <span class="dv">4</span> </span>
-<span id="cb5-58"><a href="#cb5-58"></a><span class="dv">2021-10-01</span> <span class="dv">13</span><span class="op">:</span><span class="dv">39</span><span class="op">:</span><span class="dv">25</span>  Smoothing Iteration  <span class="dv">5</span> </span>
-<span id="cb5-59"><a href="#cb5-59"></a><span class="dv">2021-10-01</span> <span class="dv">13</span><span class="op">:</span><span class="dv">39</span><span class="op">:</span><span class="dv">27</span>  Smoothing Iteration  <span class="dv">6</span> </span>
-<span id="cb5-60"><a href="#cb5-60"></a><span class="dv">2021-10-01</span> <span class="dv">13</span><span class="op">:</span><span class="dv">39</span><span class="op">:</span><span class="dv">29</span>  Smoothing Iteration  <span class="dv">7</span> </span>
-<span id="cb5-61"><a href="#cb5-61"></a><span class="dv">2021-10-01</span> <span class="dv">13</span><span class="op">:</span><span class="dv">39</span><span class="op">:</span><span class="dv">31</span>  Smoothing Iteration  <span class="dv">8</span> </span>
-<span id="cb5-62"><a href="#cb5-62"></a><span class="dv">2021-10-01</span> <span class="dv">13</span><span class="op">:</span><span class="dv">39</span><span class="op">:</span><span class="dv">33</span>  Smoothing Iteration  <span class="dv">9</span> </span>
-<span id="cb5-63"><a href="#cb5-63"></a><span class="dv">2021-10-01</span> <span class="dv">13</span><span class="op">:</span><span class="dv">39</span><span class="op">:</span><span class="dv">35</span>  Smoothing Iteration  <span class="dv">10</span> </span>
-<span id="cb5-64"><a href="#cb5-64"></a><span class="dv">2021-10-01</span> <span class="dv">13</span><span class="op">:</span><span class="dv">39</span><span class="op">:</span><span class="dv">37</span>  Smoothing Iteration  <span class="dv">11</span> </span>
-<span id="cb5-65"><a href="#cb5-65"></a><span class="dv">2021-10-01</span> <span class="dv">13</span><span class="op">:</span><span class="dv">39</span><span class="op">:</span><span class="dv">39</span>  Smoothing Iteration  <span class="dv">12</span> </span>
-<span id="cb5-66"><a href="#cb5-66"></a><span class="dv">2021-10-01</span> <span class="dv">13</span><span class="op">:</span><span class="dv">39</span><span class="op">:</span><span class="dv">43</span>  Smoothing Iteration  <span class="dv">13</span> </span>
-<span id="cb5-67"><a href="#cb5-67"></a><span class="dv">2021-10-01</span> <span class="dv">13</span><span class="op">:</span><span class="dv">39</span><span class="op">:</span><span class="dv">46</span>  Smoothing Iteration  <span class="dv">14</span> </span>
-<span id="cb5-68"><a href="#cb5-68"></a><span class="dv">2021-10-01</span> <span class="dv">13</span><span class="op">:</span><span class="dv">39</span><span class="op">:</span><span class="dv">48</span>  Smoothing Iteration  <span class="dv">15</span> </span>
-<span id="cb5-69"><a href="#cb5-69"></a><span class="dv">2021-10-01</span> <span class="dv">13</span><span class="op">:</span><span class="dv">39</span><span class="op">:</span><span class="dv">50</span>  Smoothing Iteration  <span class="dv">16</span> </span>
-<span id="cb5-70"><a href="#cb5-70"></a><span class="dv">2021-10-01</span> <span class="dv">13</span><span class="op">:</span><span class="dv">39</span><span class="op">:</span><span class="dv">52</span>  Smoothing Iteration  <span class="dv">17</span> </span>
-<span id="cb5-71"><a href="#cb5-71"></a><span class="dv">2021-10-01</span> <span class="dv">13</span><span class="op">:</span><span class="dv">39</span><span class="op">:</span><span class="dv">54</span>  Smoothing Iteration  <span class="dv">18</span> </span>
-<span id="cb5-72"><a href="#cb5-72"></a><span class="dv">2021-10-01</span> <span class="dv">13</span><span class="op">:</span><span class="dv">39</span><span class="op">:</span><span class="dv">56</span>  Smoothing Iteration  <span class="dv">19</span> </span>
-<span id="cb5-73"><a href="#cb5-73"></a><span class="dv">2021-10-01</span> <span class="dv">13</span><span class="op">:</span><span class="dv">39</span><span class="op">:</span><span class="dv">58</span>  Smoothing Iteration  <span class="dv">20</span> </span>
-<span id="cb5-74"><a href="#cb5-74"></a><span class="co">#&gt; 2021-10-01 13:40:02  Segmentation Iteration  1 </span></span>
+<span id="cb5-54"><a href="#cb5-54"></a><span class="co">#&gt; 2021-10-01 16:11:36  Smoothing Iteration  1 </span></span>
+<span id="cb5-55"><a href="#cb5-55"></a><span class="dv">2021-10-01</span> <span class="dv">16</span><span class="op">:</span><span class="dv">11</span><span class="op">:</span><span class="dv">38</span>  Smoothing Iteration  <span class="dv">2</span> </span>
+<span id="cb5-56"><a href="#cb5-56"></a><span class="dv">2021-10-01</span> <span class="dv">16</span><span class="op">:</span><span class="dv">11</span><span class="op">:</span><span class="dv">40</span>  Smoothing Iteration  <span class="dv">3</span> </span>
+<span id="cb5-57"><a href="#cb5-57"></a><span class="dv">2021-10-01</span> <span class="dv">16</span><span class="op">:</span><span class="dv">11</span><span class="op">:</span><span class="dv">42</span>  Smoothing Iteration  <span class="dv">4</span> </span>
+<span id="cb5-58"><a href="#cb5-58"></a><span class="dv">2021-10-01</span> <span class="dv">16</span><span class="op">:</span><span class="dv">11</span><span class="op">:</span><span class="dv">44</span>  Smoothing Iteration  <span class="dv">5</span> </span>
+<span id="cb5-59"><a href="#cb5-59"></a><span class="dv">2021-10-01</span> <span class="dv">16</span><span class="op">:</span><span class="dv">11</span><span class="op">:</span><span class="dv">46</span>  Smoothing Iteration  <span class="dv">6</span> </span>
+<span id="cb5-60"><a href="#cb5-60"></a><span class="dv">2021-10-01</span> <span class="dv">16</span><span class="op">:</span><span class="dv">11</span><span class="op">:</span><span class="dv">48</span>  Smoothing Iteration  <span class="dv">7</span> </span>
+<span id="cb5-61"><a href="#cb5-61"></a><span class="dv">2021-10-01</span> <span class="dv">16</span><span class="op">:</span><span class="dv">11</span><span class="op">:</span><span class="dv">50</span>  Smoothing Iteration  <span class="dv">8</span> </span>
+<span id="cb5-62"><a href="#cb5-62"></a><span class="dv">2021-10-01</span> <span class="dv">16</span><span class="op">:</span><span class="dv">11</span><span class="op">:</span><span class="dv">52</span>  Smoothing Iteration  <span class="dv">9</span> </span>
+<span id="cb5-63"><a href="#cb5-63"></a><span class="dv">2021-10-01</span> <span class="dv">16</span><span class="op">:</span><span class="dv">11</span><span class="op">:</span><span class="dv">54</span>  Smoothing Iteration  <span class="dv">10</span> </span>
+<span id="cb5-64"><a href="#cb5-64"></a><span class="dv">2021-10-01</span> <span class="dv">16</span><span class="op">:</span><span class="dv">11</span><span class="op">:</span><span class="dv">56</span>  Smoothing Iteration  <span class="dv">11</span> </span>
+<span id="cb5-65"><a href="#cb5-65"></a><span class="dv">2021-10-01</span> <span class="dv">16</span><span class="op">:</span><span class="dv">11</span><span class="op">:</span><span class="dv">58</span>  Smoothing Iteration  <span class="dv">12</span> </span>
+<span id="cb5-66"><a href="#cb5-66"></a><span class="dv">2021-10-01</span> <span class="dv">16</span><span class="op">:</span><span class="dv">12</span><span class="op">:</span><span class="dv">00</span>  Smoothing Iteration  <span class="dv">13</span> </span>
+<span id="cb5-67"><a href="#cb5-67"></a><span class="dv">2021-10-01</span> <span class="dv">16</span><span class="op">:</span><span class="dv">12</span><span class="op">:</span><span class="dv">02</span>  Smoothing Iteration  <span class="dv">14</span> </span>
+<span id="cb5-68"><a href="#cb5-68"></a><span class="dv">2021-10-01</span> <span class="dv">16</span><span class="op">:</span><span class="dv">12</span><span class="op">:</span><span class="dv">04</span>  Smoothing Iteration  <span class="dv">15</span> </span>
+<span id="cb5-69"><a href="#cb5-69"></a><span class="dv">2021-10-01</span> <span class="dv">16</span><span class="op">:</span><span class="dv">12</span><span class="op">:</span><span class="dv">06</span>  Smoothing Iteration  <span class="dv">16</span> </span>
+<span id="cb5-70"><a href="#cb5-70"></a><span class="dv">2021-10-01</span> <span class="dv">16</span><span class="op">:</span><span class="dv">12</span><span class="op">:</span><span class="dv">08</span>  Smoothing Iteration  <span class="dv">17</span> </span>
+<span id="cb5-71"><a href="#cb5-71"></a><span class="dv">2021-10-01</span> <span class="dv">16</span><span class="op">:</span><span class="dv">12</span><span class="op">:</span><span class="dv">10</span>  Smoothing Iteration  <span class="dv">18</span> </span>
+<span id="cb5-72"><a href="#cb5-72"></a><span class="dv">2021-10-01</span> <span class="dv">16</span><span class="op">:</span><span class="dv">12</span><span class="op">:</span><span class="dv">11</span>  Smoothing Iteration  <span class="dv">19</span> </span>
+<span id="cb5-73"><a href="#cb5-73"></a><span class="dv">2021-10-01</span> <span class="dv">16</span><span class="op">:</span><span class="dv">12</span><span class="op">:</span><span class="dv">13</span>  Smoothing Iteration  <span class="dv">20</span> </span>
+<span id="cb5-74"><a href="#cb5-74"></a><span class="co">#&gt; 2021-10-01 16:12:17  Segmentation Iteration  1 </span></span>
 <span id="cb5-75"><a href="#cb5-75"></a><span class="co">#&gt; #------------------------------------------------------------------------#</span></span>
 <span id="cb5-76"><a href="#cb5-76"></a></span>
 <span id="cb5-77"><a href="#cb5-77"></a></span>
@@ -549,12 +549,12 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <span id="cb5-80"><a href="#cb5-80"></a>                                     <span class="dt">captureRadius =</span> <span class="fl">0.1</span>,</span>
 <span id="cb5-81"><a href="#cb5-81"></a>                                     <span class="dt">minBar =</span> <span class="dv">1</span>)</span>
 <span id="cb5-82"><a href="#cb5-82"></a><span class="co">#&gt; #------------------------------------------------------------------------# </span></span>
-<span id="cb5-83"><a href="#cb5-83"></a><span class="co">#&gt; 2021-10-01 13:40:02  Pooling territory  1 </span></span>
-<span id="cb5-84"><a href="#cb5-84"></a><span class="dv">2021-10-01</span> <span class="dv">13</span><span class="op">:</span><span class="dv">40</span><span class="op">:</span><span class="dv">03</span>  Pooling territory  <span class="dv">2</span> </span>
-<span id="cb5-85"><a href="#cb5-85"></a><span class="dv">2021-10-01</span> <span class="dv">13</span><span class="op">:</span><span class="dv">40</span><span class="op">:</span><span class="dv">03</span>  Pooling territory  <span class="dv">3</span> </span>
-<span id="cb5-86"><a href="#cb5-86"></a><span class="dv">2021-10-01</span> <span class="dv">13</span><span class="op">:</span><span class="dv">40</span><span class="op">:</span><span class="dv">03</span>  Pooling territory  <span class="dv">4</span> </span>
-<span id="cb5-87"><a href="#cb5-87"></a><span class="dv">2021-10-01</span> <span class="dv">13</span><span class="op">:</span><span class="dv">40</span><span class="op">:</span><span class="dv">03</span>  Pooling territory  <span class="dv">5</span> </span>
-<span id="cb5-88"><a href="#cb5-88"></a><span class="dv">2021-10-01</span> <span class="dv">13</span><span class="op">:</span><span class="dv">40</span><span class="op">:</span><span class="dv">03</span>  Pooling territory  <span class="dv">6</span> </span>
+<span id="cb5-83"><a href="#cb5-83"></a><span class="co">#&gt; 2021-10-01 16:12:17  Pooling territory  1 </span></span>
+<span id="cb5-84"><a href="#cb5-84"></a><span class="dv">2021-10-01</span> <span class="dv">16</span><span class="op">:</span><span class="dv">12</span><span class="op">:</span><span class="dv">18</span>  Pooling territory  <span class="dv">2</span> </span>
+<span id="cb5-85"><a href="#cb5-85"></a><span class="dv">2021-10-01</span> <span class="dv">16</span><span class="op">:</span><span class="dv">12</span><span class="op">:</span><span class="dv">18</span>  Pooling territory  <span class="dv">3</span> </span>
+<span id="cb5-86"><a href="#cb5-86"></a><span class="dv">2021-10-01</span> <span class="dv">16</span><span class="op">:</span><span class="dv">12</span><span class="op">:</span><span class="dv">18</span>  Pooling territory  <span class="dv">4</span> </span>
+<span id="cb5-87"><a href="#cb5-87"></a><span class="dv">2021-10-01</span> <span class="dv">16</span><span class="op">:</span><span class="dv">12</span><span class="op">:</span><span class="dv">18</span>  Pooling territory  <span class="dv">5</span> </span>
+<span id="cb5-88"><a href="#cb5-88"></a><span class="dv">2021-10-01</span> <span class="dv">16</span><span class="op">:</span><span class="dv">12</span><span class="op">:</span><span class="dv">18</span>  Pooling territory  <span class="dv">6</span> </span>
 <span id="cb5-89"><a href="#cb5-89"></a><span class="co">#&gt; #------------------------------------------------------------------------#</span></span>
 <span id="cb5-90"><a href="#cb5-90"></a></span>
 <span id="cb5-91"><a href="#cb5-91"></a>vesalius</span>
@@ -593,8 +593,8 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1"></a><span class="co"># extract terriotry from seurat object</span></span>
 <span id="cb7-2"><a href="#cb7-2"></a>ter &lt;-<span class="st"> </span><span class="kw">extractTerritories</span>(vesalius,copy,<span class="dt">seedID=</span> <span class="dv">1</span>)</span>
 <span id="cb7-3"><a href="#cb7-3"></a><span class="co">#&gt; #------------------------------------------------------------------------# </span></span>
-<span id="cb7-4"><a href="#cb7-4"></a><span class="co">#&gt; 2021-10-01 13:40:06  Extracting territory 1 </span></span>
-<span id="cb7-5"><a href="#cb7-5"></a><span class="co">#&gt; 2021-10-01 13:40:06  Converting to pixset and morphing territory</span></span>
+<span id="cb7-4"><a href="#cb7-4"></a><span class="co">#&gt; 2021-10-01 16:12:21  Extracting territory 1 </span></span>
+<span id="cb7-5"><a href="#cb7-5"></a><span class="co">#&gt; 2021-10-01 16:12:21  Converting to pixset and morphing territory</span></span>
 <span id="cb7-6"><a href="#cb7-6"></a><span class="co">#&gt; Warning in as.cimg.data.frame(.): Guessing image dimensions from maximum</span></span>
 <span id="cb7-7"><a href="#cb7-7"></a><span class="co">#&gt; coordinate values</span></span>
 <span id="cb7-8"><a href="#cb7-8"></a><span class="co">#&gt; #------------------------------------------------------------------------#</span></span>
@@ -606,7 +606,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <span id="cb7-14"><a href="#cb7-14"></a><span class="co"># get all markers related to all territories</span></span>
 <span id="cb7-15"><a href="#cb7-15"></a>all &lt;-<span class="st"> </span><span class="kw">extractAllMarkers</span>(vesalius,copy)</span>
 <span id="cb7-16"><a href="#cb7-16"></a><span class="co">#&gt; #------------------------------------------------------------------------# </span></span>
-<span id="cb7-17"><a href="#cb7-17"></a><span class="co">#&gt; 2021-10-01 13:40:06  Checking and extracting Counts </span></span>
+<span id="cb7-17"><a href="#cb7-17"></a><span class="co">#&gt; 2021-10-01 16:12:21  Checking and extracting Counts </span></span>
 <span id="cb7-18"><a href="#cb7-18"></a><span class="co">#&gt; ===&gt; 1 VS Remaining &lt;=== </span></span>
 <span id="cb7-19"><a href="#cb7-19"></a><span class="op">==</span><span class="er">=&gt;</span><span class="st"> </span><span class="dv">10</span> VS Remaining <span class="op">&lt;=</span><span class="er">==</span><span class="st"> </span></span>
 <span id="cb7-20"><a href="#cb7-20"></a><span class="er">===&gt;</span><span class="st"> </span><span class="dv">11</span> VS Remaining <span class="op">&lt;=</span><span class="er">==</span><span class="st"> </span></span>
@@ -658,10 +658,10 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <span id="cb7-66"><a href="#cb7-66"></a><span class="co"># get markers associated with on or more territories</span></span>
 <span id="cb7-67"><a href="#cb7-67"></a>one &lt;-<span class="st"> </span><span class="kw">extractMarkers</span>(vesalius, copy, <span class="dt">seed =</span> <span class="kw">c</span>(<span class="dv">1</span>))</span>
 <span id="cb7-68"><a href="#cb7-68"></a><span class="co">#&gt; #------------------------------------------------------------------------# </span></span>
-<span id="cb7-69"><a href="#cb7-69"></a><span class="co">#&gt; 2021-10-01 13:40:26  Checking and extracting Counts </span></span>
-<span id="cb7-70"><a href="#cb7-70"></a><span class="co">#&gt; 2021-10-01 13:40:26  Extracting Seed territories </span></span>
-<span id="cb7-71"><a href="#cb7-71"></a><span class="co">#&gt; 2021-10-01 13:40:26  Extracting Query territories </span></span>
-<span id="cb7-72"><a href="#cb7-72"></a><span class="co">#&gt; 2021-10-01 13:40:26  Computing Differentially Expressed Genes</span></span>
+<span id="cb7-69"><a href="#cb7-69"></a><span class="co">#&gt; 2021-10-01 16:12:40  Checking and extracting Counts </span></span>
+<span id="cb7-70"><a href="#cb7-70"></a><span class="co">#&gt; 2021-10-01 16:12:40  Extracting Seed territories </span></span>
+<span id="cb7-71"><a href="#cb7-71"></a><span class="co">#&gt; 2021-10-01 16:12:40  Extracting Query territories </span></span>
+<span id="cb7-72"><a href="#cb7-72"></a><span class="co">#&gt; 2021-10-01 16:12:40  Computing Differentially Expressed Genes</span></span>
 <span id="cb7-73"><a href="#cb7-73"></a><span class="co">#&gt; ===&gt; 1  VS Remaining &lt;=== </span></span>
 <span id="cb7-74"><a href="#cb7-74"></a><span class="co">#&gt; #------------------------------------------------------------------------#</span></span>
 <span id="cb7-75"><a href="#cb7-75"></a><span class="kw">head</span>(one)</span>
@@ -679,10 +679,10 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <span id="cb7-87"><a href="#cb7-87"></a><span class="co"># comparing territories</span></span>
 <span id="cb7-88"><a href="#cb7-88"></a>two &lt;-<span class="st"> </span><span class="kw">extractMarkers</span>(vesalius, copy, <span class="dt">seed =</span> <span class="kw">c</span>(<span class="dv">1</span>), <span class="dt">query =</span> <span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">3</span>))</span>
 <span id="cb7-89"><a href="#cb7-89"></a><span class="co">#&gt; #------------------------------------------------------------------------# </span></span>
-<span id="cb7-90"><a href="#cb7-90"></a><span class="co">#&gt; 2021-10-01 13:40:27  Checking and extracting Counts </span></span>
-<span id="cb7-91"><a href="#cb7-91"></a><span class="co">#&gt; 2021-10-01 13:40:27  Extracting Seed territories </span></span>
-<span id="cb7-92"><a href="#cb7-92"></a><span class="co">#&gt; 2021-10-01 13:40:27  Extracting Query territories </span></span>
-<span id="cb7-93"><a href="#cb7-93"></a><span class="co">#&gt; 2021-10-01 13:40:27  Computing Differentially Expressed Genes</span></span>
+<span id="cb7-90"><a href="#cb7-90"></a><span class="co">#&gt; 2021-10-01 16:12:41  Checking and extracting Counts </span></span>
+<span id="cb7-91"><a href="#cb7-91"></a><span class="co">#&gt; 2021-10-01 16:12:41  Extracting Seed territories </span></span>
+<span id="cb7-92"><a href="#cb7-92"></a><span class="co">#&gt; 2021-10-01 16:12:41  Extracting Query territories </span></span>
+<span id="cb7-93"><a href="#cb7-93"></a><span class="co">#&gt; 2021-10-01 16:12:41  Computing Differentially Expressed Genes</span></span>
 <span id="cb7-94"><a href="#cb7-94"></a><span class="co">#&gt; ===&gt; 1  VS 2 3  &lt;=== </span></span>
 <span id="cb7-95"><a href="#cb7-95"></a><span class="co">#&gt; #------------------------------------------------------------------------#</span></span>
 <span id="cb7-96"><a href="#cb7-96"></a><span class="kw">head</span>(two)</span>
