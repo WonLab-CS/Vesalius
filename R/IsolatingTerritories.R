@@ -295,7 +295,7 @@ regulariseImage <- function(image,
                             method = "TVL2.FiniteDifference",
                             normalise =TRUE,
                             na.rm=TRUE,
-                            invert=TRUE,
+                            invert=FALSE,
                             verbose=TRUE){
     .simpleBar(verbose)
 
@@ -514,8 +514,8 @@ iterativeSegmentation.array <- function(image,
       image$cluster <- 0
 
       for(i in seq(1,3)){
-          image$cluster[img$cc == i] <- cluster
-          image$value[img$cc == i] <- Kcenters[cluster,i]
+          image$cluster[image$cc == i] <- cluster
+          image$value[image$cc == i] <- Kcenters[cluster,i]
       }
       #------------------------------------------------------------------------#
       # This section is so we don't end up having barcode associated with

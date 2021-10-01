@@ -137,12 +137,12 @@ for(i in seq_along(slideTag)){
   bead <- bead[Cells(x = ctmp)]
   DefaultAssay(object = bead) <- "Spatial"
   ctmp[["slice1"]] <- bead
-
+  ctmp <- subset(ctmp, subset = nFeature_Spatial > 100 & nFeature_Spatial < 4500 & percent.mt < 5)
   #----------------------------------------------------------------------------#
   # Seuart pre-processing steps
   #----------------------------------------------------------------------------#
   ctmp <- NormalizeData(ctmp)
-  ctmp <- FindVariableFeatures(ctmp, method = method, nfeatures = nfeatures)
+  ctmp <- FindVariableFeatures(ctmp, selection.method = method, nfeatures = nfeatures)
   ctmp <- ScaleData(ctmp)
 
   #----------------------------------------------------------------------------#
@@ -179,31 +179,97 @@ we can run this section independently if the previous section has already been
 run.
 
 ```{r Vesalius_Figure1_build, eval=TRUE, echo=TRUE, warning= FALSE,message=FALSE,fig.width = 12, fig.height=8}
-#-----------------------/Building Vesalius Images/-----------------------------#
+#-------------------/Territory Isolation - Hippocampus/------------------------#
 #------------------------------------------------------------------------------#
-# Loading the intermediate file
+# Loading saved data frame after PCA to RGB conversion
 #------------------------------------------------------------------------------#
-imageSlide <- utils::read.csv("~/group/slide_seqV2/IP/PCA_to_RGB_log_2000_slice1_Puck_200115_08.csv",
-                              header = TRUE, stringsAsFactors = FALSE)
+imageBrain <- utils::read.csv("~/group/slide_seqV2/IP/PCA_to_RGB_log_2000_slice1_Puck_200115_08.csv",
+                              header=T, stringsAsFactors=F)
 
 #------------------------------------------------------------------------------#
-# Converting coordinates and colours to and RGB image
+# Next we build the image
+# We recommend using more than one core.
 #------------------------------------------------------------------------------#
-imageSlide <- buildImageArray(imageSlide,invert =T,
+imageBrain <- buildImageArray(imageBrain,invert=T,
                               filterThreshold = 0.9975,
-                              resolution = 100, cores = 1)
+                              resolution = 40, cores = 10)
 
 #------------------------------------------------------------------------------#
-# Vesalius plotting function
-# The nice thing about always using data frame is that you can plot this
-# however you wish. Here, we are producing a ggplot object by setting the
-# as.cimg argument to false. If set to true it just plots the image
+# Next we equalise the histogram. We use the default BalanceSimplest method
+# Other methods are availbale and are detailed in the package vignette
+# sleft and sright describe the extent of histogram balancing on the left and on
+# the right of the histogram.
 #------------------------------------------------------------------------------#
-Vesalius_image <- imagePlot(imageSlide,as.cimg =FALSE) + theme_void()
+imageBrain <- equalizeHistogram(imageBrain,sleft = 2.5, sright=2.5,invert =T)
 
-# pdf("Figure_1_template.pdf")
-print(Vesalius_image)
+#------------------------------------------------------------------------------#
+# Image regularisation - this considers overall variance to smooth the image
+#------------------------------------------------------------------------------#
+imageBrain <- regulariseImage(imageBrain, lambda = 10,
+                              niter = 200, normalise=T)
+
+#------------------------------------------------------------------------------#
+# This image actually quite pretty so you can have a look using one of the
+# Vesalius plotting functions.
+#------------------------------------------------------------------------------#
+#pdf("imageBrain_regEQ.pdf")
+#imagePlot(imageBrain,as.cimg=F,cex =12)
 #dev.off()
+
+#------------------------------------------------------------------------------#
+# Now we can start to segment!
+# It should be noted that the smoothing is done internally
+# You can smooth using our smoothArray function but we essentially run that
+# function within the iterative segmentation function
+# colDepth = number of colour segments
+# smoothIter = number of smoothing rounds PRIOR to segmentation
+# methods = smoothing methods (they will be applied in the order they are given)
+# sigma = sigma for gaussian blur
+# box = size of median kernel
+# useCenter = we use only the centre pixel
+# invert = if colour should be inverted (if true then background is "white")
+#------------------------------------------------------------------------------#
+
+imageBrain <- iterativeSegmentation.array(imageBrain, colDepth = 6,
+                                          smoothIter = 20,
+                                          method = c("iso","median"),
+                                          sigma=1.5,box = 10,
+                                          useCenter = T,
+                                          invert =T)
+
+
+#------------------------------------------------------------------------------#
+# Using the colour segments to extract territories
+# captureRadius = proportion of maximum distance between two beads. We use an
+# absolute distance metric so that the captureRadius is the same between all
+# territories. NOTE: this is not the same as KNN as here we don't care about
+# number of neighbours but rather the distance to neighbours.
+# minBar = minimum number of cells that should be in a territory. If below this
+# value, then we we will pool all of those territories into one territory
+# called "isolated"
+#------------------------------------------------------------------------------#
+imageBrain <- isolateTerritories.array(imageBrain,
+                                        captureRadius = 0.008,
+                                        minBar = 40)
+
+#------------------------------------------------------------------------------#
+# Finally some plotting
+# IMPORTANT: the "split" show all territories seperately - it just makes
+# visualisation and territory selection easier. Please refer to this plot
+# to select territories if in doubt.
+#------------------------------------------------------------------------------#
+imgSmoothed <- imagePlot(imageBrain, as.cimg = F,cex = 15) + theme_void()
+imgTerritory <- territoryPlot(imageBrain, randomise = TRUE,cex =15 , cex.pt=0.25) +
+   theme_void()+
+   theme(legend.text = element_text(size = 12),
+         legend.title = element_text(size=12),
+         plot.title = element_text(size =15),
+         legend.position = "right")
+
+pdf("vesalius_Territory.pdf", width = 8, height =6)
+imgTerritory
+dev.off()
+
 ```
 As seen in the code above, we select a filter threshold. This filter threshold
 ensures that we remove tessellation artefacts. The tessellation algorithm
@@ -235,7 +301,7 @@ Territory isolation requires the original set of beads and count matrix. We use
 this count matrix to compute differential gene expression. Thus, we will
 load and pre-process data sets required for downstream analysis.
 
-```{r Vesalius_DataLoading, eval=TRUE, echo=TRUE, warning= FALSE,message=FALSE}
+```{r Vesalius_MethodCompSeurat, eval=TRUE, echo=TRUE, warning= FALSE,message=FALSE}
 
 #-----------------------------/Loading all data/-------------------------------#
 #------------------------------------------------------------------------------#
@@ -276,42 +342,7 @@ brainCounts[["slice1"]] <- beadBrain
 brainRaw <- brainCounts
 
 
-#------------------------------------------------------------------------------#
-# Next we do the same exact thing for the embryo data
-# NOTE: we can use the same raw data for both embryo slices used in
-# this analysis
-#------------------------------------------------------------------------------#
-slideTagEmbryo <- "Puck_190926_03"
-slideBeadsEmbryo <-"~/group/slide_seqV2/Puck_190926_03_bead_locations.csv"
-slideCountsEmbryo <- "~/group/slide_seqV2/Puck_190926_03.digital_expression.txt.gz"
-#slideIPEmbryo <- "~/group/slide_seqV2/IP/PCA_to_RGB_log_00_2000_slice1_Puck_190926_03.csv"
 
-embryoCoord <- utils::read.csv(slideBeadsEmbryo, header=F)
-embryoCoord <- embryoCoord[-1,]
-colnames(embryoCoord)<- c("barcodes","xcoord","ycoord")
-
-beadEmbryo <- ReadSlideSeq(slideBeadsEmbryo)
-
-embryoCounts <- read.table(slideCountsEmbryo, header = TRUE )
-rownames(embryoCounts) <- embryoCounts[,1]
-embryoCounts <- embryoCounts[,-1]
-
-embryoCounts <- CreateSeuratObject(embryoCounts, assay ="Spatial")
-beadEmbryo <- beadEmbryo[Cells(x = embryoCounts)]
-DefaultAssay(object = beadEmbryo) <- "Spatial"
-embryoCounts[["slice1"]] <- beadEmbryo
-
-embryoRaw <- embryoCounts
-
-```
-
-### Seurat Clustering
-As we have just loaded count matrices into Seurat objects, we might as well
-quickly run a clustering analysis on slide-seqV2 spatial transcriptomic data.
-Here, we used log normalisation to stay consistent with the approach used during
-image building.
-
-```{r Seurat_clustering_run, eval=FALSE , echo=TRUE,fig.width = 13.5, fig.height = 6}
 #----------------------------/Seurat Clustering/-------------------------------#
 #------------------------------------------------------------------------------#
 # Pre-processing data using the same approaches as the one used when converting
@@ -336,42 +367,366 @@ seuData <- FetchData(seu, c("UMAP_1","UMAP_2","seurat_clusters")) %>%
 #------------------------------------------------------------------------------#
 # This section just rebuilds a data frame to make it easier to plot with ggplot  
 #------------------------------------------------------------------------------#
-coordSeu <- Vesalius:::getSeuratCoordinates(seu)
+coordSeu <- GetTissueCoordinates(seu)
 seuData <- cbind(seuData,coordSeu[,c("x","y")])
 seu_col <- length(unique(seuData$seurat_clusters))
 seu_pal <- colorRampPalette(brewer.pal(8, "Accent"))
 
-umap_seu <- ggplot(seuData, aes(UMAP_1,UMAP_2,col = as.factor(seurat_clusters))) +
-            geom_point(size = 0.25, alpha = 0.8) +
-            theme_classic() +
-            scale_color_manual(values =seu_pal(seu_col)) +
-            theme(legend.text = element_text(size = 12),
-                  axis.text = element_text(size = 12),
-                  axis.title = element_text(size = 12),
-                  plot.tag = element_text(size=20)) +
-            guides(colour = guide_legend(override.aes = list(size=3)))+
-            labs(colour = "Cluster nr.", title = "UMAP - Seurat Clusters",
-                              x = "UMAP 1", y = "UMAP 2")
 
 coord_seu <- ggplot(seuData, aes(x,y,col = as.factor(seurat_clusters))) +
-            geom_point(size = 0.05, alpha = 0.8) +
-            theme_classic() +
+            geom_point(size = 0.25, alpha = 0.65) +
+            theme_void() +
             scale_color_manual(values = seu_pal(seu_col)) +
             theme(legend.text = element_text(size = 12),
-                  axis.text = element_text(size = 12),
-                  axis.title = element_text(size = 12),
-                  plot.tag = element_text(size=20)) +
-            guides(colour = guide_legend(override.aes = list(size=3)))+
-            labs(colour = "Cluster nr.", title = "Mouse Hippocampus - Seurat Clusters",
-                x = "X coordinates", y = "Y coordinates")
+                  legend.position = "bottom",
+                  plot.title = element_text(size=15)) +
+            guides(colour = guide_legend(override.aes = list(size=5)))+
+            labs(colour = "Cluster nr.", title = "Seurat - Clusters")
 
-pdf("seu_umap_log.pdf", width =13.5, height=6)
-umap_seu + coord_seu
+#pdf("seu_log.pdf", width =7, height=6)
+#coord_seu
+
+#dev.off()
+
+```
+
+```{r Vesalius_MethodCompGiotto, eval = TRUE, echo = TRUE}
+library(Giotto)
+# Standard libraries - just in case you are a command line fiend
+library(utils)
+library(stats)
+library(graphics)
+library(grDevices)
+### Set seed
+set.seed(1)
+slideTag <- c("Puck_200115_08")
+
+slideBeads <-c("~/group/slide_seqV2/Puck_200115_08_bead_locations.csv")
+
+slideCounts <- c("~/group/slide_seqV2/Puck_200115_08.digital_expression.txt.gz")
+
+
+
+# 1. set working directory
+rootDir <- "~/Vesalius"
+
+# 2. set giotto python path
+# set python path to your preferred python version path
+# set python path to NULL if you want to automatically install (only the 1st time) and use the giotto miniconda environment
+python_path <- NULL
+if(is.null(python_path)) {
+  installGiottoEnvironment()
+}
+
+instrs <- createGiottoInstructions(save_plot = TRUE,
+                                  save_dir = rootDir,
+                                  python_path = python_path)
+
+giotto <- createGiottoObject(raw_exprs = slideCounts,
+                             spatial_locs = slideBeads,
+                             instructions = instrs)
+
+                             # 2. filter data
+giotto <- filterGiotto(gobject = giotto,
+                             gene_det_in_min_cells = 0,
+                             min_det_genes_per_cell = 0)
+## normalize
+giotto <- normalizeGiotto(gobject = giotto, scalefactor = 10000, verbose = T)
+giotto <- addStatistics(gobject = giotto)
+giotto <- adjustGiottoMatrix(gobject = giotto, expression_values = c('normalized'),
+                             batch_columns = NULL, covariate_columns = c('nr_genes', 'total_expr'),
+                             return_gobject = TRUE,
+                             update_slot = c('custom'))
+
+giotto <- calculateHVG(gobject = giotto,method = "cov_loess",
+                       save_param = list(save_name = 'SSV2_HVG'))
+
+#giotto ## run PCA on expression values (default)
+gene_metadata <- fDataDT(giotto)
+featgenes <- gene_metadata[hvg == 'yes' & perc_cells > 3 & mean_expr_det>0.4]$gene_ID
+
+
+giotto <- runPCA(gobject = giotto,
+                 genes_to_use = featgenes,
+                 scale_unit = F, center = T,
+                 method="irlba")
+
+
+giotto <- runUMAP(giotto, dimensions_to_use = 1:30, n_components = 2, n_threads = 4)
+
+
+giotto <- createNearestNetwork(gobject = giotto, dimensions_to_use = 1:30, k = 15)
+## Leiden clustering
+giotto <- doLeidenCluster(gobject = giotto, resolution = 0.2, n_iterations = 200,
+                                name = 'leiden_0.2')
+
+giotto <- giotto@cell_metadata
+
+#### check what the column names actually are
+#locs <- giotto@spatial_locs
+locs <- read.table(slideBeads, header=T, sep = ",")
+######################
+
+giotto <- cbind(giotto, locs)
+
+
+giotto_col <- length(unique(giotto$leiden_0.2))
+giotto_pal <- colorRampPalette(brewer.pal(8, "Accent"))
+
+
+coord_giotto <- ggplot(giotto, aes(xcoord,ycoord,col = as.factor(leiden_0.2))) +
+            geom_point(size = 0.25, alpha = 0.65) +
+            theme_void() +
+            scale_color_manual(values = giotto_pal(giotto_col)[sample(1:giotto_col,giotto_col)]) +
+            theme(legend.text = element_text(size = 12),
+                  legend.position = "right",
+                  plot.title = element_text(size=15)) +
+            guides(colour = guide_legend(override.aes = list(size=5)))+
+            labs(colour = "Cluster nr.", title = "Giotto - Clusters")
+
+#pdf("giotto_log.pdf", width =7, height=6)
+coord_giotto
+
+#dev.off()
+#
+
+```
+
+
+```{r Vesalius_MethodCompBayesSpace, eval = FALSE, echo= TRUE}
+library(BayesSpace)
+library(SingleCellExperiment)
+library(Seurat)
+
+
+# Standard libraries - just in case you are a command line fiend
+library(utils)
+library(stats)
+library(graphics)
+library(grDevices)
+### Set seed
+set.seed(1)
+slideTag <- c("Puck_200115_08")
+
+slideBeads <-c("~/group/slide_seqV2/Puck_200115_08_bead_locations.csv")
+
+slideCounts <- c("~/group/slide_seqV2/Puck_200115_08.digital_expression.txt.gz")
+
+
+#------------------------------------------------------------------------------#
+# Bayes Space - custom functions
+# will replace the internal function for the purpose of testing
+#------------------------------------------------------------------------------#
+
+.find_neighbors <- function(sce, platform) {
+    # we are going to use switch instead
+    # it will be easier for our purpose
+
+    neighbors <- switch(platform,
+                        "Visium" =.bs(sce,data.frame(x.offset=c(-2, 2, -1,  1, -1, 1),
+                                                     y.offset=c( 0, 0, -1, -1,  1, 1))),
+                         "ST" = .bs(sce,data.frame(x.offset=c( 0, 1, 0, -1),
+                                               y.offset=c(-1, 0, 1,  0))),
+                         "SS" = .ss(sce))
+
+
+
+    return(neighbors)
+}
+
+## Get array coordinates (and label by index of spot in SCE)
+
+## this is essentially the bayes space original function
+.bs <- function(sce,offset){
+  spot.positions <- colData(sce)[, c("col", "row")]
+  spot.positions$spot.idx <- seq_len(nrow(spot.positions))
+
+  ## Compute coordinates of each possible spot neighbor
+  neighbor.positions <- merge(spot.positions, offsets)
+  neighbor.positions$x.pos <- neighbor.positions$col + neighbor.positions$x.offset
+  neighbor.positions$y.pos <- neighbor.positions$row + neighbor.positions$y.offset
+
+  ## Select spots that exist at neighbor coordinates
+  neighbors <- merge(as.data.frame(neighbor.positions),
+                     as.data.frame(spot.positions),
+                     by.x=c("x.pos", "y.pos"), by.y=c("col", "row"),
+                     suffixes=c(".primary", ".neighbor"),
+                     all.x=TRUE)
+
+  ## Shift to zero-indexing for C++
+  neighbors$spot.idx.neighbor <- neighbors$spot.idx.neighbor - 1
+
+  ## Group neighbor indices by spot
+  ## (sort first for consistency with older implementation)
+  neighbors <- neighbors[order(neighbors$spot.idx.primary,
+                         neighbors$spot.idx.neighbor), ]
+
+
+  df_j <- split(neighbors$spot.idx.neighbor, neighbors$spot.idx.primary)
+  df_j <- unname(df_j)
+
+  ## Discard neighboring spots without spot data
+  ## This can be implemented by eliminating `all.x=TRUE` above, but
+  ## this makes it easier to keep empty lists for spots with no neighbors
+  ## (as expected by C++ code)
+  df_j <- map(df_j, function(nbrs) discard(nbrs, function(x) is.na(x)))
+
+  ## Log number of spots with neighbors
+  n_with_neighbors <- length(keep(df_j, function(nbrs) length(nbrs) > 0))
+  message("Neighbors were identified for ", n_with_neighbors, " out of ",
+                                 ncol(sce), " spots.")
+  return(df_j)
+}
+
+.ss <- function(sce){
+  # We will try to use the same format just to reduce error risk
+  # I am assuming that the code is optimised for that input
+  # Also keeping the col and row thing just because I don't know
+  # how many other instance there are of needing col and row later
+  # I will make the assumption that 6 neighbors are good enough
+  # after some filtering
+  message("custom shit is working")
+  spot.positions <- colData(sce)[, c("col", "row")]
+  spot.positions$spot.idx <- seq_len(nrow(spot.positions))
+  dist <- parallel::mclapply(seq_len(nrow(spot.positions)), function(idx,mat){
+                      xo <- mat$col[idx]
+                      yo <- mat$row[idx]
+                      xp <- mat$col
+                      yp <- mat$row
+                      distance <- sqrt(((abs(xp-xo))^2 + (abs(yp-yo))^2))
+                      distance <- distance[distance !=0]
+                      index <- order(distance,decreasing = FALSE)[1:6]
+                      index <- index - 1
+                      index <- sort(index)
+                      return(index)
+  }, spot.positions, mc.cores=4)
+
+
+  return(dist)
+}
+
+#----------------------------------------------------------------------------#
+# Loading coordinates
+#----------------------------------------------------------------------------#
+bead <- ReadSlideSeq(slideBeads)
+
+#----------------------------------------------------------------------------#
+# Unconventional loading - however required as some data sets
+# Fail to load  - This ensures all data sets can be loaded
+#----------------------------------------------------------------------------#
+ctmp <- read.table(slideCounts, header = TRUE )
+rownames(ctmp) <- ctmp[,1]
+ctmp <- ctmp[,-1]
+
+#----------------------------------------------------------------------------#
+# Creating seurat spatial object
+# NOTE this code is taken from the Seurat source code as it does not seem that
+# Slide seq loading function are all exported
+# If this has been updated - this section can be changed accordingly
+#----------------------------------------------------------------------------#
+seu <- CreateSeuratObject(ctmp, assay ="Spatial")
+bead <- bead[Cells(x = seu)]
+DefaultAssay(object = bead) <- "Spatial"
+seu[["slice1"]] <- bead
+
+#----------------------------------------------------------------------------#
+# Getting top var features
+#----------------------------------------------------------------------------#
+seu <- NormalizeData(seu)
+seu <- FindVariableFeatures(seu, selection.method = "vst", nfeatures = 2000)
+seu <- ScaleData(seu)
+seu <- RunPCA(seu, npcs = 30)
+
+var_features <- VariableFeatures(seu)
+
+raw <- seu@assays$Spatial@counts
+raw <- raw[rownames(raw) %in% var_features,]
+counts <- GetAssayData(seu, slot ="data")
+counts <- counts[rownames(counts) %in% var_features,]
+
+sce <- SingleCellExperiment(list(counts=raw,logcounts = counts))
+
+coord <- GetTissueCoordinates(seu)[,c("y","x")]
+colnames(coord) <- c("row","col")
+coord$sizeFactor <- 1
+colData(sce) <- DataFrame(coord)
+
+genes <- data.frame(rownames(counts), rownames(counts))
+colnames(genes) <- c("gene_id","gene_name")
+rownames(genes) <- rownames(counts)
+rowData(sce) <- genes
+
+reducedDim(sce, "PCA") <- as.data.frame(seu[["pca"]]@cell.embeddings)
+
+meta <- list(sample = "Puck_200115_08", dataset = "SSV2",
+          BayesSpace.data = list(platform = "SS",is.enhanced=FALSE))
+metadata(sce) <- meta
+
+bayes <- spatialCluster(sce,q=30)
+bayesData <- as.data.frame(colData(bayes))
+
+bayesData$spatial.cluster <- as.factor(bayesData$spatial.cluster)
+
+
+
+bayes_col <- length(levels(bayesData$spatial.cluster))
+bayes_pal <- colorRampPalette(brewer.pal(8, "Accent"))
+
+
+coord_bayes <- ggplot(bayesData, aes(col,row,col = as.factor(spatial.cluster))) +
+            geom_point(size = 0.05, alpha = 0.8) +
+            theme_void() +
+            scale_color_manual(values = bayes_pal(bayes_col)) +
+            theme(legend.text = element_text(size = 12),
+                  legend.position = "left",
+                  plot.title = element_text(size=15)) +
+            guides(colour = guide_legend(override.aes = list(size=5)))+
+            labs(colour = "Cluster nr.", title = "BayesSpace - Clusters")
+
+#pdf("bayes_log.pdf", width =7, height=6)
+coord_bayes
+
+#dev.off()
+
+
+
+```
+
+```{r vesalius_methodCompPlot, eval = F, echo = T}
+pdf("vesalius_methodComp.pdf",width= 15, height = 5.25)
+(coord_bayes + coord_seu + coord_giotto) + plot_layout(width =c(1,1,1))
 dev.off()
 
-#------------------------------------------------------------------------------#
-# Same thing as above but with the embryo data
-#------------------------------------------------------------------------------#
+```
+
+
+
+
+```{r st_data_comp, eval = TRUE , echo =TRUE}
+
+
+slideTagEmbryo <- "Puck_190926_03"
+slideBeadsEmbryo <-"~/group/slide_seqV2/Puck_190926_03_bead_locations.csv"
+slideCountsEmbryo <- "~/group/slide_seqV2/Puck_190926_03.digital_expression.txt.gz"
+#slideIPEmbryo <- "~/group/slide_seqV2/IP/PCA_to_RGB_log_00_2000_slice1_Puck_190926_03.csv"
+
+embryoCoord <- utils::read.csv(slideBeadsEmbryo, header=F)
+embryoCoord <- embryoCoord[-1,]
+colnames(embryoCoord)<- c("barcodes","xcoord","ycoord")
+
+beadEmbryo <- ReadSlideSeq(slideBeadsEmbryo)
+
+embryoCounts <- read.table(slideCountsEmbryo, header = TRUE )
+rownames(embryoCounts) <- embryoCounts[,1]
+embryoCounts <- embryoCounts[,-1]
+
+embryoCounts <- CreateSeuratObject(embryoCounts, assay ="Spatial")
+beadEmbryo <- beadEmbryo[Cells(x = embryoCounts)]
+DefaultAssay(object = beadEmbryo) <- "Spatial"
+embryoCounts[["slice1"]] <- beadEmbryo
+
+embryoRaw <- embryoCounts
+
 embryoCounts <- NormalizeData(embryoCounts)
 embryoCounts <- ScaleData(embryoCounts)
 embryoCounts <- FindVariableFeatures(embryoCounts, nfeatures = 2000)
@@ -439,99 +794,6 @@ associated to colour clusters or territories.
 
 
 ```{r Vesalius_Run_territory_level, eval=TRUE , echo = TRUE, fig.width =12.5,fig.heigth =5}
-#-------------------/Territory Isolation - Hippocampus/------------------------#
-#------------------------------------------------------------------------------#
-# Loading saved data frame after PCA to RGB conversion
-#------------------------------------------------------------------------------#
-imageBrain <- utils::read.csv("~/group/slide_seqV2/IP/PCA_to_RGB_log_2000_slice1_Puck_200115_08.csv",
-                              header=T, stringsAsFactors=F)
-
-#------------------------------------------------------------------------------#
-# Next we build the image
-# We recommend using more than one core.
-#------------------------------------------------------------------------------#
-imageBrain <- buildImageArray(imageBrain,invert=T,
-                              filterThreshold = 0.9975,
-                              resolution = 40, cores = 1)
-
-#------------------------------------------------------------------------------#
-# Next we equalise the histogram. We use the default BalanceSimplest method
-# Other methods are availbale and are detailed in the package vignette
-# sleft and sright describe the extent of histogram balancing on the left and on
-# the right of the histogram.
-#------------------------------------------------------------------------------#
-imageBrain <- equalizeHistogram(imageBrain,sleft = 2.5, sright=2.5,invert =T)
-
-#------------------------------------------------------------------------------#
-# Image regularisation - this considers overall variance to smooth the image
-#------------------------------------------------------------------------------#
-imageBrain <- regulariseImage(imageBrain, lambda = 10,
-                              niter = 200, normalise=T)
-
-#------------------------------------------------------------------------------#
-# This image actually quite pretty so you can have a look using one of the
-# Vesalius plotting functions.
-#------------------------------------------------------------------------------#
-#pdf("imageBrain_regEQ.pdf")
-#imagePlot(imageBrain,as.cimg=F,cex =12)
-#dev.off()
-
-#------------------------------------------------------------------------------#
-# Now we can start to segment!
-# It should be noted that the smoothing is done internally
-# You can smooth using our smoothArray function but we essentially run that
-# function within the iterative segmentation function
-# colDepth = number of colour segments
-# smoothIter = number of smoothing rounds PRIOR to segmentation
-# methods = smoothing methods (they will be applied in the order they are given)
-# sigma = sigma for gaussian blur
-# box = size of median kernel
-# useCenter = we use only the centre pixel
-# invert = if colour should be inverted (if true then background is "white")
-#------------------------------------------------------------------------------#
-
-imageBrain <- iterativeSegmentation.array(imageBrain, colDepth = 12,
-                                          smoothIter = 20,
-                                          method = c("iso","median"),
-                                          sigma=1.5,box = 10,
-                                          useCenter = T,
-                                          invert =T)
-
-
-#------------------------------------------------------------------------------#
-# Using the colour segments to extract territories
-# captureRadius = proportion of maximum distance between two beads. We use an
-# absolute distance metric so that the captureRadius is the same between all
-# territories. NOTE: this is not the same as KNN as here we don't care about
-# number of neighbours but rather the distance to neighbours.
-# minBar = minimum number of cells that should be in a territory. If below this
-# value, then we we will pool all of those territories into one territory
-# called "isolated"
-#------------------------------------------------------------------------------#
-imageBrain <- isolateTerritories.array(imageBrain,
-                                        captureRadius = 0.008,
-                                        minBar = 40)
-
-#------------------------------------------------------------------------------#
-# Finally some plotting
-# IMPORTANT: the "split" show all territories seperately - it just makes
-# visualisation and territory selection easier. Please refer to this plot
-# to select territories if in doubt.
-#------------------------------------------------------------------------------#
-imgSmoothed <- imagePlot(imageBrain, as.cimg = F,cex = 15) + theme_void()
-imgTerritory <- territoryPlot(imageBrain, randomise = TRUE,cex =15 , cex.pt=0.25) +
-   theme_void()+
-   theme(legend.text = element_text(size = 12),
-         legend.title = element_text(size=12),
-         legend.position = "left")
-
-#pdf("Hippocampus_smooth_and_segmented.pdf", width = 7.5, height=5.5)
-imgTerritory
-#dev.off()
-
-#pdf("brain_split_territory2.pdf",width =20, height = 20)
-territoryPlot(imageBrain2,split = T,randomise = F,cex=10)
-#dev.off()
 
 
 #----------------------/Territory Isolation - Embryo/--------------------------#
@@ -543,12 +805,12 @@ territoryPlot(imageBrain2,split = T,randomise = F,cex=10)
 #------------------------------------------------------------------------------#
 
 
-imageEmbryo <- utils::read.csv("~/group/slide_seqV2/IP/PCA_to_RGB_log_2000_slice3_Puck_190926_03.csv",
+imageEmbryo3 <- utils::read.csv("~/group/slide_seqV2/IP/PCA_to_RGB_log_2000_slice3_Puck_190926_03.csv",
                                  header=T, stringsAsFactors=F)
 imageEmbryo1 <- utils::read.csv("~/group/slide_seqV2/IP/PCA_to_RGB_log_2000_slice1_Puck_190926_03.csv",
                                  header=T, stringsAsFactors=F)
 
-imageEmbryo <- buildImageArray(imageEmbryo,
+imageEmbryo <- buildImageArray(imageEmbryo3,
                                slice = 3,
                                invert=T,
                                filterThreshold = 0.999,
@@ -559,16 +821,16 @@ imageEmbryo1 <- buildImageArray(imageEmbryo1,
                                invert=T,
                                filterThreshold = 0.999,
                                resolution = 40,
-                               cores = 5)
+                               cores = 10)
 #----------------------------------------------------------------------------#
 # These steps are the same as the one described for the Hippocampus
 #----------------------------------------------------------------------------#
-imageEmbryo <- equalizeHistogram(imageEmbryo,
+imageEmbryo3 <- equalizeHistogram(imageEmbryo3,
                                  sleft = 2.5, sright = 2.5,invert = T)
 imageEmbryo1 <- equalizeHistogram(imageEmbryo1,
                                   sleft = 2.5, sright = 2.5,invert = T)
-imageEmbryo <- regulariseImage(imageEmbryo,lambda =10)
-imageEmbryo1 <- regulariseImage(imageEmbryo1,lambda =10)
+imageEmbryo3 <- regulariseImage(imageEmbryo3,lambda =10,invert =T)
+imageEmbryo1 <- regulariseImage(imageEmbryo1,lambda =10,invert=T)
 #----------------------------------------------------------------------------#
 # We can export the pretty pictures
 #----------------------------------------------------------------------------#
@@ -582,7 +844,7 @@ imageEmbryo1 <- regulariseImage(imageEmbryo1,lambda =10)
 # we also smooth across different levels (parse as vector to sigma and box).
 # Default is to take the min pixel value between each sigma or box value
 #----------------------------------------------------------------------------#
-imageEmbryo <- iterativeSegmentation.array(imageEmbryo,
+imageEmbryo3 <- iterativeSegmentation.array(imageEmbryo3,
                                            colDepth = 8,
                                            smoothIter = 20,
                                            method = c("iso","box"),
@@ -603,7 +865,7 @@ imageEmbryo1 <- iterativeSegmentation.array(imageEmbryo1,
 # This section is the same for the hippocampus - we use a slightly larger
 # captureRadius.
 #----------------------------------------------------------------------------#
-imageEmbryo <- isolateTerritories.array(imageEmbryo,
+imageEmbryo3 <- isolateTerritories.array(imageEmbryo3,
                                         captureRadius = 0.025,minBar = 40)
 
 imageEmbryo1 <- isolateTerritories.array(imageEmbryo1,
@@ -613,11 +875,13 @@ imageEmbryo1 <- isolateTerritories.array(imageEmbryo1,
 #----------------------------------------------------------------------------#
 # Finally some plotting -
 #----------------------------------------------------------------------------#
-imgSmoothedEm <- imagePlot(imageEmbryo, as.cimg = F,cex = 15) + theme_void()
-imgTerritoryEm <- territoryPlot(imageEmbryo, randomise = TRUE,cex =15 , cex.pt=0.25)+
+imgSmoothedEm <- imagePlot(imageEmbryo3, as.cimg = F,cex = 15) + theme_void()
+imgTerritoryEm <- territoryPlot(imageEmbryo3, randomise = TRUE,cex =15 , cex.pt=0.25)+
                   theme_void()+
                   theme(legend.text = element_text(size = 12),
-                        legend.title = element_text(size=12))
+                        legend.title = element_text(size=12),
+                        plot.title = element_text(size=15))+
+                  labs(title = "Slide-seq V2 - Embryo (E12.5)")
 
 #pdf(paste0("smoother_and_territory_embryo_slice3.pdf"), width = 7, height=5.5)
 g <- imgTerritoryEm
@@ -632,12 +896,13 @@ imgSmoothedEm1 <- imagePlot(imageEmbryo1, as.cimg = F,cex = 15) + theme_void()
 imgTerritoryEm1 <- territoryPlot(imageEmbryo1, randomise = TRUE,cex =15 , cex.pt=0.25)+
                     theme_void()+
                     theme(legend.text = element_text(size = 12),
-                          legend.title = element_text(size=12))
+                          legend.title = element_text(size=12),
+                          plot.title = element_text(size=15))+
+                    labs(title = "Slide-seq V2 - Embryo (E12.5)")
+pdf(paste0("smoother_and_territory_embryo_slice1.pdf"), width = 7, height=5.5)
+imgTerritoryEm1
 
-#pdf(paste0("smoother_and_territory_embryo_slice1.pdf"), width = 7, height=5.5)
-g1<- imgTerritoryEm1
-print(g1)
-#dev.off()
+dev.off()
 
 ```
 

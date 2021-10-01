@@ -2,7 +2,7 @@
 % Please edit documentation in R/misc.R
 \name{subSetTerritories}
 \alias{subSetTerritories}
-\title{subSetTerritories gets all barcodes associated with a territory from a 
+\title{subSetTerritories gets all barcodes associated with a territory from a
 Seurat object.}
 \usage{
 subSetTerritories(territories, seurat)
@@ -16,12 +16,12 @@ subSetTerritories(territories, seurat)
 Seurat object only containing the desired barcodes.
 }
 \description{
-subSetTerritories gets all barcodes associated with a territory from a 
+subSetTerritories gets all barcodes associated with a territory from a
 Seurat object.
 }
 \details{
-Essentially a wrapper function to the Seurat \code{subset} function. 
-The function serves mainly the purpose of a place holder function for 
+Essentially a wrapper function to the Seurat \code{subset} function.
+The function serves mainly the purpose of a place holder function for
 future iterations of Vesalius.
 }
 \examples{

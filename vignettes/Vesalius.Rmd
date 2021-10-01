@@ -53,7 +53,7 @@ stores it in the form of a Seurat object.
 
 ```{r loading, eval = TRUE, echo = TRUE}
 library(vesalius)
-data(vesalius)
+data(vesalius,package = "vesalius")
 ls()
 ```
 
@@ -154,7 +154,7 @@ print(imgTerritory)
 # Territory extraction and markers
 
 Finally, we can extract territories to run a more in depth analysis. This returns
-a Seurat object all selected territories. We can also find differential gene
+a Seurat object with all selected territories. We can also find differential gene
 expression between territories.
 
 

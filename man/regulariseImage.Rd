@@ -11,7 +11,7 @@ regulariseImage(
   method = "TVL2.FiniteDifference",
   normalise = TRUE,
   na.rm = TRUE,
-  invert = TRUE,
+  invert = FALSE,
   verbose = TRUE
 )
 }

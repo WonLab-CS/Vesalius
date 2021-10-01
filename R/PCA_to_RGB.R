@@ -206,6 +206,122 @@ rgbPCA<- function(SO,
 }
 
 
+
+#' Embed 3D UMAP projections into RGB colour space
+#' @param SO Seurat Object after normalisation, scaling and
+#' finding variable features.
+#' @param pcs number of Principle components to use for UMAP projections
+#' @param adjusted logical indicating if RGB code should be adjusted to
+#' colour contribution per channel.
+#' @param conserveSparse logical indicating if sparse matrix format
+#' should be conserved.
+#' @param verbose logical - progress message output.
+#' @details Emedding 3D UMAP projections into the RGB color space is quite
+#' straight forward: Each UMAP dimension is extracted and min/max normalised to
+#' ensure that each value reanges between 0 and 1. The first dimension is
+#' assigned to red color channel, the second dimension to the green color
+#' channel and the third dimension assgined to the blue color channel.
+#' UMAP projections consider more varience per channel than PCA embeddings but
+#' this additional information in further compressed. Using PCA slice provides
+#' a way to visualize and explore different anatomical structure in more depth.
+#' Choosing between rgbPCA and rgbUMAP will depend on the question at hand and
+#' the depth of the analysis. 
+#'
+#' @return Returns a Vesalius data.frame with "barcodes","x","y","cc",
+#' "value","slice"
+#' @examples
+#' \dontrun{
+#' data(Vesalius)
+#' }
+
+
+rgbUMAP<- function(SO,
+                  pcs = 30,
+                  adjusted = FALSE,
+                  conserveSparse = TRUE,
+                  verbose=TRUE){
+
+
+    .simpleBar(verbose)
+    #--------------------------------------------------------------------------#
+    # First we get the count values
+    #--------------------------------------------------------------------------#
+    if(is(SO) == "Seurat"){
+        slide <- GetAssayData(SO, slot = "data")
+    } else {
+       stop("SO is not a Seurat Object.")
+    }
+    #--------------------------------------------------------------------------#
+    # Sparse matrices are more memory efficient but also slower
+    #--------------------------------------------------------------------------#
+    if(!conserveSparse){
+        .consSparse(verbose)
+        slide <- as.matrix(slide)
+    }
+
+    #--------------------------------------------------------------------------#
+    # PCA from seurat
+    #--------------------------------------------------------------------------#
+
+    reduc <- RunPCA(SO,npcs = pcs,verbose =FALSE)
+
+    reduc <- RunUMAP(reduc,dims =seq_len(pcs),n.components = 3L,verbose=F)
+
+
+    #--------------------------------------------------------------------------#
+    # Getting those loading values - also computing variance per PC
+    # Variance by PC is use to weight the channels
+    # Same Principle is used when converting colour to grey scale
+    #--------------------------------------------------------------------------#
+    embeddings <- FetchData(reduc, c("UMAP_1","UMAP_2","UMAP_3"))
+
+    embeddings <- apply(embeddings,2,function(x){
+                       return((x-min(x))/(max(x) - min(x)))
+                     })
+
+    #------------------------------------------------------------------------#
+    # adjusted RGB colour - NOT THE SAME AS THE WEIGHTED PC
+    #------------------------------------------------------------------------#
+    if(adjusted){
+        .adj(verbose)
+        sums <- sapply(seq_along(rgb[[1]]), function(idx,rgb){
+                          return(sum(rgb[[1]][idx],
+                                     rgb[[2]][idx],
+                                     rgb[[3]][idx]))
+        },rgb)
+        rgb <- lapply(rgb, function(rgb,sums){
+                        return(rgb/sums)
+        },sums)
+    }
+
+    #--------------------------------------------------------------------------#
+    # We can use this list to get the coordinates and assign the RGB coulours
+    # to their correct location
+    #--------------------------------------------------------------------------#
+
+    coordinates <- getSeuratCoordinates(SO)
+
+    tmp <- vector("list", 3)
+    for(i in seq_len(ncol(embeddings))){
+        tmp[[i]] <- data.frame(rownames(coordinates),
+                               coordinates[,c("x","y")],
+                               rep(i,length(embeddings[,i])),
+                               embeddings[,i],
+                               rep(1, length(embeddings[,i])))
+
+    }
+    tmp <- do.call("rbind", tmp)
+    colnames(tmp) <- c("barcodes","x","y","cc","value","slice")
+    tmp <- tmp[!is.na(tmp$value),]
+
+
+
+    .simpleBar(verbose)
+    return(tmp)
+}
+
+
+
 #Internal to assign colour code back to its location
 .assignRGBtoPixel <- function(idx,rgb,coordinates, na.rm = TRUE){
     #--------------------------------------------------------------------------#
@@ -213,6 +329,7 @@ rgbPCA<- function(SO,
     # This follows the cimg format
     # we will also add a slice clause
     #--------------------------------------------------------------------------#
+
     tmp <- vector("list", 3)
     rgb <- rgb[[idx]]
     for(i in seq_along(rgb)){
@@ -457,6 +574,7 @@ buildImageArray <- function(coordinates,
   # Gray scale looses the cc column so adding it back in for later
   #----------------------------------------------------------------------------#
   if(!"cc" %in% colnames(img)){
+
      img <- data.frame(img[,c("x","y")],rep(1,nrow(img)),img$value)
      colnames(img) <- c("x", "y", "cc", "value")
   }
