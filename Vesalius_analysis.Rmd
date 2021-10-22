@@ -301,401 +301,64 @@ Territory isolation requires the original set of beads and count matrix. We use
 this count matrix to compute differential gene expression. Thus, we will
 load and pre-process data sets required for downstream analysis.
 
-```{r Vesalius_MethodCompSeurat, eval=TRUE, echo=TRUE, warning= FALSE,message=FALSE}
-
-#-----------------------------/Loading all data/-------------------------------#
-#------------------------------------------------------------------------------#
-# First we load all data sets
-# Here we load both the mouse Hippocampus and the mouse embryo
-#------------------------------------------------------------------------------#
-slideTagBrain <- "Puck_200115_08"
-slideBeadsBrain <-"~/group/slide_seqV2/Puck_200115_08_bead_locations.csv"
-slideCountsBrain <- "~/group/slide_seqV2/Puck_200115_08.digital_expression.txt.gz"
-#slideIPBrain <- "~/group/slide_seqV2/IP/PCA_to_RGB_log_2000_slice1_Puck_200115_08.csv"
-
-brainCoord <- utils::read.csv(slideBeadsBrain, header=F)
-brainCoord <- brainCoord[-1,]
-colnames(brainCoord)<- c("barcodes","xcoord","ycoord")
-
-beadBrain <- ReadSlideSeq(slideBeadsBrain)
-
-brainCounts <- read.table(slideCountsBrain, header = TRUE )
-rownames(brainCounts) <- brainCounts[,1]
-brainCounts <- brainCounts[,-1]
-
-#------------------------------------------------------------------------------#
-# We still create a Seurat object
-# It's just that Seurat is such a great package to handling single cell data
-# Hats off to the Seurat team
-#------------------------------------------------------------------------------#
-brainCounts <- CreateSeuratObject(brainCounts, assay ="Spatial")
-beadBrain <- beadBrain[Cells(x = brainCounts)]
-DefaultAssay(object = beadBrain) <- "Spatial"
-brainCounts[["slice1"]] <- beadBrain
-
-#------------------------------------------------------------------------------#
-# We keep a Raw data set. We will use the raw counts when we subset out the
-# beads in isolated territories. We want to avoid using the values resulting
-# from overall normalisation.
-# We want to avoid to "normalise" already normalised and scaled data.
-#------------------------------------------------------------------------------#
-brainRaw <- brainCounts
 
 
 
-#----------------------------/Seurat Clustering/-------------------------------#
-#------------------------------------------------------------------------------#
-# Pre-processing data using the same approaches as the one used when converting
-# PCA loadings to RGB colour space
-#------------------------------------------------------------------------------#
-brainCounts <- NormalizeData(brainCounts)
-brainCounts <- FindVariableFeatures(brainCounts, nfeatures = 2000)
-brainCounts <- ScaleData(brainCounts)
-
-#------------------------------------------------------------------------------#
-# Running Seurat pipeline and plotting results
-# we plot both the UMAP projections and the mapped clusters
-#------------------------------------------------------------------------------#
-seu <- RunPCA(brainCounts)
-seu <- RunUMAP(seu, dims = 1:30)
-seu <- FindNeighbors(seu, dims = 1:30)
-seu <- FindClusters(seu, resolution = 0.7, verbose = FALSE)
-seuData <- FetchData(seu, c("UMAP_1","UMAP_2","seurat_clusters")) %>%
-           group_by(seurat_clusters) %>%
-           mutate(xs = mean(UMAP_1), ys = mean(UMAP_2))
-
-#------------------------------------------------------------------------------#
-# This section just rebuilds a data frame to make it easier to plot with ggplot  
-#------------------------------------------------------------------------------#
-coordSeu <- GetTissueCoordinates(seu)
-seuData <- cbind(seuData,coordSeu[,c("x","y")])
-seu_col <- length(unique(seuData$seurat_clusters))
-seu_pal <- colorRampPalette(brewer.pal(8, "Accent"))
+```{r Vesalius_visium, eval = TRUE, echo = TRUE}
 
 
-coord_seu <- ggplot(seuData, aes(x,y,col = as.factor(seurat_clusters))) +
-            geom_point(size = 0.25, alpha = 0.65) +
-            theme_void() +
-            scale_color_manual(values = seu_pal(seu_col)) +
-            theme(legend.text = element_text(size = 12),
-                  legend.position = "bottom",
-                  plot.title = element_text(size=15)) +
-            guides(colour = guide_legend(override.aes = list(size=5)))+
-            labs(colour = "Cluster nr.", title = "Seurat - Clusters")
+source("quickLoad.R")
 
-#pdf("seu_log.pdf", width =7, height=6)
-#coord_seu
+input <- list.dirs("~/group/visium/DLPFC_globus",recursive =F)
+time <-vector("list",length(input))
+count <- 1
 
-#dev.off()
+for(i in input){
 
-```
+  s <- Sys.time()
+  output <- paste0(i,"/Vesalius")
+  if(!dir.exists(output)){
+      dir.create(output)
+  }
+  sec <- Read10X(i)
+  img <- Read10X_Image(i)
+  sec <- CreateSeuratObject(counts = sec, assay = "Spatial")
+  img <- img[Cells(x = sec)]
+  DefaultAssay(object = img) <- "Spatial"
+  sec[["slice1"]] <- img
 
-```{r Vesalius_MethodCompGiotto, eval = TRUE, echo = TRUE}
-library(Giotto)
-# Standard libraries - just in case you are a command line fiend
-library(utils)
-library(stats)
-library(graphics)
-library(grDevices)
-### Set seed
-set.seed(1)
-slideTag <- c("Puck_200115_08")
-
-slideBeads <-c("~/group/slide_seqV2/Puck_200115_08_bead_locations.csv")
-
-slideCounts <- c("~/group/slide_seqV2/Puck_200115_08.digital_expression.txt.gz")
+  sec <- NormalizeData(sec)
+  sec <- FindVariableFeatures(sec, selection.method = "vst", nfeatures = 2000)
+  sec <- ScaleData(sec)
 
 
 
-# 1. set working directory
-rootDir <- "~/Vesalius"
+  sec <- rgbUMAP(sec, pcs = 30, conserveSparse =F)
 
-# 2. set giotto python path
-# set python path to your preferred python version path
-# set python path to NULL if you want to automatically install (only the 1st time) and use the giotto miniconda environment
-python_path <- NULL
-if(is.null(python_path)) {
-  installGiottoEnvironment()
+  image <- buildImageArray(sec, resolution = 100, filterThreshold = 1, invert =F)
+  image <- equalizeHistogram(image, sleft = 15,sright =15,invert =F)
+
+  image <- iterativeSegmentation.array(image,
+      colDepth = seq(11,7, by =-2),
+      smoothIter = 1,
+      method = c("median","iso"),
+      sigma=1,
+      box = 13,
+      useCenter = T,
+      invert =F)
+  image <- isolateTerritories.array(image, captureRadius = 0.07,minBar =1)
+
+  tag <- strsplit(i, "/")[[1]]
+  tag <- tag[length(tag)]
+
+  file <- paste0(i,"/Vesalius/",tag,"_vesalius.rda")
+  save(image,file = file)
+  e <- Sys.time()
+  time[[count]] <- e - s
+  count <- count +1
+
 }
-
-instrs <- createGiottoInstructions(save_plot = TRUE,
-                                  save_dir = rootDir,
-                                  python_path = python_path)
-
-giotto <- createGiottoObject(raw_exprs = slideCounts,
-                             spatial_locs = slideBeads,
-                             instructions = instrs)
-
-                             # 2. filter data
-giotto <- filterGiotto(gobject = giotto,
-                             gene_det_in_min_cells = 0,
-                             min_det_genes_per_cell = 0)
-## normalize
-giotto <- normalizeGiotto(gobject = giotto, scalefactor = 10000, verbose = T)
-giotto <- addStatistics(gobject = giotto)
-giotto <- adjustGiottoMatrix(gobject = giotto, expression_values = c('normalized'),
-                             batch_columns = NULL, covariate_columns = c('nr_genes', 'total_expr'),
-                             return_gobject = TRUE,
-                             update_slot = c('custom'))
-
-giotto <- calculateHVG(gobject = giotto,method = "cov_loess",
-                       save_param = list(save_name = 'SSV2_HVG'))
-
-#giotto ## run PCA on expression values (default)
-gene_metadata <- fDataDT(giotto)
-featgenes <- gene_metadata[hvg == 'yes' & perc_cells > 3 & mean_expr_det>0.4]$gene_ID
-
-
-giotto <- runPCA(gobject = giotto,
-                 genes_to_use = featgenes,
-                 scale_unit = F, center = T,
-                 method="irlba")
-
-
-giotto <- runUMAP(giotto, dimensions_to_use = 1:30, n_components = 2, n_threads = 4)
-
-
-giotto <- createNearestNetwork(gobject = giotto, dimensions_to_use = 1:30, k = 15)
-## Leiden clustering
-giotto <- doLeidenCluster(gobject = giotto, resolution = 0.2, n_iterations = 200,
-                                name = 'leiden_0.2')
-
-giotto <- giotto@cell_metadata
-
-#### check what the column names actually are
-#locs <- giotto@spatial_locs
-locs <- read.table(slideBeads, header=T, sep = ",")
-######################
-
-giotto <- cbind(giotto, locs)
-
-
-giotto_col <- length(unique(giotto$leiden_0.2))
-giotto_pal <- colorRampPalette(brewer.pal(8, "Accent"))
-
-
-coord_giotto <- ggplot(giotto, aes(xcoord,ycoord,col = as.factor(leiden_0.2))) +
-            geom_point(size = 0.25, alpha = 0.65) +
-            theme_void() +
-            scale_color_manual(values = giotto_pal(giotto_col)[sample(1:giotto_col,giotto_col)]) +
-            theme(legend.text = element_text(size = 12),
-                  legend.position = "right",
-                  plot.title = element_text(size=15)) +
-            guides(colour = guide_legend(override.aes = list(size=5)))+
-            labs(colour = "Cluster nr.", title = "Giotto - Clusters")
-
-#pdf("giotto_log.pdf", width =7, height=6)
-coord_giotto
-
-#dev.off()
-#
-
-```
-
-
-```{r Vesalius_MethodCompBayesSpace, eval = FALSE, echo= TRUE}
-library(BayesSpace)
-library(SingleCellExperiment)
-library(Seurat)
-
-
-# Standard libraries - just in case you are a command line fiend
-library(utils)
-library(stats)
-library(graphics)
-library(grDevices)
-### Set seed
-set.seed(1)
-slideTag <- c("Puck_200115_08")
-
-slideBeads <-c("~/group/slide_seqV2/Puck_200115_08_bead_locations.csv")
-
-slideCounts <- c("~/group/slide_seqV2/Puck_200115_08.digital_expression.txt.gz")
-
-
-#------------------------------------------------------------------------------#
-# Bayes Space - custom functions
-# will replace the internal function for the purpose of testing
-#------------------------------------------------------------------------------#
-
-.find_neighbors <- function(sce, platform) {
-    # we are going to use switch instead
-    # it will be easier for our purpose
-
-    neighbors <- switch(platform,
-                        "Visium" =.bs(sce,data.frame(x.offset=c(-2, 2, -1,  1, -1, 1),
-                                                     y.offset=c( 0, 0, -1, -1,  1, 1))),
-                         "ST" = .bs(sce,data.frame(x.offset=c( 0, 1, 0, -1),
-                                               y.offset=c(-1, 0, 1,  0))),
-                         "SS" = .ss(sce))
-
-
-
-    return(neighbors)
-}
-
-## Get array coordinates (and label by index of spot in SCE)
-
-## this is essentially the bayes space original function
-.bs <- function(sce,offset){
-  spot.positions <- colData(sce)[, c("col", "row")]
-  spot.positions$spot.idx <- seq_len(nrow(spot.positions))
-
-  ## Compute coordinates of each possible spot neighbor
-  neighbor.positions <- merge(spot.positions, offsets)
-  neighbor.positions$x.pos <- neighbor.positions$col + neighbor.positions$x.offset
-  neighbor.positions$y.pos <- neighbor.positions$row + neighbor.positions$y.offset
-
-  ## Select spots that exist at neighbor coordinates
-  neighbors <- merge(as.data.frame(neighbor.positions),
-                     as.data.frame(spot.positions),
-                     by.x=c("x.pos", "y.pos"), by.y=c("col", "row"),
-                     suffixes=c(".primary", ".neighbor"),
-                     all.x=TRUE)
-
-  ## Shift to zero-indexing for C++
-  neighbors$spot.idx.neighbor <- neighbors$spot.idx.neighbor - 1
-
-  ## Group neighbor indices by spot
-  ## (sort first for consistency with older implementation)
-  neighbors <- neighbors[order(neighbors$spot.idx.primary,
-                         neighbors$spot.idx.neighbor), ]
-
-
-  df_j <- split(neighbors$spot.idx.neighbor, neighbors$spot.idx.primary)
-  df_j <- unname(df_j)
-
-  ## Discard neighboring spots without spot data
-  ## This can be implemented by eliminating `all.x=TRUE` above, but
-  ## this makes it easier to keep empty lists for spots with no neighbors
-  ## (as expected by C++ code)
-  df_j <- map(df_j, function(nbrs) discard(nbrs, function(x) is.na(x)))
-
-  ## Log number of spots with neighbors
-  n_with_neighbors <- length(keep(df_j, function(nbrs) length(nbrs) > 0))
-  message("Neighbors were identified for ", n_with_neighbors, " out of ",
-                                 ncol(sce), " spots.")
-  return(df_j)
-}
-
-.ss <- function(sce){
-  # We will try to use the same format just to reduce error risk
-  # I am assuming that the code is optimised for that input
-  # Also keeping the col and row thing just because I don't know
-  # how many other instance there are of needing col and row later
-  # I will make the assumption that 6 neighbors are good enough
-  # after some filtering
-  message("custom shit is working")
-  spot.positions <- colData(sce)[, c("col", "row")]
-  spot.positions$spot.idx <- seq_len(nrow(spot.positions))
-  dist <- parallel::mclapply(seq_len(nrow(spot.positions)), function(idx,mat){
-                      xo <- mat$col[idx]
-                      yo <- mat$row[idx]
-                      xp <- mat$col
-                      yp <- mat$row
-                      distance <- sqrt(((abs(xp-xo))^2 + (abs(yp-yo))^2))
-                      distance <- distance[distance !=0]
-                      index <- order(distance,decreasing = FALSE)[1:6]
-                      index <- index - 1
-                      index <- sort(index)
-                      return(index)
-  }, spot.positions, mc.cores=4)
-
-
-  return(dist)
-}
-
-#----------------------------------------------------------------------------#
-# Loading coordinates
-#----------------------------------------------------------------------------#
-bead <- ReadSlideSeq(slideBeads)
-
-#----------------------------------------------------------------------------#
-# Unconventional loading - however required as some data sets
-# Fail to load  - This ensures all data sets can be loaded
-#----------------------------------------------------------------------------#
-ctmp <- read.table(slideCounts, header = TRUE )
-rownames(ctmp) <- ctmp[,1]
-ctmp <- ctmp[,-1]
-
-#----------------------------------------------------------------------------#
-# Creating seurat spatial object
-# NOTE this code is taken from the Seurat source code as it does not seem that
-# Slide seq loading function are all exported
-# If this has been updated - this section can be changed accordingly
-#----------------------------------------------------------------------------#
-seu <- CreateSeuratObject(ctmp, assay ="Spatial")
-bead <- bead[Cells(x = seu)]
-DefaultAssay(object = bead) <- "Spatial"
-seu[["slice1"]] <- bead
-
-#----------------------------------------------------------------------------#
-# Getting top var features
-#----------------------------------------------------------------------------#
-seu <- NormalizeData(seu)
-seu <- FindVariableFeatures(seu, selection.method = "vst", nfeatures = 2000)
-seu <- ScaleData(seu)
-seu <- RunPCA(seu, npcs = 30)
-
-var_features <- VariableFeatures(seu)
-
-raw <- seu@assays$Spatial@counts
-raw <- raw[rownames(raw) %in% var_features,]
-counts <- GetAssayData(seu, slot ="data")
-counts <- counts[rownames(counts) %in% var_features,]
-
-sce <- SingleCellExperiment(list(counts=raw,logcounts = counts))
-
-coord <- GetTissueCoordinates(seu)[,c("y","x")]
-colnames(coord) <- c("row","col")
-coord$sizeFactor <- 1
-colData(sce) <- DataFrame(coord)
-
-genes <- data.frame(rownames(counts), rownames(counts))
-colnames(genes) <- c("gene_id","gene_name")
-rownames(genes) <- rownames(counts)
-rowData(sce) <- genes
-
-reducedDim(sce, "PCA") <- as.data.frame(seu[["pca"]]@cell.embeddings)
-
-meta <- list(sample = "Puck_200115_08", dataset = "SSV2",
-          BayesSpace.data = list(platform = "SS",is.enhanced=FALSE))
-metadata(sce) <- meta
-
-bayes <- spatialCluster(sce,q=30)
-bayesData <- as.data.frame(colData(bayes))
-
-bayesData$spatial.cluster <- as.factor(bayesData$spatial.cluster)
-
-
-
-bayes_col <- length(levels(bayesData$spatial.cluster))
-bayes_pal <- colorRampPalette(brewer.pal(8, "Accent"))
-
-
-coord_bayes <- ggplot(bayesData, aes(col,row,col = as.factor(spatial.cluster))) +
-            geom_point(size = 0.05, alpha = 0.8) +
-            theme_void() +
-            scale_color_manual(values = bayes_pal(bayes_col)) +
-            theme(legend.text = element_text(size = 12),
-                  legend.position = "left",
-                  plot.title = element_text(size=15)) +
-            guides(colour = guide_legend(override.aes = list(size=5)))+
-            labs(colour = "Cluster nr.", title = "BayesSpace - Clusters")
-
-#pdf("bayes_log.pdf", width =7, height=6)
-coord_bayes
-
-#dev.off()
-
-
-
-```
-
-```{r vesalius_methodCompPlot, eval = F, echo = T}
-pdf("vesalius_methodComp.pdf",width= 15, height = 5.25)
-(coord_bayes + coord_seu + coord_giotto) + plot_layout(width =c(1,1,1))
-dev.off()
+#save(time, file = "Vesalius_time.Rda")
 
 ```
 
