@@ -137,7 +137,7 @@ for(i in seq_along(slideTag)){
   bead <- bead[Cells(x = ctmp)]
   DefaultAssay(object = bead) <- "Spatial"
   ctmp[["slice1"]] <- bead
-  ctmp <- subset(ctmp, subset = nFeature_Spatial > 100 & nFeature_Spatial < 4500 & percent.mt < 5)
+  #ctmp <- subset(ctmp, subset = nFeature_Spatial > 100 & nFeature_Spatial < 4500 & percent.mt < 5)
   #----------------------------------------------------------------------------#
   # Seuart pre-processing steps
   #----------------------------------------------------------------------------#
@@ -196,7 +196,7 @@ imageBrain <- buildImageArray(imageBrain,invert=T,
 
 #------------------------------------------------------------------------------#
 # Next we equalise the histogram. We use the default BalanceSimplest method
-# Other methods are availbale and are detailed in the package vignette
+# Other methods are available and are detailed in the package vignette
 # sleft and sright describe the extent of histogram balancing on the left and on
 # the right of the histogram.
 #------------------------------------------------------------------------------#
@@ -254,7 +254,7 @@ imageBrain <- isolateTerritories.array(imageBrain,
 
 #------------------------------------------------------------------------------#
 # Finally some plotting
-# IMPORTANT: the "split" show all territories seperately - it just makes
+# IMPORTANT: the "split" show all territories separately - it just makes
 # visualisation and territory selection easier. Please refer to this plot
 # to select territories if in doubt.
 #------------------------------------------------------------------------------#
@@ -285,29 +285,20 @@ other points (i.e. stray beads).
 Note the `resolution` argument is set to 100. This argument determines if the
 image must be resize. The larger the image the higher the resolution but the
 slower the analysis. For this section, we only want to demonstrate the direct
-output of building RGB images from transcrtiptional profiles.
+output of building RGB images from transcriptional profiles.
 
-
-## Image building for territory isolation
-In this section, we will focus on the creation and manipulation of Vesalius
-images in order to produce territories used for in depth analysis. We will make
-the assumption that you have already run the PCA to RGB conversion and saved the
-intermediate file. This whole section will require some object to be stored in
-memory. Not all blocks are thus independent from each other.
-
-
-### Data Loading
-Territory isolation requires the original set of beads and count matrix. We use
-this count matrix to compute differential gene expression. Thus, we will
-load and pre-process data sets required for downstream analysis.
+## Running Vesalius in lower resolution
+Here, we demonstrate running Vesalius over 12 10X Visium data sets taken from
+(here)[https://www.nature.com/articles/s41593-020-00787-0]. All files were
+downloaded and distributed into seperate directories. We assess run time for
+each data set and compared performance using an ARI score. Please note that
+the comprative analysis code can be found
+(here)[https://github.com/patrickCNMartin/Vesalius/blob/main/methodComp.R].
 
 
 
 
 ```{r Vesalius_visium, eval = TRUE, echo = TRUE}
-
-
-source("quickLoad.R")
 
 input <- list.dirs("~/group/visium/DLPFC_globus",recursive =F)
 time <-vector("list",length(input))
@@ -346,7 +337,7 @@ for(i in input){
       box = 13,
       useCenter = T,
       invert =F)
-  image <- isolateTerritories.array(image, captureRadius = 0.07,minBar =1)
+  image <- isolateTerritories.array(image, captureRadius = 0.035,minBar =5)
 
   tag <- strsplit(i, "/")[[1]]
   tag <- tag[length(tag)]
@@ -358,85 +349,62 @@ for(i in input){
   count <- count +1
 
 }
-#save(time, file = "Vesalius_time.Rda")
+save(time, file = "Vesalius_time.Rda")
+
+```
+
+## Image building for territory isolation
+In this section, we will focus on the creation and manipulation of Vesalius
+images in order to produce territories used for in depth analysis. We will make
+the assumption that you have already run the PCA to RGB conversion and saved the
+intermediate file.
+
+```{r Vesalius_BrainTerritories, eval=TRUE, echo=TRUE, warning= FALSE,message=FALSE,fig.width = 12, fig.height=8}
+#-------------------/Territory Isolation - Hippocampus/------------------------#
+bead <- ReadSlideSeq("~/group/slide_seqV2/Puck_200115_08_bead_locations.csv")
+
+
+brainRaw <- read.table("~/group/slide_seqV2/Puck_200115_08.digital_expression.txt.gz", header = TRUE )
+rownames(brainRaw) <- brainRaw[,1]
+brainRaw <- brainRaw[,-1]
+
+brainRaw <- CreateSeuratObject(brainRaw, assay ="Spatial")
+bead <- bead[Cells(x = ctmp)]
+DefaultAssay(object = bead) <- "Spatial"
+brainRaw[["slice1"]] <- bead
+
+imageBrain <- utils::read.csv("~/group/slide_seqV2/IP/PCA_to_RGB_log_2000_slice1_Puck_200115_08.csv",
+                              header=T, stringsAsFactors=F)
+
+imageBrain <- buildImageArray(imageBrain,invert=T,
+                              filterThreshold = 0.999,
+                              resolution = 40, cores = 10)
+
+imageBrain <- equalizeHistogram(imageBrain,sleft = 2.5, sright=2.5,invert =T)
+
+
+imageBrain <- regulariseImage(imageBrain, lambda = 10,
+                              niter = 200, normalise=T)
+
+
+imageBrain <- iterativeSegmentation.array(imageBrain, colDepth = 6,
+                                          smoothIter = 20,
+                                          method = c("iso","median"),
+                                          sigma=1.5,box = 10,
+                                          useCenter = T,
+                                          invert =T)
+
+imageBrain <- isolateTerritories.array(imageBrain,
+                                        captureRadius = 0.008,
+                                        minBar = 40)
+
 
 ```
 
 
 
 
-```{r st_data_comp, eval = TRUE , echo =TRUE}
 
-
-slideTagEmbryo <- "Puck_190926_03"
-slideBeadsEmbryo <-"~/group/slide_seqV2/Puck_190926_03_bead_locations.csv"
-slideCountsEmbryo <- "~/group/slide_seqV2/Puck_190926_03.digital_expression.txt.gz"
-#slideIPEmbryo <- "~/group/slide_seqV2/IP/PCA_to_RGB_log_00_2000_slice1_Puck_190926_03.csv"
-
-embryoCoord <- utils::read.csv(slideBeadsEmbryo, header=F)
-embryoCoord <- embryoCoord[-1,]
-colnames(embryoCoord)<- c("barcodes","xcoord","ycoord")
-
-beadEmbryo <- ReadSlideSeq(slideBeadsEmbryo)
-
-embryoCounts <- read.table(slideCountsEmbryo, header = TRUE )
-rownames(embryoCounts) <- embryoCounts[,1]
-embryoCounts <- embryoCounts[,-1]
-
-embryoCounts <- CreateSeuratObject(embryoCounts, assay ="Spatial")
-beadEmbryo <- beadEmbryo[Cells(x = embryoCounts)]
-DefaultAssay(object = beadEmbryo) <- "Spatial"
-embryoCounts[["slice1"]] <- beadEmbryo
-
-embryoRaw <- embryoCounts
-
-embryoCounts <- NormalizeData(embryoCounts)
-embryoCounts <- ScaleData(embryoCounts)
-embryoCounts <- FindVariableFeatures(embryoCounts, nfeatures = 2000)
-
-seuEm <- RunPCA(embryoCounts)
-seuEm <- RunUMAP(seuEm, dims = 1:30)
-seuEm <- FindNeighbors(seuEm, dims = 1:30)
-seuEm <- FindClusters(seuEm, resolution = 0.7, verbose = FALSE)
-seuEmData <- FetchData(seuEm, c("UMAP_1","UMAP_2","seurat_clusters")) %>%
-             group_by(seurat_clusters) %>%
-             mutate(xs = mean(UMAP_1), ys = mean(UMAP_2))
-
-coordSeuEm <- Vesalius:::getSeuratCoordinates(seuEm)
-seuEmData <- cbind(seuEmData,coordSeuEm[,c("x","y")])
-seuEm_col <- length(unique(seuEmData$seurat_clusters))
-seuEm_pal <- colorRampPalette(brewer.pal(8, "Accent"))
-
-umap_seuEm <- ggplot(seuEmData, aes(UMAP_1,UMAP_2,col = as.factor(seurat_clusters))) +
-            geom_point(size = 0.25, alpha = 0.8) +
-            theme_classic() +
-            scale_color_manual(values =seuEm_pal(seuEm_col)) +
-            theme(legend.text = element_text(size = 12),
-                  axis.text = element_text(size = 12),
-                  axis.title = element_text(size = 12),
-                  plot.tag = element_text(size=20)) +
-            guides(colour = guide_legend(override.aes = list(size=3)))+
-            labs(colour = "Cluster nr.", title = "UMAP - Seurat Clusters",
-                              x = "UMAP 1", y = "UMAP 2")
-
-coord_seuEm <- ggplot(seuEmData, aes(x,y,col = as.factor(seurat_clusters))) +
-            geom_point(size = 0.05, alpha = 0.8) +
-            theme_classic() +
-            scale_color_manual(values = seuEm_pal(seuEm_col)) +
-            theme(legend.text = element_text(size = 12),
-                  axis.text = element_text(size = 12),
-                  axis.title = element_text(size = 12),
-                  plot.tag = element_text(size=20)) +
-            guides(colour = guide_legend(override.aes = list(size=3)))+
-            labs(colour = "Cluster nr.", title = "Mouse Embryo (E12.5) - Seurat Clusters",
-                x = "X coordinates", y = "Y coordinates")
-
-pdf("seuEm_umap_log.pdf", width =13.5, height=6)
-umap_seuEm + coord_seuEm
-dev.off()
-
-
-```
 
 ## Territory isolation from Vesalius images
 
@@ -465,8 +433,19 @@ associated to colour clusters or territories.
 # We are mainly interest in slice three as we use slice three to isolate the eye
 # That being said we will also run Vesalius on slice 1 to demonstrate territory
 # isolation in the embryo
+# We also load the count data for later use
 #------------------------------------------------------------------------------#
+bead <- ReadSlideSeq("~/group/slide_seqV2/Puck_190926_03_bead_locations.csv")
 
+
+embryoCounts <- read.table("~/group/slide_seqV2/Puck_190926_03.digital_expression.txt.gz", header = TRUE )
+rownames(embryoCounts) <- embryoCounts[,1]
+embryoCounts <- embryoCounts[,-1]
+
+embryoCounts <- CreateSeuratObject(embryoCounts, assay ="Spatial")
+bead <- bead[Cells(x = ctmp)]
+DefaultAssay(object = bead) <- "Spatial"
+embryoCounts[["slice1"]] <- bead
 
 imageEmbryo3 <- utils::read.csv("~/group/slide_seqV2/IP/PCA_to_RGB_log_2000_slice3_Puck_190926_03.csv",
                                  header=T, stringsAsFactors=F)
@@ -494,12 +473,6 @@ imageEmbryo1 <- equalizeHistogram(imageEmbryo1,
                                   sleft = 2.5, sright = 2.5,invert = T)
 imageEmbryo3 <- regulariseImage(imageEmbryo3,lambda =10,invert =T)
 imageEmbryo1 <- regulariseImage(imageEmbryo1,lambda =10,invert=T)
-#----------------------------------------------------------------------------#
-# We can export the pretty pictures
-#----------------------------------------------------------------------------#
-#pdf(paste0("imageEmbryo_regEQ_PC1_3.pdf"))
-#imagePlot(imageEmbryo1,as.cimg =F , cex =12)
-#dev.off()
 
 #----------------------------------------------------------------------------#
 # Now we can segment images - here we use a slightly different smoothing
@@ -536,36 +509,37 @@ imageEmbryo1 <- isolateTerritories.array(imageEmbryo1,
 
 
 #----------------------------------------------------------------------------#
-# Finally some plotting -
+# Finally some plotting - Commented out for speed 
+# This code section is the code section used to produce plots in the manuscript
 #----------------------------------------------------------------------------#
-imgSmoothedEm <- imagePlot(imageEmbryo3, as.cimg = F,cex = 15) + theme_void()
-imgTerritoryEm <- territoryPlot(imageEmbryo3, randomise = TRUE,cex =15 , cex.pt=0.25)+
-                  theme_void()+
-                  theme(legend.text = element_text(size = 12),
-                        legend.title = element_text(size=12),
-                        plot.title = element_text(size=15))+
-                  labs(title = "Slide-seq V2 - Embryo (E12.5)")
+#imgSmoothedEm <- imagePlot(imageEmbryo3, as.cimg = F,cex = 15) + theme_void()
+#imgTerritoryEm <- territoryPlot(imageEmbryo3, randomise = TRUE,cex =15 , cex.pt=0.25)+
+                  #theme_void()+
+                  #theme(legend.text = element_text(size = 12),
+                  #      legend.title = element_text(size=12),
+                  #      plot.title = element_text(size=15))+
+                  #labs(title = "Slide-seq V2 - Embryo (E12.5)")
 
 #pdf(paste0("smoother_and_territory_embryo_slice3.pdf"), width = 7, height=5.5)
-g <- imgTerritoryEm
-print(g)
+#g <- imgTerritoryEm
+#print(g)
 #dev.off()
 
 #pdf(paste0("embryo_split_slice",i,".pdf"),width =20, height = 20)
 #print(territoryPlot(imageEmbryo,split = T,randomise = F,cex=10))
 #dev.off()
 
-imgSmoothedEm1 <- imagePlot(imageEmbryo1, as.cimg = F,cex = 15) + theme_void()
-imgTerritoryEm1 <- territoryPlot(imageEmbryo1, randomise = TRUE,cex =15 , cex.pt=0.25)+
-                    theme_void()+
-                    theme(legend.text = element_text(size = 12),
-                          legend.title = element_text(size=12),
-                          plot.title = element_text(size=15))+
-                    labs(title = "Slide-seq V2 - Embryo (E12.5)")
-pdf(paste0("smoother_and_territory_embryo_slice1.pdf"), width = 7, height=5.5)
-imgTerritoryEm1
+#imgSmoothedEm1 <- imagePlot(imageEmbryo1, as.cimg = F,cex = 15) + theme_void()
+#imgTerritoryEm1 <- territoryPlot(imageEmbryo1, randomise = TRUE,cex =15 , cex.pt=0.25)+
+#                    theme_void()+
+#                    theme(legend.text = element_text(size = 12),
+#                          legend.title = element_text(size=12),
+#                          plot.title = element_text(size=15))+
+#                    labs(title = "Slide-seq V2 - Embryo (E12.5)")
+#pdf(paste0("smoother_and_territory_embryo_slice1.pdf"), width = 7, height=5.5)
+#imgTerritoryEm1
 
-dev.off()
+#dev.off()
 
 ```
 
