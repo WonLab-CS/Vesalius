@@ -1,13 +1,26 @@
-
-#-----------------------------/Loading all data/-------------------------------#
+#-----------------------------/Running Seurat/---------------------------------#
 #------------------------------------------------------------------------------#
-# First we load all data sets
-# Here we load both the mouse Hippocampus and the mouse embryo
+# This file contains all code related to Seurat runs for the purpose of
+# performance comaprison. Here you will find the code related to Slide-seq V2
+# and the DLPFC Visium data sets
+#------------------------------------------------------------------------------#
+
+library(Seurat)
+library(ggplot2)
+library(patchwork)
+library(viridis)
+library(RColorBrewer)
+library(dplyr)
+library(tvR)
+library(sp)
+library(grid)
+
+#------------------------------------------------------------------------------#
+# Slide-seq V2
 #------------------------------------------------------------------------------#
 slideTagBrain <- "Puck_200115_08"
 slideBeadsBrain <-"~/group/slide_seqV2/Puck_200115_08_bead_locations.csv"
 slideCountsBrain <- "~/group/slide_seqV2/Puck_200115_08.digital_expression.txt.gz"
-#slideIPBrain <- "~/group/slide_seqV2/IP/PCA_to_RGB_log_2000_slice1_Puck_200115_08.csv"
 
 brainCoord <- utils::read.csv(slideBeadsBrain, header=F)
 brainCoord <- brainCoord[-1,]
@@ -19,39 +32,19 @@ brainCounts <- read.table(slideCountsBrain, header = TRUE )
 rownames(brainCounts) <- brainCounts[,1]
 brainCounts <- brainCounts[,-1]
 
-#------------------------------------------------------------------------------#
-# We still create a Seurat object
-# It's just that Seurat is such a great package to handling single cell data
-# Hats off to the Seurat team
-#------------------------------------------------------------------------------#
-brainCounts <- CreateSeuratObject(brainCounts, assay ="Spatial")
+
+seu <- CreateSeuratObject(brainCounts, assay ="Spatial")
 beadBrain <- beadBrain[Cells(x = brainCounts)]
 DefaultAssay(object = beadBrain) <- "Spatial"
-brainCounts[["slice1"]] <- beadBrain
+seu[["slice1"]] <- beadBrain
 
-#------------------------------------------------------------------------------#
-# We keep a Raw data set. We will use the raw counts when we subset out the
-# beads in isolated territories. We want to avoid using the values resulting
-# from overall normalisation.
-# We want to avoid to "normalise" already normalised and scaled data.
-#------------------------------------------------------------------------------#
-brainRaw <- brainCounts
+### NOTE we use Log normalisation and not SCTransform as this is more
+### consistent with the approach taken in Vesalius
+seu <- NormalizeData(seu)
+seu <- FindVariableFeatures(seu, nfeatures = 2000)
+seu <- ScaleData(seu)
 
 
-
-#----------------------------/Seurat Clustering/-------------------------------#
-#------------------------------------------------------------------------------#
-# Pre-processing data using the same approaches as the one used when converting
-# PCA loadings to RGB colour space
-#------------------------------------------------------------------------------#
-brainCounts <- NormalizeData(brainCounts)
-brainCounts <- FindVariableFeatures(brainCounts, nfeatures = 2000)
-brainCounts <- ScaleData(brainCounts)
-
-#------------------------------------------------------------------------------#
-# Running Seurat pipeline and plotting results
-# we plot both the UMAP projections and the mapped clusters
-#------------------------------------------------------------------------------#
 seu <- RunPCA(brainCounts)
 seu <- RunUMAP(seu, dims = 1:30)
 seu <- FindNeighbors(seu, dims = 1:30)
@@ -60,11 +53,11 @@ seuData <- FetchData(seu, c("UMAP_1","UMAP_2","seurat_clusters")) %>%
            group_by(seurat_clusters) %>%
            mutate(xs = mean(UMAP_1), ys = mean(UMAP_2))
 
-#------------------------------------------------------------------------------#
-# This section just rebuilds a data frame to make it easier to plot with ggplot
-#------------------------------------------------------------------------------#
+
 coordSeu <- GetTissueCoordinates(seu)
 seuData <- cbind(seuData,coordSeu[,c("x","y")])
+
+seuData$seurat_clusters <- as.numeric(as.character(seuData$seurat_clusters)) + 1
 seu_col <- length(unique(seuData$seurat_clusters))
 seu_pal <- colorRampPalette(brewer.pal(8, "Accent"))
 
@@ -83,22 +76,13 @@ coord_seu <- ggplot(seuData, aes(x,y,col = as.factor(seurat_clusters))) +
 
 
 
+#------------------------------------------------------------------------------#
+# Slide-seq V2
+#------------------------------------------------------------------------------#
 
-library(Seurat)
-library(ggplot2)
-library(patchwork)
-library(viridis)
-library(RColorBrewer)
-library(dplyr)
-library(tvR)
-library(sp)
-library(grid)
+### Input directories containing Visium data
 
-
-
-
-
-input <- list.dirs("~/group/visium/DLPFC_globus",recursive =F)
+input <- list.dirs("/visium/DLPFC",recursive =F)
 time <-vector("list",length(input))
 count <- 1
 n <-c(7,7,7,7,5,5,5,5,7,7,7,7)
@@ -139,4 +123,5 @@ for(i in input){
   count <- count +1
 
 }
+## Saving run time 
 save(time,file = "Seurat_time.Rda")

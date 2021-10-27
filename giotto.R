@@ -1,4 +1,12 @@
-
+#-----------------------------/Running Giotto/---------------------------------#
+#------------------------------------------------------------------------------#
+# This file contains all code related to Giotto runs for the purpose of
+# performance comaprison. We were not able to run Giotto on Slide-seq V2 this
+# file only contains code related to Visium data.
+# Giotto on slide seq V2 lead to segmentation faults
+# NOTE The majority of this code is taken from
+# https://github.com/JinmiaoChenLab/SEDR_analyses
+#------------------------------------------------------------------------------#
 library(Giotto)
 library(Seurat)
 library(ggplot2)
@@ -32,9 +40,6 @@ for(k in input){
 
 myinst=createGiottoInstructions(save_plot=T, show_plot=F, save_dir=output)
 
-
-
-##### 2. Create Giotto object & process data.
 visium_brain <- createGiottoObject(raw_exprs = sec,
                                    spatial_locs = spatial_locations[,.(row_pxl,-col_pxl)],
                                    instructions = myinst,
@@ -44,54 +49,53 @@ metadata = pDataDT(visium_brain)
 in_tissue_barcodes = metadata[in_tissue == 1]$cell_ID
 visium_brain = subsetGiotto(visium_brain, cell_ids = in_tissue_barcodes)
 
-## filter genes and cells
 visium_brain <- filterGiotto(gobject = visium_brain,
                              expression_threshold = 1,
-                             # gene_det_in_min_cells = 50,
-                             # min_det_genes_per_cell = 500,
+
                              expression_values = c('raw'),
                              verbose = T)
-## normalize
+
 visium_brain <- normalizeGiotto(gobject = visium_brain, scalefactor = 6000, verbose = T)
-## add gene & cell statistics
+
 visium_brain <- addStatistics(gobject = visium_brain)
 
 
-###### 3. Dimensional reduction
-# HVG
+
 visium_brain <- calculateHVG(gobject = visium_brain)
-# PCA
-## select genes based on HVG and gene statistics, both found in gene metadata
+
 gene_metadata = fDataDT(visium_brain)
 featgenes = gene_metadata[hvg == 'yes' & perc_cells > 3 & mean_expr_det > 0.4]$gene_ID
-## run PCA on expression values (default)
+
 visium_brain <- runPCA(gobject = visium_brain,
                        genes_to_use = featgenes,
                        scale_unit = F,
                        center=T,
                        method="irlba")
 
-# UMAP and tSNE
+
 visium_brain <- runUMAP(visium_brain, dimensions_to_use = 1:20)
 visium_brain <- runtSNE(visium_brain, dimensions_to_use = 1:20)
 
 
-# create spatial network
+
 visium_brain <- createSpatialNetwork(gobject=visium_brain,
                                      method='kNN',
                                      k=5,
                                      maximum_distance_knn=400,
                                      name='spatial_network')
 
-## silhouette
+
 spatial_genes <- silhouetteRank(visium_brain)
 
-### cluster the top 1500 spatial genes into 20 clusters
+
 ext_spatial_genes=spatial_genes[1:1500,]$gene
 
 
 
-#####################################
+####################################
+## Custom function from https://github.com/JinmiaoChenLab/SEDR_analyses
+## Without these functions Giotto will not run to completion
+####################################
 gobject <- visium_brain
 expression_values  <- 'scaled'
 subset_genes <- ext_spatial_genes
@@ -240,19 +244,13 @@ sort_combine_two_DT_columns = function(DT,
 
 
 
-## test ##
-spatial_network = convert_to_full_spatial_network(spatial_network)
-## stop test ##
 
-#print(spatial_network)
+spatial_network = convert_to_full_spatial_network(spatial_network)
+
 
 spatial_network_ext = data.table::merge.data.table(spatial_network, expr_values_dt_m, by.x = 'target', by.y = 'cell_ID', allow.cartesian = T)
 
-#print(spatial_network_ext)
 
-# calculate mean over all k-neighbours
-# exclude 0's?
-# trimmed mean?
 spatial_network_ext_smooth = spatial_network_ext[, mean(value), by = c('source', 'gene_ID')]
 
 
@@ -264,13 +262,11 @@ dt_to_matrix <- function(x) {
 }
 
 
-# convert back to matrix
+
 spatial_smooth_dc = data.table::dcast.data.table(data = spatial_network_ext_smooth, formula = gene_ID~source, value.var = 'V1')
 spatial_smooth_matrix = dt_to_matrix(spatial_smooth_dc)
 
 
-# if network was not fully connected, some cells might be missing and are not smoothed
-# add the original values for those cells back
 all_cells = colnames(expr_values)
 smoothed_cells = colnames(spatial_smooth_matrix)
 missing_cells = all_cells[!all_cells %in% smoothed_cells]
@@ -294,11 +290,7 @@ spat_cor_netw_DT=detectSpatialCorGenes(visium_brain,
 # cluster spatial genes
 spat_cor_netw_DT=clusterSpatialCorGenes(spat_cor_netw_DT,
                                         name='spat_netw_clus', k=15)
-# # visualize clusters
-# heatmSpatialCorGenes(visium_brain,
-#                      spatCorObject=spat_cor_netw_DT,
-#                      use_clus_name='spat_netw_clus',
-#                      heatmap_legend_param=list(title=NULL))
+               heatmap_legend_param=list(title=NULL))
 
 
 sample_rate=2
@@ -334,11 +326,9 @@ for(i in seq(1, num_cluster)){
 union_genes=unique(union_genes)
 
 
-### Run HMRF routine
-# do HMRF with different betas on 500 spatial genes
+
 my_spatial_genes <- union_genes
-# hmrf_folder=fs::path("11_HMRF")
-# if(!file.exists(hmrf_folder)) dir.create(hmrf_folder, recursive=T)
+
 HMRF_spatial_genes=doHMRF(gobject=visium_brain,
                           expression_values='scaled',
                           spatial_genes=my_spatial_genes,

@@ -38,6 +38,12 @@
 #' @examples
 #' \dontrun{
 #' data(Vesalius)
+#' # Seurat pre-processing
+#' image <- NormalizeData(vesalius)
+#' image <- FindVariableFeatures(image, nfeatures = 2000)
+#' image <- ScaleData(image)
+#' # converting to rgb
+#' image <- rgbPCA(image,slices = 1)
 #' }
 
 
@@ -225,13 +231,18 @@ rgbPCA<- function(SO,
 #' this additional information in further compressed. Using PCA slice provides
 #' a way to visualize and explore different anatomical structure in more depth.
 #' Choosing between rgbPCA and rgbUMAP will depend on the question at hand and
-#' the depth of the analysis. 
+#' the depth of the analysis.
 #'
 #' @return Returns a Vesalius data.frame with "barcodes","x","y","cc",
 #' "value","slice"
 #' @examples
 #' \dontrun{
 #' data(Vesalius)
+#' image <- NormalizeData(vesalius)
+#' image <- FindVariableFeatures(image, nfeatures = 2000)
+#' image <- ScaleData(image)
+#' # converting to rgb
+#' image <- rgbUMAP(image,pcs = 30)
 #' }
 
 
@@ -406,7 +417,15 @@ rgbUMAP<- function(SO,
 #' "value",and "tile".
 #' @examples
 #' \dontrun{
-#' data(Vesalius)
+#' image <- NormalizeData(vesalius)
+#' image <- FindVariableFeatures(image, nfeatures = 2000)
+#' image <- ScaleData(image)
+#' # converting to rgb
+#' image <- rgbPCA(image,slices = 1)
+#' # Slice ID = PCA slice
+#' image <- buildImageArray(image, sliceID = 1)
+#' # If rgbUMAP was run - no need to specifiy slice
+#' image <- buildImageArray(image)
 #' }
 
 

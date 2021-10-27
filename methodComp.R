@@ -1,3 +1,11 @@
+#-----------------------------/Method comparison/------------------------------#
+#------------------------------------------------------------------------------#
+# This file contains all code use to generate comparison plots
+# This includes:
+# computational time
+# ARI scores
+# Example sample 151673
+#------------------------------------------------------------------------------#
 
 ##### Getting time plots
 library(ggplot2)
@@ -165,14 +173,17 @@ ground <- ggplot(labels, aes(col,row,col = layer_guess_reordered)) +
 vesalius <- paste0(input,"/Vesalius/151673_vesalius.rda")
 vesalius <- get(load(vesalius))
 vesalius <- filter(vesalius,tile == 1) %>% distinct(barcodes,.keep_all = TRUE)
+sorted_labels <- order(levels(as.factor(vesalius$territory)))
+sorted_labels[length(sorted_labels)] <- "isolated"
+vesalius$territory <- factor(vesalius$territory, levels = sorted_labels)
 
-cols <- length(unique(vesalius$territory))
+cols <- length(levels(vesalius$territory))
 pal <- colorRampPalette(c("#999999", "#E69F00", "#56B4E9", "#009E73",
                                 "#F0E442", "#0072B2", "#D55E00", "#CC79A7"))
-cols <- pal(cols)#[sample(1:cols)]
+cols <- pal(cols)[sample(1:cols)]
 
 
-ves <- ggplot(vesalius, aes(x,y,col = as.factor(territory))) +
+ves <- ggplot(vesalius, aes(x,y,col = territory)) +
      geom_point(size = 1.5,alpha = 1)+
      theme_void()+
      scale_color_manual(values = cols)+
@@ -187,6 +198,7 @@ seurat <- get(load(seurat))
 coord <- GetTissueCoordinates(seurat)
 cluster <- FetchData(seurat,c("seurat_clusters"))
 seurat <- cbind(coord,cluster)
+seurat$seurat_clusters <- as.factor(as.numeric(as.character(seurat$seurat_clusters))+1)
 
 cols <- length(levels(seurat$seurat_clusters))
 pal <- colorRampPalette(c("#999999", "#E69F00", "#56B4E9", "#009E73",

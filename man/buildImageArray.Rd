@@ -78,6 +78,6 @@ will be retained.
 }
 \examples{
 \dontrun{
-data(Vesalius)
+data(vesalius)
 }
 }
