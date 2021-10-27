@@ -77,7 +77,7 @@ coord_seu <- ggplot(seuData, aes(x,y,col = as.factor(seurat_clusters))) +
 
 
 #------------------------------------------------------------------------------#
-# Slide-seq V2
+# Visium DLPFC
 #------------------------------------------------------------------------------#
 
 ### Input directories containing Visium data
@@ -123,5 +123,5 @@ for(i in input){
   count <- count +1
 
 }
-## Saving run time 
+## Saving run time
 save(time,file = "Seurat_time.Rda")

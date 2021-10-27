@@ -78,7 +78,7 @@ coord_bayes <- ggplot(bayesData, aes(col,row,col = as.factor(spatial.cluster))) 
 
 
 #------------------------------------------------------------------------------#
-# Slide-seq V2
+# Visium DLPFC
 #------------------------------------------------------------------------------#
 # Directories containing Visium data
 input <- list.dirs("visium/DLPFC",recursive =F)
