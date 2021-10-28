@@ -13,6 +13,11 @@
 <!-- clipboard.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.6/clipboard.min.js" integrity="sha256-inc5kl9MA1hkeYUt+EC3BhlIgyp/2jDIyBLS6k3UxPI=" crossorigin="anonymous"></script><!-- headroom.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/headroom.min.js" integrity="sha256-AsUX4SJE1+yuDu5+mAVzJbuYNPHj/WroHuZ8Ir/CkE0=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/jQuery.headroom.min.js" integrity="sha256-ZX/yNShbjqsohH1k95liqY9Gd8uOiE1S4vZc+9KQ1K4=" crossorigin="anonymous"></script><!-- pkgdown --><link href="../pkgdown.css" rel="stylesheet">
 <script src="../pkgdown.js"></script><meta property="og:title" content="Vesalius: Quick Start">
 <meta property="og:description" content="vesalius">
+<meta property="og:image" content="https://patrickcnmartin.github.io/Vesalius/docs/Vesalius_banner.png">
+<meta property="og:image:alt" content="Pool noodles configured to form the word poolnoodlr">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:creator" content="@patrickCNMartin">
+<meta name="twitter:site" content="@patrickCNMartin">
 <!-- mathjax --><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js" integrity="sha256-nvJJv9wWKEm88qvoQl9ekL2J+k/RWIsaSScxxlsrv8k=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/config/TeX-AMS-MML_HTMLorMML.js" integrity="sha256-84DKXVJXs0/F8OTMzX4UR909+jtl4G7SPypPavF+GfA=" crossorigin="anonymous"></script><!--[if lt IE 9]>
 <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
 <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
@@ -173,9 +178,9 @@
 <div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">vesalius</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rgbPCA.html">rgbPCA</a></span><span class="op">(</span><span class="va">vesalius</span>,slices <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></code></pre></div>
 <pre><code>## #------------------------------------------------------------------------# 
-## 2021-10-28 11:51:55  Running Principle Component Analysis in 1 slices 
-## 2021-10-28 11:51:55  Converting Loading Values to RGB in slice 1 
-## 2021-10-28 11:52:00  Normalising RGB values 
+## 2021-10-28 12:10:56  Running Principle Component Analysis in 1 slices 
+## 2021-10-28 12:10:56  Converting Loading Values to RGB in slice 1 
+## 2021-10-28 12:11:03  Normalising RGB values 
 ## #------------------------------------------------------------------------#</code></pre>
 </div>
 <div id="building-an-image" class="section level1">
@@ -185,13 +190,13 @@
 <div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">vesalius</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/buildImageArray.html">buildImageArray</a></span><span class="op">(</span><span class="va">vesalius</span>, sliceID <span class="op">=</span> <span class="fl">1</span>, invert <span class="op">=</span><span class="cn">T</span><span class="op">)</span></code></pre></div>
 <pre><code>## #------------------------------------------------------------------------# 
-## 2021-10-28 11:52:00  Checking Vesalius Input - Using slice  1 
-## 2021-10-28 11:52:00  Class coersion to numeric 
-## 2021-10-28 11:52:00  Inverting Colours 
-## 2021-10-28 11:52:00  Filtering outlier beads 
-## 2021-10-28 11:52:00  Generating Voronoi Tesselation 
-## 2021-10-28 11:52:00  Rasterising Tiles 
-## 2021-10-28 11:52:05  Filtering Triangles that exceed area threshold
+## 2021-10-28 12:11:03  Checking Vesalius Input - Using slice  1 
+## 2021-10-28 12:11:03  Class coersion to numeric 
+## 2021-10-28 12:11:03  Inverting Colours 
+## 2021-10-28 12:11:03  Filtering outlier beads 
+## 2021-10-28 12:11:03  Generating Voronoi Tesselation 
+## 2021-10-28 12:11:03  Rasterising Tiles 
+## 2021-10-28 12:11:09  Filtering Triangles that exceed area threshold
 ## #------------------------------------------------------------------------#</code></pre>
 <div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># Let's have a look shall we?</span>
@@ -209,14 +214,14 @@
 <code class="sourceCode R"><span class="co"># Histogram EQ</span>
 <span class="va">vesalius</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/equalizeHistogram.html">equalizeHistogram</a></span><span class="op">(</span><span class="va">vesalius</span>,sleft <span class="op">=</span> <span class="fl">2.5</span>, sright<span class="op">=</span><span class="fl">2.5</span>,invert <span class="op">=</span><span class="cn">T</span><span class="op">)</span></code></pre></div>
 <pre><code>## #------------------------------------------------------------------------# 
-## 2021-10-28 11:52:10  Inverting Colours</code></pre>
+## 2021-10-28 12:11:17  Inverting Colours</code></pre>
 <pre><code>## Warning in as.cimg.data.frame(.): Guessing image dimensions from maximum
 ## coordinate values
 
 ## Warning in as.cimg.data.frame(.): Guessing image dimensions from maximum
 ## coordinate values</code></pre>
-<pre><code>## 2021-10-28 11:52:12  Equalizing Histogram 
-## 2021-10-28 11:52:13  Rebuilding Data Frame from image 
+<pre><code>## 2021-10-28 12:11:22  Equalizing Histogram 
+## 2021-10-28 12:11:22  Rebuilding Data Frame from image 
 ## #------------------------------------------------------------------------#</code></pre>
 <div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># Variance regularisation</span>
@@ -225,7 +230,7 @@
 <pre><code>## #------------------------------------------------------------------------#</code></pre>
 <pre><code>## Warning in as.cimg.data.frame(.): Guessing image dimensions from maximum
 ## coordinate values</code></pre>
-<pre><code>## 2021-10-28 11:52:15  Regularising Image 
+<pre><code>## 2021-10-28 12:11:24  Regularising Image 
 ## #------------------------------------------------------------------------#</code></pre>
 <div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># Smoothing</span>
@@ -233,7 +238,7 @@
 <span class="va">vesalius</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/smoothArray.html">smoothArray</a></span><span class="op">(</span><span class="va">vesalius</span>,method <span class="op">=</span> <span class="st">"box"</span>, box <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></code></pre></div>
 <pre><code>## Warning in as.cimg.data.frame(select(image, c("x", "y", "cc", "value"))):
 ## Guessing image dimensions from maximum coordinate values</code></pre>
-<pre><code>## 2021-10-28 11:52:22  Smoothing Iteration  1 </code></pre>
+<pre><code>## 2021-10-28 12:11:35  Smoothing Iteration  1 </code></pre>
 <div class="sourceCode" id="cb42"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># Segmentation</span>
 <span class="co"># This function provides smoothing internally.</span>
@@ -248,32 +253,32 @@
 <pre><code>## #------------------------------------------------------------------------#</code></pre>
 <pre><code>## Warning in as.cimg.data.frame(select(image, c("x", "y", "cc", "value"))):
 ## Guessing image dimensions from maximum coordinate values</code></pre>
-<pre><code>## 2021-10-28 11:52:24  Inverting Colours</code></pre>
+<pre><code>## 2021-10-28 12:11:37  Inverting Colours</code></pre>
 <pre><code>## Warning in as.cimg.data.frame(.): Guessing image dimensions from maximum
 ## coordinate values</code></pre>
 <pre><code>## Warning in as.cimg.data.frame(imgCopy): Guessing image dimensions from maximum
 ## coordinate values</code></pre>
-<pre><code>## 2021-10-28 11:52:27  Smoothing Iteration  1 
-2021-10-28 11:52:29  Smoothing Iteration  2 
-2021-10-28 11:52:31  Smoothing Iteration  3 
-2021-10-28 11:52:33  Smoothing Iteration  4 
-2021-10-28 11:52:35  Smoothing Iteration  5 
-2021-10-28 11:52:37  Smoothing Iteration  6 
-2021-10-28 11:52:39  Smoothing Iteration  7 
-2021-10-28 11:52:41  Smoothing Iteration  8 
-2021-10-28 11:52:42  Smoothing Iteration  9 
-2021-10-28 11:52:44  Smoothing Iteration  10 
-2021-10-28 11:52:46  Smoothing Iteration  11 
-2021-10-28 11:52:48  Smoothing Iteration  12 
-2021-10-28 11:52:50  Smoothing Iteration  13 
-2021-10-28 11:52:52  Smoothing Iteration  14 
-2021-10-28 11:52:54  Smoothing Iteration  15 
-2021-10-28 11:52:56  Smoothing Iteration  16 
-2021-10-28 11:52:58  Smoothing Iteration  17 
-2021-10-28 11:53:00  Smoothing Iteration  18 
-2021-10-28 11:53:02  Smoothing Iteration  19 
-2021-10-28 11:53:04  Smoothing Iteration  20 
-## 2021-10-28 11:53:08  Segmentation Iteration  1 
+<pre><code>## 2021-10-28 12:11:40  Smoothing Iteration  1 
+2021-10-28 12:11:43  Smoothing Iteration  2 
+2021-10-28 12:11:45  Smoothing Iteration  3 
+2021-10-28 12:11:46  Smoothing Iteration  4 
+2021-10-28 12:11:48  Smoothing Iteration  5 
+2021-10-28 12:11:50  Smoothing Iteration  6 
+2021-10-28 12:11:52  Smoothing Iteration  7 
+2021-10-28 12:11:54  Smoothing Iteration  8 
+2021-10-28 12:11:56  Smoothing Iteration  9 
+2021-10-28 12:11:58  Smoothing Iteration  10 
+2021-10-28 12:12:00  Smoothing Iteration  11 
+2021-10-28 12:12:02  Smoothing Iteration  12 
+2021-10-28 12:12:03  Smoothing Iteration  13 
+2021-10-28 12:12:06  Smoothing Iteration  14 
+2021-10-28 12:12:09  Smoothing Iteration  15 
+2021-10-28 12:12:11  Smoothing Iteration  16 
+2021-10-28 12:12:13  Smoothing Iteration  17 
+2021-10-28 12:12:15  Smoothing Iteration  18 
+2021-10-28 12:12:17  Smoothing Iteration  19 
+2021-10-28 12:12:19  Smoothing Iteration  20 
+## 2021-10-28 12:12:22  Segmentation Iteration  1 
 ## #------------------------------------------------------------------------#</code></pre>
 <div class="sourceCode" id="cb49"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># Isolating territories from colour segments</span>
@@ -281,12 +286,12 @@
                                      captureRadius <span class="op">=</span> <span class="fl">0.1</span>,
                                      minBar <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></code></pre></div>
 <pre><code>## #------------------------------------------------------------------------# 
-## 2021-10-28 11:53:08  Pooling territory  1 
-2021-10-28 11:53:09  Pooling territory  2 
-2021-10-28 11:53:09  Pooling territory  3 
-2021-10-28 11:53:09  Pooling territory  4 
-2021-10-28 11:53:09  Pooling territory  5 
-2021-10-28 11:53:09  Pooling territory  6 
+## 2021-10-28 12:12:23  Pooling territory  1 
+2021-10-28 12:12:23  Pooling territory  2 
+2021-10-28 12:12:23  Pooling territory  3 
+2021-10-28 12:12:23  Pooling territory  4 
+2021-10-28 12:12:23  Pooling territory  5 
+2021-10-28 12:12:24  Pooling territory  6 
 ## #------------------------------------------------------------------------#</code></pre>
 <div class="sourceCode" id="cb51"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">vesalius</span></code></pre></div>
@@ -329,8 +334,8 @@
 <code class="sourceCode R"><span class="co"># extract terriotry from seurat object</span>
 <span class="va">ter</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/extractTerritories.html">extractTerritories</a></span><span class="op">(</span><span class="va">vesalius</span>,<span class="va">copy</span>,seedID<span class="op">=</span> <span class="fl">1</span><span class="op">)</span></code></pre></div>
 <pre><code>## #------------------------------------------------------------------------# 
-## 2021-10-28 11:53:11  Extracting territory 1 
-## 2021-10-28 11:53:11  Converting to pixset and morphing territory</code></pre>
+## 2021-10-28 12:12:26  Extracting territory 1 
+## 2021-10-28 12:12:26  Converting to pixset and morphing territory</code></pre>
 <pre><code>## Warning in as.cimg.data.frame(.): Guessing image dimensions from maximum
 ## coordinate values</code></pre>
 <pre><code>## #------------------------------------------------------------------------#</code></pre>
@@ -343,7 +348,7 @@
 <code class="sourceCode R"><span class="co"># get all markers related to all territories</span>
 <span class="va">all</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/extractAllMarkers.html">extractAllMarkers</a></span><span class="op">(</span><span class="va">vesalius</span>,<span class="va">copy</span><span class="op">)</span></code></pre></div>
 <pre><code>## #------------------------------------------------------------------------# 
-## 2021-10-28 11:53:12  Checking and extracting Counts 
+## 2021-10-28 12:12:26  Checking and extracting Counts 
 ## ===&gt; 1 VS Remaining &lt;=== 
 ===&gt; 10 VS Remaining &lt;=== 
 ===&gt; 11 VS Remaining &lt;=== </code></pre>
@@ -385,10 +390,10 @@
 <code class="sourceCode R"><span class="co"># get markers associated with on or more territories</span>
 <span class="va">one</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/extractMarkers.html">extractMarkers</a></span><span class="op">(</span><span class="va">vesalius</span>, <span class="va">copy</span>, seed <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span></code></pre></div>
 <pre><code>## #------------------------------------------------------------------------# 
-## 2021-10-28 11:53:30  Checking and extracting Counts 
-## 2021-10-28 11:53:30  Extracting Seed territories 
-## 2021-10-28 11:53:30  Extracting Query territories 
-## 2021-10-28 11:53:30  Computing Differentially Expressed Genes
+## 2021-10-28 12:12:45  Checking and extracting Counts 
+## 2021-10-28 12:12:45  Extracting Seed territories 
+## 2021-10-28 12:12:45  Extracting Query territories 
+## 2021-10-28 12:12:45  Computing Differentially Expressed Genes
 ## ===&gt; 1  VS Remaining &lt;=== 
 ## #------------------------------------------------------------------------#</code></pre>
 <div class="sourceCode" id="cb72"><pre class="downlit sourceCode r">
@@ -406,10 +411,10 @@
 <code class="sourceCode R"><span class="co"># comparing territories</span>
 <span class="va">two</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/extractMarkers.html">extractMarkers</a></span><span class="op">(</span><span class="va">vesalius</span>, <span class="va">copy</span>, seed <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span>, query <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>,<span class="fl">3</span><span class="op">)</span><span class="op">)</span></code></pre></div>
 <pre><code>## #------------------------------------------------------------------------# 
-## 2021-10-28 11:53:30  Checking and extracting Counts 
-## 2021-10-28 11:53:30  Extracting Seed territories 
-## 2021-10-28 11:53:30  Extracting Query territories 
-## 2021-10-28 11:53:31  Computing Differentially Expressed Genes
+## 2021-10-28 12:12:46  Checking and extracting Counts 
+## 2021-10-28 12:12:46  Extracting Seed territories 
+## 2021-10-28 12:12:46  Extracting Query territories 
+## 2021-10-28 12:12:46  Computing Differentially Expressed Genes
 ## ===&gt; 1  VS 2 3  &lt;=== 
 ## #------------------------------------------------------------------------#</code></pre>
 <div class="sourceCode" id="cb76"><pre class="downlit sourceCode r">

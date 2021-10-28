@@ -1,1 +1,14 @@
+home:
+  title: Vesalius
+  description: In silico anatomization of Spatial Transcriptomics using Image Analysis.
+
+template:
+  opengraph:
+    image:
+      src: docs/Vesalius_banner.png
+      alt: "Pool noodles configured to form the word poolnoodlr"
+    twitter:
+      creator: "@patrickCNMartin"
+      card: summary_large_image
+
 url: https://patrickcnmartin.github.io/Vesalius/
