@@ -21,5 +21,6 @@ repo:
     source: https://github.com/patrickCNMartin/Vesalius/blob/main/
     issue: https://github.com/patrickCNMartin/Vesalius/issues/
     user: https://github.com/
-  branch: main
+  branch: main/docs
+
 url: https://patrickcnmartin.github.io/Vesalius/
