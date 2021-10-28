@@ -1,5 +1,5 @@
 ---
-title: "Vesalius: Tissue anatomy from spatial transcriptomic data - Analysis"
+title: "Vesalius Manuscript Analysis"
 author: Patrick C.N. Martin
 output:
   word_document: default
@@ -27,7 +27,7 @@ as we had in the paper.
 
 
 ## Libraries
-```{r loadings, eval = TRUE, echo=TRUE, message=FALSE, warning=FALSE}
+```{r loadings, eval=FALSE, echo=TRUE, message=FALSE, warning=FALSE}
 library(vesalius)
 library(imagerExtra)
 library(Seurat)
@@ -65,7 +65,7 @@ Vesalius for embedding into the RGB colour space.
 
 
 
-```{r RGB_Embedding, eval=TRUE, echo = TRUE}
+```{r RGB_Embedding, eval=FALSE, echo = TRUE}
 
 #-----------------------/Slide-seq Data Loading/-------------------------------#
 #------------------------------------------------------------------------------#
@@ -178,7 +178,7 @@ we will use intermediate files instead of using loaded variables. By doing so,
 we can run this section independently if the previous section has already been
 run.
 
-```{r Vesalius_Figure1_build, eval=TRUE, echo=TRUE, warning= FALSE,message=FALSE,fig.width = 12, fig.height=8}
+```{r Vesalius_Figure1_build, eval=FALSE, echo=TRUE, warning= FALSE,message=FALSE,fig.width = 12, fig.height=8}
 #-------------------/Territory Isolation - Hippocampus/------------------------#
 #------------------------------------------------------------------------------#
 # Loading saved data frame after PCA to RGB conversion
@@ -298,7 +298,7 @@ the comprative analysis code can be found
 
 
 
-```{r Vesalius_visium, eval = TRUE, echo = TRUE}
+```{r Vesalius_visium, eval=FALSE, echo = TRUE}
 
 input <- list.dirs("~/group/visium/DLPFC_globus",recursive =F)
 time <-vector("list",length(input))
@@ -359,7 +359,7 @@ images in order to produce territories used for in depth analysis. We will make
 the assumption that you have already run the PCA to RGB conversion and saved the
 intermediate file.
 
-```{r Vesalius_BrainTerritories, eval=TRUE, echo=TRUE, warning= FALSE,message=FALSE,fig.width = 12, fig.height=8}
+```{r Vesalius_BrainTerritories, eval=FALSE, echo=TRUE, warning= FALSE,message=FALSE,fig.width = 12, fig.height=8}
 #-------------------/Territory Isolation - Hippocampus/------------------------#
 bead <- ReadSlideSeq("~/group/slide_seqV2/Puck_200115_08_bead_locations.csv")
 
@@ -424,7 +424,7 @@ channel. Meta data may represent different things but generally it will be
 associated to colour clusters or territories.
 
 
-```{r Vesalius_Run_territory_level, eval=TRUE , echo = TRUE, fig.width =12.5,fig.heigth =5}
+```{r Vesalius_Run_territory_level, eval=FALSE , echo = TRUE, fig.width =12.5,fig.heigth =5}
 
 
 #----------------------/Territory Isolation - Embryo/--------------------------#
@@ -509,7 +509,7 @@ imageEmbryo1 <- isolateTerritories.array(imageEmbryo1,
 
 
 #----------------------------------------------------------------------------#
-# Finally some plotting - Commented out for speed 
+# Finally some plotting - Commented out for speed
 # This code section is the code section used to produce plots in the manuscript
 #----------------------------------------------------------------------------#
 #imgSmoothedEm <- imagePlot(imageEmbryo3, as.cimg = F,cex = 15) + theme_void()
@@ -551,7 +551,7 @@ territory was handled for further analysis.
 It should be noted that all cell type or tissue type were done manually by using
 marker genes.
 
-```{r TerritoryClustering, eval=TRUE, echo = TRUE,fig.width = 8, fig.height=10}
+```{r TerritoryClustering, eval=FALSE, echo = TRUE,fig.width = 8, fig.height=10}
 #----------------/Territory in depth Analysis - Hippocampus/-------------------#
 #------------------------------------------------------------------------------#
 # We can isolate the territories associated with the CA field and the third
@@ -869,7 +869,7 @@ that were otherwise lost or overshadowed by stronger patterns. In this section,
 we show how we can visualise these expression patterns
 
 
-```{r expressionPatternCA2, eval=TRUE, echo = TRUE,fig.width =10, fig.height=4}
+```{r expressionPatternCA2, eval=FALSE, echo = TRUE,fig.width =10, fig.height=4}
 #-------------------/CA2 field marker expression patterns/---------------------#
 #------------------------------------------------------------------------------#
 # First we show the overall and isolated pattern for pcp4 (as in main figure 3)
@@ -933,7 +933,7 @@ rgs14 + necab2 + plot_layout(ncol=2,nrow =1)
 
 We can also visualise differentially expressed genes between layers in the eye.
 
-```{r eye_markers, eval=TRUE, echo=TRUE}
+```{r eye_markers, eval=FALSE, echo=TRUE}
 
 Cryba4 <- viewGeneExpression(imageEmbryo,eyeCluster,
                              genes = "Cryba4",cex=20)+
@@ -982,7 +982,7 @@ also showed an example of a layering effect in the corpus callosum.
 First, we will show the code associated with the extraction of Dentate gyrus and
 the associated marker genes.
 
-```{r dentateGyrus,eval=TRUE, echo=TRUE}
+```{r dentateGyrus,eval=FALSE, echo=TRUE}
 #----------/Dentate gyrus: novel markers and border expression/----------------#
 #------------------------------------------------------------------------------#
 # First we extract makers from the territory
@@ -1101,7 +1101,7 @@ layer specific genes, we found the Kif5a and Stmn4 genes that were highly
 expressed in the inner layers of the Corpus Callosum.
 
 
-```{r layered_subcortex, eval =TRUE, echo =T,fig.width=9, fig.height =7}
+```{r layered_subcortex, eval=FALSE, echo =T,fig.width=9, fig.height =7}
 #-----------------/Corpus Callosum : internal expression /---------------------#
 #------------------------------------------------------------------------------#
 # First step is to dilate the territory to fill in gaps and consider

@@ -1,4 +1,4 @@
-# vesalius_0.1.0
+# vesalius 0.1.0
 
 
 ## Vesalius Website
