@@ -56,7 +56,7 @@ set.seed(1)
 ## RGB embeddings
 The first step of the Vesalius algorithm is to load and pre-process spatial
 transcriptomic data. For this manuscript, we used slide-seqV2 data provided on
-the (Single Cell Portal)[https://singlecell.broadinstitute.org/single_cell/study/SCP948/robust-decomposition-of-cell-type-mixtures-in-spatial-transcriptomics#study-download]. Our analysis mainly focused on the mouse
+the [Single Cell Portal](https://singlecell.broadinstitute.org/single_cell/study/SCP948/robust-decomposition-of-cell-type-mixtures-in-spatial-transcriptomics#study-download). Our analysis mainly focused on the mouse
 brain and embryo (E12.5).
 
 Once the data has been loaded and pre-processed (log normalisation, scaling,
@@ -289,11 +289,11 @@ output of building RGB images from transcriptional profiles.
 
 ## Running Vesalius in lower resolution
 Here, we demonstrate running Vesalius over 12 10X Visium data sets taken from
-(here)[https://www.nature.com/articles/s41593-020-00787-0]. All files were
+[here](https://www.nature.com/articles/s41593-020-00787-0). All files were
 downloaded and distributed into seperate directories. We assess run time for
 each data set and compared performance using an ARI score. Please note that
 the comprative analysis code can be found
-(here)[https://github.com/patrickCNMartin/Vesalius/blob/main/methodComp.R].
+[here](https://github.com/patrickCNMartin/Vesalius/blob/main/methodComp/methodComp.R).
 
 
 
