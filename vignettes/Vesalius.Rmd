@@ -47,41 +47,44 @@ For sake of simplicity, Vesalius takes a small subset of this data set and
 stores it in the form of a Seurat object.
 
 ```{r loading, eval = TRUE, echo = TRUE}
-library(vesalius)
+suppressMessages(library(vesalius))
 data(vesalius,package = "vesalius")
-ls()
+# First create a copy of raw data for later use
+# For sake of simplicity we seperate counts from Vesalius images.
+counts <- vesalius
 ```
 
 # Pre-processing
 Second, we pre-process the data using Seurat
 
 ```{r preprocessing, eval = TRUE, echo = TRUE}
-# First create a copy of raw data for later use
-# When working on isolated territories, we want to run pre-processing
-# on raw counts not on already transformed counts.
-copy <- vesalius
-
-# Preprocessing Spatial transcriptomic data
-vesalius <- NormalizeData(vesalius)
-vesalius <- FindVariableFeatures(vesalius, nfeatures = 2000)
-vesalius <- ScaleData(vesalius)
+# Preprocessing Spatial transcriptomic data with Seurat
+vesalius <- NormalizeData(vesalius,verbose =F)
+vesalius <- FindVariableFeatures(vesalius, nfeatures = 2000,verbose =F)
+vesalius <- ScaleData(vesalius,verbose =F)
 
 ```
 
-# RGB to PCA
+# Emedding into RGB colour Space
 Third, we convert a count matrix (stored in a Seurat object) to RGB coded
-coordinates. We will only produce one slice (i.e. PC1 to PC3)
+coordinates. We will only produce one slice (i.e. PC1 to PC3). Alternatively,
+you can also choose to embed UMAP projections. In this case, there are no
+slices but only a number of Principal Components used for UMAP.
 
 ```{r rgbtopca, eval = TRUE, echo = TRUE}
-vesalius <- rgbPCA(vesalius,slices = 1)
+# PCA
+vesaliusPCA <- rgbPCA(vesalius,slices = 1,verbose =F)
+
+# UMAP
+vesaliusUMAP <- rgbUMAP(vesalius,pcs = 30,verbose =F)
 ```
 
 # Building an Image
-Forth, we create an actual image by using a combination of voronoi diagrams and
+Forth, we create an actual image by using a combination of Voronoi diagrams and
 tile rasterisation.
 
 ```{r buildImage,eval = TRUE, echo = TRUE,fig.height = 6, fig.width = 6}
-vesalius <- buildImageArray(vesalius, sliceID = 1, invert =T)
+vesalius <- buildImageArray(vesaliusPCA, sliceID = 1, invert =T,verbose =F)
 
 
 # Let's have a look shall we?
@@ -98,17 +101,17 @@ variance regularisation, smoothing and segmentation.
 
 ```{r imageAnalysis, eval = TRUE , echo = TRUE}
 # Histogram EQ
-vesalius <- equalizeHistogram(vesalius,sleft = 2.5, sright=2.5,invert =T)
+vesalius <- equalizeHistogram(vesalius,sleft = 2.5, sright=2.5,invert =T,verbose =F)
 
 
 # Variance regularisation
 vesalius <- regulariseImage(vesalius, lambda = 10,
-                            niter = 200, normalise=T)
+                            niter = 200, normalise=T,verbose =F)
 
 
 # Smoothing
 # !!!Optional!!! -
-vesalius <- smoothArray(vesalius,method = "box", box = 1)
+vesalius <- smoothArray(vesalius,method = "box", box = 1,verbose =F)
 
 # Segmentation
 # This function provides smoothing internally.
@@ -119,15 +122,16 @@ vesalius <- iterativeSegmentation.array(vesalius,
                                         sigma=1.5,
                                         box = 10,
                                         useCenter = T,
-                                        invert =T)
+                                        invert =T,
+                                        verbose =F)
 
 
 # Isolating territories from colour segments
 vesalius <- isolateTerritories.array(vesalius,
                                      captureRadius = 0.1,
-                                     minBar = 1)
+                                     minBar = 10,
+                                     verbose =F)
 
-vesalius
 
 ```
 
@@ -137,13 +141,7 @@ Sixth, we can visualise the territories.
 ```{r viz, eval = TRUE, echo = TRUE, fig.width = 6, fig.height = 6}
 # Let's have a look!
 imgTerritory <- territoryPlot(vesalius, randomise = TRUE,cex =15 , cex.pt=3.5)
-
-
-
 print(imgTerritory)
-
-
-
 ```  
 
 # Territory extraction and markers
@@ -155,18 +153,18 @@ expression between territories.
 
 ```{r extract, eval = TRUE, echo=TRUE}
 # extract terriotry from seurat object
-ter <- extractTerritories(vesalius,copy,seedID= 1)
-ter
+ter <- extractTerritories(vesalius,counts,seedID= 1,verbose =F)
+
 
 # get all markers related to all territories
-all <- extractAllMarkers(vesalius,copy)
-head(all)
+all <- extractAllMarkers(vesalius,counts,verbose =F)
+
 
 # get markers associated with on or more territories
-one <- extractMarkers(vesalius, copy, seed = c(1))
-head(one)
+one <- extractMarkers(vesalius, counts, seed = c(1),verbose =F)
+
 
 # comparing territories
-two <- extractMarkers(vesalius, copy, seed = c(1), query = c(2,3))
-head(two)
+two <- extractMarkers(vesalius, counts, seed = c(1), query = c(2,3),verbose =F)
+
 ```

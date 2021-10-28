@@ -1,6 +1,25 @@
 home:
   title: Vesalius
-  description: In silico anatomization of Spatial Transcriptomics using Image Analysis.
+  description: Spatial Transcriptomic Analysis using Image Analysis
 
+author:
+  Patrick C.N. Martin
 
+template:
+    twitter:
+      creator: "@pcnmartin"
+    params:
+      bootswatch: sandstone
+
+development:
+  mode: auto
+  destination: docs/
+
+repo:
+  url:
+    home: https://github.com/patrickCNMartin/Vesalius/
+    source: https://github.com/patrickCNMartin/Vesalius/blob/main/
+    issue: https://github.com/patrickCNMartin/Vesalius/issues/
+    user: https://github.com/
+  branch: main
 url: https://patrickcnmartin.github.io/Vesalius/

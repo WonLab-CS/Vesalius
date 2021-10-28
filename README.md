@@ -22,7 +22,6 @@ library(devtools)
 Install Vesalius via GitHub
 ```
 install_github("patrickCNMartin/Vesalius")
-
 ```
 
 ## How to use Vesalius?
@@ -30,7 +29,7 @@ Vesalius provides an internal data set taken from real Spatial Transcriptomic
 data. This can be used as a dummy data set to get a feel for the Vesalius
 workflow.
 
-The "Fast start" guide can be found [here](https://github.com/patrickCNMartin/Vesalius/blob/main/vignettes/Vesalius.html)
+The "Fast start" guide can be found [here](https://patrickcnmartin.github.io/Vesalius/articles/Vesalius.html)
 
 An in depth view of the Vesalius workflow can be found [here](https://github.com/patrickCNMartin/Vesalius/blob/main/Vesalius_analysis.Rmd). This contains the entire analysis related to
 the Vesalius [bioRxiv pre-print](https://www.biorxiv.org/content/10.1101/2021.08.13.456235v1).
