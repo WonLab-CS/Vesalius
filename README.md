@@ -1,7 +1,6 @@
 # Vesalius
 
 Welcome to the Vesalius GitHub page!
-
 <img src="man/figures/banner.png" />
 
 

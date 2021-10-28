@@ -41,7 +41,7 @@ can subsequently be extracted.
 # Loading
 
 First, let's load the package and the data. Data originates from slide-seqV2
-data (availble at (Single Cell Portal)[https://singlecell.broadinstitute.org/single_cell/study/SCP948/robust-decomposition-of-cell-type-mixtures-in-spatial-transcriptomics#study-download]).
+data (availble at [Single Cell Portal](https://singlecell.broadinstitute.org/single_cell/study/SCP948/robust-decomposition-of-cell-type-mixtures-in-spatial-transcriptomics#study-download)).
 
 For sake of simplicity, Vesalius takes a small subset of this data set and
 stores it in the form of a Seurat object.
@@ -167,4 +167,10 @@ one <- extractMarkers(vesalius, counts, seed = c(1),verbose =F)
 # comparing territories
 two <- extractMarkers(vesalius, counts, seed = c(1), query = c(2,3),verbose =F)
 
+```
+
+# Session Info
+
+```{r sessionInfo, eval = TRUE, echo = TRUE}
+sessionInfo()
 ```

@@ -19,7 +19,7 @@ Collate:IsolatingTerritories.R
     viz.R
     GB.R
     data.R
-Depends: R (>= 3.5.0),
+Depends: R (>= 4.0.0),
     Seurat,
     imager,
     dplyr,
