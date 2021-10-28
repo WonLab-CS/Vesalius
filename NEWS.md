@@ -1,15 +1,14 @@
-# Vesalius_0.1.0
+# vesalius_0.1.0
 
-## NEWS
 
-### Vesalius Website
+## Vesalius Website
 
 * Bulding a fresh web page
 
 
-### Bugs
+## Bugs
 
 * Comming Soon (Not saying this is bug free)
 
 
-### New features
+## New features
