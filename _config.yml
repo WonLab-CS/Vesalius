@@ -13,6 +13,7 @@ template:
 
 development:
   mode: auto
+  destination: docs
 
 repo:
   url:
