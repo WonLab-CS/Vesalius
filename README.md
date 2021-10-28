@@ -1,7 +1,7 @@
 # Vesalius
 
 Welcome to the Vesalius GitHub page!
-![alt text](https://github.com/patrickCNMartin/Vesalius/man/figures/banner.png)
+![alt text](https://github.com/patrickCNMartin/Vesalius/blob/main/man/figures/banner.png)
 
 ## What is Vesalius ?
 Vesalius is an R package to decipher tissue anatomy by embracing various
