@@ -61,5 +61,11 @@ codes ranged from 0 to 1.
 \examples{
 \dontrun{
 data(Vesalius)
+# Seurat pre-processing
+image <- NormalizeData(vesalius)
+image <- FindVariableFeatures(image, nfeatures = 2000)
+image <- ScaleData(image)
+# converting to rgb
+image <- rgbPCA(image,slices = 1)
 }
 }

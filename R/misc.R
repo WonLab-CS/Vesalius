@@ -6,11 +6,6 @@
 # Who knows? I certainly don't. But you designed and wrote this packages.
 # That means diddly squat!! Since when do programmers know what they are doing?
 
-
-
-
-
-
 #' subSetTerritories gets all barcodes associated with a territory from a
 #' Seurat object.
 #' @param territories vector of barcode values (generally character strings)
@@ -21,7 +16,7 @@
 #' @return Seurat object only containing the desired barcodes.
 #' @examples
 #' \dontrun{
-#' data(Vesalius)
+
 #' }
 
 subSetTerritories <- function(territories,seurat){
@@ -40,8 +35,7 @@ subSetTerritories <- function(territories,seurat){
 #' @param seurat Seurat object containing all barcode values from ST assay
 #' @details Essentially a wrapper function to the Seurat
 #' \code{GetTissueCoordinates} function.
-#' The function serves mainly the purpose of a place holder function for
-#' future iterations of Vesalius.
+#' Mainly serve as a way if generalising output format. 
 #' @return Seurat object only containing the desired barcodes.
 #' @examples
 #' \dontrun{

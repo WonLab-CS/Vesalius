@@ -73,8 +73,29 @@ gene expression analysis.
 }
 \examples{
 \dontrun{
-data("Vesalius")
-
-
+data("vesalius")
+# Seurat pre-processing
+image <- NormalizeData(vesalius)
+image <- FindVariableFeatures(image, nfeatures = 2000)
+image <- ScaleData(image)
+# converting to rgb
+image <- rgbPCA(image,slices = 1)
+image <- buildImageArray(image, sliceID=1)
+# One segmentation round
+image <- iterativeSegmentation.array(image)
+image <- isolateTerritories.array(image, minBar = 5)
+ter1 <- extractTerritories(image, vesalius, seedID = 1)
+ter1 <- ter1 \%>\% SCTransform(assay = "Spatial") \%>\%
+             RunPCA(dims = 1:30) \%>\% RunUMAP(dims = 1:30) \%>\%
+             FindNeighbors()\%>\% FindClusters(resolution = 0.3)
+ter2 <- extractTerritories(image, vesalius, seedID = 2)
+ter2 <- ter2 \%>\% SCTransform(assay = "Spatial") \%>\%
+             RunPCA(dims = 1:30) \%>\% RunUMAP(dims = 1:30) \%>\%
+             FindNeighbors()\%>\% FindClusters(resolution = 0.3)
+clusterComp <- compareClusters(vesalius, seedCluster  = ter1,
+queryCluster = ter2)
+# Comparing Specific clusters
+clusterComp <- compareClusters(vesalius, seedCluster  = ter1,
+queryCluster = ter2, seed = 1, query = 2)
 }
 }

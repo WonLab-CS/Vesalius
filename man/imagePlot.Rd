@@ -33,6 +33,16 @@ the discretion of the user.
 }
 \examples{
 \dontrun{
-data(Vesalius)
+data(vesalius)
+# Seurat pre-processing
+image <- NormalizeData(vesalius)
+image <- FindVariableFeatures(image, nfeatures = 2000)
+image <- ScaleData(image)
+# converting to rgb
+image <- rgbPCA(image,slices = 1)
+image <- buildImageArray(image, sliceID=1)
+imagePlot(image)
+# as ggplot
+g <- imagePlot(image,as.cimg = F)
 }
 }

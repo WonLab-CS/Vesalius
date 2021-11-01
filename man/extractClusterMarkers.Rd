@@ -62,8 +62,21 @@ expression between isolated clusters.
 }
 \examples{
 \dontrun{
-data("Vesalius")
-
-
+data("vesalius")
+# Seurat pre-processing
+image <- NormalizeData(vesalius)
+image <- FindVariableFeatures(image, nfeatures = 2000)
+image <- ScaleData(image)
+# converting to rgb
+image <- rgbPCA(image,slices = 1)
+image <- buildImageArray(image, sliceID=1)
+# One segmentation round
+image <- iterativeSegmentation.array(image)
+image <- isolateTerritories.array(image, minBar = 5)
+ter <- extractTerritories(image, vesalius, seedID = 1)
+ter <- ter \%>\% SCTransform(assay = "Spatial") \%>\%
+             RunPCA(dims = 1:30) \%>\% RunUMAP(dims = 1:30) \%>\%
+             FindNeighbors()\%>\% FindClusters(resolution = 0.3)
+clusterMarkers <- extractClusterMarkers(ter,vesalius)
 }
 }

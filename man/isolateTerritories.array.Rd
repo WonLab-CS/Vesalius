@@ -64,6 +64,16 @@ regardless of colour cluster of origin.
 }
 \examples{
 \dontrun{
-data(Vesalius)
+data(vesalius)
+# Seurat pre-processing
+image <- NormalizeData(vesalius)
+image <- FindVariableFeatures(image, nfeatures = 2000)
+image <- ScaleData(image)
+# converting to rgb
+image <- rgbPCA(image,slices = 1)
+image <- buildImageArray(image, sliceID=1)
+# One segmentation round
+image <- iterativeSegmentation.array(image)
+image <- isolateTerritories.array(image, minBar = 5)
 }
 }

@@ -26,7 +26,26 @@
 #' segments.
 #' @examples
 #' \dontrun{
-#' data(Vesalius)
+#' data(vesalius)
+#' # Seurat pre-processing
+#' image <- NormalizeData(vesalius)
+#' image <- FindVariableFeatures(image, nfeatures = 2000)
+#' image <- ScaleData(image)
+#' # converting to rgb
+#' image <- rgbPCA(image,slices = 1)
+#' image <- buildImageArray(image, sliceID=1)
+#' # One segmentation round
+#' image <- iterativeSegmentation.array(image)
+#' image <- isolateTerritories.array(image, minBar = 5)
+#' ter <- image %>% filter(territory == 1)
+#' # grow
+#' g <- territoryMorphing(ter,morphologyFactor = 5, image = image)
+#' # shrink
+#' s <- territoryMorphing(ter,morphologyFactor = -5, image = image)
+#' # fill
+#' f <- territoryMorphing(ter,morphologyFactor = c(5,-5), image = image)
+#' # clean
+#' c <- territoryMorphing(ter,morphologyFactor = c(-5,5), image = image)
 #' }
 
 territoryMorphing <- function(territories,
@@ -118,7 +137,18 @@ territoryMorphing <- function(territories,
 #' Layer describes the layer to which a barcode belongs.
 #' @examples
 #' \dontrun{
-#' data(Vesalius)
+#' data("vesalius")
+#' # Seurat pre-processing
+#' image <- NormalizeData(vesalius)
+#' image <- FindVariableFeatures(image, nfeatures = 2000)
+#' image <- ScaleData(image)
+#' # converting to rgb
+#' image <- rgbPCA(image,slices = 1)
+#' image <- buildImageArray(image, sliceID=1)
+#' # One segmentation round
+#' image <- iterativeSegmentation.array(image)
+#' image <- isolateTerritories.array(image, minBar = 5)
+#' layer <- layerTerritory.concave(image, seedTerritory = 1)
 #' }
 
 layerTerritory.concave <- function(image,
@@ -253,7 +283,18 @@ layerTerritory.concave <- function(image,
 #' Layer describes the layer to which a barcode belongs.
 #' @examples
 #' \dontrun{
-#' data(Vesalius)
+#' data("vesalius")
+#' # Seurat pre-processing
+#' image <- NormalizeData(vesalius)
+#' image <- FindVariableFeatures(image, nfeatures = 2000)
+#' image <- ScaleData(image)
+#' # converting to rgb
+#' image <- rgbPCA(image,slices = 1)
+#' image <- buildImageArray(image, sliceID=1)
+#' # One segmentation round
+#' image <- iterativeSegmentation.array(image)
+#' image <- isolateTerritories.array(image, minBar = 5)
+#' layer <- layerTerritory.edge(image, seedTerritory = 1)
 #' }
 
 layerTerritory.edge <- function(image,

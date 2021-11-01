@@ -39,8 +39,18 @@
 #' queryTerritory (territory used as group 2)
 #' @examples
 #'\dontrun{
-#' data("Vesalius")
-#'
+#' data(vesalius)
+#' # Seurat pre-processing
+#' image <- NormalizeData(vesalius)
+#' image <- FindVariableFeatures(image, nfeatures = 2000)
+#' image <- ScaleData(image)
+#' # converting to rgb
+#' image <- rgbPCA(image,slices = 1)
+#' image <- buildImageArray(image, sliceID=1)
+#' # One segmentation round
+#' image <- iterativeSegmentation.array(image)
+#' image <- isolateTerritories.array(image, minBar = 5)
+#' mark <- extractAllMarkers(image, vealius )
 #'
 #' }
 
@@ -155,9 +165,18 @@ extractAllMarkers <- function(image,counts,method = "wilcox",
 #' queryTerritory (territory used as group 2)
 #' @examples
 #'\dontrun{
-#' data("Vesalius")
-#'
-#'
+#' data(vesalius)
+#' # Seurat pre-processing
+#' image <- NormalizeData(vesalius)
+#' image <- FindVariableFeatures(image, nfeatures = 2000)
+#' image <- ScaleData(image)
+#' # converting to rgb
+#' image <- rgbPCA(image,slices = 1)
+#' image <- buildImageArray(image, sliceID=1)
+#' # One segmentation round
+#' image <- iterativeSegmentation.array(image)
+#' image <- isolateTerritories.array(image, minBar = 5)
+#' markers <- extractMarkers(image, vesalius, seed = 1, query = 2)
 #' }
 
 
@@ -269,9 +288,22 @@ extractMarkers <- function(image,counts,seed = NULL,query = NULL,
 #' queryTerritory (territory used as group 2)
 #' @examples
 #'\dontrun{
-#' data("Vesalius")
-#'
-#'
+#' data("vesalius")
+#' # Seurat pre-processing
+#' image <- NormalizeData(vesalius)
+#' image <- FindVariableFeatures(image, nfeatures = 2000)
+#' image <- ScaleData(image)
+#' # converting to rgb
+#' image <- rgbPCA(image,slices = 1)
+#' image <- buildImageArray(image, sliceID=1)
+#' # One segmentation round
+#' image <- iterativeSegmentation.array(image)
+#' image <- isolateTerritories.array(image, minBar = 5)
+#' ter <- extractTerritories(image, vesalius, seedID = 1)
+#' ter <- ter %>% SCTransform(assay = "Spatial") %>%
+#'              RunPCA(dims = 1:30) %>% RunUMAP(dims = 1:30) %>%
+#'              FindNeighbors()%>% FindClusters(resolution = 0.3)
+#' clusterMarkers <- extractClusterMarkers(ter,vesalius)
 #' }
 extractClusterMarkers <- function(cluster,counts,
      method = "wilcox",logFC = 0.25, pval = 0.05,minPct = 0.05,minBar = 10,
@@ -440,7 +472,21 @@ extractClusterMarkers <- function(cluster,counts,
 #' @return A Seurat oject containing barcodes taken from territory set.
 #' @examples
 #' \dontrun{
-#' data("Vesalius")
+#' data(vesalius)
+#' # Seurat pre-processing
+#' image <- NormalizeData(vesalius)
+#' image <- FindVariableFeatures(image, nfeatures = 2000)
+#' image <- ScaleData(image)
+#' # converting to rgb
+#' image <- rgbPCA(image,slices = 1)
+#' image <- buildImageArray(image, sliceID=1)
+#' # One segmentation round
+#' image <- iterativeSegmentation.array(image)
+#' image <- isolateTerritories.array(image, minBar = 5)
+#' # No dilation
+#' ter <- extractTerritories(image, vesalius, seedID = 1)
+#' # With dilation
+#' ter <- extractTerritories(image, vesalius, seedID = 1, morphologyFactor = 5)
 #' }
 #'
 
@@ -546,9 +592,31 @@ extractTerritories <- function(image,seurat,seedID = NULL,morphologyFactor = 0,
 #' queryTerritory (territory used as group 2)
 #' @examples
 #'\dontrun{
-#' data("Vesalius")
-#'
-#'
+#' data("vesalius")
+#' # Seurat pre-processing
+#' image <- NormalizeData(vesalius)
+#' image <- FindVariableFeatures(image, nfeatures = 2000)
+#' image <- ScaleData(image)
+#' # converting to rgb
+#' image <- rgbPCA(image,slices = 1)
+#' image <- buildImageArray(image, sliceID=1)
+#' # One segmentation round
+#' image <- iterativeSegmentation.array(image)
+#' image <- isolateTerritories.array(image, minBar = 5)
+#' ter1 <- extractTerritories(image, vesalius, seedID = 1)
+#' ter1 <- ter1 %>% SCTransform(assay = "Spatial") %>%
+#'              RunPCA(dims = 1:30) %>% RunUMAP(dims = 1:30) %>%
+#'              FindNeighbors()%>% FindClusters(resolution = 0.3)
+
+#' ter2 <- extractTerritories(image, vesalius, seedID = 2)
+#' ter2 <- ter2 %>% SCTransform(assay = "Spatial") %>%
+#'              RunPCA(dims = 1:30) %>% RunUMAP(dims = 1:30) %>%
+#'              FindNeighbors()%>% FindClusters(resolution = 0.3)
+#' clusterComp <- compareClusters(vesalius, seedCluster  = ter1,
+#' queryCluster = ter2)
+#' # Comparing Specific clusters
+#' clusterComp <- compareClusters(vesalius, seedCluster  = ter1,
+#' queryCluster = ter2, seed = 1, query = 2)
 #' }
 
 compareClusters <- function(counts,seedCluster,queryCluster,seed = NULL,
@@ -652,9 +720,19 @@ compareClusters <- function(counts,seedCluster,queryCluster,seed = NULL,
 #' queryTerritory (territory used as group 2)
 #' @examples
 #'\dontrun{
-#' data("Vesalius")
-#'
-#'
+#' data("vesalius")
+#' # Seurat pre-processing
+#' image <- NormalizeData(vesalius)
+#' image <- FindVariableFeatures(image, nfeatures = 2000)
+#' image <- ScaleData(image)
+#' # converting to rgb
+#' image <- rgbPCA(image,slices = 1)
+#' image <- buildImageArray(image, sliceID=1)
+#' # One segmentation round
+#' image <- iterativeSegmentation.array(image)
+#' image <- isolateTerritories.array(image, minBar = 5)
+#' layer <- layerTerritory.edge(image, seedTerritory = 1)
+#' layerComp <- compareLayers(layer, vesalius, l1 = 1, l2 = 2)
 #' }
 
 compareLayers <- function(layers,counts,l1 = NULL, l2 = NULL, method = "wilcox",

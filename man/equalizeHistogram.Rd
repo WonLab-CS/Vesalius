@@ -69,6 +69,14 @@ For further details on each method described here, please refer to
 }
 \examples{
 \dontrun{
-data(Vesalius)
+data(vesalius)
+image <- NormalizeData(vesalius)
+image <- FindVariableFeatures(image, nfeatures = 2000)
+image <- ScaleData(image)
+# converting to rgb
+image <- rgbPCA(image,slices = 1)
+image <- buildImageArray(image, sliceID=1)
+image <- equalizeHistogram(image)
+imagePlot(image)
 }
 }

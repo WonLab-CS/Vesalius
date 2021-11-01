@@ -26,6 +26,5 @@ future iterations of Vesalius.
 }
 \examples{
 \dontrun{
-data(Vesalius)
 }
 }

@@ -57,7 +57,19 @@
 #' "value","tile",...
 #' @examples
 #' \dontrun{
-#' data(Vesalius)
+#' data(vesalius)
+#' # Seurat pre-processing
+#' image <- NormalizeData(vesalius)
+#' image <- FindVariableFeatures(image, nfeatures = 2000)
+#' image <- ScaleData(image)
+#' # converting to rgb
+#' image <- rgbPCA(image,slices = 1)
+#' image <- buildImageArray(image, sliceID=1)
+#' image <- smoothArray(image)
+#' # across multiple levels
+#' image <- smoothArray(image,method = c("iso"),
+#' acrossLevels = "mean",sigma = seq(0.5,1.5,l = 10)))
+#' imagePlot(image)
 #' }
 smoothArray <- function(image,
                         method = c("median","iso","box"),
@@ -182,7 +194,15 @@ smoothArray <- function(image,
 #' "value","tile",...
 #' @examples
 #' \dontrun{
-#' data(Vesalius)
+#' data(vesalius)
+#' image <- NormalizeData(vesalius)
+#' image <- FindVariableFeatures(image, nfeatures = 2000)
+#' image <- ScaleData(image)
+#' # converting to rgb
+#' image <- rgbPCA(image,slices = 1)
+#' image <- buildImageArray(image, sliceID=1)
+#' image <- equalizeHistogram(image)
+#' imagePlot(image)
 #' }
 
 equalizeHistogram <- function(image,
@@ -285,7 +305,15 @@ equalizeHistogram <- function(image,
 #' "value","tile",etc
 #' @examples
 #' \dontrun{
-#' data(Vesalius)
+#' data(vesalius)
+#' # Seurat pre-processing
+#' image <- NormalizeData(vesalius)
+#' image <- FindVariableFeatures(image, nfeatures = 2000)
+#' image <- ScaleData(image)
+#' # converting to rgb
+#' image <- rgbPCA(image,slices = 1)
+#' image <- buildImageArray(image, sliceID=1)
+#' image <- regulariseImage(image)
 #' }
 
 
@@ -417,7 +445,22 @@ regulariseImage <- function(image,
 #' Cluster represents the colour segement the pixel belongs to.
 #' @examples
 #' \dontrun{
-#' data(Vesalius)
+#' data(vesalius)
+#' # Seurat pre-processing
+#' image <- NormalizeData(vesalius)
+#' image <- FindVariableFeatures(image, nfeatures = 2000)
+#' image <- ScaleData(image)
+#' # converting to rgb
+#' image <- rgbPCA(image,slices = 1)
+#' image <- buildImageArray(image, sliceID=1)
+#' # One segmentation round
+#' image <- iterativeSegmentation.array(image)
+#' # Multiple segmentation rounds & multiple smoothing rounds
+#' image <- iterativeSegmentation.array(image,smoothIter = 3,
+#'       colDepth = seq(12,8, by = -2))
+#' # smoothing across levels
+#' image <- iterativeSegmentation.array(image, smoothIter = 5,
+#' method = c("iso"), acrossLevels = "mean",sigma = seq(0.5,1.5,l = 10))
 #' }
 
 iterativeSegmentation.array <- function(image,
@@ -599,7 +642,17 @@ iterativeSegmentation.array <- function(image,
 #' describe the tissue territory after pooling.
 #' @examples
 #' \dontrun{
-#' data(Vesalius)
+#' data(vesalius)
+#' # Seurat pre-processing
+#' image <- NormalizeData(vesalius)
+#' image <- FindVariableFeatures(image, nfeatures = 2000)
+#' image <- ScaleData(image)
+#' # converting to rgb
+#' image <- rgbPCA(image,slices = 1)
+#' image <- buildImageArray(image, sliceID=1)
+#' # One segmentation round
+#' image <- iterativeSegmentation.array(image)
+#' image <- isolateTerritories.array(image, minBar = 5)
 #' }
 
 isolateTerritories.array <- function(image,

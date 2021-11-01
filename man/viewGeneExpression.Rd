@@ -54,6 +54,20 @@ However - this will increase file size to unreasonable heights.
 }
 \examples{
 \dontrun{
-data(Vesalius)
+data(vesalius)
+# Seurat pre-processing
+image <- NormalizeData(vesalius)
+image <- FindVariableFeatures(image, nfeatures = 2000)
+image <- ScaleData(image)
+# converting to rgb
+image <- rgbPCA(image,slices = 1)
+image <- buildImageArray(image, sliceID=1)
+# One segmentation round
+image <- iterativeSegmentation.array(image)
+image <- isolateTerritories.array(image, minBar = 5)
+# In all points
+g <- viewGeneExpression(image,vesalius, genes = "Cst3")
+# In a specific territory
+g1 <- viewGeneExpression(image, vesalius, ter = 1, genes = "Cst3")
 }
 }

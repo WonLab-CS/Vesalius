@@ -18,8 +18,7 @@ getSeuratCoordinates get barcode coordinates from a seurat object
 \details{
 Essentially a wrapper function to the Seurat
 \code{GetTissueCoordinates} function.
-The function serves mainly the purpose of a place holder function for
-future iterations of Vesalius.
+Mainly serve as a way if generalising output format.
 }
 \examples{
 \dontrun{

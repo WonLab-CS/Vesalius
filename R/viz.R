@@ -19,7 +19,17 @@
 #' @return cimg plot or ggplot object
 #' @examples
 #' \dontrun{
-#' data(Vesalius)
+#' data(vesalius)
+#' # Seurat pre-processing
+#' image <- NormalizeData(vesalius)
+#' image <- FindVariableFeatures(image, nfeatures = 2000)
+#' image <- ScaleData(image)
+#' # converting to rgb
+#' image <- rgbPCA(image,slices = 1)
+#' image <- buildImageArray(image, sliceID=1)
+#' imagePlot(image)
+#' # as ggplot
+#' g <- imagePlot(image,as.cimg = F)
 #' }
 
 imagePlot <- function(image,
@@ -65,7 +75,18 @@ imagePlot <- function(image,
 #' @return a ggplot object
 #' @examples
 #' \dontrun{
-#' data(Vesalius)
+#' data(vesalius)
+#' # Seurat pre-processing
+#' image <- NormalizeData(vesalius)
+#' image <- FindVariableFeatures(image, nfeatures = 2000)
+#' image <- ScaleData(image)
+#' # converting to rgb
+#' image <- rgbPCA(image,slices = 1)
+#' image <- buildImageArray(image, sliceID=1)
+#' # One segmentation round
+#' image <- iterativeSegmentation.array(image)
+#' image <- isolateTerritories.array(image, minBar = 5)
+#' g <- territoryPlot(image,cex = 12, cex.pt = 1)
 #' }
 
 territoryPlot <- function(territories,
@@ -187,7 +208,21 @@ territoryPlot <- function(territories,
 #' @return a ggplot object (geom_raster)
 #' @examples
 #' \dontrun{
-#' data(Vesalius)
+#' data(vesalius)
+#' # Seurat pre-processing
+#' image <- NormalizeData(vesalius)
+#' image <- FindVariableFeatures(image, nfeatures = 2000)
+#' image <- ScaleData(image)
+#' # converting to rgb
+#' image <- rgbPCA(image,slices = 1)
+#' image <- buildImageArray(image, sliceID=1)
+#' # One segmentation round
+#' image <- iterativeSegmentation.array(image)
+#' image <- isolateTerritories.array(image, minBar = 5)
+#' # In all points
+#' g <- viewGeneExpression(image,vesalius, genes = "Cst3")
+#' # In a specific territory
+#' g1 <- viewGeneExpression(image, vesalius, ter = 1, genes = "Cst3")
 #' }
 
 
@@ -282,7 +317,7 @@ viewGeneExpression <- function(image,
 }
 
 
-#' viewGeneExpression - plot gene expression in layered Vesalius territories
+#' viewLayerExpression - plot gene expression in layered Vesalius territories
 #' @param image a Vesalius data frame containing barcodes, x, y, cc, value,
 #' cluster, and territory.
 #' @param counts count matrix - either matrix, sparse matrix or seurat object
@@ -312,7 +347,19 @@ viewGeneExpression <- function(image,
 #' @return a ggplot object (geom_raster)
 #' @examples
 #' \dontrun{
-#' data(Vesalius)
+#' data("vesalius")
+#' # Seurat pre-processing
+#' image <- NormalizeData(vesalius)
+#' image <- FindVariableFeatures(image, nfeatures = 2000)
+#' image <- ScaleData(image)
+#' # converting to rgb
+#' image <- rgbPCA(image,slices = 1)
+#' image <- buildImageArray(image, sliceID=1)
+#' # One segmentation round
+#' image <- iterativeSegmentation.array(image)
+#' image <- isolateTerritories.array(image, minBar = 5)
+#' layer <- layerTerritory.edge(image, seedTerritory = 1)
+#' g <- viewLayerExpression(layer, vesalius, genes = "Cst3")
 #' }
 
 

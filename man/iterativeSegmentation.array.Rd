@@ -90,6 +90,21 @@ to the original barcode location in the Spatial Transcriptomic Assay
 }
 \examples{
 \dontrun{
-data(Vesalius)
+data(vesalius)
+# Seurat pre-processing
+image <- NormalizeData(vesalius)
+image <- FindVariableFeatures(image, nfeatures = 2000)
+image <- ScaleData(image)
+# converting to rgb
+image <- rgbPCA(image,slices = 1)
+image <- buildImageArray(image, sliceID=1)
+# One segmentation round
+image <- iterativeSegmentation.array(image)
+# Multiple segmentation rounds & multiple smoothing rounds
+image <- iterativeSegmentation.array(image,smoothIter = 3,
+      colDepth = seq(12,8, by = -2))
+# smoothing across levels
+image <- iterativeSegmentation.array(image, smoothIter = 5,
+method = c("iso"), acrossLevels = "mean",sigma = seq(0.5,1.5,l = 10))
 }
 }

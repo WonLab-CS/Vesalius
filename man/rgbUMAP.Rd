@@ -42,5 +42,10 @@ the depth of the analysis.
 \examples{
 \dontrun{
 data(Vesalius)
+image <- NormalizeData(vesalius)
+image <- FindVariableFeatures(image, nfeatures = 2000)
+image <- ScaleData(image)
+# converting to rgb
+image <- rgbUMAP(image,pcs = 30)
 }
 }

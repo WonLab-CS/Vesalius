@@ -78,6 +78,14 @@ will be retained.
 }
 \examples{
 \dontrun{
-data(vesalius)
+image <- NormalizeData(vesalius)
+image <- FindVariableFeatures(image, nfeatures = 2000)
+image <- ScaleData(image)
+# converting to rgb
+image <- rgbPCA(image,slices = 1)
+# Slice ID = PCA slice
+image <- buildImageArray(image, sliceID = 1)
+# If rgbUMAP was run - no need to specifiy slice
+image <- buildImageArray(image)
 }
 }

@@ -2,7 +2,7 @@
 % Please edit documentation in R/viz.R
 \name{viewLayerExpression}
 \alias{viewLayerExpression}
-\title{viewGeneExpression - plot gene expression in layered Vesalius territories}
+\title{viewLayerExpression - plot gene expression in layered Vesalius territories}
 \usage{
 viewLayerExpression(image, counts, genes = NULL, normalise = TRUE, cex = 10)
 }
@@ -24,7 +24,7 @@ normalised.}
 a ggplot object (geom_raster)
 }
 \description{
-viewGeneExpression - plot gene expression in layered Vesalius territories
+viewLayerExpression - plot gene expression in layered Vesalius territories
 }
 \details{
 Visualization of gene expression a layered territory.
@@ -47,6 +47,18 @@ However - this will increase file size to unreasonable heights.
 }
 \examples{
 \dontrun{
-data(Vesalius)
+data("vesalius")
+# Seurat pre-processing
+image <- NormalizeData(vesalius)
+image <- FindVariableFeatures(image, nfeatures = 2000)
+image <- ScaleData(image)
+# converting to rgb
+image <- rgbPCA(image,slices = 1)
+image <- buildImageArray(image, sliceID=1)
+# One segmentation round
+image <- iterativeSegmentation.array(image)
+image <- isolateTerritories.array(image, minBar = 5)
+layer <- layerTerritory.edge(image, seedTerritory = 1)
+g <- viewLayerExpression(layer, vesalius, genes = "Cst3")
 }
 }

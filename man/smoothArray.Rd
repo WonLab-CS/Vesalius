@@ -89,6 +89,18 @@ For more information, we suggest reading through the imager vignette.
 }
 \examples{
 \dontrun{
-data(Vesalius)
+data(vesalius)
+# Seurat pre-processing
+image <- NormalizeData(vesalius)
+image <- FindVariableFeatures(image, nfeatures = 2000)
+image <- ScaleData(image)
+# converting to rgb
+image <- rgbPCA(image,slices = 1)
+image <- buildImageArray(image, sliceID=1)
+image <- smoothArray(image)
+# across multiple levels
+image <- smoothArray(image,method = c("iso"),
+acrossLevels = "mean",sigma = seq(0.5,1.5,l = 10)))
+imagePlot(image)
 }
 }
