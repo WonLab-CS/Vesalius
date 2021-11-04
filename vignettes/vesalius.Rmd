@@ -121,7 +121,7 @@ vesalius <- iterativeSegmentation.array(vesalius,
                                         method = c("iso","median"),
                                         sigma=1.5,
                                         box = 10,
-                                        useCenter = T,
+                                        useCenter = F,
                                         invert =T,
                                         verbose =F)
 

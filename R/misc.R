@@ -35,7 +35,7 @@ subSetTerritories <- function(territories,seurat){
 #' @param seurat Seurat object containing all barcode values from ST assay
 #' @details Essentially a wrapper function to the Seurat
 #' \code{GetTissueCoordinates} function.
-#' Mainly serve as a way if generalising output format. 
+#' Mainly serve as a way if generalising output format.
 #' @return Seurat object only containing the desired barcodes.
 #' @examples
 #' \dontrun{
@@ -165,4 +165,70 @@ getSeuratCoordinates <- function(seurat){
     }
 
 
+}
+
+
+.selectSimilar <- function(img,cols,segment,threshold = "auto"){
+  img <- img %>% { . - imfill(dim=dim(img),val=cols[segment,2:4]) } %>%
+         imsplit("c") %>%
+         enorm()
+  img <- !threshold(img,threshold)
+  img <- as.cimg(img)
+  return(img)
+}
+.detectEdges <- function(img){
+  img <- img %>% imgradient("xy") %>%
+         enorm() %>%
+         add() %>%
+         sqrt()
+  return(img)
+}
+
+.pmap <- function(edges,method = c("inverse","none")){
+    pmap <- switch(method[1],
+                   "inverse" = 1 /(1+ edges),
+                   "none" = edges)
+    return(pmap)
+}
+
+.watershed <- function(img,pmap){
+  #----------------------------------------------------------------------------#
+  # First create empty image to fill
+  #----------------------------------------------------------------------------#
+  seed <- imfill(dim=dim(pmap))
+  #----------------------------------------------------------------------------#
+  # Next we can get back ground and foreground pixels
+  # basing this on the pixSet object describing similar "colours"
+  # Fill in seed
+  #----------------------------------------------------------------------------#
+  back <- which(img == 0, arr.ind = TRUE)
+  back <- back[sample(seq_len(nrow(back)),1),]
+  seed[back[1],back[2],back[3],back[4]]<- 0
+  fore <- which(img == 1, arr.ind = TRUE)
+  fore <- fore[sample(seq_len(nrow(fore)),1),]
+  seed[fore[1],fore[2],fore[3],fore[4]]<- 1
+  #----------------------------------------------------------------------------#
+  # watershed using seed image and priority map built using the pixset
+  # describing similar colours
+  #----------------------------------------------------------------------------#
+  wt <- watershed(seed, pmap)
+  return(wt)
+}
+
+.removeWaterPool <- function(water, image){
+  #----------------------------------------------------------------------------#
+  # Now that we have one territory, we want to remove from the original pool
+  # and start again with the next water pool
+  #----------------------------------------------------------------------------#
+  water <- as.cimg(water) %>% as.data.frame() %>% filter(value == 1)
+  image <- as.cimg(image) %>% as.data.frame()
+  #----------------------------------------------------------------------------#
+  # using this method because we want the index not the actual values
+  #----------------------------------------------------------------------------#
+  w <- paste0(water[,"x"],"_",water[,"y"])
+  i <- paste0(image[,"x"],"_",image[,"y"])
+  locs <- match(w,i)
+
+  image[locs,"value"] <- 0
+  return(image)
 }

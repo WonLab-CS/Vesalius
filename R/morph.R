@@ -364,10 +364,7 @@ layerTerritory.edge <- function(image,
     layer <- list()
     while(nrow(terForLoop)>0){
       grad <- terTmp  %>%
-              imgradient("xy") %>%
-              enorm() %>%
-              add() %>%
-              sqrt() %>%
+              .detectEdges() %>%
               grow(1) %>%
               as.cimg() %>%
               as.data.frame() %>%

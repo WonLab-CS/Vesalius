@@ -225,7 +225,7 @@ equalizeHistogram <- function(image,
       ## Unless.... I "hack" the as.cimg function and add an argument myself?
       ## That just sounds like a stupid idea with extra steps.
       #------------------------------------------------------------------------#
-      .invertCols()
+      .invertCols(verbose)
       if(!"cc" %in% colnames(image)) image$cc <- 1
       img <- image %>%
              select(c("x","y","cc","value")) %>%
@@ -878,45 +878,62 @@ isolateTerritories.array <- function(image,
 # This function is interesting for territory isolation
 # but needs to be reworked
 # TODO : test this function more in depth
-#.selectSimilar <- function(image,territory = NULL,threshold = "auto"){
-#    #-------------------------------------------------------------------------#
-#    # Getting seed colour fron each territories
-#    # maybe base r would be faster in this case ??
-#    # we can run it on more than territory maybe ??
-#    #-------------------------------------------------------------------------#
-#    if(is.null(territory)){
-#        cols <- image %>% group_by(cluster,cc) %>%
-#              select(value) %>% unique %>%
-#              pivot_wider(names_from = "cc", values_from = "value")
-#    } else if(length(territory ==1)){
-#        cols <- image %>% filter(territory == territory) %>%
-#                group_by(cc) %>% select(value) %>%
-#                unique() %>%
-#                pivot_wider(names_from = "cc", values_from = "value")
-#    } else {
-#        cols <- image %>% filter(territory %in% territory) %>%
-#                group_by(cc) %>% select(value) %>%
-#                median() %>%
-#                pivot_wider(names_from = "cc", values_from = "value")
-#    }
-#    #-------------------------------------------------------------------------#
-#    # First convertin image to actual image
-#    #-------------------------------------------------------------------------#
-#    img <- as.cimg(image[,c("x","y","cc","value")])
-#
-#    #-------------------------------------------------------------------------#
-#    # Next we can loop over each colour palette
-#    # i.e each territory cluster
-#    #-------------------------------------------------------------------------#
-#    byTer <- vector("list", nrow(cols))
-#    for(i in seq_along(byTer)){
-#        tmp <- img %>%
-#               { . - imfill(dim=dim(img),val=cols[i,2:4]) } %>%
-#                imsplit("c") %>%
-#                enorm
-#        tmp <- !threshold(tmp,threshold)
-#        byTer[[i]] <- tmp
-#    }
-#
-#    return(byTer)
-#}
+.watershedPooling <- function(image,territory = NULL,threshold = "auto"){
+    #-------------------------------------------------------------------------#
+    # Getting seed colour fron each territories
+    # maybe base r would be faster in this case ??
+    # we can run it on more than territory maybe ??
+    #-------------------------------------------------------------------------#
+    if(is.null(territory)){
+        cols <- image %>% group_by(cluster,cc) %>%
+              select(value) %>% unique() %>%
+              pivot_wider(names_from = "cc", values_from = "value")
+    } else if(length(territory ==1)){
+        cols <- image %>% filter(territory == territory) %>%
+                group_by(cc) %>% select(value) %>%
+                unique() %>%
+                pivot_wider(names_from = "cc", values_from = "value")
+    } else {
+        cols <- image %>% filter(territory %in% territory) %>%
+                group_by(cc) %>% select(value) %>%
+                median() %>%
+                pivot_wider(names_from = "cc", values_from = "value")
+    }
+    #-------------------------------------------------------------------------#
+    # First convertin image to actual image
+    #-------------------------------------------------------------------------#
+    img <- as.cimg(image[,c("x","y","cc","value")])
+
+    #-------------------------------------------------------------------------#
+    # Next we can loop over each colour palette
+    # i.e each territory cluster
+    #-------------------------------------------------------------------------#
+    clusters <- vector("list", nrow(cols))
+    for(i in seq_along(clusters)){
+      tmp <- img
+      allPooled <- FALSE
+      territories <- list()
+      j <- 1
+      while(!allPooled){
+        tmp <- .selectSimilar(img = tmp,
+                              cols = cols,
+                              segment = i,
+                              threshold = threshold)
+        pmap <- tmp %>% .detectEdges() %>% .pmap()
+        wt <- .watershed(tmp,pmap)
+        browser()
+        tmp <- .removeWaterPool(wt,tmp)
+        territories[[j]] <- wt %>% as.data.frame() %>% filter(value == 1)
+        j <- j + 1
+        if(sum(tmp$value) ==0){
+          allPooled <- TRUE
+        } else {
+          tmp <- suppressWarnings(as.cimg(tmp))
+        }
+
+      }
+      clusters[[i]] <- territories
+   }
+
+    return(clusters)
+}
