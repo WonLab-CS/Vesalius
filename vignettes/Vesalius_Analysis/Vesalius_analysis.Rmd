@@ -206,7 +206,7 @@ imageBrain <- equalizeHistogram(imageBrain,sleft = 2.5, sright=2.5,invert =T)
 # Image regularisation - this considers overall variance to smooth the image
 #------------------------------------------------------------------------------#
 imageBrain <- regulariseImage(imageBrain, lambda = 10,
-                              niter = 200, normalise=T)
+                              niter = 200, normalise=T,invert=T)
 
 #------------------------------------------------------------------------------#
 # This image actually quite pretty so you can have a look using one of the
