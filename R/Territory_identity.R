@@ -404,7 +404,7 @@ extractClusterMarkers <- function(cluster,counts,
     seedPct <- Matrix::rowSums(seed >0) / ncol(seed)
     queryPct <- Matrix::rowSums(query >0) / ncol(query)
     #FC <- log(Matrix::rowMeans(seed) +1) - log(Matrix::rowMeans(query)+1)
-    FC <- Matrix::rowMeans(seed + 1)- Matrix::rowMeans(query +1)
+    FC <- Matrix::rowMeans(seed)- Matrix::rowMeans(query)
     #--------------------------------------------------------------------------#
     # Dropping genes that don't fit the logFC and pct criteria
     # At least I won't be computing anything that doesn't need to be
