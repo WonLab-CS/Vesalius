@@ -15,7 +15,70 @@ library(SingleCellExperiment)
 library(Seurat)
 
 #------------------------------------------------------------------------------#
-# Slide-seq V2
+# Slide-seq V2 - Hippocampus
+#------------------------------------------------------------------------------#
+
+set.seed(1)
+slideTag <- c("Puck_200115_08")
+
+slideBeads <-c("~/group/slide_seqV2/Puck_200115_08_bead_locations.csv")
+
+slideCounts <- c("~/group/slide_seqV2/Puck_200115_08.digital_expression.txt.gz")
+
+
+coord <- utils::read.csv(slideBeads, header=F)
+coord <- coord[-1,]
+colnames(coord)<- c("barcodes","xcoord","ycoord")
+rownames(coord) <- coord$barcodes
+
+raw <- read.table(slideCounts, header = TRUE )
+rownames(raw) <- raw[,1]
+raw <- raw[,-1]
+raw <- as.matrix(raw)
+s <- Sys.time()
+sce <- SingleCellExperiment(list(counts=as(raw, "dgCMatrix")))
+
+
+coord <- coord[colnames(raw),c("ycoord","xcoord")]
+colnames(coord)<- c("row","col")
+colData(sce) <- DataFrame(coord)
+
+genes <- data.frame(rownames(raw), rownames(raw))
+colnames(genes) <- c("gene_id","gene_name")
+rownames(genes) <- rownames(raw)
+rowData(sce) <- genes
+meta <- list(sample ="Puck_200115_08", dataset = "SSv2",
+          BayesSpace.data = list(platform = "SS",is.enhanced=FALSE))
+metadata(sce) <- meta
+
+sce <- spatialPreprocess(sce, platform="SS",skip.PCA=FALSE,
+                             n.PCs=30, n.HVGs=2000, log.normalize=TRUE)
+sce <- qTune(sce, qs=seq(10,30), platform="SS", d=30)
+
+sce <- spatialCluster(sce,q=30,d=30,nrep=50000, gamma=3, save.chain=TRUE,platform = "SS")
+time <- Sys.time() -s
+# BayesSpace Run time
+save(time, file = "BayesSSV2_time.Rda")
+
+
+bayesData <- as.data.frame(colData(bayes))
+bayes_col <- length(unique(bayesData$spatial.cluster))
+bayes_pal <- colorRampPalette(brewer.pal(8, "Accent"))
+
+
+coord_bayes <- ggplot(bayesData, aes(col,row,col = as.factor(spatial.cluster))) +
+              geom_point(size = 0.05, alpha = 0.8) +
+              theme_void() +
+              scale_color_manual(values = bayes_pal(bayes_col)) +
+              theme(legend.text = element_text(size = 12),
+                    legend.position = "left",
+                    plot.title = element_text(size=15)) +
+              guides(colour = guide_legend(override.aes = list(size=5)))+
+              labs(colour = "Cluster nr.", title = "BayesSpace - Clusters")
+
+
+#------------------------------------------------------------------------------#
+# Slide-seq V2 - Embryo
 #------------------------------------------------------------------------------#
 
 set.seed(1)
@@ -52,12 +115,13 @@ meta <- list(sample ="Puck_200115_08", dataset = "SSv2",
 metadata(sce) <- meta
 
 sce <- spatialPreprocess(sce, platform="SS",skip.PCA=FALSE,
-                             n.PCs=15, n.HVGs=2000, log.normalize=TRUE)
+                             n.PCs=30, n.HVGs=2000, log.normalize=TRUE)
+sce <- qTune(sce, qs=seq(10,30), platform="SS", d=30)
 
-sce <- spatialCluster(sce,q=30,d=15,nrep=50000, gamma=3, save.chain=TRUE,platform = "SS")
+sce <- spatialCluster(sce,q=30,d=30,nrep=50000, gamma=3, save.chain=TRUE,platform = "SS")
 time <- Sys.time() -s
 # BayesSpace Run time
-save(time, file = "BayesSSV2_time.Rda")
+save(time, file = "BayesSSV2Embryo_time.Rda")
 
 
 bayesData <- as.data.frame(colData(bayes))
@@ -74,6 +138,17 @@ coord_bayes <- ggplot(bayesData, aes(col,row,col = as.factor(spatial.cluster))) 
                     plot.title = element_text(size=15)) +
               guides(colour = guide_legend(override.aes = list(size=5)))+
               labs(colour = "Cluster nr.", title = "BayesSpace - Clusters")
+
+
+
+
+
+
+
+
+
+
+
 
 
 
