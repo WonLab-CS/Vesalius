@@ -377,10 +377,11 @@ rgbUMAP<- function(SO,
 #' @param na.rm logical indicating if NA should be removed from bead list.
 #' @param resolution numeric (range 0 - 100) describing a percentage of original
 #' image size. Used to reduce image size.
-#' @param filterThreshold numeric (range 0 -1) describing the quantile threshold
+#' @param filterGrid numeric between (range 0 - 1) describing size of grid used
+#' to filter stray beads.
+#' @param filterThreshold numeric (range 0 - 1) describing the quantile threshold
 #' at which barcodes and tiles should be retained (seed details)
-#' @param keep_edge logical indicating if the edeges of the voronoi diagrams
-#' should be maintained (See details)
+#'
 #' @param interpolation_type Method of interpolation during image resizing:
 #' \describe{
 #'    \item{-1}{no interpolation: raw memory resizing.}
@@ -406,10 +407,10 @@ rgbUMAP<- function(SO,
 #' creates superfluous tiles that can be detrimental to further analysis.
 #' To remove excessive tiles, Vesalius takes a two step process. First, Vesalius
 #' removes any barcode that is too far away from other barcodes (likely stray
-#' barcodes). Second, Vesalius filters out exceed a certain area threshold.
-#' If keep_edge is TRUE, then Vesalius will include all tiles even those that
-#' share an edge with the voronoi boudaries. The tesselation creates a "box"
-#' around all points and use this as a boundary to create tiles on the edge.
+#' barcodes). This is controlled by the filterGrid argument.
+#' Second, Vesalius filters out tiles that exceed a certain area threshold.
+#' This is controlled by the filterThreshold argument.
+#'
 #'
 #' A filterThreshold of 0.99 means that 99 \% or barcodes and tile triangles
 #' will be retained.
@@ -436,8 +437,8 @@ buildImageArray <- function(coordinates,
                             invert=FALSE,
                             na.rm = TRUE,
                             resolution = 100,
-                            filterThreshold=0.999,
-                            keep_edge = FALSE,
+                            filterGrid =0.01,
+                            filterThreshold=1,
                             interpolation_type =1,
                             cores=1,
                             verbose = TRUE){
@@ -467,87 +468,40 @@ buildImageArray <- function(coordinates,
   #----------------------------------------------------------------------------#
   # Removing all "outer point" - tend to make tesselation messy
   #----------------------------------------------------------------------------#
-  if(filterThreshold <1){
+  if(filterGrid != 0 & filterGrid != 1){
     .distanceBeads(verbose)
-    #--------------------------------------------------------------------------#
-    # We only need one "set" of coordinates - once we have distance metrics
-    # we can filter out on all other
-    # Let's just assume for now there might be more than one slice
-    #--------------------------------------------------------------------------#
-    tmp <- coordinates %>% filter(cc ==1)
-    idx <- seq_len(nrow(tmp))
-    minDist <- parallel::mclapply(idx, function(idx,mat){
-                        xo <- mat$x[idx]
-                        yo <- mat$y[idx]
-                        xp <- mat$x
-                        yp <- mat$y
-                        distance <- sqrt(((abs(xp-xo))^2 + (abs(yp-yo))^2))
-                        distance <- distance[distance !=0]
-                        distance <- sort(distance,decreasing = FALSE)[1:25]
-                        return(mean(distance))
-    }, tmp, mc.cores=cores)
-    minDist <- unlist(minDist)
-    distanceThrehsold <- quantile(minDist,filterThreshold)
-    keeps  <- tmp$barcodes[minDist <= distanceThrehsold]
-    tmp <- tmp %>% filter(barcodes %in% keeps)
-  } else {
-    tmp <- coordinates %>% filter(cc ==1)
-
+    coordinates <- .filterGrid(coordinates = coordinates,
+                               filterGrid = filterGrid)
   }
-  #----------------------------------------------------------------------------#
+  #--------------------------------------------------------------------------#
   # TESSELATION TIME!
-  # Only need to tesslated on one slice - all the other will be the same tiles
-  # We will do all the replacements later
-  #----------------------------------------------------------------------------#
+  #--------------------------------------------------------------------------#
   .tess(verbose)
-  tesselation <- deldir::deldir(x = as.numeric(tmp$x),
-                                y = as.numeric(tmp$y))
+  tesselation <- deldir::deldir(x = as.numeric(coordinates$x),
+                                y = as.numeric(coordinates$y))
+  #--------------------------------------------------------------------------#
+  # Filtering tiles
+  #--------------------------------------------------------------------------#
+  .fTiles(verbose)
+  filtered <- .filterTiles(tesselation,coordinates,filterThreshold)
 
-  #----------------------------------------------------------------------------#
-  # Extracting Voronoi/dirichlet tessaltion - not intested in Delauney
-  #----------------------------------------------------------------------------#
-
-  ## Voronoi tessaltion coordinates
-  tessV <- tesselation$dirsgs
-  ## If the "point" is on the edge of the box used for tessaltion
-  if(keep_edge){
-      tessV <- tessV[!tessV$bp1 & !tessV$bp2,]
-  }
-
-  #tessV <- .filterTesselation(tessV)
-  ## Contains original data - just to ensure that that indeces line up
-  coord <- cbind(tmp,tesselation$summary)
-  #----------------------------------------------------------------------------#
-  # This section is equivalent to triangle rasterisation
-  #----------------------------------------------------------------------------#
+  #--------------------------------------------------------------------------#
+  # Resterise tiles
+  #--------------------------------------------------------------------------#
   .raster(verbose)
-  allIdx <- parallel::mclapply(seq_len(nrow(tessV)),.fillTesselation,
-    tess = tessV,coord= coord,
-    ogCoord = coordinates,
-    mc.cores = cores)
+  tiles <- .rasterise(filtered, cores)
+  coordinates <- right_join(coordinates,tiles, by = "barcodes")
 
-  #----------------------------------------------------------------------------#
-  # Filtering triangle that exceed max tile size
-  #----------------------------------------------------------------------------#
-  allIdx <- .imageBuild(allIdx,filterThreshold,verbose)
+  coordinates <- coordinates[, c("barcodes","x.y","y.y","cc","value","tile")]
 
-  #----------------------------------------------------------------------------#
-  # Rebuilding new cooirdinates based on tesselation borders
-  # cooridinates are shifted for both tesselation cooridantes and starting coord
-  #----------------------------------------------------------------------------#
-  lpx <- round(min(allIdx$x))
-  lpy <- round(min(allIdx$y))
-
-
-  allIdx <- mutate(allIdx, x = x -lpx +1,y=y-lpy +1) %>%
-            tibble
+  colnames(coordinates) <- c("barcodes","x","y","cc","value","tile")
 
   #----------------------------------------------------------------------------#
   # Decreasing reolsution
   #----------------------------------------------------------------------------#
   if(resolution<100){
       .res(verbose)
-      allIdx <- .resShift(allIdx, resolution,interpolation_type,na.rm)
+      allIdx <- .resShift(coordinates, resolution,interpolation_type,na.rm)
   }
   .simpleBar(verbose)
   return(allIdx)
@@ -624,168 +578,108 @@ buildImageArray <- function(coordinates,
 }
 
 
-
-
-.imageBuild <- function(allIdx, filterThreshold,verbose){
-    #--------------------------------------------------------------------------#
-    # First get area and extract distribution
-    #--------------------------------------------------------------------------#
-
-    if(filterThreshold <1){
-      .filter(verbose)
-      triArea1 <- sapply(allIdx,function(x){
-                        return(x[[2]][1])
-      })
-      triArea2 <- sapply(allIdx,function(x){
-                        return(x[[2]][2])
-      })
-
-      areaThresh <- quantile(c(triArea1,triArea2),filterThreshold)
-    }
-
-
-    #--------------------------------------------------------------------------#
-    # Next filter triangle that exceed limit
-    #--------------------------------------------------------------------------#
-    tri1 <- lapply(allIdx,function(x){
-                  return(x[[1]][[1]])
-    })
-    if(filterThreshold<1){
-      tri1 <- tri1[triArea1 < areaThresh]
-    }
-
-    tri1 <- as.data.frame(do.call("rbind",tri1))
-
-    tri2 <- lapply(allIdx,function(x){
-                  return(x[[1]][[2]])
-    })
-    if(filterThreshold <1){
-      tri2 <- tri2[triArea2 < areaThresh]
-    }
-
-    tri2 <- as.data.frame(do.call("rbind",tri2))
-
-    #--------------------------------------------------------------------------#
-    # Rebuild full data frame
-    #--------------------------------------------------------------------------#
-    tri <- rbind(tri1,tri2)
-    return(tri)
-
-
+.filterGrid <- function(coordinates,filterGrid){
+  #----------------------------------------------------------------------------#
+  # Essentially create a grid where each barcode is pooled into a grid space
+  # If there are too little barcodes in that grid section then remove
+  #----------------------------------------------------------------------------#
+  gridX <- round(coordinates$x * filterGrid)
+  gridY <- round(coordinates$y * filterGrid)
+  gridCoord <- paste0(gridX,"_",gridY)
+  grid <- table(gridCoord)
+  grid <- grid[which(grid <= quantile(grid,0.01))]
+  gridCoord <- which(gridCoord %in% names(grid))
+  coordinates <- coordinates[-gridCoord,]
+  return(coordinates)
+}
+.filterTiles <- function(tesselation,coordinates,filterThreshold){
+  maxArea <- quantile(tesselation$summary$dir.area, filterThreshold)
+  idx <- which(tesselation$summary$dir.area >= maxArea)
+  tessV <- tesselation$dirsgs
+  pointsToRemove <- tessV$ind1 %in% idx | tessV$ind2 %in% idx
+  tessV <- tessV[!pointsToRemove,]
+  coordinates$ind <- seq_len(nrow(coordinates))
+  coordinates <- coordinates[-idx,]
+  return(list("tessV" = tessV,"coordinates" = coordinates))
 }
 
-.fillTesselation <- function(idx,tess,coord,ogCoord){
-    #--------------------------------------------------------------------------#
-    ## Get data
-    #--------------------------------------------------------------------------#
-    allEdge <- tess[idx,]
+.rasterise <- function(filtered,cores = 1){
+    idx <- seq_len(nrow(filtered$coordinates))
+    tiles <- parallel::mclapply(idx, function(idx,filtered){
 
-    #--------------------------------------------------------------------------#
-    ## First split data between both triangles
-    # Why am idoing this? Not sure to be honest
-    # could be good to refactor this as well
-    # I think it was so I could use multi core at a higher level
-    # Yep that was it. I could run both triangles in parallel
-    # But it would not decrease comp time that much and we don't want to mess
-    # around with weird core scheduling and what not
-    #--------------------------------------------------------------------------#
-    t1 <- .fillTesselationTriangle(allEdge,coord,ogCoord,tri = 1)
-    a1 <- nrow(t1)
+        #----------------------------------------------------------------------#
+        # get indecies from original data
+        #----------------------------------------------------------------------#
+        ind <- filtered$coordinates$ind[idx]
+        indx <- filtered$coordinates$x[idx]
+        indy <- filtered$coordinates$y[idx]
+        tessV <- filtered$tessV %>% filter(ind1 == ind | ind2 == ind)
+        if(nrow(tessV) == 0){
+            return(NULL)
+        }
+        #----------------------------------------------------------------------#
+        # create unique set of coordiantes that define tile boundaries
+        #----------------------------------------------------------------------#
+        coord <- paste0(c(tessV$x1,tessV$x2),"_",c(tessV$y1,tessV$y2))
+        x <- as.numeric(sapply(strsplit(coord[!duplicated(coord)],"_"),"[[",1))
+        y <- as.numeric(sapply(strsplit(coord[!duplicated(coord)],"_"),"[[",2))
 
-    t2 <- .fillTesselationTriangle(allEdge,coord,ogCoord,tri = 2)
-    a2 <- nrow(t2)
+        convex <- .convexify(x,y,indx,indy)
+        x <- convex$x
+        y <- convex$y
+        #----------------------------------------------------------------------#
+        # define max polygon containing all pixels
+        #----------------------------------------------------------------------#
+        lpx <- round(min(x)) - 1
+        hpx <- round(max(x)) + 1
+        lpy <- round(min(y)) - 1
+        hpy <- round(max(y)) + 1
 
+        maxPolygonX <- rep(seq(lpx,hpx), times = hpy - lpy +1)
+        maxPolygonY <- rep(seq(lpy,hpy), each = hpx - lpx +1)
 
-    #--------------------------------------------------------------------------#
-    # Rebuild list with filled triangle for both points
-    #--------------------------------------------------------------------------#
-    allIn <- list(t1,t2)
-    return(list(allIn,c(a1,a2)))
+        #----------------------------------------------------------------------#
+        # Fill triangles with all point in that space
+        #----------------------------------------------------------------------#
+        cell <- point.in.polygon(maxPolygonX,maxPolygonY,x,y)
+        maxX <- maxPolygonX[cell %in% c(1,2,3)]
+        maxY <- maxPolygonY[cell %in% c(1,2,3)]
+      
+        cent <- which(maxX == round(indx) &
+                      maxY == round(indy))
+        centers <- rep(0, length(maxX))
+        centers[cent] <- 1
+        tile <- data.frame("barcodes" = rep(filtered$coordinates$barcodes[idx],
+                                            times = length(maxX)),
+                           "x" = maxX,
+                           "y" = maxY,
+                           "tile" = centers)
+        return(tile)
+    },filtered = filtered, mc.cores = cores)
+    tiles <- do.call("rbind",tiles)
 
+    tiles <- tiles %>% filter(x > 1 & y > 1)
+    return(tiles)
 }
 
-.fillTesselationTriangle <- function(allEdge,coord,ogCoord,tri){
-  if(tri ==1){
-
-    #--------------------------------------------------------------------------#
-    # Boundaries of tesselation
-    #--------------------------------------------------------------------------#
-    lpx <- round(min(c(allEdge$x1,allEdge$x2,coord[allEdge$ind1,"x"]))) - 1
-    hpx <- round(max(c(allEdge$x1,allEdge$x2,coord[allEdge$ind1,"x"]))) + 1
-    lpy <- round(min(c(allEdge$y1,allEdge$y2,coord[allEdge$ind1,"y"]))) - 1
-    hpy <- round(max(c(allEdge$y1,allEdge$y2,coord[allEdge$ind1,"y"]))) + 1
-
-    maxPolygonX <- rep(seq(lpx,hpx), times = hpy - lpy +1)
-    maxPolygonY <- rep(seq(lpy,hpy), each = hpx - lpx +1)
-
-    #--------------------------------------------------------------------------#
-    # Creating triangles
-    #--------------------------------------------------------------------------#
-    x <- round(c(allEdge$x1,allEdge$x2,coord[allEdge$ind1,"x"]))
-    y <- round(c(allEdge$y1,allEdge$y2,coord[allEdge$ind1,"y"]))
-
-    #--------------------------------------------------------------------------#
-    # Fill triangles with all point in that space
-    #--------------------------------------------------------------------------#
-    cell <- point.in.polygon(maxPolygonX,maxPolygonY,x,y)
-    maxX <- maxPolygonX[cell %in% c(1,2,3)]
-    maxY <- maxPolygonY[cell %in% c(1,2,3)]
-
-    ccVals <- ogCoord[ogCoord$barcodes == coord$barcodes[allEdge$ind1],
-                      c("cc","value")]
-    ccVals <- ccVals[rep(seq_len(nrow(ccVals)),each = length(maxX)),]
-    maxX <- rep(maxX, times = 3)
-    maxY <- rep(maxY, times = 3)
-    barcode <- rep(coord[allEdge$ind1,"barcodes"],length(maxX))
-    cent <- which(maxX == round(coord[allEdge$ind1,"x"]) &
-                  maxY == round(coord[allEdge$ind1,"y"]))
-    centers <- rep(0, length(maxX))
-    centers[cent] <- 1
-
-    allIn <- data.frame(barcode,maxX,maxY,ccVals,centers)
-    colnames(allIn) <- c("barcodes","x","y","cc","value","tile")
-    return(allIn)
-
-  } else {
-    #--------------------------------------------------------------------------#
-    # Boundaries of tesselation
-    #--------------------------------------------------------------------------#
-    lpx <- round(min(c(allEdge$x1,allEdge$x2,coord[allEdge$ind2,"x"]))) - 1
-    hpx <- round(max(c(allEdge$x1,allEdge$x2,coord[allEdge$ind2,"x"]))) + 1
-    lpy <- round(min(c(allEdge$y1,allEdge$y2,coord[allEdge$ind2,"y"]))) - 1
-    hpy <- round(max(c(allEdge$y1,allEdge$y2,coord[allEdge$ind2,"y"]))) + 1
-
-    maxPolygonX <- rep(seq(lpx,hpx), times = hpy - lpy +1)
-    maxPolygonY <- rep(seq(lpy,hpy), each = hpx - lpx +1)
-
-    #--------------------------------------------------------------------------#
-    # Creating triangles
-    #--------------------------------------------------------------------------#
-    x <- round(c(allEdge$x1,allEdge$x2,coord[allEdge$ind2,"x"]))
-    y <- round(c(allEdge$y1,allEdge$y2,coord[allEdge$ind2,"y"]))
-
-    #--------------------------------------------------------------------------#
-    # Fill triangles with all point in that space
-    #--------------------------------------------------------------------------#
-    cell <- point.in.polygon(maxPolygonX,maxPolygonY,x,y)
-    maxX <- maxPolygonX[cell %in% c(1,2,3)]
-    maxY <- maxPolygonY[cell %in% c(1,2,3)]
-    ccVals <- ogCoord[ogCoord$barcodes == coord$barcodes[allEdge$ind2],
-                      c("cc","value")]
-    ccVals <- ccVals[rep(seq_len(nrow(ccVals)),each =length(maxX)),]
-    maxX <- rep(maxX, times = 3)
-    maxY <- rep(maxY, times = 3)
-    barcode <- rep(coord[allEdge$ind2,"barcodes"],length(maxX))
-    cent <- which(maxX == round(coord[allEdge$ind2,"x"]) &
-                  maxY == round(coord[allEdge$ind2,"y"]))
-    centers <- rep(0, length(maxX))
-    centers[cent] <- 1
-    allIn <- data.frame(barcode,maxX,maxY,ccVals,centers)
-    colnames(allIn) <- c("barcodes","x","y","cc","value","tile")
-    return(allIn)
-  }
-
+.convexify <- function(xside,yside,indx,indy){
+  #----------------------------------------------------------------------------#
+  # Converting everything to an angle - from there we can just go clock wise
+  # and order the point based on angle
+  #----------------------------------------------------------------------------#
+  x <- xside - indx ; y <- yside - indy
+  angle <- mapply(function(x,y){
+    if(x >= 0 & y >= 0) angle <- atan(abs(y)/abs(x))*(180/pi)
+    if(x < 0 & y >= 0) angle <- 180 - (atan(abs(y)/abs(x))*(180/pi))
+    if(x < 0 & y < 0) angle <- 180 + (atan(abs(y)/abs(x))*(180/pi))
+    if(x >= 0 & y < 0) angle <- 360 - (atan(abs(y)/abs(x))*(180/pi))
+      return(angle)
+  },x=x,y=y, SIMPLIFY = TRUE)
+  convex <- data.frame(x=xside[order(angle,decreasing = F)],
+                       y=yside[order(angle,decreasing = F)])
+  return(convex)
 }
+
 
 
 

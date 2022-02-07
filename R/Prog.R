@@ -189,3 +189,14 @@
     t <- Sys.time()
     cat(paste(t," Checking Vesalius Input - Using slice ",sliceID, "\n"))
 }
+
+.distanceBeads <- function(verbose =TRUE){
+    if(!verbose) return(NULL)
+    t <- Sys.time()
+    cat( paste(t," Filtering outlier beads \n"))
+}
+.fTiles <- function(verbose =TRUE){
+    if(!verbose) return(NULL)
+    t <- Sys.time()
+    cat( paste(t," Filtering Tiles\n"))
+}

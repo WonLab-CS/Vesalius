@@ -254,14 +254,14 @@ for(i in seq_along(simList)){
   ves <- NormalizeData(st) %>%
          FindVariableFeatures(nfeatures=2000) %>%
          ScaleData()%>%
-         rgbPCA()%>%
-         buildImageArray(resolution=50,filterThreshold=1,keep_edge=T,cores =5)%>%
+         rgbUMAP()%>%
+         buildImageArray(ves,resolution=100,filterThreshold=1,cores =5)%>%
          equalizeHistogram(sleft =2.5,sright=2.5)%>%
          regulariseImage(lambda = 10,niter=200)%>%
          iterativeSegmentation.array(colDepth=3,
                                      smoothIter = 30,
                                      method = c("iso","box"),
-                                     sigma=1.5,box = 30,
+                                     sigma=1.5,box = 20,
                                      useCenter = T) %>%
         isolateTerritories.array(captureRadius=0.1,minBar=10) %>%
         filter(tile==1) %>%
