@@ -510,7 +510,7 @@ buildImageArray <- function(coordinates,
   ## Voronoi tessaltion coordinates
   tessV <- tesselation$dirsgs
   ## If the "point" is on the edge of the box used for tessaltion
-  if(!keep_edge){
+  if(keep_edge){
       tessV <- tessV[!tessV$bp1 & !tessV$bp2,]
   }
 

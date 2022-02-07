@@ -255,7 +255,7 @@ for(i in seq_along(simList)){
          FindVariableFeatures(nfeatures=2000) %>%
          ScaleData()%>%
          rgbPCA()%>%
-         buildImageArray(resolution=50,filterThreshold=1,cores =5)%>%
+         buildImageArray(resolution=50,filterThreshold=1,keep_edge=T,cores =5)%>%
          equalizeHistogram(sleft =2.5,sright=2.5)%>%
          regulariseImage(lambda = 10,niter=200)%>%
          iterativeSegmentation.array(colDepth=3,
