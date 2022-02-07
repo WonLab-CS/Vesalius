@@ -501,10 +501,10 @@ buildImageArray <- function(coordinates,
   #----------------------------------------------------------------------------#
   if(resolution<100){
       .res(verbose)
-      allIdx <- .resShift(coordinates, resolution,interpolation_type,na.rm)
+      coordinates <- .resShift(coordinates, resolution,interpolation_type,na.rm)
   }
   .simpleBar(verbose)
-  return(allIdx)
+  return(coordinates)
 
 }
 
@@ -644,7 +644,7 @@ buildImageArray <- function(coordinates,
         cell <- point.in.polygon(maxPolygonX,maxPolygonY,x,y)
         maxX <- maxPolygonX[cell %in% c(1,2,3)]
         maxY <- maxPolygonY[cell %in% c(1,2,3)]
-      
+
         cent <- which(maxX == round(indx) &
                       maxY == round(indy))
         centers <- rep(0, length(maxX))
