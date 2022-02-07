@@ -11,67 +11,89 @@ library(patchwork)
 library(viridis)
 library(RColorBrewer)
 library(dplyr)
-library(tvR)
-library(sp)
 library(grid)
 
 #------------------------------------------------------------------------------#
 # Slide-seq V2
 #------------------------------------------------------------------------------#
-slideTagBrain <- "Puck_200115_08"
-slideBeadsBrain <-"~/group/slide_seqV2/Puck_200115_08_bead_locations.csv"
-slideCountsBrain <- "~/group/slide_seqV2/Puck_200115_08.digital_expression.txt.gz"
 
-brainCoord <- utils::read.csv(slideBeadsBrain, header=F)
-brainCoord <- brainCoord[-1,]
-colnames(brainCoord)<- c("barcodes","xcoord","ycoord")
+input <- "~/group/slide_seqV2/"
 
-beadBrain <- ReadSlideSeq(slideBeadsBrain)
+slideBeads <-paste0(input,list.files(input, pattern ="locations.csv"))
+slideCounts <- paste0(input,list.files(input, pattern ="digital_expression.txt.gz"))
 
-brainCounts <- read.table(slideCountsBrain, header = TRUE )
-rownames(brainCounts) <- brainCounts[,1]
-brainCounts <- brainCounts[,-1]
+slideTag <- sapply(strsplit(slideBeads,"V2/"),"[[",2)
+slideTag <- gsub("_bead_locations.csv","",slideTag)
 
 
-seu <- CreateSeuratObject(brainCounts, assay ="Spatial")
-beadBrain <- beadBrain[Cells(x = brainCounts)]
-DefaultAssay(object = beadBrain) <- "Spatial"
-seu[["slice1"]] <- beadBrain
+output <- paste0(input,"/SeuratBenchMarking/")
+if(!dir.exists(output)){
+    dir.create(output)
+}
 
-### NOTE we use Log normalisation and not SCTransform as this is more
-### consistent with the approach taken in Vesalius
-seu <- NormalizeData(seu)
-seu <- FindVariableFeatures(seu, nfeatures = 2000)
-seu <- ScaleData(seu)
+time <-vector("list",length(slideBeads))
+
+for(i in seq_along(slideBeads)){
+#for(i in c(10,11)){
+  s <- Sys.time()
+  #brainCoord <- utils::read.csv(slideBeads[i], header=F)
+  #brainCoord <- brainCoord[-1,]
+  #colnames(brainCoord)<- c("barcodes","xcoord","ycoord")
+  brainCounts <- read.table(slideCounts[i], header = TRUE )
+  rownames(brainCounts) <- brainCounts[,1]
+  brainCounts <- brainCounts[,-1]
+  seu <- CreateSeuratObject(brainCounts, assay ="Spatial")
+
+  beadBrain <- ReadSlideSeq(slideBeads[i])
+  if(dim(beadBrain@coordinates)[2] == 3){
+      colnames(beadBrain@coordinates) <- c("x","y","cells")
+      rownames(beadBrain@coordinates) <- beadBrain@coordinates$cells
+      DefaultAssay(object = beadBrain) <- "Spatial"
+      seu[["slice1"]] <- beadBrain
+  } else {
+    beadBrain <- beadBrain[Cells(x = brainCounts)]
+    DefaultAssay(object = beadBrain) <- "Spatial"
+    seu[["slice1"]] <- beadBrain
+  }
 
 
-seu <- RunPCA(brainCounts)
-seu <- RunUMAP(seu, dims = 1:30)
-seu <- FindNeighbors(seu, dims = 1:30)
-seu <- FindClusters(seu, resolution = 0.7, verbose = FALSE)
-seuData <- FetchData(seu, c("UMAP_1","UMAP_2","seurat_clusters")) %>%
-           group_by(seurat_clusters) %>%
-           mutate(xs = mean(UMAP_1), ys = mean(UMAP_2))
+  seu <- SCTransform(seu,variable.features.n = 2000, assay = "Spatial")
 
 
-coordSeu <- GetTissueCoordinates(seu)
-seuData <- cbind(seuData,coordSeu[,c("x","y")])
+  seu <- RunPCA(seu)
+  seu <- RunUMAP(seu, dims = 1:30)
+  seu <- FindNeighbors(seu, dims = 1:30)
+  seu <- FindClusters(seu, resolution = 0.7, verbose = FALSE)
+  seuData <- FetchData(seu, c("UMAP_1","UMAP_2","seurat_clusters")) %>%
+             group_by(seurat_clusters) %>%
+             mutate(xs = mean(UMAP_1), ys = mean(UMAP_2))
 
-seuData$seurat_clusters <- as.numeric(as.character(seuData$seurat_clusters)) + 1
-seu_col <- length(unique(seuData$seurat_clusters))
-seu_pal <- colorRampPalette(brewer.pal(8, "Accent"))
+
+  coordSeu <- GetTissueCoordinates(seu)
+  seuData <- cbind(seuData,coordSeu[,c("x","y")])
+  fileOut <- paste0(output,slideTag[i],"_SSV2_BM.Rda")
+  save(seuData,file= fileOut)
+  e <- Sys.time()
+  time[[i]] <- e - s
+
+}
+save(time, file = paste0(output,"Seurat_SSV2_Time.Rda"))
 
 
-coord_seu <- ggplot(seuData, aes(x,y,col = as.factor(seurat_clusters))) +
-            geom_point(size = 0.25, alpha = 0.65) +
-            theme_void() +
-            scale_color_manual(values = seu_pal(seu_col)) +
-            theme(legend.text = element_text(size = 12),
-                  legend.position = "left",
-                  plot.title = element_text(size=15)) +
-            guides(colour = guide_legend(override.aes = list(size=5)))+
-            labs(colour = "Cluster nr.", title = "Seurat - Clusters")
+#seuData$seurat_clusters <- as.numeric(as.character(seuData$seurat_clusters)) + 1
+#seu_col <- length(unique(seuData$seurat_clusters))
+#seu_pal <- colorRampPalette(brewer.pal(8, "Accent"))
 
+
+#coord_seu <- ggplot(seuData, aes(x,y,col = as.factor(seurat_clusters))) +
+#            geom_point(size = 0.25, alpha = 0.65) +
+#            theme_void() +
+#            scale_color_manual(values = seu_pal(seu_col)) +
+#            theme(legend.text = element_text(size = 12),
+#                  legend.position = "left",
+#                  plot.title = element_text(size=15)) +
+#            guides(colour = guide_legend(override.aes = list(size=5)))+
+#            labs(colour = "Cluster nr.", title = "Seurat - Clusters")
 
 
 
@@ -82,7 +104,7 @@ coord_seu <- ggplot(seuData, aes(x,y,col = as.factor(seurat_clusters))) +
 
 ### Input directories containing Visium data
 
-input <- list.dirs("/visium/DLPFC",recursive =F)
+input <- list.dirs("~/group/visium/DLPFC_globus",recursive =F)
 time <-vector("list",length(input))
 count <- 1
 n <-c(7,7,7,7,5,5,5,5,7,7,7,7)
@@ -100,10 +122,10 @@ for(i in input){
   DefaultAssay(object = img) <- "Spatial"
   sec[["slice1"]] <- img
 
-  sec <- NormalizeData(sec)
-  sec <- FindVariableFeatures(sec, selection.method = "vst", nfeatures = 2000)
-  sec <- ScaleData(sec)
-
+  #sec <- NormalizeData(sec)
+  #sec <- FindVariableFeatures(sec, selection.method = "vst", nfeatures = 2000)
+  #sec <- ScaleData(sec)
+  sec <- SCTransform(sec,variable.features.n = 2000, assay = "Spatial")
   sec <- RunPCA(sec, npcs = 30)
   sec <- FindNeighbors(sec, dims = 1:30,verbose =F)
   for(k in seq(0.5,1,by = 0.01)){
@@ -124,4 +146,48 @@ for(i in input){
 
 }
 ## Saving run time
-save(time,file = "Seurat_time.Rda")
+save(time,file = "~/group/visium/DLPFC_globus/Seurat_Visium_Time.Rda")
+
+#------------------------------------------------------------------------------#
+# Seq Scope
+#------------------------------------------------------------------------------#
+
+
+input <- "~/group/seqScope/"
+
+seqScope <-paste0(input,list.files(input, pattern =".rds"))
+seqScopeTag <- sapply(strsplit(seqScope,"Scope/"),"[[",2)
+seqScopeTag <- gsub(".Rds","",seqScopeTag)
+
+
+output <- paste0(input,"/SeuratBenchMarking/")
+if(!dir.exists(output)){
+    dir.create(output)
+}
+
+time <-vector("list",length(seqScope))
+
+for(i in seq_along(seqScope)){
+  s <- Sys.time()
+  seu <- readRDS(seqScope[i])
+  seu <- SCTransform(seu,variable.features.n = 2000, assay = "Spatial")
+
+
+  seu <- RunPCA(seu)
+  seu <- RunUMAP(seu, dims = 1:30)
+  seu <- FindNeighbors(seu, dims = 1:30)
+  seu <- FindClusters(seu, resolution = 0.7, verbose = FALSE)
+  seuData <- FetchData(seu, c("UMAP_1","UMAP_2","seurat_clusters")) %>%
+             group_by(seurat_clusters) %>%
+             mutate(xs = mean(UMAP_1), ys = mean(UMAP_2))
+
+
+  coordSeu <- GetTissueCoordinates(seu)
+  seuData <- cbind(seuData,coordSeu[,c("x","y")])
+  fileOut <- paste0(output,seqScopeTag[i],"_seqScope_BM.Rda")
+  save(seuData,file= fileOut)
+  e <- Sys.time()
+  time[[i]] <- e - s
+
+}
+save(time, file = paste0(output,"Seurat_SeqScope_Time.Rda"))

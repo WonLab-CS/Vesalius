@@ -379,6 +379,8 @@ rgbUMAP<- function(SO,
 #' image size. Used to reduce image size.
 #' @param filterThreshold numeric (range 0 -1) describing the quantile threshold
 #' at which barcodes and tiles should be retained (seed details)
+#' @param keep_edge logical indicating if the edeges of the voronoi diagrams
+#' should be maintained (See details)
 #' @param interpolation_type Method of interpolation during image resizing:
 #' \describe{
 #'    \item{-1}{no interpolation: raw memory resizing.}
@@ -404,10 +406,10 @@ rgbUMAP<- function(SO,
 #' creates superfluous tiles that can be detrimental to further analysis.
 #' To remove excessive tiles, Vesalius takes a two step process. First, Vesalius
 #' removes any barcode that is too far away from other barcodes (likely stray
-#' barcodes). Second, Vesalius filters out tiles that are tied to the outer box
-#' and that exceed a certain area threshold. These triangles are nearly always
-#' related to boundary tiles. Both of these filtering steps are controlled via
-#' the \code{filterThreshold} argument.
+#' barcodes). Second, Vesalius filters out exceed a certain area threshold.
+#' If keep_edge is TRUE, then Vesalius will include all tiles even those that
+#' share an edge with the voronoi boudaries. The tesselation creates a "box"
+#' around all points and use this as a boundary to create tiles on the edge.
 #'
 #' A filterThreshold of 0.99 means that 99 \% or barcodes and tile triangles
 #' will be retained.
@@ -435,6 +437,7 @@ buildImageArray <- function(coordinates,
                             na.rm = TRUE,
                             resolution = 100,
                             filterThreshold=0.999,
+                            keep_edge = FALSE,
                             interpolation_type =1,
                             cores=1,
                             verbose = TRUE){
@@ -507,7 +510,10 @@ buildImageArray <- function(coordinates,
   ## Voronoi tessaltion coordinates
   tessV <- tesselation$dirsgs
   ## If the "point" is on the edge of the box used for tessaltion
-  tessV <- tessV[!tessV$bp1 & !tessV$bp2,]
+  if(!keep_edge){
+      tessV <- tessV[!tessV$bp1 & !tessV$bp2,]
+  }
+
   #tessV <- .filterTesselation(tessV)
   ## Contains original data - just to ensure that that indeces line up
   coord <- cbind(tmp,tesselation$summary)

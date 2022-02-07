@@ -78,13 +78,13 @@
 
       
 
-      </header><script src="Vesalius_files/header-attrs-2.11/header-attrs.js"></script><script src="Vesalius_files/accessible-code-block-0.0.1/empty-anchor.js"></script><div class="row">
+      </header><script src="Vesalius_files/accessible-code-block-0.0.1/empty-anchor.js"></script><div class="row">
   <div class="col-md-9 contents">
     <div class="page-header toc-ignore">
       <h1 data-toc-skip>Vesalius: Quick Start</h1>
                         <h4 data-toc-skip class="author">Patrick C.N. Martin</h4>
             
-            <h4 data-toc-skip class="date">2021-10-28</h4>
+            <h4 data-toc-skip class="date">2022-02-07</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/patrickCNMartin/Vesalius/blob/main/vignettes/vesalius.Rmd" class="external-link"><code>vignettes/vesalius.Rmd</code></a></small>
       <div class="hidden name"><code>vesalius.Rmd</code></div>
@@ -93,40 +93,40 @@
 
     
     
-<div id="vesalius-quick-start" class="section level1">
-<h1 class="hasAnchor">
-<a href="#vesalius-quick-start" class="anchor" aria-hidden="true"></a>Vesalius: Quick Start</h1>
+<div class="section level1">
+<h1 id="vesalius-quick-start">Vesalius: Quick Start<a class="anchor" aria-label="anchor" href="#vesalius-quick-start"></a>
+</h1>
 <p>Do you like to live in the fast lane? Do you sigh every time you see a long vignette? Do you wish there was a TLDR on everything?</p>
 <p>I understand.</p>
 <p>Welcome to the Vesalius quick start!</p>
 <p>In this vignette, you will find a <strong>very</strong> short guide on how to work with Vesalius. Vesalius provides an internal data set taken from real Spatial transcrtiptomic data. For an in depth view of Vesalius, please refer to Vesalius_Analysis.Rmd.</p>
 <p>For all intents and purposes, this is a dummy data set and should only be used to get a feel for the Vesalius package. We strongly advise you to use real and complete data sets to fully understand the Vesalius package and its benefits.</p>
 </div>
-<div id="introduction" class="section level1">
-<h1 class="hasAnchor">
-<a href="#introduction" class="anchor" aria-hidden="true"></a>Introduction</h1>
+<div class="section level1">
+<h1 id="introduction">Introduction<a class="anchor" aria-label="anchor" href="#introduction"></a>
+</h1>
 <p>Vesalius is a tool to perform high-resolution in silico anatomization and molecular characterization from ST data without requiring companion images.</p>
 <p>This is achieved by converting ST data into images: PCA loading values are embedded into RGB colour channels by taking the sum of the absolute value of all loading values associated to each bead on the ST array.</p>
 <p>Image analysis techniques are applied to the image and anatomical territories can subsequently be extracted.</p>
 </div>
-<div id="loading" class="section level1">
-<h1 class="hasAnchor">
-<a href="#loading" class="anchor" aria-hidden="true"></a>Loading</h1>
+<div class="section level1">
+<h1 id="loading">Loading<a class="anchor" aria-label="anchor" href="#loading"></a>
+</h1>
 <p>First, let’s load the package and the data. Data originates from slide-seqV2 data (availble at <a href="https://singlecell.broadinstitute.org/single_cell/study/SCP948/robust-decomposition-of-cell-type-mixtures-in-spatial-transcriptomics#study-download" class="external-link">Single Cell Portal</a>).</p>
 <p>For sake of simplicity, Vesalius takes a small subset of this data set and stores it in the form of a Seurat object.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/message.html" class="external-link">suppressMessages</a></span><span class="op">(</span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://patrickcnmartin.github.io/Vesalius/">vesalius</a></span><span class="op">)</span><span class="op">)</span></code></pre></div>
-<pre><code>## Warning: replacing previous import 'imager::fill' by 'tidyr::fill' when loading
-## 'vesalius'</code></pre>
+<pre><code><span class="co">## Warning: replacing previous import 'imager::fill' by 'tidyr::fill' when loading</span>
+<span class="co">## 'vesalius'</span></code></pre>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">vesalius</span>,package <span class="op">=</span> <span class="st">"vesalius"</span><span class="op">)</span>
 <span class="co"># First create a copy of raw data for later use</span>
 <span class="co"># For sake of simplicity we seperate counts from Vesalius images.</span>
 <span class="va">counts</span> <span class="op">&lt;-</span> <span class="va">vesalius</span></code></pre></div>
 </div>
-<div id="pre-processing" class="section level1">
-<h1 class="hasAnchor">
-<a href="#pre-processing" class="anchor" aria-hidden="true"></a>Pre-processing</h1>
+<div class="section level1">
+<h1 id="pre-processing">Pre-processing<a class="anchor" aria-label="anchor" href="#pre-processing"></a>
+</h1>
 <p>Second, we pre-process the data using Seurat</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># Preprocessing Spatial transcriptomic data with Seurat</span>
@@ -134,9 +134,9 @@
 <span class="va">vesalius</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://satijalab.org/seurat/reference/FindVariableFeatures.html" class="external-link">FindVariableFeatures</a></span><span class="op">(</span><span class="va">vesalius</span>, nfeatures <span class="op">=</span> <span class="fl">2000</span>,verbose <span class="op">=</span><span class="cn">F</span><span class="op">)</span>
 <span class="va">vesalius</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://satijalab.org/seurat/reference/ScaleData.html" class="external-link">ScaleData</a></span><span class="op">(</span><span class="va">vesalius</span>,verbose <span class="op">=</span><span class="cn">F</span><span class="op">)</span></code></pre></div>
 </div>
-<div id="emedding-into-rgb-colour-space" class="section level1">
-<h1 class="hasAnchor">
-<a href="#emedding-into-rgb-colour-space" class="anchor" aria-hidden="true"></a>Emedding into RGB colour Space</h1>
+<div class="section level1">
+<h1 id="emedding-into-rgb-colour-space">Emedding into RGB colour Space<a class="anchor" aria-label="anchor" href="#emedding-into-rgb-colour-space"></a>
+</h1>
 <p>Third, we convert a count matrix (stored in a Seurat object) to RGB coded coordinates. We will only produce one slice (i.e. PC1 to PC3). Alternatively, you can also choose to embed UMAP projections. In this case, there are no slices but only a number of Principal Components used for UMAP.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># PCA</span>
@@ -144,13 +144,13 @@
 
 <span class="co"># UMAP</span>
 <span class="va">vesaliusUMAP</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rgbUMAP.html">rgbUMAP</a></span><span class="op">(</span><span class="va">vesalius</span>,pcs <span class="op">=</span> <span class="fl">30</span>,verbose <span class="op">=</span><span class="cn">F</span><span class="op">)</span></code></pre></div>
-<pre><code>## Warning: The default method for RunUMAP has changed from calling Python UMAP via reticulate to the R-native UWOT using the cosine metric
-## To use Python UMAP via reticulate, set umap.method to 'umap-learn' and metric to 'correlation'
-## This message will be shown once per session</code></pre>
+<pre><code><span class="co">## Warning: The default method for RunUMAP has changed from calling Python UMAP via reticulate to the R-native UWOT using the cosine metric</span>
+<span class="co">## To use Python UMAP via reticulate, set umap.method to 'umap-learn' and metric to 'correlation'</span>
+<span class="co">## This message will be shown once per session</span></code></pre>
 </div>
-<div id="building-an-image" class="section level1">
-<h1 class="hasAnchor">
-<a href="#building-an-image" class="anchor" aria-hidden="true"></a>Building an Image</h1>
+<div class="section level1">
+<h1 id="building-an-image">Building an Image<a class="anchor" aria-label="anchor" href="#building-an-image"></a>
+</h1>
 <p>Forth, we create an actual image by using a combination of Voronoi diagrams and tile rasterisation.</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">vesalius</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/buildImageArray.html">buildImageArray</a></span><span class="op">(</span><span class="va">vesaliusPCA</span>, sliceID <span class="op">=</span> <span class="fl">1</span>, invert <span class="op">=</span><span class="cn">T</span>,verbose <span class="op">=</span><span class="cn">F</span><span class="op">)</span>
@@ -163,32 +163,31 @@
 <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">Vesalius_image</span><span class="op">)</span></code></pre></div>
 <p><img src="Vesalius_files/figure-html/buildImage-1.png" width="576"></p>
 </div>
-<div id="applying-image-analysis-techniques" class="section level1">
-<h1 class="hasAnchor">
-<a href="#applying-image-analysis-techniques" class="anchor" aria-hidden="true"></a>Applying Image Analysis techniques</h1>
+<div class="section level1">
+<h1 id="applying-image-analysis-techniques">Applying Image Analysis techniques<a class="anchor" aria-label="anchor" href="#applying-image-analysis-techniques"></a>
+</h1>
 <p>Firth, we can apply image analysis techniques such as histogram equalisation, variance regularisation, smoothing and segmentation.</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># Histogram EQ</span>
 <span class="va">vesalius</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/equalizeHistogram.html">equalizeHistogram</a></span><span class="op">(</span><span class="va">vesalius</span>,sleft <span class="op">=</span> <span class="fl">2.5</span>, sright<span class="op">=</span><span class="fl">2.5</span>,invert <span class="op">=</span><span class="cn">T</span>,verbose <span class="op">=</span><span class="cn">F</span><span class="op">)</span></code></pre></div>
-<pre><code>## 2021-10-28 16:39:06  Inverting Colours</code></pre>
-<pre><code>## Warning in as.cimg.data.frame(.): Guessing image dimensions from maximum
-## coordinate values
+<pre><code><span class="co">## Warning in as.cimg.data.frame(.): Guessing image dimensions from maximum</span>
+<span class="co">## coordinate values</span>
 
-## Warning in as.cimg.data.frame(.): Guessing image dimensions from maximum
-## coordinate values</code></pre>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<span class="co">## Warning in as.cimg.data.frame(.): Guessing image dimensions from maximum</span>
+<span class="co">## coordinate values</span></code></pre>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># Variance regularisation</span>
 <span class="va">vesalius</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/regulariseImage.html">regulariseImage</a></span><span class="op">(</span><span class="va">vesalius</span>, lambda <span class="op">=</span> <span class="fl">10</span>,
                             niter <span class="op">=</span> <span class="fl">200</span>, normalise<span class="op">=</span><span class="cn">T</span>,verbose <span class="op">=</span><span class="cn">F</span><span class="op">)</span></code></pre></div>
-<pre><code>## Warning in as.cimg.data.frame(.): Guessing image dimensions from maximum
-## coordinate values</code></pre>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<pre><code><span class="co">## Warning in as.cimg.data.frame(.): Guessing image dimensions from maximum</span>
+<span class="co">## coordinate values</span></code></pre>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># Smoothing</span>
 <span class="co"># !!!Optional!!! -</span>
 <span class="va">vesalius</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/smoothArray.html">smoothArray</a></span><span class="op">(</span><span class="va">vesalius</span>,method <span class="op">=</span> <span class="st">"box"</span>, box <span class="op">=</span> <span class="fl">1</span>,verbose <span class="op">=</span><span class="cn">F</span><span class="op">)</span></code></pre></div>
-<pre><code>## Warning in as.cimg.data.frame(select(image, c("x", "y", "cc", "value"))):
-## Guessing image dimensions from maximum coordinate values</code></pre>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<pre><code><span class="co">## Warning in as.cimg.data.frame(select(image, c("x", "y", "cc", "value"))):</span>
+<span class="co">## Guessing image dimensions from maximum coordinate values</span></code></pre>
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># Segmentation</span>
 <span class="co"># This function provides smoothing internally.</span>
 <span class="va">vesalius</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/iterativeSegmentation.array.html">iterativeSegmentation.array</a></span><span class="op">(</span><span class="va">vesalius</span>,
@@ -197,120 +196,120 @@
                                         method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"iso"</span>,<span class="st">"median"</span><span class="op">)</span>,
                                         sigma<span class="op">=</span><span class="fl">1.5</span>,
                                         box <span class="op">=</span> <span class="fl">10</span>,
-                                        useCenter <span class="op">=</span> <span class="cn">T</span>,
+                                        useCenter <span class="op">=</span> <span class="cn">F</span>,
                                         invert <span class="op">=</span><span class="cn">T</span>,
                                         verbose <span class="op">=</span><span class="cn">F</span><span class="op">)</span></code></pre></div>
-<pre><code>## Warning in as.cimg.data.frame(select(image, c("x", "y", "cc", "value"))):
-## Guessing image dimensions from maximum coordinate values
+<pre><code><span class="co">## Warning in as.cimg.data.frame(select(image, c("x", "y", "cc", "value"))):</span>
+<span class="co">## Guessing image dimensions from maximum coordinate values</span>
 
-## Warning in as.cimg.data.frame(select(image, c("x", "y", "cc", "value"))):
-## Guessing image dimensions from maximum coordinate values</code></pre>
-<pre><code>## Warning in as.cimg.data.frame(imgCopy): Guessing image dimensions from maximum
-## coordinate values</code></pre>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<span class="co">## Warning in as.cimg.data.frame(select(image, c("x", "y", "cc", "value"))):</span>
+<span class="co">## Guessing image dimensions from maximum coordinate values</span></code></pre>
+<pre><code><span class="co">## Warning in as.cimg.data.frame(imgCopy): Guessing image dimensions from maximum</span>
+<span class="co">## coordinate values</span></code></pre>
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># Isolating territories from colour segments</span>
 <span class="va">vesalius</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/isolateTerritories.array.html">isolateTerritories.array</a></span><span class="op">(</span><span class="va">vesalius</span>,
                                      captureRadius <span class="op">=</span> <span class="fl">0.1</span>,
                                      minBar <span class="op">=</span> <span class="fl">10</span>,
                                      verbose <span class="op">=</span><span class="cn">F</span><span class="op">)</span></code></pre></div>
 </div>
-<div id="visualisation" class="section level1">
-<h1 class="hasAnchor">
-<a href="#visualisation" class="anchor" aria-hidden="true"></a>Visualisation</h1>
+<div class="section level1">
+<h1 id="visualisation">Visualisation<a class="anchor" aria-label="anchor" href="#visualisation"></a>
+</h1>
 <p>Sixth, we can visualise the territories.</p>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># Let's have a look!</span>
 <span class="va">imgTerritory</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/territoryPlot.html">territoryPlot</a></span><span class="op">(</span><span class="va">vesalius</span>, randomise <span class="op">=</span> <span class="cn">TRUE</span>,cex <span class="op">=</span><span class="fl">15</span> , cex.pt<span class="op">=</span><span class="fl">3.5</span><span class="op">)</span>
 <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">imgTerritory</span><span class="op">)</span></code></pre></div>
 <p><img src="Vesalius_files/figure-html/viz-1.png" width="576"></p>
 </div>
-<div id="territory-extraction-and-markers" class="section level1">
-<h1 class="hasAnchor">
-<a href="#territory-extraction-and-markers" class="anchor" aria-hidden="true"></a>Territory extraction and markers</h1>
+<div class="section level1">
+<h1 id="territory-extraction-and-markers">Territory extraction and markers<a class="anchor" aria-label="anchor" href="#territory-extraction-and-markers"></a>
+</h1>
 <p>Finally, we can extract territories to run a more in depth analysis. This returns a Seurat object with all selected territories. We can also find differential gene expression between territories.</p>
-<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># extract terriotry from seurat object</span>
 <span class="va">ter</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/extractTerritories.html">extractTerritories</a></span><span class="op">(</span><span class="va">vesalius</span>,<span class="va">counts</span>,seedID<span class="op">=</span> <span class="fl">1</span>,verbose <span class="op">=</span><span class="cn">F</span><span class="op">)</span></code></pre></div>
-<pre><code>## Warning in as.cimg.data.frame(.): Guessing image dimensions from maximum
-## coordinate values</code></pre>
-<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<pre><code><span class="co">## Warning in as.cimg.data.frame(.): Guessing image dimensions from maximum</span>
+<span class="co">## coordinate values</span></code></pre>
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># get all markers related to all territories</span>
 <span class="va">all</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/extractAllMarkers.html">extractAllMarkers</a></span><span class="op">(</span><span class="va">vesalius</span>,<span class="va">counts</span>,verbose <span class="op">=</span><span class="cn">F</span><span class="op">)</span>
 
 
 <span class="co"># get markers associated with on or more territories</span>
 <span class="va">one</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/extractMarkers.html">extractMarkers</a></span><span class="op">(</span><span class="va">vesalius</span>, <span class="va">counts</span>, seed <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span>,verbose <span class="op">=</span><span class="cn">F</span><span class="op">)</span></code></pre></div>
-<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># comparing territories</span>
 <span class="va">two</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/extractMarkers.html">extractMarkers</a></span><span class="op">(</span><span class="va">vesalius</span>, <span class="va">counts</span>, seed <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span>, query <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>,<span class="fl">3</span><span class="op">)</span>,verbose <span class="op">=</span><span class="cn">F</span><span class="op">)</span></code></pre></div>
 </div>
-<div id="session-info" class="section level1">
-<h1 class="hasAnchor">
-<a href="#session-info" class="anchor" aria-hidden="true"></a>Session Info</h1>
-<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
+<div class="section level1">
+<h1 id="session-info">Session Info<a class="anchor" aria-label="anchor" href="#session-info"></a>
+</h1>
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/utils/sessionInfo.html" class="external-link">sessionInfo</a></span><span class="op">(</span><span class="op">)</span></code></pre></div>
-<pre><code>## R version 4.1.0 (2021-05-18)
-## Platform: x86_64-apple-darwin20.4.0 (64-bit)
-## Running under: macOS Big Sur 11.6
-## 
-## Matrix products: default
-## BLAS:   /usr/local/Cellar/openblas/0.3.17/lib/libopenblasp-r0.3.17.dylib
-## LAPACK: /usr/local/Cellar/r/4.1.0/lib/R/lib/libRlapack.dylib
-## 
-## locale:
-## [1] en_GB.UTF-8/en_GB.UTF-8/en_GB.UTF-8/C/en_GB.UTF-8/en_GB.UTF-8
-## 
-## attached base packages:
-## [1] stats     graphics  grDevices utils     datasets  methods   base     
-## 
-## other attached packages:
-## [1] vesalius_0.1.0     ggplot2_3.3.5      tidyr_1.1.3        dplyr_1.0.7       
-## [5] imager_0.42.10     magrittr_2.0.1     SeuratObject_4.0.2 Seurat_4.0.3      
-## 
-## loaded via a namespace (and not attached):
-##   [1] systemfonts_1.0.2     plyr_1.8.6            igraph_1.2.6         
-##   [4] lazyeval_0.2.2        sp_1.4-5              splines_4.1.0        
-##   [7] listenv_0.8.0         scattermore_0.7       digest_0.6.28        
-##  [10] htmltools_0.5.2       tiff_0.1-8            fansi_0.5.0          
-##  [13] memoise_2.0.0         tensor_1.5            cluster_2.1.2        
-##  [16] ROCR_1.0-11           globals_0.14.0        matrixStats_0.60.0   
-##  [19] pkgdown_1.6.1.9001    spatstat.sparse_2.0-0 jpeg_0.1-9           
-##  [22] colorspace_2.0-2      ggrepel_0.9.1         textshaping_0.3.5    
-##  [25] rbibutils_2.2.1       xfun_0.26             crayon_1.4.1         
-##  [28] jsonlite_1.7.2        spatstat.data_2.1-0   survival_3.2-11      
-##  [31] zoo_1.8-9             glue_1.4.2            polyclip_1.10-0      
-##  [34] gtable_0.3.0          leiden_0.3.8          future.apply_1.7.0   
-##  [37] abind_1.4-5           scales_1.1.1          miniUI_0.1.1.1       
-##  [40] Rcpp_1.0.7            viridisLite_0.4.0     xtable_1.8-4         
-##  [43] reticulate_1.20       spatstat.core_2.3-0   htmlwidgets_1.5.3    
-##  [46] httr_1.4.2            RColorBrewer_1.1-2    ellipsis_0.3.2       
-##  [49] ica_1.0-2             pkgconfig_2.0.3       farver_2.1.0         
-##  [52] sass_0.4.0            uwot_0.1.10           deldir_0.2-10        
-##  [55] utf8_1.2.2            tidyselect_1.1.1      labeling_0.4.2       
-##  [58] rlang_0.4.11          reshape2_1.4.4        later_1.2.0          
-##  [61] munsell_0.5.0         tools_4.1.0           cachem_1.0.6         
-##  [64] generics_0.1.0        ggridges_0.5.3        imagerExtra_1.3.2    
-##  [67] evaluate_0.14         stringr_1.4.0         fastmap_1.1.0        
-##  [70] fftwtools_0.9-11      yaml_2.2.1            ragg_1.1.3           
-##  [73] goftest_1.2-2         knitr_1.36            fs_1.5.0             
-##  [76] fitdistrplus_1.1-5    purrr_0.3.4           RANN_2.6.1           
-##  [79] readbitmap_0.1.5      pbapply_1.4-3         future_1.21.0        
-##  [82] nlme_3.1-152          mime_0.12             concaveman_1.1.0     
-##  [85] compiler_4.1.0        plotly_4.9.4.1        png_0.1-7            
-##  [88] spatstat.utils_2.2-0  tibble_3.1.5          bslib_0.3.0          
-##  [91] stringi_1.7.4         highr_0.9             desc_1.4.0           
-##  [94] RSpectra_0.16-0       lattice_0.20-44       Matrix_1.3-3         
-##  [97] vctrs_0.3.8           pillar_1.6.3          lifecycle_1.0.1      
-## [100] spatstat.geom_2.2-2   Rdpack_2.1.2          lmtest_0.9-38        
-## [103] jquerylib_0.1.4       RcppAnnoy_0.0.18      data.table_1.14.0    
-## [106] cowplot_1.1.1         irlba_2.3.3           tvR_0.3.1            
-## [109] httpuv_1.6.1          patchwork_1.1.1       R6_2.5.1             
-## [112] promises_1.2.0.1      KernSmooth_2.23-20    gridExtra_2.3        
-## [115] bmp_0.3               parallelly_1.27.0     codetools_0.2-18     
-## [118] MASS_7.3-54           rprojroot_2.0.2       withr_2.4.2          
-## [121] sctransform_0.3.2     mgcv_1.8-35           parallel_4.1.0       
-## [124] grid_4.1.0            rpart_4.1-15          rmarkdown_2.11       
-## [127] Rtsne_0.15            shiny_1.6.0</code></pre>
+<pre><code><span class="co">## R version 4.1.0 (2021-05-18)</span>
+<span class="co">## Platform: x86_64-apple-darwin20.4.0 (64-bit)</span>
+<span class="co">## Running under: macOS Big Sur 11.6</span>
+<span class="co">## </span>
+<span class="co">## Matrix products: default</span>
+<span class="co">## BLAS:   /usr/local/Cellar/openblas/0.3.17/lib/libopenblasp-r0.3.17.dylib</span>
+<span class="co">## LAPACK: /usr/local/Cellar/r/4.1.0/lib/R/lib/libRlapack.dylib</span>
+<span class="co">## </span>
+<span class="co">## locale:</span>
+<span class="co">## [1] en_GB.UTF-8/en_GB.UTF-8/en_GB.UTF-8/C/en_GB.UTF-8/en_GB.UTF-8</span>
+<span class="co">## </span>
+<span class="co">## attached base packages:</span>
+<span class="co">## [1] stats     graphics  grDevices utils     datasets  methods   base     </span>
+<span class="co">## </span>
+<span class="co">## other attached packages:</span>
+<span class="co">## [1] vesalius_0.1.0     ggplot2_3.3.5      tidyr_1.1.4        dplyr_1.0.7       </span>
+<span class="co">## [5] imager_0.42.11     magrittr_2.0.1     SeuratObject_4.0.4 Seurat_4.0.6      </span>
+<span class="co">## </span>
+<span class="co">## loaded via a namespace (and not attached):</span>
+<span class="co">##   [1] systemfonts_1.0.3     plyr_1.8.6            igraph_1.2.11        </span>
+<span class="co">##   [4] lazyeval_0.2.2        sp_1.4-6              splines_4.1.0        </span>
+<span class="co">##   [7] listenv_0.8.0         scattermore_0.7       digest_0.6.29        </span>
+<span class="co">##  [10] htmltools_0.5.2       tiff_0.1-10           fansi_1.0.0          </span>
+<span class="co">##  [13] memoise_2.0.1         tensor_1.5            cluster_2.1.2        </span>
+<span class="co">##  [16] ROCR_1.0-11           globals_0.14.0        matrixStats_0.61.0   </span>
+<span class="co">##  [19] pkgdown_2.0.1         spatstat.sparse_2.1-0 jpeg_0.1-9           </span>
+<span class="co">##  [22] colorspace_2.0-2      ggrepel_0.9.1         textshaping_0.3.6    </span>
+<span class="co">##  [25] rbibutils_2.2.7       xfun_0.29             crayon_1.4.2         </span>
+<span class="co">##  [28] jsonlite_1.7.2        spatstat.data_2.1-2   survival_3.2-13      </span>
+<span class="co">##  [31] zoo_1.8-9             glue_1.6.0            polyclip_1.10-0      </span>
+<span class="co">##  [34] gtable_0.3.0          leiden_0.3.9          future.apply_1.8.1   </span>
+<span class="co">##  [37] abind_1.4-5           scales_1.1.1          miniUI_0.1.1.1       </span>
+<span class="co">##  [40] Rcpp_1.0.7            viridisLite_0.4.0     xtable_1.8-4         </span>
+<span class="co">##  [43] reticulate_1.22       spatstat.core_2.3-2   htmlwidgets_1.5.4    </span>
+<span class="co">##  [46] httr_1.4.2            RColorBrewer_1.1-2    ellipsis_0.3.2       </span>
+<span class="co">##  [49] ica_1.0-2             pkgconfig_2.0.3       farver_2.1.0         </span>
+<span class="co">##  [52] sass_0.4.0            uwot_0.1.11           deldir_1.0-6         </span>
+<span class="co">##  [55] utf8_1.2.2            tidyselect_1.1.1      labeling_0.4.2       </span>
+<span class="co">##  [58] rlang_0.4.12          reshape2_1.4.4        later_1.3.0          </span>
+<span class="co">##  [61] munsell_0.5.0         tools_4.1.0           cachem_1.0.6         </span>
+<span class="co">##  [64] generics_0.1.1        ggridges_0.5.3        imagerExtra_1.3.2    </span>
+<span class="co">##  [67] evaluate_0.14         stringr_1.4.0         fastmap_1.1.0        </span>
+<span class="co">##  [70] fftwtools_0.9-11      yaml_2.2.1            ragg_1.2.1           </span>
+<span class="co">##  [73] goftest_1.2-3         knitr_1.37            fs_1.5.2             </span>
+<span class="co">##  [76] fitdistrplus_1.1-6    purrr_0.3.4           RANN_2.6.1           </span>
+<span class="co">##  [79] readbitmap_0.1.5      pbapply_1.5-0         future_1.23.0        </span>
+<span class="co">##  [82] nlme_3.1-153          mime_0.12             concaveman_1.1.0     </span>
+<span class="co">##  [85] compiler_4.1.0        plotly_4.10.0         png_0.1-7            </span>
+<span class="co">##  [88] spatstat.utils_2.3-0  tibble_3.1.6          bslib_0.3.1          </span>
+<span class="co">##  [91] stringi_1.7.6         highr_0.9             desc_1.4.0           </span>
+<span class="co">##  [94] RSpectra_0.16-0       lattice_0.20-45       Matrix_1.4-0         </span>
+<span class="co">##  [97] vctrs_0.3.8           pillar_1.6.4          lifecycle_1.0.1      </span>
+<span class="co">## [100] spatstat.geom_2.3-1   Rdpack_2.1.3          lmtest_0.9-39        </span>
+<span class="co">## [103] jquerylib_0.1.4       RcppAnnoy_0.0.19      data.table_1.14.2    </span>
+<span class="co">## [106] cowplot_1.1.1         irlba_2.3.5           tvR_0.3.2            </span>
+<span class="co">## [109] httpuv_1.6.5          patchwork_1.1.1       R6_2.5.1             </span>
+<span class="co">## [112] promises_1.2.0.1      KernSmooth_2.23-20    gridExtra_2.3        </span>
+<span class="co">## [115] bmp_0.3               parallelly_1.30.0     codetools_0.2-18     </span>
+<span class="co">## [118] MASS_7.3-54           rprojroot_2.0.2       withr_2.4.3          </span>
+<span class="co">## [121] sctransform_0.3.2     mgcv_1.8-38           parallel_4.1.0       </span>
+<span class="co">## [124] grid_4.1.0            rpart_4.1-15          rmarkdown_2.11       </span>
+<span class="co">## [127] Rtsne_0.15            shiny_1.7.1</span></code></pre>
 </div>
   </div>
 
@@ -331,7 +330,7 @@
 
 <div class="pkgdown">
   <p></p>
-<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link external-link">pkgdown</a> 1.6.1.9001.</p>
+<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.1.</p>
 </div>
 
       </footer>

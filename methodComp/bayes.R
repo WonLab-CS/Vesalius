@@ -19,134 +19,59 @@ library(Seurat)
 #------------------------------------------------------------------------------#
 
 set.seed(1)
-slideTag <- c("Puck_200115_08")
 
-slideBeads <-c("~/group/slide_seqV2/Puck_200115_08_bead_locations.csv")
+input <- "~/group/slide_seqV2/"
 
-slideCounts <- c("~/group/slide_seqV2/Puck_200115_08.digital_expression.txt.gz")
+slideBeads <-paste0(input,list.files(input, pattern ="locations.csv"))
+slideCounts <- paste0(input,list.files(input, pattern ="digital_expression.txt.gz"))
 
-
-coord <- utils::read.csv(slideBeads, header=F)
-coord <- coord[-1,]
-colnames(coord)<- c("barcodes","xcoord","ycoord")
-rownames(coord) <- coord$barcodes
-
-raw <- read.table(slideCounts, header = TRUE )
-rownames(raw) <- raw[,1]
-raw <- raw[,-1]
-raw <- as.matrix(raw)
-s <- Sys.time()
-sce <- SingleCellExperiment(list(counts=as(raw, "dgCMatrix")))
+slideTag <- sapply(strsplit(slideBeads,"V2/"),"[[",2)
+slideTag <- gsub("_bead_locations.csv","",slideTag)
 
 
-coord <- coord[colnames(raw),c("ycoord","xcoord")]
-colnames(coord)<- c("row","col")
-colData(sce) <- DataFrame(coord)
+output <- paste0(input,"/BayesSpaceBenchMarking/")
+if(!dir.exists(output)){
+    dir.create(output)
+}
 
-genes <- data.frame(rownames(raw), rownames(raw))
-colnames(genes) <- c("gene_id","gene_name")
-rownames(genes) <- rownames(raw)
-rowData(sce) <- genes
-meta <- list(sample ="Puck_200115_08", dataset = "SSv2",
-          BayesSpace.data = list(platform = "SS",is.enhanced=FALSE))
-metadata(sce) <- meta
+time <-vector("list",length(slideBeads))
+for(i in seq_along(slideBeads)){
+  coord <- utils::read.csv(slideBeads, header=F)
+  coord <- coord[-1,]
+  colnames(coord)<- c("barcodes","xcoord","ycoord")
+  rownames(coord) <- coord$barcodes
 
-sce <- spatialPreprocess(sce, platform="SS",skip.PCA=FALSE,
-                             n.PCs=30, n.HVGs=2000, log.normalize=TRUE)
-sce <- qTune(sce, qs=seq(10,30), platform="SS", d=30)
-
-sce <- spatialCluster(sce,q=30,d=30,nrep=50000, gamma=3, save.chain=TRUE,platform = "SS")
-time <- Sys.time() -s
-# BayesSpace Run time
-save(time, file = "BayesSSV2_time.Rda")
+  raw <- read.table(slideCounts, header = TRUE )
+  rownames(raw) <- raw[,1]
+  raw <- raw[,-1]
+  raw <- as.matrix(raw)
+  s <- Sys.time()
+  sce <- SingleCellExperiment(list(counts=as(raw, "dgCMatrix")))
 
 
-bayesData <- as.data.frame(colData(bayes))
-bayes_col <- length(unique(bayesData$spatial.cluster))
-bayes_pal <- colorRampPalette(brewer.pal(8, "Accent"))
+  coord <- coord[colnames(raw),c("ycoord","xcoord")]
+  colnames(coord)<- c("row","col")
+  colData(sce) <- DataFrame(coord)
 
+  genes <- data.frame(rownames(raw), rownames(raw))
+  colnames(genes) <- c("gene_id","gene_name")
+  rownames(genes) <- rownames(raw)
+  rowData(sce) <- genes
+  meta <- list(sample ="Puck_200115_08", dataset = "SSv2",
+            BayesSpace.data = list(platform = "SS",is.enhanced=FALSE))
+  metadata(sce) <- meta
 
-coord_bayes <- ggplot(bayesData, aes(col,row,col = as.factor(spatial.cluster))) +
-              geom_point(size = 0.05, alpha = 0.8) +
-              theme_void() +
-              scale_color_manual(values = bayes_pal(bayes_col)) +
-              theme(legend.text = element_text(size = 12),
-                    legend.position = "left",
-                    plot.title = element_text(size=15)) +
-              guides(colour = guide_legend(override.aes = list(size=5)))+
-              labs(colour = "Cluster nr.", title = "BayesSpace - Clusters")
+  sce <- spatialPreprocess(sce, platform="SS",skip.PCA=FALSE,
+                               n.PCs=30, n.HVGs=2000, log.normalize=TRUE)
+  #sce <- qTune(sce, qs=seq(10,30), platform="SS", d=30)
 
-
-#------------------------------------------------------------------------------#
-# Slide-seq V2 - Embryo
-#------------------------------------------------------------------------------#
-
-set.seed(1)
-slideTag <- c("Puck_200115_08")
-
-slideBeads <-c("~/group/slide_seqV2/Puck_200115_08_bead_locations.csv")
-
-slideCounts <- c("~/group/slide_seqV2/Puck_200115_08.digital_expression.txt.gz")
-
-
-coord <- utils::read.csv(slideBeads, header=F)
-coord <- coord[-1,]
-colnames(coord)<- c("barcodes","xcoord","ycoord")
-rownames(coord) <- coord$barcodes
-
-raw <- read.table(slideCounts, header = TRUE )
-rownames(raw) <- raw[,1]
-raw <- raw[,-1]
-
-s <- Sys.time()
-sce <- SingleCellExperiment(list(counts=as(raw, "dgCMatrix")))
-
-
-coord <- coord[colnames(raw),c("ycoord","xcoord")]
-colnames(coord)<- c("row","col")
-colData(sce) <- DataFrame(coord)
-
-genes <- data.frame(rownames(raw), rownames(raw))
-colnames(genes) <- c("gene_id","gene_name")
-rownames(genes) <- rownames(raw)
-rowData(sce) <- genes
-meta <- list(sample ="Puck_200115_08", dataset = "SSv2",
-          BayesSpace.data = list(platform = "SS",is.enhanced=FALSE))
-metadata(sce) <- meta
-
-sce <- spatialPreprocess(sce, platform="SS",skip.PCA=FALSE,
-                             n.PCs=30, n.HVGs=2000, log.normalize=TRUE)
-sce <- qTune(sce, qs=seq(10,30), platform="SS", d=30)
-
-sce <- spatialCluster(sce,q=30,d=30,nrep=50000, gamma=3, save.chain=TRUE,platform = "SS")
-time <- Sys.time() -s
-# BayesSpace Run time
-save(time, file = "BayesSSV2Embryo_time.Rda")
-
-
-bayesData <- as.data.frame(colData(bayes))
-bayes_col <- length(unique(bayesData$spatial.cluster))
-bayes_pal <- colorRampPalette(brewer.pal(8, "Accent"))
-
-
-coord_bayes <- ggplot(bayesData, aes(col,row,col = as.factor(spatial.cluster))) +
-              geom_point(size = 0.05, alpha = 0.8) +
-              theme_void() +
-              scale_color_manual(values = bayes_pal(bayes_col)) +
-              theme(legend.text = element_text(size = 12),
-                    legend.position = "left",
-                    plot.title = element_text(size=15)) +
-              guides(colour = guide_legend(override.aes = list(size=5)))+
-              labs(colour = "Cluster nr.", title = "BayesSpace - Clusters")
-
-
-
-
-
-
-
-
-
+  sce <- spatialCluster(sce,q=15,d=30,nrep=50000, gamma=3, save.chain=TRUE,platform = "SS")
+  time[[i]] <- Sys.time() -s
+  # BayesSpace Run time
+  bayesData <- as.data.frame(colData(bayes))
+  save(bayesData, file= paste0(output,slideTag[i],"_SSV2_BM.Rda"))
+}
+save(time, file = paste0(output,"Bayes_SSV2_time.Rda"))
 
 
 
@@ -156,7 +81,7 @@ coord_bayes <- ggplot(bayesData, aes(col,row,col = as.factor(spatial.cluster))) 
 # Visium DLPFC
 #------------------------------------------------------------------------------#
 # Directories containing Visium data
-input <- list.dirs("visium/DLPFC",recursive =F)
+input <- list.dirs("~/group/visium/DLPFC_globus/",recursive =F)
 
 time <-vector("list",length(input))
 count <- 1
@@ -206,4 +131,4 @@ for(i in input){
 
 }
 #Save Bayes Space Full run time
-save(time,file = "BayesSpace_time.Rda")
+save(time,file = "~/group/visium/DLPFC_globus/BayesSpace_time.Rda")

@@ -355,4 +355,4 @@ e<- Sys.time()
 time[[count]] <- e - s
 count <- count +1
 }
-save(time,file = "Giotto_time.Rda")
+save(time,file = "~/group/visium/DLPFC_globus/Giotto_time.Rda")

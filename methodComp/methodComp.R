@@ -260,3 +260,116 @@ ADE"
 pdf("MethodComp_Sample.pdf",width = 16, height = 8)
 ground + ves + seu + gio + bay + plot_layout(design = layout,width = c(2,1,1))
 dev.off()
+
+
+
+
+### Simulation plots
+files <- list.files(pattern = ".csv")
+plots <- list()
+
+for(i in seq_along(files)){
+    tmp <- read.csv(files[i], header=T)
+    tag <- sapply(strsplit(files[i],"_"),"[[",1)
+    title <- gsub("_"," ",files[i])
+    title <- gsub(".csv","",title)
+    if(tag == "Seurat"){
+        seurat <- tmp[,c("x","y","seurat_clusters")]
+        seurat$seurat_clusters <- as.factor(as.numeric(as.character(seurat$seurat_clusters))+1)
+
+        cols <- length(levels(seurat$seurat_clusters))
+        pal <- colorRampPalette(c("#999999", "#E69F00", "#56B4E9", "#009E73",
+                                        "#F0E442", "#0072B2", "#D55E00", "#CC79A7"))
+        cols <- pal(cols)#[sample(1:cols)]
+
+
+        seu <- ggplot(seurat, aes(x,y,col = as.factor(seurat_clusters))) +
+             geom_point(size = 1.5,alpha = 1)+
+             theme_void()+
+             scale_color_manual(values = cols)+
+             theme(legend.text = element_text(size = 12),
+                   legend.title = element_text(size=12),
+                   plot.title = element_text(size =15),
+                   legend.position = "right")+
+             labs(title = title, col = "Cluster")
+        plots[[i]] <- seu
+    } else if(tag == "Vesalius"){
+
+        vesalius <- tmp %>% filter(tile == 1) %>% distinct(barcodes,.keep_all = TRUE)
+        sorted_labels <- order(levels(as.factor(vesalius$territory)))
+        sorted_labels[length(sorted_labels)] <- "isolated"
+        vesalius$territory <- factor(vesalius$territory, levels = sorted_labels)
+
+        cols <- length(levels(vesalius$territory))
+        pal <- colorRampPalette(c("#999999", "#E69F00", "#56B4E9", "#009E73",
+                                        "#F0E442", "#0072B2", "#D55E00", "#CC79A7"))
+        cols <- pal(cols)[sample(1:cols)]
+
+
+        ves <- ggplot(vesalius, aes(x,y,col = territory)) +
+             geom_point(size = 1.5,alpha = 1)+
+             theme_void()+
+             scale_color_manual(values = cols)+
+             theme(legend.text = element_text(size = 12),
+                   legend.title = element_text(size=12),
+                   plot.title = element_text(size =15),
+                   legend.position = "right")+
+             labs(title = title, col = "Territory")
+        plots[[i]] <- ves
+    }else if(tag == "BayesSpace"){
+        bayes <- tmp[,c("col","row","spatial.cluster")]
+        cols <- length(unique(bayes$spatial.cluster))
+        pal <- colorRampPalette(c("#999999", "#E69F00", "#56B4E9", "#009E73",
+                                        "#F0E442", "#0072B2", "#D55E00", "#CC79A7"))
+        cols <- pal(cols)#[sample(1:cols)]
+
+
+        bay <- ggplot(bayes, aes(col,row,col = as.factor(spatial.cluster))) +
+             geom_point(size = 1.5,alpha = 1)+
+             theme_void()+
+             scale_color_manual(values = cols)+
+             theme(legend.text = element_text(size = 12),
+                   legend.title = element_text(size=12),
+                   plot.title = element_text(size =15),
+                   legend.position = "right")+
+             labs(title = title, col = "Spatial Cluster")
+        plots[[i]] <- bay
+    }else if(tag == "Giotto"){
+      cols <- length(unique(tmp$HMRF_k3_b.40))
+      pal <- colorRampPalette(c("#999999", "#E69F00", "#56B4E9", "#009E73",
+                                      "#F0E442", "#0072B2", "#D55E00", "#CC79A7"))
+      cols <- pal(cols)#[sample(1:cols)]
+
+
+      gio <- ggplot(tmp, aes(xcoord,ycoord,col = as.factor(HMRF_k3_b.40))) +
+           geom_point(size = 1.5,alpha = 1)+
+           theme_void()+
+           scale_color_manual(values = cols)+
+           theme(legend.text = element_text(size = 12),
+                 legend.title = element_text(size=12),
+                 plot.title = element_text(size =15),
+                 legend.position = "right")+
+           labs(title = title, col = "Spatial Domain")
+        plots[[i]] <- gio
+    } else{
+      message("No idea what this is...")
+    }
+}
+
+pdf("Simulation.pdf",width = 20,height=35)
+
+
+plotCols <- 4
+plotRows <- 7
+
+grid.newpage()
+pushViewport(viewport(layout = grid.layout(plotRows, plotCols)))
+vplayout <- function(x, y) {viewport(layout.pos.row = x, layout.pos.col = y)}
+
+for (i in seq(1,plotCols*plotRows)) {
+  curRow <- ceiling(i/plotCols)
+  curCol <- (i-1) %% plotCols + 1
+  print(plots[[i]], vp = vplayout(curRow, curCol ))
+
+}
+dev.off()
