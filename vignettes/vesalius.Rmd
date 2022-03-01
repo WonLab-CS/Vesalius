@@ -84,7 +84,11 @@ Forth, we create an actual image by using a combination of Voronoi diagrams and
 tile rasterisation.
 
 ```{r buildImage,eval = TRUE, echo = TRUE,fig.height = 6, fig.width = 6}
-vesalius <- buildImageArray(vesaliusPCA, sliceID = 1, invert =T,verbose =F)
+vesalius <- buildImageArray(vesaliusPCA,
+                            sliceID = 1,
+                            filterGrid=1,
+                            invert =T,
+                            verbose =F)
 
 
 # Let's have a look shall we?

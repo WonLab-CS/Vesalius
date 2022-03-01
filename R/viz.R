@@ -444,3 +444,145 @@ viewLayerExpression <- function(image,
                x = "X coordinates", y = "Y coordinates")
     return(ge)
 }
+
+
+
+
+#' viewCellExpression - plot gene expression in cell of choice
+#' @param image a Vesalius data frame containing barcodes, x, y, cc, value,
+#' cluster, and territory.
+#' @param counts count matrix - either matrix, sparse matrix or seurat object
+#' This matrix should contain genes as rownames and cells/barcodes as colnames
+#' @param cells - character vector containing cells of interest.
+#' @param genes character - gene of interest (only on gene at a time)
+#' @param ter1  vector/integer - Territory ID in which gene expression will be viewed.
+#' See details.
+#' @param ter2 vector/integer - Territory ID in which gene expression will be viewed.
+#' See details.
+#' @param normalise logical - If TRUE, gene expression values will be min/max
+#' normalised.
+#' @param cex numeric - font size modulator
+#' @details Visualization of gene expression in selected territories.
+#' The purpose of this function is to contrast the expression of genes between
+#' different territories.
+#' The cells argument should be supplied as a vector of barcodes containing
+#' all barcodes of the cell type of interest. Theoretically, you can supply
+#' more than one cell type in this vector but Vesalius will treat them as single
+#' cell type.
+#' If you do not provide any territory and leave the \code{ter1} and \code{ter2}
+#' as NULL, this function will plot the expression of your gene of interest
+#' in your cell type of interest accross the whole ST assay.
+#' Supplying territories to only one of \code{ter1} or \code{ter2} will plot
+#' cell type of interest in one set of territories.
+#' Supplying territories to both will contrast expression between territories
+#'
+#' @return a ggplot object
+#' @examples
+#' \dontrun{
+#' data(vesalius)
+#' # Seurat pre-processing
+#' image <- NormalizeData(vesalius)
+#' image <- FindVariableFeatures(image, nfeatures = 2000)
+#' image <- ScaleData(image)
+#' # converting to rgb
+#' image <- rgbPCA(image,slices = 1)
+#' image <- buildImageArray(image, sliceID=1)
+#' # One segmentation round
+#' image <- iterativeSegmentation.array(image)
+#' image <- isolateTerritories.array(image, minBar = 5)
+#' # For the example we will take a random selection of barcodes
+#' cells <- GetAssayData(vesalius, slot = "data")
+#' cells <- sample(colnames(cells), 200, replace =F)
+#' g <- viewCellExpression(image, vesalius,cells,
+#'                         gene = "Cst3",ter1 = 1,ter2=2)
+#' }
+
+viewCellExpression <- function(image,
+                               counts,
+                               cells,
+                               gene = NULL,
+                               ter1=NULL,
+                               ter2=NULL,
+                               normalise=FALSE,
+                               cex =10){
+
+    #--------------------------------------------------------------------------#
+    # First lets do some checks
+    # make sure you have at least 1 gene and 1 territory
+    #--------------------------------------------------------------------------#
+    if(is.null(gene)){
+        stop("Please supply the gene you would like to visualise!")
+    }
+    if(is.null(ter1) & is.null(ter2)){
+      CellCoord <- image %>%
+                   filter(barcodes %in% cells & tile ==1)%>%
+                   droplevels()
+      CellCoord$territory <- "Territory 1"
+    } else if(!is.null(ter1) & is.null(ter2)){
+      CellCoord <- image %>%
+                   filter(barcodes %in% cells & tile ==1 &
+                          territory %in% ter1) %>%
+                   droplevels()
+      CellCoord[CellCoord$territory %in% ter1,"territory"] <- "Territory 1"
+
+    } else if(is.null(ter1) & !is.null(ter2)){
+      CellCoord <- image %>%
+                   filter(barcodes %in% cells & tile ==1 &
+                          territory %in% ter2) %>%
+                   droplevels()
+      CellCoord[CellCoord$territory %in% ter2,"territory"] <- "Territory 2"
+    } else {
+      CellCoord <- image %>%
+                   filter(barcodes %in% cells & tile ==1 &
+                          territory %in% c(ter1,ter2)) %>%
+                   droplevels()
+      CellCoord[CellCoord$territory %in% ter1,"territory"] <- "Territory 1"
+      CellCoord[CellCoord$territory %in% ter2,"territory"] <- "Territory 2"
+    }
+    #--------------------------------------------------------------------------#
+    # All non cell barcodes - we still want to plot them so you can at least
+    # your cells are with respect to the other beads
+    #--------------------------------------------------------------------------#
+    NonCellCoord <- image %>% filter(!barcodes %in% cells & tile ==1)%>%
+      droplevels()
+
+    #--------------------------------------------------------------------------#
+    # Get your count data - using normalized data
+    #--------------------------------------------------------------------------#
+    if(is(counts)=="Seurat"){
+        counts <- GetAssayData(counts, slot = "data")
+    }
+
+    #--------------------------------------------------------------------------#
+    # Lets prep the data - counts and coords
+    #--------------------------------------------------------------------------#
+    counts <- counts[gene,cells]
+
+    counts <- counts[!is.na(match(names(counts),CellCoord$barcodes))]
+    counts <- as.data.frame(cbind(CellCoord,counts))
+    if(normalise){
+        counts$counts <- (counts$counts - min(counts$counts)) /
+                         (max(counts$counts) - min(counts$counts))
+    }
+    #--------------------------------------------------------------------------#
+    # Lets make the ggplot - dark background for now...
+    # If compplaints I will change this
+    #--------------------------------------------------------------------------#
+    ge <- ggplot()+
+          geom_point(data = NonCellCoord ,
+                     aes(x,y),
+                     alpha =0.75,
+                     fill="#2e2e2e",size =cex* 0.01,show.legend=F)+
+          geom_point(data = counts,
+                     aes(x=x,y=y,shape = territory,col =counts),
+                     size = cex *0.125)+
+          scale_color_gradientn(colors = rev(brewer.pal(11,"Spectral")))+
+          theme_void()+
+          theme(panel.background = element_rect(fill = "#474747"),
+                legend.title = element_text(size = cex),
+                legend.text = element_text(size = cex),
+                plot.margin = margin(1, 1, 1, 1, "cm")) +
+          labs(col = "Expression")+
+          guides(shape = guide_legend(override.aes = list(size=cex * 0.5)))
+    return(ge)
+}

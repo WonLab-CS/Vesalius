@@ -4,10 +4,15 @@
 # This includes:
 # computational time
 # ARI scores
-# Example sample 151673
+# Example sample 151673 for Visium
+# Plots for SlideSeq
+# Simulation Plots
+# Simulation scoring
 #------------------------------------------------------------------------------#
 
-##### Getting time plots
+#------------------------------------------------------------------------------#
+# Time Plots for Visium
+#------------------------------------------------------------------------------#
 library(ggplot2)
 files <- list.files(pattern = "time.Rda")
 
@@ -49,7 +54,9 @@ print(g)
 dev.off()
 
 
-### ARI of data sets
+#------------------------------------------------------------------------------#
+# Adjusted Rand Index for Visium
+#------------------------------------------------------------------------------#
 library(mclust)
 library(spatialLIBD)
 library(dplyr)
@@ -134,7 +141,9 @@ dev.off()
 
 
 
-#### example plots
+#------------------------------------------------------------------------------#
+# Example data set in visium for viz - using the common example 151673
+#------------------------------------------------------------------------------#
 library(ggplot2)
 library(patchwork)
 library(dplyr)
@@ -144,7 +153,7 @@ library(Seurat)
 library(BayesSpace)
 library(Giotto)
 
-## using the common example 151673
+
 labels <- fetch_data(type = 'sce')
 labels <- colData(labels)
 labels <- as.data.frame(labels)
@@ -261,10 +270,147 @@ pdf("MethodComp_Sample.pdf",width = 16, height = 8)
 ground + ves + seu + gio + bay + plot_layout(design = layout,width = c(2,1,1))
 dev.off()
 
+#------------------------------------------------------------------------------#
+# Plotting slide seq output for BayesSpace and Seurat
+#------------------------------------------------------------------------------#
+bayes <- get(load("~/group/slide_seqV2/BayesSpaceBenchMarking/Puck_200115_08_SSV2_BM.Rda"))
+bayes$row <- as.numeric(bayes$row)
+bayes$col <- as.numeric(bayes$col)
+
+ter_col <- length(unique(bayes$spatial.cluster))
+ter_pal <- colorRampPalette(brewer.pal(8, "Accent"))
+ter_col <- ter_pal(ter_col)
+b1 <- ggplot(data = bayes,aes(x = col,y=row, col = as.factor(spatial.cluster)))+
+      geom_point(size = 0.2, alpha = 0.65)+
+      theme_void() +
+      scale_color_manual(values = ter_col)+
+      theme(legend.text = element_text(size = 12),
+            legend.title = element_text(size=12),
+            plot.title = element_text(size =15),
+            legend.position = "bottom")+
+      guides(colour = guide_legend(override.aes = list(size=3)))+
+      labs(title = "BayesSpace", col = "Spatial Cluster")
+pdf("~/Vesalius/BayesSpaceBrain.pdf", width = 6, height=7)
+b1
+dev.off()
+b1s <- ggplot(data = bayes,aes(x = col,y=row, col = as.factor(spatial.cluster)))+
+      geom_point(size = 0.5, alpha = 0.65)+
+      facet_wrap(~spatial.cluster)+
+      theme_light() +
+      scale_color_manual(values = ter_col)+
+      theme(legend.text = element_text(size = 12),
+            legend.title = element_text(size=12),
+            plot.title = element_text(size =15),
+            legend.position = "bottom")+
+      guides(colour = guide_legend(override.aes = list(size=3)))+
+      labs(title = "BayesSpace", col = "Spatial Cluster")
+pdf("~/Vesalius/BayesSpaceBrainSplit.pdf", width = 16, height=18)
+b1s
+dev.off()
 
 
 
-### Simulation plots
+bayes <- get(load("~/group/slide_seqV2/BayesSpaceBenchMarking/Puck_190926_03_SSV2_BM.Rda"))
+bayes$row <- as.numeric(bayes$row)
+bayes$col <- as.numeric(bayes$col)
+
+ter_col <- length(unique(bayes$spatial.cluster))
+ter_pal <- colorRampPalette(brewer.pal(8, "Accent"))
+ter_col <- ter_pal(ter_col)
+b2 <- ggplot(data = bayes,aes(x = col,y=row, col = as.factor(spatial.cluster)))+
+      geom_point(size = 0.2, alpha = 0.65)+
+      theme_void() +
+      scale_color_manual(values = ter_col)+
+      theme(legend.text = element_text(size = 12),
+            legend.title = element_text(size=12),
+            plot.title = element_text(size =15),
+            legend.position = "bottom")+
+      guides(colour = guide_legend(override.aes = list(size=3)))+
+      labs(title = "BayesSpace", col = "Spatial Cluster")
+pdf("~/Vesalius/BayesSpaceEmbryo.pdf", width = 6, height=7)
+b2
+dev.off()
+b2s <- ggplot(data = bayes,aes(x = col,y=row, col = as.factor(spatial.cluster)))+
+      geom_point(size = 0.5, alpha = 0.65)+
+      theme_light() +
+      facet_wrap(~spatial.cluster)+
+      scale_color_manual(values = ter_col)+
+      theme(legend.text = element_text(size = 12),
+            legend.title = element_text(size=12),
+            plot.title = element_text(size =15),
+            legend.position = "bottom")+
+      guides(colour = guide_legend(override.aes = list(size=3)))+
+      labs(title = "BayesSpace", col = "Spatial Cluster")
+pdf("~/Vesalius/BayesSpaceEmbryoSplit.pdf", width = 16, height=18)
+b2s
+dev.off()
+
+seurat <- get(load("~/group/slide_seqV2/SeuratBenchMarking/Puck_200115_08_SSV2_BM.Rda"))
+ter_col <- length(unique(seurat$seurat_clusters))
+ter_pal <- colorRampPalette(brewer.pal(8, "Accent"))
+ter_col <- ter_pal(ter_col)
+s1 <- ggplot(data = seurat,aes(x = x,y=y, col = as.factor(seurat_clusters)))+
+      geom_point(size = 0.2, alpha = 0.65)+
+      theme_void() +
+      scale_color_manual(values = ter_col)+
+      theme(legend.text = element_text(size = 12),
+            legend.title = element_text(size=12),
+            plot.title = element_text(size =15),
+            legend.position = "bottom")+
+      guides(colour = guide_legend(override.aes = list(size=3)))+
+      labs(title = "Seurat", col = "Seurat Cluster")
+pdf("~/Vesalius/SeuratBrain.pdf", width = 6, height=7)
+s1
+dev.off()
+s1s <- ggplot(data = seurat,aes(x = x,y=y, col = as.factor(seurat_clusters)))+
+      geom_point(size = 0.5, alpha = 0.65)+
+      theme_light() +
+      facet_wrap(~seurat_clusters)+
+      scale_color_manual(values = ter_col)+
+      theme(legend.text = element_text(size = 12),
+            legend.title = element_text(size=12),
+            plot.title = element_text(size =15),
+            legend.position = "bottom")+
+      guides(colour = guide_legend(override.aes = list(size=3)))+
+      labs(title = "Seurat", col = "Seurat Cluster")
+pdf("~/Vesalius/SeuratBrainSplit.pdf", width = 16, height=18)
+s1s
+dev.off()
+
+seurat <- get(load("~/group/slide_seqV2/SeuratBenchMarking/Puck_190926_03_SSV2_BM.Rda"))
+ter_col <- length(unique(seurat$seurat_clusters))
+ter_pal <- colorRampPalette(brewer.pal(8, "Accent"))
+ter_col <- ter_pal(ter_col)
+s2 <- ggplot(data = seurat,aes(x = x,y=y, col = as.factor(seurat_clusters)))+
+      geom_point(size = 0.2, alpha = 0.65)+
+      theme_void() +
+      scale_color_manual(values = ter_col)+
+      theme(legend.text = element_text(size = 12),
+            legend.title = element_text(size=12),
+            plot.title = element_text(size =15),
+            legend.position = "bottom")+
+      guides(colour = guide_legend(override.aes = list(size=3)))+
+      labs(title = "Seurat", col = "Seurat Cluster")
+pdf("~/Vesalius/SeuratEmbryo.pdf", width = 6, height=7)
+s2
+dev.off()
+s2s <- ggplot(data = seurat,aes(x = x,y=y, col = as.factor(seurat_clusters)))+
+      geom_point(size = 0.5, alpha = 0.65)+
+      theme_light() +
+      facet_wrap(~seurat_clusters)+
+      scale_color_manual(values = ter_col)+
+      theme(legend.text = element_text(size = 12),
+            legend.title = element_text(size=12),
+            plot.title = element_text(size =15),
+            legend.position = "bottom")+
+      guides(colour = guide_legend(override.aes = list(size=3)))+
+      labs(title = "Seurat", col = "Seurat Cluster")
+pdf("~/Vesalius/SeuratEmbryoSplit.pdf", width = 16, height=18)
+s2s
+dev.off()
+#------------------------------------------------------------------------------#
+# Simulation Plots for all regimes
+#------------------------------------------------------------------------------#
 files <- list.files(pattern = ".csv")
 plots <- list()
 

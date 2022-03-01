@@ -10,8 +10,8 @@ buildImageArray(
   invert = FALSE,
   na.rm = TRUE,
   resolution = 100,
-  filterThreshold = 0.999,
-  keep_edge = FALSE,
+  filterGrid = 0.01,
+  filterThreshold = 1,
   interpolation_type = 1,
   cores = 1,
   verbose = TRUE
@@ -31,11 +31,11 @@ buildImageArray(
 \item{resolution}{numeric (range 0 - 100) describing a percentage of original
 image size. Used to reduce image size.}
 
-\item{filterThreshold}{numeric (range 0 -1) describing the quantile threshold
-at which barcodes and tiles should be retained (seed details)}
+\item{filterGrid}{numeric between (range 0 - 1) describing size of grid used
+to filter stray beads.}
 
-\item{keep_edge}{logical indicating if the edeges of the voronoi diagrams
-should be maintained (See details)}
+\item{filterThreshold}{numeric (range 0 - 1) describing the quantile threshold
+at which barcodes and tiles should be retained (seed details)}
 
 \item{interpolation_type}{Method of interpolation during image resizing:
 \describe{
@@ -72,10 +72,10 @@ an artificial "box" is created surrounding barcode coordinates. This
 creates superfluous tiles that can be detrimental to further analysis.
 To remove excessive tiles, Vesalius takes a two step process. First, Vesalius
 removes any barcode that is too far away from other barcodes (likely stray
-barcodes). Second, Vesalius filters out exceed a certain area threshold.
-If keep_edge is TRUE, then Vesalius will include all tiles even those that
-share an edge with the voronoi boudaries. The tesselation creates a "box"
-around all points and use this as a boundary to create tiles on the edge.
+barcodes). This is controlled by the filterGrid argument.
+Second, Vesalius filters out tiles that exceed a certain area threshold.
+This is controlled by the filterThreshold argument.
+
 
 A filterThreshold of 0.99 means that 99 \% or barcodes and tile triangles
 will be retained.

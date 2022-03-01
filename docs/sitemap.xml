@@ -28,6 +28,9 @@
     <loc>https://patrickcnmartin.github.io/Vesalius/reference/buildImageArray.html</loc>
   </url>
   <url>
+    <loc>https://patrickcnmartin.github.io/Vesalius/reference/compareCells.html</loc>
+  </url>
+  <url>
     <loc>https://patrickcnmartin.github.io/Vesalius/reference/compareClusters.html</loc>
   </url>
   <url>
@@ -92,6 +95,9 @@
   </url>
   <url>
     <loc>https://patrickcnmartin.github.io/Vesalius/reference/territoryPlot.html</loc>
+  </url>
+  <url>
+    <loc>https://patrickcnmartin.github.io/Vesalius/reference/viewCellExpression.html</loc>
   </url>
   <url>
     <loc>https://patrickcnmartin.github.io/Vesalius/reference/viewGeneExpression.html</loc>

@@ -801,4 +801,163 @@ compareLayers <- function(layers,counts,l1 = NULL, l2 = NULL, method = "wilcox",
       cat("\n")
       .simpleBar(verbose)
       return(deg)
-  }
+}
+
+
+
+
+#' compareCells compute differential gene expression between selected
+#' territories for single cell type.
+#' @param image a dataframe containing territory information
+#' @param counts seurat object containing counts. Alternatively, matrix or
+#' sparse matrix. Colnames as barcodes and rownames as genes.
+#' @param cells character vector containing barcodes associated with cell type
+#' of interest.
+#' @param seed Integer or vector of integers describing territories to be
+#' included in group 1 for differential gene expression analysis.
+#' @param query Integer or vector of integers describing territories to be
+#' included in group 2 for differential gene expression analysis. Default = NULL
+#' @param method character describing the statistical test to use in order to
+#' extract differantial gene expression (currently only wilcox and t.test)
+#' @param logFC numeric describing minimum log fold change value for
+#' differential gene expression. Default set at 0.25.
+#' @param pval numeric for pval threshold. Default set at 0.05
+#' @param minPct numeric defining the minimum percentage of cells that should
+#' contain any given gene.
+#' @param minBar integer defining minimum number of barcodes in a territory.
+#' @param morphologyFactorSeed Integer or vector of integers describing growth
+#' or shrink rate of seed territories
+#' @param morphologyFactorQuery Integer or vector of integers describing growth
+#' or shrink rate of query territories
+#' @param verbose logical - progress message output
+#' @details extractMarkers compares a set of selected territories to another set
+#' of selected territories. If one of territory sets does not contain enough
+#' barcodes, \code{extractMarkers} will return NULL.
+#'
+#' A seed territory (or territories) should always be
+#' provided. Query territories can be left as the default NULL. In this case,
+#' the seed territory will be compared to all remaining barcodes that are NOT
+#' present in the seed. Otherwise, seed territories will be compared to query
+#' territories after any morphological operations
+#' (see \code{territoryMorphology}.
+#'
+#' compareCells provides a way to manipulate each set of territories
+#' independtly as described in \code{morphologyFactorSeed} and
+#' \code{morphologyFactorQuery.}
+#'
+#' The cells argument should be supplied as a vector of barcodes containing
+#' all barcodes of the cell type of interest. Theoretically, you can supply
+#' more than one cell type in this vector but Vesalius will treat them as single
+#' cell type.
+#'
+#' @return A data.frame (tibble) containing differential gene expression as well
+#' p.value,
+#' logFC,
+#' seedPct (percentage of cells containing gene in first group),
+#' queryPct (percentage of cells containing gene in second group),
+#' seedTerritory (territory used as group 1)
+#' queryTerritory (territory used as group 2)
+#' @examples
+#'\dontrun{
+#' data(vesalius)
+#' # Seurat pre-processing
+#' image <- NormalizeData(vesalius)
+#' image <- FindVariableFeatures(image, nfeatures = 2000)
+#' image <- ScaleData(image)
+#' # converting to rgb
+#' image <- rgbPCA(image,slices = 1)
+#' image <- buildImageArray(image, sliceID=1)
+#' # One segmentation round
+#' image <- iterativeSegmentation.array(image)
+#' image <- isolateTerritories.array(image, minBar = 5)
+#' # For the example we will take a random selection of barcodes
+#' cells <- GetAssayData(vesalius, slot = "data")
+#' cells <- sample(colnames(cells), 100, replace =F)
+#' markers <- compareCells(image, vesalius,cells seed = 1, query = 2)
+#' }
+
+compareCells <- function(image,counts,cells,seed = NULL,query = NULL,
+     method = "wilcox",logFC = 0.25, pval = 0.05,minPct = 0.05,minBar = 10,
+     morphologyFactorSeed = 0,morphologyFactorQuery = 0,verbose=TRUE){
+    .simpleBar(verbose)
+    .checkCounts(verbose)
+    #--------------------------------------------------------------------------#
+    # Get counts
+    #--------------------------------------------------------------------------#
+    if(is(counts)=="Seurat"){
+      counts <- GetAssayData(counts, slot = "data")
+    }
+
+    #--------------------------------------------------------------------------#
+    # setting up seed territory counts
+    #--------------------------------------------------------------------------#
+    .seedSelect(verbose)
+    if(is.null(seed)){
+        stop("Please supply a seed as numeric values describing territory
+             identity")
+    }
+    #--------------------------------------------------------------------------#
+    # getting tmp to use as template when getting query territories
+    #--------------------------------------------------------------------------#
+    tmp <- seed
+    #--------------------------------------------------------------------------#
+    # Dilating if needed
+    #--------------------------------------------------------------------------#
+    if(morphologyFactorSeed == 0){
+        #----------------------------------------------------------------------#
+        # First get the barcodes in territory and then get barcodes that
+        # part of the cell indentity vector - essentially all barcodes
+        # assoaicted to a single cell type
+        #----------------------------------------------------------------------#
+        seedID <- paste0(seed, sep =" ",collapse="")
+        seed <- image %>% filter(tile == 1) %>% filter(territory %in% seed)
+        seed <- counts[,colnames(counts) %in% unique(seed$barcodes)]
+        seed <- seed[,colnames(seed) %in% cells]
+    } else {
+        seedID <- paste0(seed, sep =" ",collapse="")
+        seed <- image %>% filter(territory %in% seed)
+        seed <- territoryMorphing(seed,morphologyFactorSeed,image, verbose)
+        seed <- counts[,colnames(counts) %in% unique(seed$barcodes)]
+        seed <- seed[,colnames(seed) %in% cells]
+    }
+
+    #--------------------------------------------------------------------------#
+    # setting up query territories - if it is set to null then
+    # take all the other territories otherwise territories supplied by user
+    #--------------------------------------------------------------------------#
+    .querySelect(verbose)
+
+    if(is.null(query)){
+        queryID <- "Remaining"
+        query <- image %>% filter(!territory %in% tmp)
+    } else {
+        queryID <- paste0(query, sep =" ",collapse="")
+        query <- image %>% filter(territory %in% query)
+    }
+    if(morphologyFactorQuery == 0){
+        query <- image %>% filter(tile == 1)
+        query <- counts[,colnames(counts) %in% unique(query$barcodes)]
+        query <- counts[,!colnames(query) %in% colnames(seed)]
+        query <- query[,colnames(query) %in% cells]
+    } else {
+        query <- image %>% filter(territory %in% query)
+        query <- territoryMorphing(query,morphologyFactorQuery,image, verbose)
+        query <- filter(query, tile == 1)
+        query <- counts[,colnames(counts) %in% unique(query$barcodes)]
+        query <- counts[,!colnames(query) %in% colnames(seed)]
+        query <- query[,colnames(query) %in% cells]
+    }
+
+    #--------------------------------------------------------------------------#
+    # running grouped analysis for DEG
+    #--------------------------------------------------------------------------#
+    .degProg(verbose)
+    deg <- .VesaliusDEG(seed,query,seedID,queryID,method,
+        logFC,pval,minPct,minBar,verbose)
+    cat("\n")
+   .simpleBar(verbose)
+   return(deg)
+
+
+
+}

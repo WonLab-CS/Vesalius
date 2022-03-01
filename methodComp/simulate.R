@@ -90,8 +90,7 @@ simulateCells <- function(n_t,n_c,d_t,n_cells,xlims,ylims,celltypes,cells){
   coord <- data.frame("xcoord" = jitter(sample(seq(xlims[1],xlims[2]),size = n_cells, replace =T)),
                       "ycoord" = jitter(sample(seq(ylims[1],ylims[2]),size = n_cells, replace =T)))
   #------------------------------------------------------------------#
-  # Next we create cell sampling templates
-  # No exp for now... I have no idea how to do that yet
+  # Next we create cell sampling probability templates
   #------------------------------------------------------------------#
 
   dist <- switch(d_t,
@@ -130,7 +129,58 @@ simulateCells <- function(n_t,n_c,d_t,n_cells,xlims,ylims,celltypes,cells){
   return(territory_barcodes)
 }
 
+reSample <- function(counts,n_c,d_t,celltypes,cells){
+  #----------------------------------------------------------------------------#
+  # for some reason some cell compositions just don't work and I have no idea
+  # why so I will reSample cells and try again
+  # Hopefully it won't lead to anything weird
+  #----------------------------------------------------------------------------#
+  tmpCells <- celltypes[sample(seq_along(celltypes),n_c)]
+  sim <- simulateCells(n_t=3,
+                         n_c=n_c,
+                         d_t=d_t,
+                         n_cells=6000,
+                         xlims=c(1,3000),
+                         ylims=c(1,3000),
+                         celltypes = tmpCells,
+                         cells = cells)
+  counts <- counts[,sim$barcodes]
+  #----------------------------------------------------------------------------#
+  # Rename barcodes to avoid potential duplicated names
+  #----------------------------------------------------------------------------#
+  colnames(counts) <- paste0("bar_",seq_len(ncol(counts)))
+  rownames(counts)<- rownames(brainCounts)
+  sim$barcodes <- paste0("bar_",seq_len(nrow(sim)))
+  rownames(sim) <- sim$barcodes
+  #----------------------------------------------------------------------------#
+  # Running sims with various tools
+  # Just coercing seurat to use slide seq data
+  #----------------------------------------------------------------------------#
+  ss <- new(Class = 'SlideSeq',
+            assay = "Spatial",
+            coordinates = sim[,c("xcoord","ycoord")])
 
+  rownames(ss@coordinates) <- sim$barcodes
+
+  st <- CreateSeuratObject(counts, assay ="Spatial")
+  ss <- ss[Cells(x = st)]
+  DefaultAssay(object = ss) <- "Spatial"
+  st[["slice1"]] <- ss
+  st <- AddMetaData(st,metadata = sim$territory,col.name = "Territory")
+
+  seu <- tryCatch(suppressWarnings(SCTransform(st,assay = "Spatial")),
+                  error = function(cond){
+                      return(NULL)
+                  })
+
+  if(is.null(seu)){
+      seu <- reSample(counts,n_c,d_t,celltypes,cells)
+      return(seu)
+  } else{
+      return(list("cells" = tmpCells,"sim"=sim,"st" =st,"counts" =counts))
+  }
+
+}
 
 #------------------------------------------------------------------------------#
 
@@ -139,10 +189,13 @@ ref <- readRDS("/isilonsund/NextGenSeqData/project-data/hkim/ST_project/Slide-se
 cells <- unique(unlist(strsplit(ref@meta.data$celltype, "\\+")))
 ## NOTE I will only run 3 cells types at the moment.
 ## Could run more for sure but for the sake of simplicity
-homo <- paste0(cells,"+",cells)
+method <- "homotypic"
 
-homo_cells <- ref@meta.data[ref@meta.data$celltype %in% homo,]
-homo_cells <- data.frame("barcodes"=rownames(homo_cells),"celltype"=homo_cells$celltype)
+## If we only want to homotypic cells
+celltypes <- paste0(cells,"+",cells)
+
+bar_cells <- ref@meta.data[ref@meta.data$celltype %in% celltypes,]
+bar_cells <- data.frame("barcodes"=rownames(bar_cells),"celltype"=bar_cells$celltype)
 
 brainCounts <- read.table("~/group/slide_seqV2/Puck_200115_08.digital_expression.txt.gz", header = TRUE )
 rownames(brainCounts) <- brainCounts[,1]
@@ -167,192 +220,234 @@ if(!dir.exists(output)){
 # cells = cell info
 # tmpCells = which cells were sampled
 #------------------------------------------------------------------#
+time <- vector("list", 10)
 
+for(k in seq(1,10)){
 
-n_c <-c(9,12,15,3,3,4,5)
-d_t <-c(rep("uniform",3),"pure",rep("exp",3))
-tmpCells <- list()
-fileTags <- c()
-simList <- list()
+  n_c <-c(9,12,15,3,3,4,5)
+  d_t <-c(rep("uniform",3),"pure",rep("exp",3))
+  tmpCells <- list()
+  fileTags <- c()
+  simList <- list()
 
-for(i in seq_along(n_c)){
-    fileTags <- c(fileTags,paste0("nt3_nc",n_c[i],"_",d_t[i],".csv"))
-    tmpCells[[i]] <- homo[sample(seq_along(homo),n_c[i])]
+  for(j in seq_along(n_c)){
+      fileTags <- c(fileTags,paste0("nt3_nc",n_c[j],"_",d_t[j],"_",method,".csv"))
+      tmpCells[[j]] <- celltypes[sample(seq_along(celltypes),n_c[j])]
 
-    simList[[i]] <- simulateCells(n_t=3,
-                         n_c=n_c[i],
-                         d_t=d_t[i],
-                         n_cells=6000,
-                         xlims=c(1,3000),
-                         ylims=c(1,3000),
-                         celltypes = tmpCells[[i]],
-                         cells = homo_cells)
-}
-
-save(tmpCells, file = "Simulated_cells.Rda")
-
-
-for(i in seq_along(simList)){
-  #----------------------------------------------------------------------------#
-  # Lets sim
-  #----------------------------------------------------------------------------#
-  sim <- simList[[i]]
-  #----------------------------------------------------------------------------#
-  # Next get counts from count df
-  #----------------------------------------------------------------------------#
-  counts <- brainCounts[,sim$barcodes]
-
-  #----------------------------------------------------------------------------#
-  # Rename barcodes to avoid potential duplicated names
-  #----------------------------------------------------------------------------#
-  colnames(counts) <- paste0("bar_",seq_len(ncol(counts)))
-  rownames(counts)<- rownames(brainCounts)
-  sim$barcodes <- paste0("bar_",seq_len(nrow(sim)))
-  rownames(sim) <- sim$barcodes
-  #----------------------------------------------------------------------------#
-  # Running sims with various tools
-  # Just coercing seurat to use slide seq data
-  #----------------------------------------------------------------------------#
-  ss <- new(Class = 'SlideSeq',
-            assay = "Spatial",
-            coordinates = sim[,c("xcoord","ycoord")])
-
-  rownames(ss@coordinates) <- sim$barcodes
-
-  st <- CreateSeuratObject(counts, assay ="Spatial")
-  ss <- ss[Cells(x = st)]
-  DefaultAssay(object = ss) <- "Spatial"
-  st[["slice1"]] <- ss
-  st <- AddMetaData(st,metadata = sim$territory,col.name = "Territory")
-  #----------------------------------------------------------------------------#
-  # Running Seurat
-  #----------------------------------------------------------------------------#
-  seu <- SCTransform(st,assay = "Spatial")%>%
-         RunPCA(dims =1:30) %>%
-         RunUMAP(dims =1:30) %>%
-         FindNeighbors()
-  for(k in seq(0.1,1,by = 0.05)){
-      seu <- FindClusters(seu, resolution = k, verbose = FALSE)
-      cl <- length(levels(FetchData(seu, c("seurat_clusters"))$seurat_clusters))
-      closestRes <- abs(n_c[i] - cl)
-
+      simList[[j]] <- simulateCells(n_t=3,
+                           n_c=n_c[j],
+                           d_t=d_t[j],
+                           n_cells=6000,
+                           xlims=c(1,3000),
+                           ylims=c(1,3000),
+                           celltypes = tmpCells[[j]],
+                           cells = bar_cells)
   }
-  seu <- FindClusters(seu, resolution = seq(0.1,1,by = 0.05)[closestRes == min(closestRes)],
-                      verbose = FALSE)
-
-  seuData <- FetchData(seu, c("UMAP_1","UMAP_2","seurat_clusters")) %>%
-             group_by(seurat_clusters) %>%
-             mutate(xs = mean(UMAP_1), ys = mean(UMAP_2))
-  coordSeu <- GetTissueCoordinates(seu)
-  seuData <- cbind(seuData,coordSeu[,c("x","y")])
-  fileOut <- paste0(output,"/Seurat_Sim_",fileTags[i])
-  write.table(seuData,file =fileOut,sep =",",quote=F)
-  rm(seuData,seu); gc()
-  #----------------------------------------------------------------------------#
-  # Running Vesalius
-  #----------------------------------------------------------------------------#
-  ves <- NormalizeData(st) %>%
-         FindVariableFeatures(nfeatures=2000) %>%
-         ScaleData()%>%
-         rgbUMAP()%>%
-         buildImageArray(resolution=100,filterThreshold=1,cores =5)%>%
-         equalizeHistogram(sleft =2.5,sright=2.5)%>%
-         regulariseImage(lambda = 10,niter=200)%>%
-         iterativeSegmentation.array(colDepth=3,
-                                     smoothIter = 30,
-                                     method = c("iso","box"),
-                                     sigma=1.5,box = 20,
-                                     useCenter = T) %>%
-        isolateTerritories.array(captureRadius=0.1,minBar=10) %>%
-        filter(tile==1) %>%
-        distinct(barcodes, .keep_all =TRUE)
-  fileOut <- paste0(output,"/Vesalius_Sim_",fileTags[i])
-  write.table(ves,file =fileOut,sep =",",quote=F)
-  rm(ves); gc()
-  #----------------------------------------------------------------------------#
-  # Running BayesSpace
-  #----------------------------------------------------------------------------#
-  sce <- SingleCellExperiment(list(counts=as(as.matrix(counts), "dgCMatrix")))
-  coord <- sim[colnames(sce),c("ycoord","xcoord")]
-  colnames(coord)<- c("row","col")
-  colData(sce) <- DataFrame(coord)
-
-  genes <- data.frame(rownames(counts), rownames(counts))
-  colnames(genes) <- c("gene_id","gene_name")
-  rownames(genes) <- rownames(counts)
-  rowData(sce) <- genes
-  meta <- list(sample ="BayesSpaceSim", dataset = "Simulated",
-               BayesSpace.data = list(platform = "SS",is.enhanced=FALSE))
-  metadata(sce) <- meta
-
-  sce <- spatialPreprocess(sce,platform="SS",skip.PCA=FALSE,
-                           n.PCs=30, n.HVGs=2000, log.normalize=TRUE)
-  #sce <- qTune(sce, qs=seq(10,30), platform="SS", d=30)
-
-  sce <- spatialCluster(sce,q=3,platform = "SS")
-  bayes <- as.data.frame(colData(sce))
-  fileOut <- paste0(output,"/BayesSpace_Sim_",fileTags[i])
-  write.table(bayes,file =fileOut,sep =",",quote=F)
-  rm(bayes,sce);gc()
-  #----------------------------------------------------------------------------#
-  # Running Giotto
-  #----------------------------------------------------------------------------#
-  instruc <- createGiottoInstructions(save_plot=F, show_plot=F, save_dir=output)
-  giotto <- createGiottoObject(raw_exprs = counts,
-                                     spatial_locs = sim[,c("xcoord","ycoord")],
-                                     instructions = instruc,
-                                     cell_metadata = sim[,c("xcoord","ycoord","territory")])
-
-  giotto <- filterGiotto(gobject = giotto,
-                         expression_threshold = 1,
-                         expression_values = c('raw'))
-
-  giotto <- normalizeGiotto(gobject = giotto, scalefactor = 6000)
-
-  giotto <- addStatistics(gobject = giotto)
 
 
+  time[[k]] <- vector("list",4)
+  names(time[[k]]) <- c("Seurat","Vesalius","BayesSpace","Giotto")
+  for(i in seq_along(simList)){
 
-  giotto <- calculateHVG(gobject = giotto)
+  #for(i in seq(6,length(simList))){
+    #----------------------------------------------------------------------------#
+    # Lets sim
+    #----------------------------------------------------------------------------#
+    sim <- simList[[i]]
+    #----------------------------------------------------------------------------#
+    # Next get counts from count df
+    #----------------------------------------------------------------------------#
+    counts <- brainCounts[,sim$barcodes]
 
-  gene_metadata <- fDataDT(giotto)
-  featgenes <- gene_metadata[hvg == 'yes' & perc_cells > 3 & mean_expr_det > 0.4]$gene_ID
+    #----------------------------------------------------------------------------#
+    # Rename barcodes to avoid potential duplicated names
+    #----------------------------------------------------------------------------#
+    colnames(counts) <- paste0("bar_",seq_len(ncol(counts)))
+    rownames(counts)<- rownames(brainCounts)
+    sim$barcodes <- paste0("bar_",seq_len(nrow(sim)))
+    rownames(sim) <- sim$barcodes
+    #----------------------------------------------------------------------------#
+    # Running sims with various tools
+    # Just coercing seurat to use slide seq data
+    #----------------------------------------------------------------------------#
+    ss <- new(Class = 'SlideSeq',
+              assay = "Spatial",
+              coordinates = sim[,c("xcoord","ycoord")])
 
-  giotto <- runPCA(gobject = giotto,
-                   genes_to_use = featgenes,
-                   scale_unit = F,
-                   center=T,
-                   method="irlba")
+    rownames(ss@coordinates) <- sim$barcodes
+
+    st <- CreateSeuratObject(counts, assay ="Spatial")
+    ss <- ss[Cells(x = st)]
+    DefaultAssay(object = ss) <- "Spatial"
+    st[["slice1"]] <- ss
+    st <- AddMetaData(st,metadata = sim$territory,col.name = "Territory")
+    #----------------------------------------------------------------------------#
+    # Running Seurat
+    # We first test if this sim works - some of them dont work
+    # and I'll be honnest I have no idea why...
+    # Seurat and Giotto seem to crash on these ones. I will resample until
+    # a Seurat run goes to completion and update the cells and sim list
+    # I don't see any issue in the data sim output it looks all the same as
+    # the other ones...And it is not related to the number of unique barcodes
+    # used for sampling.
+    #----------------------------------------------------------------------------#
+    tmp <- tryCatch(suppressWarnings(SCTransform(st,assay = "Spatial")),
+                  error = function(cond){
+                      return(NULL)
+                  })
+    if(is.null(tmp)){
+        tmp <- reSample(brainCounts,n_c[i],d_t[i],celltypes,bar_cells)
+        sim <- tmp$sim
+        simList[[i]] <- sim
+        counts <- tmp$counts
+        tmpCells[[i]] <- tmp$cells
+        st <- tmp$st
+
+    }
+    s <- Sys.time()
+    seu <- SCTransform(st,assay ="Spatial") %>%
+           RunPCA(dims =1:30) %>%
+           RunUMAP(dims =1:30) %>%
+           FindNeighbors()
+    closestRes <- c()
+    for(res in seq(0.1,1.4,by = 0.05)){
+        seu <- FindClusters(seu, resolution = res, verbose = FALSE)
+        cl <- length(levels(FetchData(seu, c("seurat_clusters"))$seurat_clusters))
+        closestRes <- c(closestRes,abs(n_c[i] - cl))
+
+    }
+    res <- seq(0.1,1.4,by = 0.05)[closestRes == min(closestRes)]
+    seu <- FindClusters(seu, resolution =res[1L] ,
+                        verbose = FALSE)
+
+    seuData <- FetchData(seu, c("UMAP_1","UMAP_2","seurat_clusters")) %>%
+               group_by(seurat_clusters) %>%
+               mutate(xs = mean(UMAP_1), ys = mean(UMAP_2))
+    coordSeu <- GetTissueCoordinates(seu)
+    seuData <- cbind(seuData,coordSeu[,c("x","y")])
+    time[[k]]$Seurat <- Sys.time() - s
+    fileOut <- paste0(output,"/Seurat_Sim_rep",k,"_",fileTags[i])
+    write.table(seuData,file =fileOut,sep =",",quote=F)
+    rm(seuData,seu); gc()
+    #----------------------------------------------------------------------------#
+    # Running Vesalius
+    #----------------------------------------------------------------------------#
+    #colDepth <- seq(n_c[i],3)
+    s <- Sys.time()
+    colDepth <- c(81,27,9,3)
+    iter <- 15
+    ves <- NormalizeData(st) %>%
+           FindVariableFeatures(nfeatures=2000) %>%
+           ScaleData()%>%
+           rgbUMAP()%>%
+           buildImageArray(resolution=50,filterThreshold=1,cores =1)%>%
+           #equalizeHistogram(sleft =2.5,sright=2.5)%>%
+           regulariseImage(lambda = 5,niter=200)%>%
+           iterativeSegmentation.array(colDepth=colDepth,
+                                       smoothIter = iter,
+                                       method = c("iso","box"),
+                                       sigma=6,box = 15,
+                                       useCenter = T) %>%
+          isolateTerritories.array(captureRadius=0.1,minBar=10) %>%
+          filter(tile==1) %>%
+          distinct(barcodes, .keep_all =TRUE)
+    time[[k]]$Vesalius <- Sys.time() - s
+    fileOut <- paste0(output,"/Vesalius_Sim_rep",k,"_",fileTags[i])
+    write.table(ves,file =fileOut,sep =",",quote=F)
+    rm(ves); gc()
+    #----------------------------------------------------------------------------#
+    # Running BayesSpace
+    #----------------------------------------------------------------------------#
+
+    sce <- SingleCellExperiment(list(counts=as(as.matrix(counts), "dgCMatrix")))
+    coord <- sim[colnames(sce),c("ycoord","xcoord")]
+    colnames(coord)<- c("row","col")
+    colData(sce) <- DataFrame(coord)
+
+    genes <- data.frame(rownames(counts), rownames(counts))
+    colnames(genes) <- c("gene_id","gene_name")
+    rownames(genes) <- rownames(counts)
+    rowData(sce) <- genes
+    meta <- list(sample ="BayesSpaceSim", dataset = "Simulated",
+                 BayesSpace.data = list(platform = "SS",is.enhanced=FALSE))
+    metadata(sce) <- meta
+    s <- Sys.time()
+    sce <- spatialPreprocess(sce,platform="SS",skip.PCA=FALSE,
+                             n.PCs=30, n.HVGs=2000, log.normalize=TRUE)
+    #sce <- qTune(sce, qs=seq(10,30), platform="SS", d=30)
+
+    sce <- spatialCluster(sce,q=3,platform = "SS")
+    bayes <- as.data.frame(colData(sce))
+    time[[k]]$BayesSpace <- Sys.time() - s
+    fileOut <- paste0(output,"/BayesSpace_Sim_rep",k,"_",fileTags[i])
+    write.table(bayes,file =fileOut,sep =",",quote=F)
+    rm(bayes,sce);gc()
+    #----------------------------------------------------------------------------#
+    # Running Giotto
+    #----------------------------------------------------------------------------#
+    s <- Sys.time()
+    instruc <- createGiottoInstructions(save_plot=F, show_plot=F, save_dir=output)
+    giotto <- createGiottoObject(raw_exprs = counts,
+                                       spatial_locs = sim[,c("xcoord","ycoord")],
+                                       instructions = instruc,
+                                       cell_metadata = sim[,c("xcoord","ycoord","territory")])
+
+    giotto <- filterGiotto(gobject = giotto,
+                           expression_threshold = 1,
+                           expression_values = c('raw'))
+
+    giotto <- normalizeGiotto(gobject = giotto, scalefactor = 6000)
+
+    giotto <- addStatistics(gobject = giotto)
 
 
-  giotto <- runUMAP(giotto, dimensions_to_use = 1:30)
 
-  giotto <- createSpatialNetwork(gobject=giotto,
-                                 method='kNN',
+    giotto <- calculateHVG(gobject = giotto)
+
+    gene_metadata <- fDataDT(giotto)
+    featgenes <- gene_metadata[hvg == 'yes' & perc_cells > 3 & mean_expr_det > 0.4]$gene_ID
+
+    giotto <- runPCA(gobject = giotto,
+                     genes_to_use = featgenes,
+                     scale_unit = F,
+                     center=T,
+                     method="irlba")
+
+
+    giotto <- runUMAP(giotto, dimensions_to_use = 1:30)
+
+    giotto <- createSpatialNetwork(gobject=giotto,
+                                   method='kNN',
+                                   k=3,
+                                   maximum_distance_knn=400,
+                                   name='spatial_network')
+    spatial_genes <- silhouetteRank(giotto)
+    ext_spatial_genes <-spatial_genes[1:2000,]$gene
+    HMRF_spatial_genes <- doHMRF(gobject=giotto,
+                                 expression_values='scaled',
+                                 spatial_genes=ext_spatial_genes,
                                  k=3,
-                                 maximum_distance_knn=400,
-                                 name='spatial_network')
-  spatial_genes <- silhouetteRank(giotto)
-  ext_spatial_genes <-spatial_genes[1:2000,]$gene
-  HMRF_spatial_genes <- doHMRF(gobject=giotto,
-                               expression_values='scaled',
-                               spatial_genes=ext_spatial_genes,
-                               k=3,
-                               spatial_network_name="spatial_network",
-                               betas=c(0, 10, 5),
-                               output_folder=output)
+                                 spatial_network_name="spatial_network",
+                                 betas=c(0, 10, 5),
+                                 output_folder=output)
 
-  giotto <- addHMRF(gobject=giotto,
-                    HMRFoutput=HMRF_spatial_genes,
-                    k=3,
-                    betas_to_add=c(0, 10, 20, 30, 40),
-                    hmrf_name='HMRF')
-  giotto <- giotto@cell_metadata
-  fileOut <- paste0(output,"/Giotto_Sim_",fileTags[i])
-  write.table(giotto,file =fileOut,sep =",",quote=F)
-  # Removing all the stuff giotto outputs...
-  rm(giotto);gc()
-  frem <- list.files(pattern =".txt")
-  for(i in frem){file.remove(i)}
-  unlink("result.spatial.zscore", recursive =TRUE)
+    giotto <- addHMRF(gobject=giotto,
+                      HMRFoutput=HMRF_spatial_genes,
+                      k=3,
+                      betas_to_add=c(0, 10, 20, 30, 40),
+                      hmrf_name='HMRF')
+    giotto <- giotto@cell_metadata
+    time[[k]]$Giotto <- Sys.time() - s
+    fileOut <- paste0(output,"/Giotto_Sim_rep",k,"_",fileTags[i])
+    write.table(giotto,file =fileOut,sep =",",quote=F)
+    # Removing all the stuff giotto outputs...
+    rm(giotto);gc()
+    frem <- list.files(pattern =".txt")
+    for(f in frem){file.remove(f)}
+    unlink("result.spatial.zscore", recursive =TRUE)
+  }
+  ## save at the very end incase there are some re-runs
+  ## I don't know why some samples don't work...
+  save(tmpCells,simList, file = paste0("Simulated_cells_rep",k,"_",method,".Rda"))
 }
+save(time,file= paste0("SimulationTimes_",method,".Rda"))

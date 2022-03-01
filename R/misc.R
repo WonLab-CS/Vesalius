@@ -25,7 +25,7 @@ subSetTerritories <- function(territories,seurat){
     # It might be worth while getting away from seurat later
     # essentially this is a template function
     #--------------------------------------------------------------------------#
-
+    
     seurat <- subset(seurat, cells = territories)
     return(seurat)
 }

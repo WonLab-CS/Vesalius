@@ -84,7 +84,7 @@
       <h1 data-toc-skip>Vesalius: Quick Start</h1>
                         <h4 data-toc-skip class="author">Patrick C.N. Martin</h4>
             
-            <h4 data-toc-skip class="date">2022-02-07</h4>
+            <h4 data-toc-skip class="date">2022-02-17</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/patrickCNMartin/Vesalius/blob/main/vignettes/vesalius.Rmd" class="external-link"><code>vignettes/vesalius.Rmd</code></a></small>
       <div class="hidden name"><code>vesalius.Rmd</code></div>
@@ -206,7 +206,9 @@
 <span class="co">## Guessing image dimensions from maximum coordinate values</span></code></pre>
 <pre><code><span class="co">## Warning in as.cimg.data.frame(imgCopy): Guessing image dimensions from maximum</span>
 <span class="co">## coordinate values</span></code></pre>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<pre><code><span class="co">## Warning: Quick-TRANSfer stage steps exceeded maximum (= 24747450)</span></code></pre>
+<pre><code><span class="co">## Warning: Quick-TRANSfer stage steps exceeded maximum (= 24747450)</span></code></pre>
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># Isolating territories from colour segments</span>
 <span class="va">vesalius</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/isolateTerritories.array.html">isolateTerritories.array</a></span><span class="op">(</span><span class="va">vesalius</span>,
                                      captureRadius <span class="op">=</span> <span class="fl">0.1</span>,
@@ -217,7 +219,7 @@
 <h1 id="visualisation">Visualisation<a class="anchor" aria-label="anchor" href="#visualisation"></a>
 </h1>
 <p>Sixth, we can visualise the territories.</p>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># Let's have a look!</span>
 <span class="va">imgTerritory</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/territoryPlot.html">territoryPlot</a></span><span class="op">(</span><span class="va">vesalius</span>, randomise <span class="op">=</span> <span class="cn">TRUE</span>,cex <span class="op">=</span><span class="fl">15</span> , cex.pt<span class="op">=</span><span class="fl">3.5</span><span class="op">)</span>
 <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">imgTerritory</span><span class="op">)</span></code></pre></div>
@@ -227,26 +229,26 @@
 <h1 id="territory-extraction-and-markers">Territory extraction and markers<a class="anchor" aria-label="anchor" href="#territory-extraction-and-markers"></a>
 </h1>
 <p>Finally, we can extract territories to run a more in depth analysis. This returns a Seurat object with all selected territories. We can also find differential gene expression between territories.</p>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># extract terriotry from seurat object</span>
 <span class="va">ter</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/extractTerritories.html">extractTerritories</a></span><span class="op">(</span><span class="va">vesalius</span>,<span class="va">counts</span>,seedID<span class="op">=</span> <span class="fl">1</span>,verbose <span class="op">=</span><span class="cn">F</span><span class="op">)</span></code></pre></div>
 <pre><code><span class="co">## Warning in as.cimg.data.frame(.): Guessing image dimensions from maximum</span>
 <span class="co">## coordinate values</span></code></pre>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># get all markers related to all territories</span>
 <span class="va">all</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/extractAllMarkers.html">extractAllMarkers</a></span><span class="op">(</span><span class="va">vesalius</span>,<span class="va">counts</span>,verbose <span class="op">=</span><span class="cn">F</span><span class="op">)</span>
 
 
 <span class="co"># get markers associated with on or more territories</span>
 <span class="va">one</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/extractMarkers.html">extractMarkers</a></span><span class="op">(</span><span class="va">vesalius</span>, <span class="va">counts</span>, seed <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span>,verbose <span class="op">=</span><span class="cn">F</span><span class="op">)</span></code></pre></div>
-<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># comparing territories</span>
 <span class="va">two</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/extractMarkers.html">extractMarkers</a></span><span class="op">(</span><span class="va">vesalius</span>, <span class="va">counts</span>, seed <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span>, query <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>,<span class="fl">3</span><span class="op">)</span>,verbose <span class="op">=</span><span class="cn">F</span><span class="op">)</span></code></pre></div>
 </div>
 <div class="section level1">
 <h1 id="session-info">Session Info<a class="anchor" aria-label="anchor" href="#session-info"></a>
 </h1>
-<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/utils/sessionInfo.html" class="external-link">sessionInfo</a></span><span class="op">(</span><span class="op">)</span></code></pre></div>
 <pre><code><span class="co">## R version 4.1.0 (2021-05-18)</span>
 <span class="co">## Platform: x86_64-apple-darwin20.4.0 (64-bit)</span>

@@ -43,6 +43,7 @@ for(i in seq_along(slideBeads)){
   brainCounts <- read.table(slideCounts[i], header = TRUE )
   rownames(brainCounts) <- brainCounts[,1]
   brainCounts <- brainCounts[,-1]
+
   seu <- CreateSeuratObject(brainCounts, assay ="Spatial")
 
   beadBrain <- ReadSlideSeq(slideBeads[i])
@@ -65,26 +66,26 @@ for(i in seq_along(slideBeads)){
 
   seu <- rgbUMAP(seu,pcs=30, conserveSparse = FALSE)
 
-  seu <- buildImageArray(seu,invert=F,
+  seu <- buildImageArray(seu,
+                         filterGrid =0.01,
                          filterThreshold = 0.9975,
                          resolution = 40, cores = 1)
 
 
-  seu <- equalizeHistogram(seu,sleft = 2.5, sright=2.5,invert =F)
 
 
-  seu <- regulariseImage(seu,lambda = 10,niter = 200, normalise=T,invert=F)
 
-  seu <- iterativeSegmentation.array(seu, colDepth = 6,
+  seu <- regulariseImage(seu,lambda = 5,niter = 50, normalise=T)
+
+  seu <- iterativeSegmentation.array(seu, colDepth = 11,
                                           smoothIter = 20,
-                                          method = c("iso","median"),
-                                          sigma=1.5,box = 10,
-                                          useCenter = T,
-                                          invert =F)
+                                          method = c("iso","box"),
+                                          sigma=1,box = 15,
+                                          useCenter = T)
 
 
 
-  seu <- isolateTerritories.array(seu,captureRadius = 0.008,minBar = 40)
+  seu <- isolateTerritories.array(seu,captureRadius = 0.008,minBar = 50)
 
   fileOut <- paste0(output,slideTag[i],"_SSV2_BM.Rda")
   save(seu,file = fileOut)
@@ -95,6 +96,13 @@ for(i in seq_along(slideBeads)){
 save(time, file = paste0(output,"Vesalius_SSV2_Time.Rda"))
 
 
+## Running Vesalius in lower resolution
+#Here, we demonstrate running Vesalius over 12 10X Visium data sets taken from
+#[here](https://www.nature.com/articles/s41593-020-00787-0). All files were
+#downloaded and distributed into seperate directories. We assess run time for
+#each data set and compared performance using an ARI score. Please note that
+#the comprative analysis code can be found
+#[here](https://github.com/patrickCNMartin/Vesalius/blob/main/methodComp/methodComp.R).
 
 
 
@@ -107,7 +115,7 @@ save(time, file = paste0(output,"Vesalius_SSV2_Time.Rda"))
 input <- list.dirs("~/group/visium/DLPFC_globus",recursive =F)
 time <-vector("list",length(input))
 count <- 1
-
+n <-c(7,7,7,7,5,5,5,5,7,7,7,7)
 for(i in input){
 
   s <- Sys.time()
@@ -123,18 +131,18 @@ for(i in input){
   sec[["slice1"]] <- img
 
   sec <- NormalizeData(sec)
-  sec <- FindVariableFeatures(sec, selection.method = "vst", nfeatures = 2000)
+  sec <- FindVariableFeatures(sec, nfeatures = 2000)
   sec <- ScaleData(sec)
 
 
 
   sec <- rgbUMAP(sec, pcs = 30, conserveSparse =F)
 
-  image <- buildImageArray(sec, resolution = 100, filterThreshold = 1, invert =F)
+  image <- buildImageArray(sec,filterGrid=1, resolution = 100, filterThreshold = 1, invert =F)
   image <- equalizeHistogram(image, sleft = 15,sright =15,invert =F)
 
   image <- iterativeSegmentation.array(image,
-      colDepth = seq(11,7, by =-2),
+      colDepth = seq(15,n[count], by =-2),
       smoothIter = 1,
       method = c("median","iso"),
       sigma=1,
@@ -159,26 +167,43 @@ save(time,file = "~/group/visium/DLPFC_globus/Vesalius_Visium_Time.Rda")
 
 #------------------------------------------------------------------------------#
 # Seq Scope
+# these data sets are bit odd as they don't contain a single slice
+# rather the may contain varying number of slices
+# we will only focus on a single slice to quanlitative demonstrations
+# Maybe two
 #------------------------------------------------------------------------------#
 
 
 input <- "~/group/seqScope/"
 
-seqScope <-paste0(input,list.files(input, pattern =".rds"))
-seqScopeTag <- sapply(strsplit(seqScope,"Scope/"),"[[",2)
-seqScopeTag <- gsub(".rds","",seqScopeTag)
-
+#seqScope <-paste0(input,list.files(input, pattern =".rds"))
+#seqScopeTag <- sapply(strsplit(seqScope,"Scope/"),"[[",2)
+#seqScopeTag <- gsub(".rds","",seqScopeTag)
 
 output <- paste0(input,"/VesaliusBenchMarking/")
 if(!dir.exists(output)){
     dir.create(output)
 }
 
+
+colon <- readRDS("Colon_10um_annotated.rds")
+tiles <- unique(colon@meta.data$tile)
+
+colon_tiles <- vector("list", length(tiles))
+names(colon_tiles) <- tiles
+for(i in seq_along(tiles)){
+    colon_tiles[[i]] <- subset(colon ,subset = orig.ident ==  tiles[i])
+}
+
+
+
+
+
 time <-vector("list",length(seqScope))
 
-for(i in seq_along(seqScope)){
+for(i in seq_along(colon_tiles)){
   s <- Sys.time()
-  seu <- readRDS(seqScope[i])
+  seu <- colon_tiles[[i]]
 
 
   seu <- NormalizeData(seu)
@@ -188,35 +213,109 @@ for(i in seq_along(seqScope)){
 
   seu <- rgbUMAP(seu,pcs=30, conserveSparse = FALSE)
   # Adding a slight jitter to avoid overlapping coordinates
-  seu$x <-jitter(seu$x/20, factor=0.1)
-  seu$y <-jitter(seu$y/20, factor=0.1)
+  seu$x <-jitter(seu$x/10, factor=0.5)
+  seu$y <-jitter(seu$y/10, factor=0.5)
 
-  seu <- buildImageArray(seu,invert=F,
-                         filterThreshold = 0.99,
-                         resolution = 40, cores = 1)
-
-
-  seu <- equalizeHistogram(seu,sleft = 2.5, sright=2.5,invert =F)
+  seu <- buildImageArray(seu,
+                         filterGrid =1,
+                         filterThreshold = 0.9975,
+                         resolution = 50, cores = 1)
 
 
-  seu <- regulariseImage(seu,lambda = 10,niter = 200, normalise=T,invert=F)
 
-  seu <- iterativeSegmentation.array(seu, colDepth = 6,
+
+
+  seu <- regulariseImage(seu,lambda = 5,niter = 50, normalise=T)
+
+  seu <- iterativeSegmentation.array(seu, colDepth = 11,
                                           smoothIter = 20,
-                                          method = c("iso","median"),
-                                          sigma=1.5,box = 10,
-                                          useCenter = T,
-                                          invert =F)
+                                          method = c("iso","box"),
+                                          sigma=1,box = 15,
+                                          useCenter = T)
 
 
 
-  seu <- isolateTerritories.array(seu,captureRadius = 0.008,minBar = 40)
+  seu <- isolateTerritories.array(seu,captureRadius = 0.1,minBar = 10)
 
-  fileOut <- paste0(output,seqScopeTag[i],"_SeqScope_BM.Rda")
-  save(seu,file = fileOut)
-  e <- Sys.time()
-  time[[i]] <- e - s
-  rm(seu)
-  gc()
+  fileOut <- paste0("~/Vesalius/Colon_seqScope_",tiles[i],".pdf")
+  pdf(fileOut, width = 10, height=10)
+  print(territoryPlot(seu, cex = 12, cex.pt =1))
+  dev.off()
+  #fileOut <- paste0(output,seqScopeTag[i],"_SeqScope_BM.Rda")
+  #save(seu,file = fileOut)
+  #e <- Sys.time()
+  #time[[i]] <- e - s
+  #rm(seu)
+  #gc()
 }
-save(time, file = paste0(output,"Vesalius_SeqScope_Time.Rda"))
+
+
+#save(time, file = paste0(output,"Vesalius_SeqScope_Time.Rda"))
+
+
+################ place holder #### to remove
+liver <- readRDS("Liver_normal_10um_annotated.rds")
+tiles <- unique(colon@meta.data$tile)
+
+liver_tiles <- vector("list", length(tiles))
+names(liver_tiles) <- tiles
+for(i in seq_along(tiles)){
+    liver_tiles[[i]] <- subset(liver ,subset = orig.ident ==  tiles[i])
+}
+
+
+
+
+
+time <-vector("list",length(seqScope))
+
+for(i in seq_along(liver_tiles)){
+  s <- Sys.time()
+  seu <- liver_tiles[[i]]
+
+
+  seu <- NormalizeData(seu)
+  seu <- FindVariableFeatures(seu, nfeatures = 2000)
+  seu <- ScaleData(seu)
+
+
+  seu <- rgbUMAP(seu,pcs=30, conserveSparse = FALSE)
+  # Adding a slight jitter to avoid overlapping coordinates
+  seu$x <-jitter(seu$x/10, factor=0.5)
+  seu$y <-jitter(seu$y/10, factor=0.5)
+
+  seu <- buildImageArray(seu,
+                         filterGrid =1,
+                         filterThreshold = 0.9975,
+                         resolution = 50, cores = 1)
+
+
+
+
+
+  seu <- regulariseImage(seu,lambda = 5,niter = 50, normalise=T)
+
+  seu <- iterativeSegmentation.array(seu, colDepth = 11,
+                                          smoothIter = 20,
+                                          method = c("iso","box"),
+                                          sigma=1,box = 15,
+                                          useCenter = T)
+
+
+
+  seu <- isolateTerritories.array(seu,captureRadius = 0.1,minBar = 10)
+
+  fileOut <- paste0("~/Vesalius/Liver_seqScope_",tiles[i],".pdf")
+  pdf(fileOut, width = 10, height=10)
+  print(territoryPlot(seu, cex = 12, cex.pt =1))
+  dev.off()
+  #fileOut <- paste0(output,seqScopeTag[i],"_SeqScope_BM.Rda")
+  #save(seu,file = fileOut)
+  #e <- Sys.time()
+  #time[[i]] <- e - s
+  #rm(seu)
+  #gc()
+}
+
+
+#save(time, file = paste0(output,"Vesalius_SeqScope_Time.Rda"))

@@ -72,8 +72,8 @@
   invert <span class="op">=</span> <span class="cn">FALSE</span>,
   na.rm <span class="op">=</span> <span class="cn">TRUE</span>,
   resolution <span class="op">=</span> <span class="fl">100</span>,
-  filterThreshold <span class="op">=</span> <span class="fl">0.999</span>,
-  keep_edge <span class="op">=</span> <span class="cn">FALSE</span>,
+  filterGrid <span class="op">=</span> <span class="fl">0.01</span>,
+  filterThreshold <span class="op">=</span> <span class="fl">1</span>,
   interpolation_type <span class="op">=</span> <span class="fl">1</span>,
   cores <span class="op">=</span> <span class="fl">1</span>,
   verbose <span class="op">=</span> <span class="cn">TRUE</span>
@@ -95,12 +95,12 @@
 <dt>resolution</dt>
 <dd><p>numeric (range 0 - 100) describing a percentage of original
 image size. Used to reduce image size.</p></dd>
+<dt>filterGrid</dt>
+<dd><p>numeric between (range 0 - 1) describing size of grid used
+to filter stray beads.</p></dd>
 <dt>filterThreshold</dt>
-<dd><p>numeric (range 0 -1) describing the quantile threshold
+<dd><p>numeric (range 0 - 1) describing the quantile threshold
 at which barcodes and tiles should be retained (seed details)</p></dd>
-<dt>keep_edge</dt>
-<dd><p>logical indicating if the edeges of the voronoi diagrams
-should be maintained (See details)</p></dd>
 <dt>interpolation_type</dt>
 <dd><p>Method of interpolation during image resizing:</p><dl><dt>-1</dt>
 <dd><p>no interpolation: raw memory resizing.</p></dd>
@@ -150,10 +150,10 @@ an artificial "box" is created surrounding barcode coordinates. This
 creates superfluous tiles that can be detrimental to further analysis.
 To remove excessive tiles, Vesalius takes a two step process. First, Vesalius
 removes any barcode that is too far away from other barcodes (likely stray
-barcodes). Second, Vesalius filters out exceed a certain area threshold.
-If keep_edge is TRUE, then Vesalius will include all tiles even those that
-share an edge with the voronoi boudaries. The tesselation creates a "box"
-around all points and use this as a boundary to create tiles on the edge.</p>
+barcodes). This is controlled by the filterGrid argument.
+Second, Vesalius filters out tiles that exceed a certain area threshold.
+This is controlled by the filterThreshold argument.</p>
+
 <p>A filterThreshold of 0.99 means that 99 % or barcodes and tile triangles
 will be retained.</p>
     </div>
