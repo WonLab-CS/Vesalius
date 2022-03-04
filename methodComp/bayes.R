@@ -48,8 +48,8 @@ if(!dir.exists(output)){
 
 
 time <-vector("list",length(slideBeads))
-#for(i in seq_along(slideBeads)){
-for(i in 2){
+for(i in seq_along(slideBeads)){
+#for(i in 2){
   s <- Sys.time()
   coord <- utils::read.csv(slideBeads[i], header=F)
   coord <- coord[-1,]
@@ -96,54 +96,54 @@ save(time, file = paste0(output,"Bayes_SSV2_time.Rda"))
 # Visium DLPFC
 #------------------------------------------------------------------------------#
 # Directories containing Visium data
-# input <- list.dirs("~/group/visium/DLPFC_globus/",recursive =F)
-#
-# time <-vector("list",length(input))
-# count <- 1
-# n <-c(7,7,7,7,5,5,5,5,7,7,7,7)
-# for(i in input){
-#
-#   s <- Sys.time()
-#   output <- paste0(i,"/BayesSpace")
-#   if(!dir.exists(output)){
-#       dir.create(output)
-#   }
-#   tag <- strsplit(i, "/")[[1]]
-#   tag <- tag[length(tag)]
-#   ## The file name requirements between Seurat and BayesSpace are different
-#   ## I'm not going to start renaming everything just for that
-#   ## SO loading with Seurat and then parsing to BayesSpace
-#
-#   sec <- Read10X(i)
-#   img <- Read10X_Image(i)
-#
-#
-#   sce <- SingleCellExperiment(list(counts=sec))
-#
-#   coord <- img@coordinates[,c("row","col")]
-#   coord <- coord[colnames(sec),]
-#   colData(sce) <- DataFrame(coord)
-#
-#   genes <- data.frame(rownames(sec), rownames(sec))
-#   colnames(genes) <- c("gene_id","gene_name")
-#   rownames(genes) <- rownames(sec)
-#   rowData(sce) <- genes
-#   meta <- list(sample =tag, dataset = "DPLFC",
-#           BayesSpace.data = list(platform = "Visium",is.enhanced=FALSE))
-#   metadata(sce) <- meta
-#
-#   #set.seed(149)
-#   sce <- spatialPreprocess(sce, platform="Visium",skip.PCA=FALSE,
-#                              n.PCs=15, n.HVGs=2000, log.normalize=TRUE)
-#
-#   sce <- spatialCluster(sce,q=n[count],d=15,nrep=50000, gamma=3, save.chain=TRUE,platform = "Visium")
-#
-#   file <- paste0(i,"/BayesSpace/",tag,"_BayesSpace.rda")
-#   save(sce,file = file)
-#   e<- Sys.time()
-#   time[[count]] <- e - s
-#   count <- count +1
-#
-# }
-# #Save Bayes Space Full run time
-# save(time,file = "~/group/visium/DLPFC_globus/BayesSpace_time.Rda")
+input <- list.dirs("~/group/visium/DLPFC_globus/",recursive =F)
+
+time <-vector("list",length(input))
+count <- 1
+n <-c(7,7,7,7,5,5,5,5,7,7,7,7)
+for(i in input){
+
+  s <- Sys.time()
+  output <- paste0(i,"/BayesSpace")
+  if(!dir.exists(output)){
+      dir.create(output)
+  }
+  tag <- strsplit(i, "/")[[1]]
+  tag <- tag[length(tag)]
+  ## The file name requirements between Seurat and BayesSpace are different
+  ## I'm not going to start renaming everything just for that
+  ## SO loading with Seurat and then parsing to BayesSpace
+
+  sec <- Read10X(i)
+  img <- Read10X_Image(i)
+
+
+  sce <- SingleCellExperiment(list(counts=sec))
+
+  coord <- img@coordinates[,c("row","col")]
+  coord <- coord[colnames(sec),]
+  colData(sce) <- DataFrame(coord)
+
+  genes <- data.frame(rownames(sec), rownames(sec))
+  colnames(genes) <- c("gene_id","gene_name")
+  rownames(genes) <- rownames(sec)
+  rowData(sce) <- genes
+  meta <- list(sample =tag, dataset = "DPLFC",
+          BayesSpace.data = list(platform = "Visium",is.enhanced=FALSE))
+  metadata(sce) <- meta
+
+  #set.seed(149)
+  sce <- spatialPreprocess(sce, platform="Visium",skip.PCA=FALSE,
+                             n.PCs=15, n.HVGs=2000, log.normalize=TRUE)
+
+  sce <- spatialCluster(sce,q=n[count],d=15,nrep=50000, gamma=3, save.chain=TRUE,platform = "Visium")
+
+  file <- paste0(i,"/BayesSpace/",tag,"_BayesSpace.rda")
+  save(sce,file = file)
+  e<- Sys.time()
+  time[[count]] <- e - s
+  count <- count +1
+
+}
+#Save Bayes Space Full run time
+save(time,file = "~/group/visium/DLPFC_globus/BayesSpace_time.Rda")

@@ -19,13 +19,12 @@ possibilities provided by Vesalius. Each section or sub-section will indicate
 in which figure their respective output can be found.
 
 Please note that the code related to Vesalius benchmarking and comparison to
-other methods can be found [here]().
+other methods can be found [here](https://github.com/patrickCNMartin/Vesalius/tree/main/methodComp). 
 
 
 
 
-*NOTE that the path to files have not been changed - change path to files
-accordingly*
+**NOTE change path to files accordingly**
 
 
 
@@ -40,6 +39,7 @@ as we had in the paper.
 ## Libraries
 ```{r loadings, eval=FALSE, echo=TRUE, message=FALSE, warning=FALSE}
 library(vesalius)
+library(imager)
 library(imagerExtra)
 library(Seurat)
 library(ggplot2)
@@ -69,7 +69,8 @@ set.seed(1)
 The first step of the Vesalius algorithm is to load and pre-process spatial
 transcriptomic data. For this manuscript, we used slide-seqV2 data provided on
 the [Single Cell Portal](https://singlecell.broadinstitute.org/single_cell/study/SCP948/robust-decomposition-of-cell-type-mixtures-in-spatial-transcriptomics#study-download). Our analysis mainly focused on the mouse
-brain and embryo (E12.5). We also used SeqScope data available [here]()
+brain and embryo (E12.5). We also used SeqScope data available [here](https://deepblue.lib.umich.edu/data/concern/data_sets/9c67wn05f). Please note that the
+SeqScope dataset have already be preprocess and do not require further processing.
 
 Once the data has been loaded and pre-processed (log normalisation, scaling,
 Finding variable features - handled by Seurat), the data can be parsed to
@@ -172,22 +173,24 @@ for(i in seq_along(slideTag)){
 The next step uses the data frames generated above to build image arrays. If you
 have saved the data frame above, you can directly load that data frame. This
 function converts punctual coordinate locations into tiles. Each tile is
-then rasterised to include all possible pixel location and assigned its colour
-code. We will only use of the arrays as an example. The analysis of the second
-array will be shown below.
+then rasterised to include all possible pixel locations and assigned its colour
+code to it. We will only use one of the arrays as an example. The analysis
+of both Slide-seq data is shown below.
+
 
 You will notice below that two of the arguments contain the key word "filter".
 `filterGrid` removes stray beads and `filterThreshold` removes any tiles that
 might be to large (i.e tiles that fill gaps in the ST assay).
 
-The resolution argument changes to resolution of the output image. Smaller Images
-decrease run time. It should be noted that while the image resolution may be
-decreased, all beads are retained.
+The resolution argument changes the resolution of the output image. Smaller Images
+decrease run time. The image resolution may be decreased but all beads are
+still retained.
 
 ```{r Vesalius_buildImage, eval=FALSE, echo=TRUE, warning= FALSE,message=FALSE}
 
 #------------------------------------------------------------------------------#
 # Loading saved data frame after PCA to RGB conversion
+# Replace countList[[i]] with this data frame
 #------------------------------------------------------------------------------#
 #imageBrain <- utils::read.csv("path/to/file.csv",header=T, stringsAsFactors=F)
 
@@ -206,10 +209,12 @@ imageBrain <- buildImageArray(countList[[1]],
 ## Image processing
 
 The first step in this section of the analysis will be to regularise the image
-via (Total Variance Regularisation)[https://cran.rstudio.com/web/packages/tvR/tvR.pdf].
-Vesalius also offers the possibility to equalise color histogram to increase
+via [Total Variance Regularisation](https://cran.rstudio.com/web/packages/tvR/tvR.pdf).
+Vesalius also offers the possibility to equalise color histograms to increase
 contrast between territories. This process is not always required and is better
 suited for PCA embeddings. See section on PCA embeddings below.
+
+The higher the lambda the smoother the output.
 
 ```{r Vesalius_reg,eval=FALSE,echo=TRUE,warning=FALSE}
 
@@ -230,8 +235,8 @@ applied followed by another round of segmentation. This will be repeated for
 every value of `k`. In this context, we highly recommend using a `colDepth` with
 decreasing values (e.g. `seq(12,6, by = -2)`).
 
-*Image smoothing is handle within the segmentation function. If you wish to
-smooth independantly, please use the `smoothArray`function.*
+**Image smoothing is handle within the segmentation function. If you wish to
+smooth independently, please use the `smoothArray`function.**
 
 ```{r Vesalius_iterSeg,eval=FALSE,echo=TRUE,warning=FALSE}
 #------------------------------------------------------------------------------#
@@ -251,6 +256,11 @@ imageBrain <- iterativeSegmentation.array(imageBrain, colDepth =11,
                                           useCenter = T)
 
 ```
+The parameters selected during this process will affect the number final
+territories. While case by case parameter selection would optimised the final
+number of territories, we have noticed that these parameters are more closely
+tied to ST method. We used the same parameters for all data sets produced by the
+same ST method.
 
 ## Territory Isolation
 Vesalius takes an image containing colour segments and further separates them
@@ -280,7 +290,7 @@ users might want to use their own plotting style and this is straight forward
 as the output of all Vesalius functions are simple data frames. Feel free
 to use which ever tool you prefer to visualise your data.
 
-The figure produce here is *Figure 2A* in the manuscript.
+The figure produce here is **Figure 2A** in the manuscript.
 
 ```{r Vesalius_viz, eval=FALSE,echo=TRUE,warnings=FALSE,fig.width=8,fig.height=12}
 #------------------------------------------------------------------------------#
@@ -324,6 +334,7 @@ We are using *Puck_200115_08* for this section of the work.
 #------------------------------------------------------------------------------#
 # Loading raw data into a Seurat object
 # Pre-processing count data
+# We keep a raw count seurat object to parse to DEG functions later on
 #------------------------------------------------------------------------------#
 bead <- ReadSlideSeq("~/group/slide_seqV2/Puck_200115_08_bead_locations.csv")
 brainRaw<- read.table("~/group/slide_seqV2/Puck_200115_08.digital_expression.txt.gz", header = TRUE )
@@ -376,6 +387,12 @@ We recommend using the `territoryPlot` function with the `split` argument set to
 `TRUE` to better visualise and select the desired territories. Here we will use
 both raw counts and processed counts.
 
+This section produces:
+
+* **Figure 3a**
+* **Figure 3d**
+* DEG are included in supplementary material of the manuscript.
+
 ```{r Vesalius_BrainTerritories, eval=FALSE,echo =TRUE,warning=FALSE}
 
 #------------------------------------------------------------------------------#
@@ -384,6 +401,7 @@ both raw counts and processed counts.
 # NOTE that positive value with inflate while negative values will erode.
 # CACluster = CA Pyramidal layer field
 # medCluster = Medial habenula and thrid ventricle
+
 #------------------------------------------------------------------------------#
 
 CACluster <- extractTerritories(imageBrain,brainRaw,
@@ -496,7 +514,7 @@ medClusterMarkers <- extractClusterMarkers(medCluster,brainNorm) %>%
 #------------------------------------------------------------------------------#
 medComp <- FindMarkers(medCluster,ident.1 = 0, ident.2 = 5)
 tvCompt <- FindMarkers(medCluster,ident.1 =c(2,4,8),ident.2=1)
-epiComp <- FindMarkers(medCluster,ident.1 =1,ident.2=6)
+#EpendymalComp <- FindMarkers(medCluster,ident.1 =1,ident.2=6)
 
 #------------------------------------------------------------------------------#
 # Plotting
@@ -538,8 +556,9 @@ coord_med <- ggplot(med, aes(x,y,col = as.factor(seurat_clusters))) +
             labs(colour = " ", title = "",
                 x = "X coordinates", y = "Y coordinates")
 ```
-Finally, we can visualize cell clustering in isolated territories
+Finally, we can visualise cell clustering in isolated territories
 
+**Figure 3a and Figure 3d**
 ```{r Vesalius_BrainPlots, eval=FALSE, echo = TRUE, warning=F, fig.width= 10, height=5}
 #pdf("SSV2_Brain_IsolatedTerritory.pdf", width = 10, height= 5)
 coord_CA / coord_med
@@ -552,6 +571,10 @@ coord_CA / coord_med
 We applied the same principles in the mouse embryo as in the mouse hippocampus.
 Here, we are using *Puck_190926_03*. If you have not saved the RGB embedding
 file please run the embedding section first and substitute object/files accordingly.
+
+The following section produces:
+
+* **Figure 2c**
 
 
 ```{r Vesalius_EmbryoImage, eval=FALSE , echo = TRUE, fig.width =12.5,fig.heigth =5}
@@ -602,7 +625,7 @@ imageEmbryo <- isolateTerritories.array(imageEmbryo,
 
 
 #----------------------------------------------------------------------------#
-# Finally some plotting
+# Finally some plotting - Figure 2c
 #----------------------------------------------------------------------------#
 imgSmoothedEm <- imagePlot(imageEmbryo, as.cimg = F,cex = 15) + theme_void()
 imgTerritoryEm <- territoryPlot(imageEmbryo, randomise = TRUE,cex =15 , cex.pt=0.25)+
@@ -617,7 +640,8 @@ dev.off()
 
 ```
 In the embryo, we isolated the eye for in depth analysis. The principles applied
-in hippocampus still apply here.
+in hippocampus still apply here. The DEG are included in the supplementary
+material of the manuscript.
 
 ```{r Vesalius_EmbryoTerritory, eval=FALSE, echo =TRUE, warning=FALSE}
 #------------------------------------------------------------------------------#
@@ -698,6 +722,8 @@ coord_eye <- ggplot(eye, aes(x,y,col = as.factor(seurat_clusters))) +
 
 We can visualise the isolated eye.
 
+**Figure 3g**
+
 ```{r Vesalius_EmbryoPlots, eval=FALSE, echo = TRUE, warning =FALSE, fig.width=8, fig.height=4}
 coord_eye
 ```
@@ -710,6 +736,10 @@ The SeqScope team provide process spatial data sets in the form of `.rds`files c
 aspect to consider when working with these datasets, is that they may
 contain more than one "slice". As each data set has already been pre-processed, we do not
 need to pre-process the data again.
+
+This section produces:
+
+**Figure 2e**
 
 
 ```{r Vesalius_SeqScopeLiver, eval=FALSE, echo = TRUE, warning =FALSE}
@@ -771,6 +801,9 @@ dev.off()
 We can apply the same process as described above but for the SeqScope Colon data
 set. The `.rds` files also contains more than one slice.
 
+This section produces:
+
+**Figure 2f**
 
 ```{r Vesalius_SeqScopeColon, eval=FALSE, echo = TRUE, warning =FALSE}
 #------------------------------------------------------------------------------#
@@ -830,10 +863,15 @@ dev.off()
 
 # Visualising Gene expression patterns.
 ## Expression Pattern in the isolated CA Field
-We showed that we recovered the CA2 field in the CA field isolated territory
+We showed that we recovered the CA2 field in isolated CA territory.
 This was due to the fact that we could recover subtle gene expression patterns
 that were otherwise lost or overshadowed by stronger patterns. In this section,
 we show how we can visualise these expression patterns.
+
+This section produces:
+
+* **Figure 3c**
+* **Figure S19**
 
 ```{r expressionPatternCA2, eval=FALSE, echo = TRUE,fig.width =10, fig.height=4}
 
@@ -897,6 +935,10 @@ dev.off()
 ## Expression Patterns in the Isolated Eye
 We can also visualise differentially expressed genes between layers in the eye.
 
+This section produces:
+
+**Figure 3h**
+
 ```{r expressionPatternEye, eval=FALSE, echo=TRUE,fig.width=5,fig.height=4}
 
 Cryba4 <- viewGeneExpression(imageEmbryo,eyeCluster,
@@ -940,7 +982,7 @@ dev.off()
 Thanks to easy territory isolation, Vesalius can easily compare the expression
 of cells between different anatomical structures. Here, we present how we
 compared the expression of different cell types between anatomical structures in the mouse hippocampus. The data is taken from *Puck_200115_08*. First,
-we need to assign cell types to each barcode. In this instance, we used (RCTD)[https://github.com/dmcable/spacexr] to decompose cell types contained within each barcode and store annotations into a Seurat object.
+we need to assign cell types to each barcode. In this instance, we used [RCTD](https://github.com/dmcable/spacexr) to decompose cell types contained within each barcode and store annotations into a Seurat object.
 
 *You do not need to use RCTD - you only need to assign cell types to the barcodes contained in your data. Feel free to use any type of annotation tool you
 prefer. The code shown here applies to Seurat objects*
@@ -966,7 +1008,10 @@ your ST assay in split mode to select your territories.
 We will run the comparison on all homotypic beads. Not all cell type
 combinations will yield differential gene expression.  
 
+This section produces:
 
+* **Figure 4a**
+* DEGs are provided in the supplementary material of the manuscript
 
 ```{r Vesalius_terComp, eval = FALSE, echo = TRUE,warning = FALSE}
 cortex <- c(1:6,8)
@@ -999,7 +1044,7 @@ for(i in seq_along(homo_cells)){
     by_cell[[i]] <- deg
 }
 by_cell <- do.call("rbind",by_cell)
-write.table(by_cell, file = "vesalius_terComp_CortexVSThalamus.csv")
+write.csv(by_cell, file = "vesalius_terComp_CortexVSThalamus.csv")
 ```
 
 Finally, we can plot the results. First, we plot all differentially expressed
@@ -1043,7 +1088,7 @@ for(j in seq(1,4)){
 
 
 #------------------------------------------------------------------------------#
-# Selecting examples to plot
+# Selecting examples to plot Figure 4a
 #------------------------------------------------------------------------------#
 pdf("vesalius_DEG_between_Ter.pdf",height = 5,width = 12)
 
@@ -1060,7 +1105,7 @@ p <- viewCellExpression(image = imageBrain ,
         labs(title = "Astrocyte - Cpe")+
         scale_shape_discrete(labels = c("Cortex", "Thalamus"))
 
-### Gad1 in interneuron
+### Nrgn in Entorhinal
 local <- by_cell %>% filter(genes == "Nrgn" & celltype == "Entorhinal+Entorhinal")
 bar <- homo_cells[["Entorhinal+Entorhinal"]]
 p1 <- viewCellExpression(image = imageBrain ,
@@ -1083,6 +1128,11 @@ of territories makes for an easy way to analyse gene expression pattern at the
 border between different tissues. For example, we analysed the expression patterns
 at the border between the Dentate Gyrus Granule Cell Layer and the Dentate Gyrus
 Sub Granular Zone.
+
+This section produces:
+
+* **Figure 4b**
+* DEGs are provided in the supplementary material of the manuscript
 
 ```{r dentateGyrus,eval=FALSE, echo=TRUE}
 
@@ -1161,6 +1211,8 @@ coord_outer <- ggplot(outer, aes(x,y,col = as.factor(seurat_clusters))) +
 
 We can visualise the clustering results
 
+**Figure 4b**
+
 ```{r DentatePlots, eval=FALSE, echo =TRUE, warning=FALSE,fig.width=8,fig.height=4}
 #pdf("DenMap.pdf", width =9, height=9)
 coord_outer
@@ -1174,6 +1226,11 @@ applied morphological operators to fill in the holes and gaps.
 Then, we layered this isolated territory and after extracting
 layer specific genes, we found the Kif5a and Stmn4 genes that were highly
 expressed in the inner layers of the Corpus Callosum.
+
+This sections produces:
+
+* **Figure 4d**
+* DEGs are provided in the supplementary material
 
 
 ```{r layered_subcortex, eval=FALSE, echo =T,fig.width=9, fig.height =7}
@@ -1200,6 +1257,9 @@ Layeredsc <- do.call("rbind",Layeredsc)
 Layeredsc <- filter(Layeredsc ,logFC >0)
 
 
+#------------------------------------------------------------------------------#
+# Plotting Figure 4d
+#------------------------------------------------------------------------------#
 pdf("Kif5a.pdf",width=9,height=7)
 scPlot <- viewLayerExpression(sc,brainNorm,genes = "Kif5a",cex=20)+
           theme_void()+
@@ -1228,20 +1288,24 @@ dev.off()
 ```
 
 # UMAP vs PCA
-In the section, we will aim to demonstrate the differences between using UMAP or
+In the section, we aim to demonstrate the differences between using UMAP or
 PCA embeddings in your color images.
 
 The main aspect to consider is how much data is being included in the image.
 UMAP projections can contain an arbitrary number of PCs and in turn this means
-that more of the data can be included into the final images. While this does
+that more *information* can be included into the final images. While this does
 sound like a good thing, it also means that more subtle patterns might be merged
 together in color space.
 
 PCA slices - on the other hand -  can only show 3 PCs at a time to create RGB
-images. Obvisouly, in this case there is less information included in the final
+images. Obviously, in this case there is less *information* included in the final
 image. However, this generates images that emphasise different part of the ST
 assay. We can use these different slices and images to explores different
 sections of the ST assay and focus our attention on different territories.
+
+This section produces:
+
+* **Figure S2**
 
 
 ```{r vesalius_PCAvsUMAP, eval=F, echo =TRUE,warning=F}
@@ -1364,18 +1428,10 @@ set of territories between PC slices compared to the brain. The approach
 provided by Vesalius enables a different way of gaining insight into ST assays.
 The use of PCA instead of UMAP projections decomposes the variance contained
 in the ST assay into smaller sections that can easily be visualised. We hope
-that this approach can contribute to really capitalising on the information
+that this approach can contribute to capitalising on the information
 contained in high resolution ST data sets.
-
-
-
 
 # Conclusion
 We hope that this has given you insights into how Vesalius works and what you
 can do with this tool. All figures produced here are the ones used in the
-manuscript. Figures related to benchmarking and simulations are produced with
-the script found (here)[]
-
-
-
-All ISH images are taken from the Allen Brain Atlas.
+manuscript. All ISH images are taken from the Allen Brain Atlas.
