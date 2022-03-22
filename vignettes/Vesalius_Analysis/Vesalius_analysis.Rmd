@@ -19,7 +19,7 @@ possibilities provided by Vesalius. Each section or sub-section will indicate
 in which figure their respective output can be found.
 
 Please note that the code related to Vesalius benchmarking and comparison to
-other methods can be found [here](https://github.com/patrickCNMartin/Vesalius/tree/main/methodComp). 
+other methods can be found [here](https://github.com/patrickCNMartin/Vesalius/tree/main/methodComp).
 
 
 
@@ -290,7 +290,9 @@ users might want to use their own plotting style and this is straight forward
 as the output of all Vesalius functions are simple data frames. Feel free
 to use which ever tool you prefer to visualise your data.
 
-The figure produce here is **Figure 2A** in the manuscript.
+This section produces:
+
+* **Figure 2a**
 
 ```{r Vesalius_viz, eval=FALSE,echo=TRUE,warnings=FALSE,fig.width=8,fig.height=12}
 #------------------------------------------------------------------------------#
@@ -558,7 +560,8 @@ coord_med <- ggplot(med, aes(x,y,col = as.factor(seurat_clusters))) +
 ```
 Finally, we can visualise cell clustering in isolated territories
 
-**Figure 3a and Figure 3d**
+ * **Figure 3a**
+ * **Figure 3d**
 ```{r Vesalius_BrainPlots, eval=FALSE, echo = TRUE, warning=F, fig.width= 10, height=5}
 #pdf("SSV2_Brain_IsolatedTerritory.pdf", width = 10, height= 5)
 coord_CA / coord_med
@@ -739,7 +742,7 @@ need to pre-process the data again.
 
 This section produces:
 
-**Figure 2e**
+* **Figure 2e**
 
 
 ```{r Vesalius_SeqScopeLiver, eval=FALSE, echo = TRUE, warning =FALSE}
@@ -803,7 +806,7 @@ set. The `.rds` files also contains more than one slice.
 
 This section produces:
 
-**Figure 2f**
+* **Figure 2f**
 
 ```{r Vesalius_SeqScopeColon, eval=FALSE, echo = TRUE, warning =FALSE}
 #------------------------------------------------------------------------------#
@@ -937,7 +940,7 @@ We can also visualise differentially expressed genes between layers in the eye.
 
 This section produces:
 
-**Figure 3h**
+* **Figure 3h**
 
 ```{r expressionPatternEye, eval=FALSE, echo=TRUE,fig.width=5,fig.height=4}
 

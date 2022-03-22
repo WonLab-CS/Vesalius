@@ -421,10 +421,15 @@ dev.off()
 #------------------------------------------------------------------------------#
 files <- list.files(pattern = ".csv")
 gt <- list.files(pattern = "homotypic.Rda")
+gt <- gt[gt!= "SimulationTimes_homotypic.Rda"]
+
+## reorder because 1 and 10
+gt <- gt[c(1,3:10,2)]
 
 library(mclust)
 library(mcclust)
 library(dplyr)
+library(ggplot2)
 
 performance <- data.frame("Method" = character(),
                           "Regime" = character(),
@@ -441,7 +446,8 @@ for(i in seq_along(gt)){
     for(j in seq_along(simList)){
         tmpSim <- simList[[j]]
         tmpSim$barcodes <- paste0("bar_",seq_len(nrow(tmpSim)))
-        repsByRegime <- files[grepl(paste0("rep",i),files) &
+        fileTag <- sapply(strsplit(files,"_"),"[[",3)
+        repsByRegime <- files[fileTag == paste0("rep",i) &
                               grepl(names(simList)[j],files)]
         for(k in seq_along(repsByRegime)){
             if(grepl("BayesSpace",repsByRegime[k])){
@@ -464,6 +470,8 @@ for(i in seq_along(gt)){
 
             }else if(grepl("Seurat",repsByRegime[k])){
                 tmpPred <- read.csv(repsByRegime[k],header=T)
+                #aligned <- match(tmpPred$barcodes, tmpSim$barcodes)
+                #simTer <- as.character(tmpSim$territory)[aligned]
                 ari <- adjustedRandIndex(tmpPred$seurat_clusters,tmpSim$territory)
                 vi <- vi.dist(tmpPred$seurat_clusters,tmpSim$territory)
                 tmpPred <- data.frame("Seurat",names(simList)[j],i,ari,vi)
@@ -524,20 +532,61 @@ dev.off()
 #------------------------------------------------------------------------------#
 # Simulation run times Figure 2h
 #------------------------------------------------------------------------------#
-convertToSecs <- function(x,u){
-    m <- which(u == "mins")
-    h <- which(u == "hours")
+convertToSecs <- function(x){
+    u <- units(x)
+    if(u == "mins"){
+        return(as.numeric(x) *60)
+    }else if(u == "hours"){
+        return(as.numeric(x) * 60 * 60)
+    } else {
+        stop("what this?")
+    }
 
-    x[m] <- x[m] * 60
-    x[h] <- x[h] * 60 * 60
-    return(x)
 }
+
+time <- get(load("SimulationTimes_homotypic.Rda"))
+df <- data.frame("time" = numeric(), "method" = character(),"Replicate" = numeric())
+
+
+for(i in seq_along(time)){
+    for(j in seq_along(time[[i]])){
+        tmp <- convertToSecs(time[[i]][[j]])
+        tmp <- data.frame("time" = tmp, "method" = names(time[[i]])[j],"Replicate" = i)
+        df <- rbind(df, tmp)
+    }
+}
+
+#### changing to minutes for now
+df$time <- df$time / 60
+
+df$method <- as.factor(df$method)
+cols <- c("#999999", "#E69F00", "#56B4E9", "#009E73",
+          "#F0E442", "#0072B2", "#D55E00", "#CC79A7")[c(3,4,7,8)]
+
+g <- ggplot(df, aes(x = method, y= time,fill = method)) +
+  geom_boxplot()+
+  scale_fill_manual(values=cols)+
+  theme_minimal()+
+  theme(axis.text = element_text(size = 15),
+        axis.title = element_text(size = 15),
+        legend.text = element_text(size =15)) +
+  #guides(colour = guide_legend(override.aes = list(size=4)))+
+  labs(x = "", y = "Time in Minutes",fill = " ")
+
+pdf("~/Vesalius/MethodCompSim_time.pdf",width = 7, height = 3.5)
+print(g)
+dev.off()
+
 #------------------------------------------------------------------------------#
 # concat cell types use in each sim round
 # Suplemntary material
 #------------------------------------------------------------------------------#
 
 gt <- list.files(pattern = "homotypic.Rda")
+gt <- gt[gt!= "SimulationTimes_homotypic.Rda"]
+
+## reorder because 1 and 10
+gt <- gt[c(1,3:10,2)]
 cells <- data.frame("Replicate" = numeric(),
                     "Regime" = character(),
                     "n_cells" = numeric(),
@@ -554,7 +603,7 @@ for(i in seq_along(gt)){
                        "Regime" = rep(regime[j],n_c[j]*3),
                        "n_cells" = rep(n_c[j],n_c[j]*3),
                        "territory" = rep(1:3,each=n_c[j]),
-                       "cellType" = rep(tmpCells[[j]], each = 3))
+                       "cellType" = rep(tmpCells[[j]], times = 3))
     } else {
       df <- data.frame("Replicate" = rep(i,n_c[j]),
                        "Regime" = rep(regime[j],n_c[j]),
@@ -567,13 +616,19 @@ for(i in seq_along(gt)){
   }
 
 }
-write.csv(cells, file = "Simulation_CellTypes.csv")
+write.csv(cells, file = "~/Vesalius/Simulation_CellTypes.csv")
 
 #------------------------------------------------------------------------------#
 # Simulation Plots for all regimes
 # Figure S7 to Figure S17
 # Figure 2i
 #------------------------------------------------------------------------------#
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(grid)
+library(RColorBrewer)
+
 files <- list.files(pattern = ".csv")
 
 
@@ -715,10 +770,12 @@ dev.off()
 reorder <- c(4,7,1,2,3,5,6)
 reorder <- c(reorder,reorder+7,reorder+14,reorder+21)
 
-for(k in seq(1,6)){
-  tmpPlots <- plots[grepl(paste0("rep",k),plotNames)]
+#for(k in seq(1,10)){
+for(k in 10){
+  locs <- sapply(strsplit(plotNames," "),"[[",3)
+  tmpPlots <- plots[locs == paste0("rep",k)]
   tmpPlots <- tmpPlots[reorder]
-  png(paste0("Simulation_rep",k,".png"),width =1800,height=2400)
+  png(paste0("~/Vesalius/Simulation_rep",k,".png"),width =1800,height=2400)
   plotCols <- 4
   plotRows <- 7
 
