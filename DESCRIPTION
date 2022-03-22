@@ -19,6 +19,7 @@ Collate: IsolatingTerritories.R
     viz.R
     GB.R
     data.R
+    objects.R
 Depends: R (>= 4.0.0),
     Seurat,
     imager,
