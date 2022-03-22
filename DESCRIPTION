@@ -20,6 +20,7 @@ Collate: IsolatingTerritories.R
     GB.R
     data.R
     objects.R
+    embeddings.R
 Depends: R (>= 4.0.0),
     Seurat,
     imager,
