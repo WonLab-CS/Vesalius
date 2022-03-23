@@ -181,11 +181,11 @@
     cat( paste(t," Checking Coordinates \n"))
 }
 
-.checkVesalius <- function(verbose =TRUE){
-    if(!verbose) return(NULL)
-    t <- Sys.time()
-    cat( paste(t," Checking and Converting Vesalius Object \n"))
-}
+#.checkVesalius <- function(verbose =TRUE){
+#    if(!verbose) return(NULL)
+#    t <- Sys.time()
+#    cat( paste(t," Checking and Converting Vesalius Object \n"))
+#}
 .seedSelect <- function(verbose =TRUE){
     if(!verbose) return(NULL)
     t <- Sys.time()

@@ -101,10 +101,16 @@ smoothArray <- function(vesalius,
         if(!"cc" %in% colnames(vesalius)) vesalius$cc <- 1
         images <- list(as.cimg(select(vesalius, c("x", "y", "cc", "value"))))
         type <- "df"
-    } else if(is.cimg(image))){
+    } else if(is.cimg(vesalius))){
         # peding - check
-        image <- vesalius
+        image <- list(vesalius)
         #type <- "image"
+    } else if(is(vesalius)[1L] == "list"){
+        if(!any(sapply(vesalius,is)=="cimg")){
+            stop("Unsupported format to smoothArray function")
+        } else {
+          image <- vesalius
+        }
     } else {
       stop("Unsupported format to smoothArray function")
     }
@@ -249,9 +255,16 @@ equalizeHistogram <- function(vesalius,
         if(!"cc" %in% colnames(vesalius)) vesalius$cc <- 1
         images <- list(as.cimg(select(vesalius, c("x", "y", "cc", "value"))))
         type <- "df"
-    } else if(is.cimg(image))){
+    } else if(is.cimg(vesalius))){
         # peding - check
-        image <- vesalius
+        image <- list(vesalius)
+        #type <- "image"
+    } else if(is(vesalius)[1L] == "list"){
+        if(!any(sapply(vesalius,is)=="cimg")){
+            stop("Unsupported format to smoothArray function")
+        } else {
+          image <- vesalius
+        }
     } else {
       stop("Unsupported format to smoothArray function")
     }
@@ -356,9 +369,16 @@ regulariseImage <- function(vesalius,
         if(!"cc" %in% colnames(vesalius)) vesalius$cc <- 1
         images <- list(as.cimg(select(vesalius, c("x", "y", "cc", "value"))))
         type <- "df"
-    } else if(is.cimg(image))){
+    } else if(is.cimg(vesalius))){
         # peding - check
-        image <- vesalius
+        image <- list(vesalius)
+        #type <- "image"
+    } else if(is(vesalius)[1L] == "list"){
+        if(!any(sapply(vesalius,is)=="cimg")){
+            stop("Unsupported format to smoothArray function")
+        } else {
+          image <- vesalius
+        }
     } else {
       stop("Unsupported format to smoothArray function")
     }
@@ -502,9 +522,16 @@ iterativeSegmentation <- function(vesalius,
       if(!"cc" %in% colnames(vesalius)) vesalius$cc <- 1
       images <- list(as.cimg(select(vesalius, c("x", "y", "cc", "value"))))
       type <- "df"
-  } else if(is.cimg(image))){
+  } else if(is.cimg(vesalius))){
       # peding - check
-      image <- vesalius
+      image <- list(vesalius)
+      #type <- "image"
+  } else if(is(vesalius)[1L] == "list"){
+      if(!any(sapply(vesalius,is)=="cimg")){
+          stop("Unsupported format to smoothArray function")
+      } else {
+        image <- vesalius
+      }
   } else {
     stop("Unsupported format to smoothArray function")
   }
