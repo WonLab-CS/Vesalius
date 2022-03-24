@@ -253,6 +253,11 @@
   t <- Sys.time()
   cat( paste(t," Converting Vesalius to Image\n"))
 }
+.vtdf <- function(verbose=TRUE){
+  if(!verbose) return(NULL)
+  t <- Sys.time()
+  cat( paste(t," Converting Vesalius to Data frame\n"))
+}
 
 .msk <- function(em,verbose =TRUE){
     if(!verbose) return(NULL)

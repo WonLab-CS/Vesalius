@@ -268,6 +268,34 @@ getSeuratCoordinates <- function(seurat){
     return(imageList)
 }
 
+.vesToDF <- function(object, dims,verbose =TRUE){
+  #--------------------------------------------------------------------------#
+  # Get relevant slots and prepare for joining
+  #--------------------------------------------------------------------------#
+  tiles <- object@tiles
+  #--------------------------------------------------------------------------#
+  # generate a list of images based on the number of dims
+  # Remember that any time you do anything to an image
+  # it is always applied to each "channel" separately - it will be so
+  # much easier to just consider everything as gray scale for this
+  #--------------------------------------------------------------------------#
+  imageDF <- list()
+  .vtdf(verbose)
+  for(i in seq_along(dims)){
+    embeds <- object@embeddings[,dims[i]]
+    embeds <- data.frame(names(embeds),embeds)
+    colnames(embeds) <- c("barcodes",as.character(dims[i]))
+    cimg <- right_join(tiles,embeds, by= "barcodes")
+    cimg$cc <- i
+    colnames(cimg) <- c("barcodes","x","y","value","cc")
+    cimg <- na.exclude(cimg)
+    cimg <- cimg[,c("barcodes","x","y","cc","value")]
+    imageDF[[i]] <- cimg
+   }
+  imageDF <- do.call("rbind", imageDF)
+  return(imageDF)
+}
+
 .cToVes <- function(cimg,object,dims){
     #--------------------------------------------------------------------------#
     # Get stuff out
@@ -291,6 +319,33 @@ getSeuratCoordinates <- function(seurat){
     object@embeddings <- embeds
 
     return(object)
+}
+
+.dfToVes <- function(df, object,dims){
+  #--------------------------------------------------------------------------#
+  # Get stuff out
+  #--------------------------------------------------------------------------#
+  tiles <- object@tiles
+  embeds <- object@embeddings
+  #--------------------------------------------------------------------------#
+  # Always going to be a gray scale image.
+  # Colour are only used when during viz
+  # This allows any arbitrary number of embeds
+  # this is probably a shit way to do it
+  # re think for later 
+  #--------------------------------------------------------------------------#
+  for(i in seq_along(dims)){
+    img <- filter(df, cc == i)
+    barcodes <- left_join(tiles,img, by = c("x","y")) %>%
+                distinct(barcodes,value) %>% na.exclude()
+
+    locs <- match(rownames(embeds),barcodes$barcodes)
+    embeds[locs,dims[i]] <- barcodes$value
+
+  }
+  object@embeddings <- embeds
+
+  return(object)
 }
 
 .vesToSIS <- function(object,dims){
@@ -350,11 +405,12 @@ getSeuratCoordinates <- function(seurat){
   return(object)
 }
 
-.SISToDF <- function(image){
+.SISToDF <- function(image, is.cimg = TRUE){
     image <- image$AP_image_data
     y <- rep(seq(1,ncol(image)), each = nrow(image))
     x <- rep(seq(1,nrow(image)), times = ncol(image))
     value <- as.vector(image[seq_len(nrow(image)),seq_len(ncol(image)),1])
+
     df <- data.frame("x" = x,"y" = y, "value" = value)
     return(df)
 }

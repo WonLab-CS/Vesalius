@@ -94,23 +94,14 @@ smoothArray <- function(vesalius,
     #--------------------------------------------------------------------------#
     .simpleBar(verbose)
     .checkVesalius(verbose)
+    type <- "none"
     if(is(vesalius)[1L] == "vesaliusObject"){
         images <- .vesToC(object = vesalius, dims = dims)
         type <- "vesaliusObject"
     } else if(is(vesalius)[1L] == "data.frame" | is(vesalius)[1L] == "tibble"){
         if(!"cc" %in% colnames(vesalius)) vesalius$cc <- 1
         images <- list(as.cimg(select(vesalius, c("x", "y", "cc", "value"))))
-        type <- "df"
-    } else if(is.cimg(vesalius))){
-        # peding - check
-        image <- list(vesalius)
-        #type <- "image"
-    } else if(is(vesalius)[1L] == "list"){
-        if(!any(sapply(vesalius,is)=="cimg")){
-            stop("Unsupported format to smoothArray function")
-        } else {
-          image <- vesalius
-        }
+
     } else {
       stop("Unsupported format to smoothArray function")
     }
@@ -137,9 +128,8 @@ smoothArray <- function(vesalius,
     if(type == "vesaliusObject"){
         vesalius <- .cToVes(images,vesalius,dims)
     } else {
-        vesalius <- right_join(vesalius, images[[1]], by  = c("x","y","cc")) %>%
-               select(c("barcodes","x","y","cc","value.x","tile")) %>% tibble
-
+        vesalius <- right_join(vesalius,images[[1]], by  = c("x","y","cc")) %>%
+                   select(c("barcodes","x","y","cc","value.x","tile")) %>% tibble
         colnames(vesalius) <- c("barcodes","x","y","cc","value","tile")
     }
 
@@ -248,23 +238,14 @@ equalizeHistogram <- function(vesalius,
                               verbose=TRUE){
     .simpleBar(verbose)
     .checkVesalius(verbose)
+    type <- "none"
     if(is(vesalius)[1L] == "vesaliusObject"){
         images <- .vesToC(object = vesalius, dims = dims)
         type <- "vesaliusObject"
     } else if(is(vesalius)[1L] == "data.frame" | is(vesalius)[1L] == "tibble"){
         if(!"cc" %in% colnames(vesalius)) vesalius$cc <- 1
         images <- list(as.cimg(select(vesalius, c("x", "y", "cc", "value"))))
-        type <- "df"
-    } else if(is.cimg(vesalius))){
-        # peding - check
-        image <- list(vesalius)
-        #type <- "image"
-    } else if(is(vesalius)[1L] == "list"){
-        if(!any(sapply(vesalius,is)=="cimg")){
-            stop("Unsupported format to smoothArray function")
-        } else {
-          image <- vesalius
-        }
+
     } else {
       stop("Unsupported format to smoothArray function")
     }
@@ -362,23 +343,14 @@ regulariseImage <- function(vesalius,
                             verbose=TRUE){
     .simpleBar(verbose)
     .checkVesalius(verbose)
+    type <- "none"
     if(is(vesalius)[1L] == "vesaliusObject"){
         images <- .vesToC(object = vesalius, dims = dims)
         type <- "vesaliusObject"
     } else if(is(vesalius)[1L] == "data.frame" | is(vesalius)[1L] == "tibble"){
         if(!"cc" %in% colnames(vesalius)) vesalius$cc <- 1
         images <- list(as.cimg(select(vesalius, c("x", "y", "cc", "value"))))
-        type <- "df"
-    } else if(is.cimg(vesalius))){
-        # peding - check
-        image <- list(vesalius)
-        #type <- "image"
-    } else if(is(vesalius)[1L] == "list"){
-        if(!any(sapply(vesalius,is)=="cimg")){
-            stop("Unsupported format to smoothArray function")
-        } else {
-          image <- vesalius
-        }
+
     } else {
       stop("Unsupported format to smoothArray function")
     }
@@ -492,21 +464,21 @@ regulariseImage <- function(vesalius,
 #' method = c("iso"), acrossLevels = "mean",sigma = seq(0.5,1.5,l = 10))
 #' }
 
-iterativeSegmentation <- function(vesalius,
-                                  method = c("kmeans","SISKmeans","SIS"),
-                                  colDepth = 10,
-                                  smoothIter = 1,
-                                  smoothType = c("median","iso","box"),
-                                  acrossLevels = "min",
-                                  sigma = 1,
-                                  box = 20,
-                                  threshold=0,
-                                  neuman=TRUE,
-                                  gaussian=TRUE,
-                                  useCenter=TRUE,
-                                  dims = seq(1,3),
-                                  cores= 1,
-                                  verbose = TRUE){
+imageSegmentation <- function(vesalius,
+                              method = c("kmeans","iterativeKmeans","SISKmeans","SIS"),
+                              colDepth = 10,
+                              dims = seq(1,3),
+                              smoothIter = 1,
+                              smoothType = c("median","iso","box"),
+                              acrossLevels = "min",
+                              sigma = 1,
+                              box = 20,
+                              threshold=0,
+                              neuman=TRUE,
+                              gaussian=TRUE,
+                              useCenter=TRUE,
+                              cores= 1,
+                              verbose = TRUE){
 
   .simpleBar(verbose)
   .checkVesalius(verbose)
@@ -515,23 +487,16 @@ iterativeSegmentation <- function(vesalius,
   # depreciate and face out the RGB approach in favour of grey scale and
   # Embedding approach
   #----------------------------------------------------------------------------#
+  type <- "none"
   if(is(vesalius)[1L] == "vesaliusObject"){
-      images <- .vesToC(object = vesalius, dims = dims)
+      if(length(dims) != 3 | length(dims) !=1){
+          stop("iterativeSegmentation only support 1 or 3 color channels!")
+      }
+      images <- vesalius
       type <- "vesaliusObject"
   } else if(is(vesalius)[1L] == "data.frame" | is(vesalius)[1L] == "tibble"){
       if(!"cc" %in% colnames(vesalius)) vesalius$cc <- 1
-      images <- list(as.cimg(select(vesalius, c("x", "y", "cc", "value"))))
-      type <- "df"
-  } else if(is.cimg(vesalius))){
-      # peding - check
-      image <- list(vesalius)
-      #type <- "image"
-  } else if(is(vesalius)[1L] == "list"){
-      if(!any(sapply(vesalius,is)=="cimg")){
-          stop("Unsupported format to smoothArray function")
-      } else {
-        image <- vesalius
-      }
+      images <- vesalius
   } else {
     stop("Unsupported format to smoothArray function")
   }
@@ -553,8 +518,8 @@ iterativeSegmentation <- function(vesalius,
                     gaussian = gaussian,
                     useCenter = useCenter,
                     na.rm = na.rm,
-                    verbose = verbose,
-                    cores = cores),
+                    dims = dims,
+                    verbose = verbose),
                   "SISKmeans" = .SISKmeans(vesalius, dims,cores,verbose),
                   "SIS" = .SIS(vesalius,dims,cores,verbose))
 
@@ -575,6 +540,7 @@ iterativeSegmentation <- function(vesalius,
                             gaussian=TRUE,
                             useCenter=TRUE,
                             na.rm=FALSE,
+                            dims = seq(1,3),
                             verbose = TRUE){
 
   .simpleBar(verbose)
@@ -589,6 +555,7 @@ iterativeSegmentation <- function(vesalius,
     # insert https://www.youtube.com/watch?v=4TYv2PhG89A&ab_channel=SadeVEVO
     #--------------------------------------------------------------------------#
     image <- smoothArray(vesalius,
+                         dims = dims,
                          method =method,
                          sigma = sigma,
                          box = box,
@@ -599,11 +566,21 @@ iterativeSegmentation <- function(vesalius,
                          acrossLevels=acrossLevels,
                          iter = smoothIter,
                          verbose=verbose)
-
-
+    #--------------------------------------------------------------------------#
+    # If we output a vesalius object
+    # we create a df output for the kmeans clustering
+    # easier for conversion
+    # consider refactoring this in the future
+    #--------------------------------------------------------------------------#
+    if(is(vesalius)[1L] == "vesaliusObject"){
+        image <- .vesToDF(image, dims)
+    }
     cat("\n")
     .seg(j,verbose)
     cat("\n")
+    #--------------------------------------------------------------------------#
+    # Now let's cluster with or without centers
+    #--------------------------------------------------------------------------#
     if(useCenter){
 
       tmpImg <- image %>%
@@ -616,15 +593,17 @@ iterativeSegmentation <- function(vesalius,
       # This is for
       #------------------------------------------------------------------------#
       colours <- select(tmpImg, c("cc","value"))
-      colours <- data.frame(colours$value[colours$cc ==1],
-                            colours$value[colours$cc ==2],
-                            colours$value[colours$cc ==3])
+      colours <- lapply(seq_along(dims), function(i,col){
+          return(filter(col,cc ==i))
+      })
+      colours <- as.matrix(do.call("cbind",colours))
+
       km <- kmeans(colours,colDepth[j],iter.max = 200,nstart = 50)
       cluster <- km$cluster
       Kcenters <- km$centers
       tmpImg$cluster <- 0
 
-      for(i in seq(1,3)){
+      for(i in seq_len(ncol(colours))){
           tmpImg$cluster[tmpImg$cc == i] <- cluster
           tmpImg$value[tmpImg$cc == i] <- Kcenters[cluster,i]
       }
@@ -643,18 +622,19 @@ iterativeSegmentation <- function(vesalius,
       # Now lets do the same thing but where we use all values
       #------------------------------------------------------------------------#
       colours <- select(image, c("cc","value"))
-      colours <- data.frame(colours$value[colours$cc ==1],
-                            colours$value[colours$cc ==2],
-                            colours$value[colours$cc ==3])
-      km <- kmeans(colours,colDepth[j],iter.max = 200,nstart = 10)
+      colours <- lapply(seq_along(dims), function(i,col){
+          return(filter(col,cc ==i))
+      })
+      colours <- as.matrix(do.call("cbind",colours))
 
+      km <- kmeans(colours,colDepth[j],iter.max = 200,nstart = 50)
       cluster <- km$cluster
       Kcenters <- km$centers
-      image$cluster <- 0
+      tmpImg$cluster <- 0
 
-      for(i in seq(1,3)){
-          image$cluster[image$cc == i] <- cluster
-          image$value[image$cc == i] <- Kcenters[cluster,i]
+      for(i in seq_len(ncol(colours))){
+          tmpImg$cluster[tmpImg$cc == i] <- cluster
+          tmpImg$value[tmpImg$cc == i] <- Kcenters[cluster,i]
       }
       #------------------------------------------------------------------------#
       # This section is so we don't end up having barcode associated with
@@ -673,7 +653,9 @@ iterativeSegmentation <- function(vesalius,
 
     }
   }
-
+  if(is(vesalius)[1L] == "vesaliusObject"){
+      image <- .dfToVes(image,vesalius,dims)
+  }
   .simpleBar(verbose)
   return(image)
 }
