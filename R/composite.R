@@ -325,7 +325,7 @@ buildMosaic <- function(vesalius,
 
 }
 
-
+## Need stack check improvement 
 .stackCheck <- function(pix,mosaic){
     #--------------------------------------------------------------------------#
     # create a size vector for the mosaic

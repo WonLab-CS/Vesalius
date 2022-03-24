@@ -71,7 +71,8 @@
 #' acrossLevels = "mean",sigma = seq(0.5,1.5,l = 10)))
 #' imagePlot(image)
 #' }
-smoothArray <- function(image,
+smoothArray <- function(vesalius,
+                        dims = seq(1,3),
                         method = c("median","iso","box"),
                         iter = 1,
                         sigma = 1,
@@ -81,83 +82,101 @@ smoothArray <- function(image,
                         gaussian=TRUE,
                         na.rm=FALSE,
                         acrossLevels = "min",
-                        invert = FALSE,
+                        cores = 1,
                         verbose = TRUE){
     #--------------------------------------------------------------------------#
-    # Class check
+    # Class check and convert to image list
+    # The data frame approach will be depreciate in the future
+    # While it is still there though - add some checks to make sure its the
+    # right format...
+    # also should Probably write this a methods but they will all decpreciate
+    # with this verison
     #--------------------------------------------------------------------------#
+    .simpleBar(verbose)
+    .checkVesalius(verbose)
+    type <- "none"
+    if(is(vesalius)[1L] == "vesaliusObject"){
+        images <- .vesToC(object = vesalius, dims = dims)
+        type <- "vesaliusObject"
+    } else if(is(vesalius)[1L] == "data.frame" | is(vesalius)[1L] == "tibble"){
+        if(!"cc" %in% colnames(vesalius)) vesalius$cc <- 1
+        images <- list(as.cimg(select(vesalius, c("x", "y", "cc", "value"))))
 
-    if(!is.cimg(image)){
-      if(!"cc" %in% colnames(image)) image$cc <- 1
-      imgCopy <- as.cimg(select(image, c("x", "y", "cc", "value")))
-    }else {
-      imgCopy <- image
-    }
-
-    if(invert){
-      #------------------------------------------------------------------------#
-      ## This is effing clonky
-      ## Probably need to re work this
-      ## It works but it just sucks that I have to rebuild the whole thing
-      ## Unless.... I "hack" the as.cimg function and add an argument myself?
-      ## That just sounds like a stupid idea with extra steps.
-      #------------------------------------------------------------------------#
-      .invertCols(verbose)
-      imgCopy <- image %>%
-             select(c("x","y","cc","value")) %>%
-             as.cimg %>%
-             as.data.frame
-      nonImg <- paste0(image$x,"_",image$y)
-      inImg <- paste0(imgCopy$x,"_",imgCopy$y)
-      imgCopy[!inImg %in% nonImg,"value"] <- 1
-      imgCopy <- as.cimg(imgCopy)
+    } else {
+      stop("Unsupported format to smoothArray function")
     }
 
     #--------------------------------------------------------------------------#
-    # Running multiple smoothing itteration
-    # TODO change the verbose part to account for multiple signa/box values
+    # We can smooth over different arrays in parallel - I hope...
+    # this might lead to some issue with low level C
+    # Leave as is for now - but could be better to set up some check for
+    # core allocation. Don't want to waste time assigning threads if not
+    # required.
     #--------------------------------------------------------------------------#
+    .smooth(verbose)
+    images <- parallel::mclapply(images,.internalSmooth,
+                                 method = method,
+                                 iter = iter,
+                                 sigma = sigma,
+                                 box = box,
+                                 threshold=threshold,
+                                 neuman=neuman,
+                                 gaussian=gaussian,
+                                 na.rm=na.rm,
+                                 acrossLevels = acrossLevels,
+                                 mc.cores = cores)
+    if(type == "vesaliusObject"){
+        vesalius <- .cToVes(images,vesalius,dims)
+    } else {
+        vesalius <- right_join(vesalius,images[[1]], by  = c("x","y","cc")) %>%
+                   select(c("barcodes","x","y","cc","value.x","tile")) %>% tibble
+        colnames(vesalius) <- c("barcodes","x","y","cc","value","tile")
+    }
+
+    .simpleBar(verbose)
+    return(vesalius)
+
+}
+
+.internalSmooth <- function(image,
+                            method = c("median","iso","box"),
+                            iter = 1,
+                            sigma = 1,
+                            box = 20,
+                            threshold=0,
+                            neuman=TRUE,
+                            gaussian=TRUE,
+                            na.rm=FALSE,
+                            acrossLevels = "min"){
+
     for(i in seq_len(iter)){
-        .smooth(i,verbose)
         #----------------------------------------------------------------------#
         # This might seem strange but when doing a lot of smoothing there is
         # directionality bias. This introduces a shift in pixels and colour
         # To avoid this problem we can rotate the image.
         #----------------------------------------------------------------------#
         if(i %% 2 == 0){
-            imgCopy <- imrotate(imgCopy,180)
+            image <- imrotate(image,180)
         }
         for(j in method){
-          imgCopy <- switch(j,
-                     "median" = map_il(box,~medianblur(imgCopy,.,threshold)),
-                     "iso" = map_il(sigma,~isoblur(imgCopy,.,
+          image <- switch(j,
+                     "median" = map_il(box,~medianblur(image,.,threshold)),
+                     "iso" = map_il(sigma,~isoblur(image,.,
                                                    neuman,gaussian,na.rm)),
-                     "box" = map_il(box,~boxblur(imgCopy,.,neuman)))
-          imgCopy <- switch(acrossLevels,
-                     "min" = parmin(imgCopy),
-                     "max" = parmax(imgCopy),
-                     "mean" = average(imgCopy))
+                     "box" = map_il(box,~boxblur(image,.,neuman)))
+          image <- switch(acrossLevels,
+                     "min" = parmin(image),
+                     "max" = parmax(image),
+                     "mean" = average(image))
         }
         if(i %% 2 == 0){
-            imgCopy <- imrotate(imgCopy,180)
+            image <- imrotate(image,180)
         }
 
     }
-
-    imgCopy <- as.data.frame(imgCopy)
-    if(!"cc" %in% colnames(imgCopy)) imgCopy$cc <- 1
-    #--------------------------------------------------------------------------#
-    # Rebuild the smoothed image to a Vesalius data frame
-    #--------------------------------------------------------------------------#
-
-    image <- right_join(imgCopy, image, by  = c("x","y","cc")) %>%
-           select(c("barcodes","x","y","cc","value.x","tile")) %>% tibble
-
-    colnames(image) <- c("barcodes","x","y","cc","value","tile")
     return(image)
+
 }
-
-
 
 
 
@@ -205,7 +224,8 @@ smoothArray <- function(image,
 #' imagePlot(image)
 #' }
 
-equalizeHistogram <- function(image,
+equalizeHistogram <- function(vesalius,
+                              dims = seq(1,3),
                               type = "BalanceSimplest",
                               N=1,
                               smax=1,
@@ -214,32 +234,20 @@ equalizeHistogram <- function(image,
                               lambda=0.1,
                               up=100,
                               down = 10,
-                              invert=FALSE,
+                              cores=1,
                               verbose=TRUE){
     .simpleBar(verbose)
-    if(invert){
-      #------------------------------------------------------------------------#
-      ## This is effing clonky
-      ## Probably need to re work this
-      ## It works but it just sucks that I have to rebuild the whole thing
-      ## Unless.... I "hack" the as.cimg function and add an argument myself?
-      ## That just sounds like a stupid idea with extra steps.
-      #------------------------------------------------------------------------#
-      .invertCols(verbose)
-      if(!"cc" %in% colnames(image)) image$cc <- 1
-      img <- image %>%
-             select(c("x","y","cc","value")) %>%
-             as.cimg %>%
-             as.data.frame
-      nonImg <- paste0(image$x,"_",image$y)
-      inImg <- paste0(img$x,"_",img$y)
-      img[!inImg %in% nonImg,"value"] <- 1
-      img <- img %>% as.cimg() %>% imsplit("c")
+    .checkVesalius(verbose)
+    type <- "none"
+    if(is(vesalius)[1L] == "vesaliusObject"){
+        images <- .vesToC(object = vesalius, dims = dims)
+        type <- "vesaliusObject"
+    } else if(is(vesalius)[1L] == "data.frame" | is(vesalius)[1L] == "tibble"){
+        if(!"cc" %in% colnames(vesalius)) vesalius$cc <- 1
+        images <- list(as.cimg(select(vesalius, c("x", "y", "cc", "value"))))
+
     } else {
-      if(!"cc" %in% colnames(image)) image$cc <- 1
-      img <-image %>% select(c("x","y","cc","value")) %>%
-            as.cimg %>%
-            imsplit("c")
+      stop("Unsupported format to smoothArray function")
     }
     .eq(verbose)
     #--------------------------------------------------------------------------#
@@ -247,25 +255,32 @@ equalizeHistogram <- function(image,
     # work differently. It worth keeping in mind that these are made and
     # optimized for real images.
     #--------------------------------------------------------------------------#
-    img <- switch(type,
-           "EqualizePiecewise" = lapply(img,EqualizePiecewise,N) %>%
-                                 imappend("c"),
-           "BalanceSimplest" = lapply(img,BalanceSimplest,sleft,sright,
-                                      range = c(0,1)) %>%
-                               imappend("c"),
-           "SPE" = lapply(img,SPE,lambda) %>% imappend("c"),
-           "EqualizeDP"  = lapply(img,EqualizeDP,down,up) %>% imappend("c"),
-           "EqualizeADP" = lapply(img,EqualizeADP) %>% imappend("c"),
-           "ECDF" = lapply(img,.ecdf.eq) %>% imappend("c"))
-    .rebuildDF(verbose)
-    img <- as.data.frame(img)
-    if(!"cc" %in% colnames(img)) img$cc <- 1
-    img <- right_join(img, image, by  = c("x","y","cc")) %>%
-           select(c("barcodes","x","y","cc","value.x","tile")) %>% tibble
 
-    colnames(img) <- c("barcodes","x","y","cc","value","tile")
+    image <- switch(type,
+           "EqualizePiecewise" = parallel::mclapply(image,EqualizePiecewise,
+             N,mc.cores =cores),
+           "BalanceSimplest" = parallel::mclapply(image,BalanceSimplest,
+             sleft,sright,range = c(0,1),mc.cores=cores),
+           "SPE" = parallel::mclapply(image,SPE,
+             lambda,mc.cores = cores),
+           "EqualizeDP"  = parallel::mclapply(image,EqualizeDP,
+             down,up,mc.cores = cores),
+           "EqualizeADP" = parallel::mclapply(image,EqualizeADP,
+             mc.cores = cores),
+           "ECDF" = parallel::mclapply(image,.ecdf.eq,
+             mc.cores = cores))
+
+    if(type == "vesaliusObject"){
+      vesalius <- .cToVes(images,vesalius,dims)
+    } else {
+      vesalius <- right_join(vesalius, images[[1]], by  = c("x","y","cc")) %>%
+             select(c("barcodes","x","y","cc","value.x","tile")) %>% tibble
+
+      colnames(vesalius) <- c("barcodes","x","y","cc","value","tile")
+    }
+
     .simpleBar(verbose)
-    return(img)
+    return(vesalius)
 }
 
 # Internal function related to ECDF historgram eq.
@@ -317,70 +332,56 @@ equalizeHistogram <- function(image,
 #' }
 
 
-regulariseImage <- function(image,
+regulariseImage <- function(vesalius,
+                            dims = seq(1,3),
                             lambda =1,
                             niter=100,
                             method = "TVL2.FiniteDifference",
                             normalise =TRUE,
                             na.rm=TRUE,
-                            invert=FALSE,
+                            cores=1,
                             verbose=TRUE){
     .simpleBar(verbose)
+    .checkVesalius(verbose)
+    type <- "none"
+    if(is(vesalius)[1L] == "vesaliusObject"){
+        images <- .vesToC(object = vesalius, dims = dims)
+        type <- "vesaliusObject"
+    } else if(is(vesalius)[1L] == "data.frame" | is(vesalius)[1L] == "tibble"){
+        if(!"cc" %in% colnames(vesalius)) vesalius$cc <- 1
+        images <- list(as.cimg(select(vesalius, c("x", "y", "cc", "value"))))
 
-    #--------------------------------------------------------------------------#
-    if(invert){
-      #------------------------------------------------------------------------#
-      ## This is effing clonky
-      ## Probably need to re work this
-      ## It works but it just sucks that I have to rebuild the whole thing
-      ## Unless.... I "hack" the as.cimg function and add an argument myself?
-      ## That just sounds like a stupid idea with extra steps.
-      #------------------------------------------------------------------------#
-      .invertCols()
-      if(!"cc" %in% colnames(image)) image$cc <- 1
-      img <- image %>%
-             select(c("x","y","cc","value")) %>%
-             as.cimg %>%
-             as.data.frame
-      nonImg <- paste0(image$x,"_",image$y)
-      inImg <- paste0(img$x,"_",img$y)
-      img[!inImg %in% nonImg,"value"] <- 1
-      img <- img %>% as.cimg() %>% imsplit("c")
     } else {
-      if(!"cc" %in% colnames(image)) image$cc <- 1
-      img <-image %>% select(c("x","y","cc","value")) %>% as.cimg %>%
-            imsplit("c")
+      stop("Unsupported format to smoothArray function")
     }
+
     .reg(verbose)
     #--------------------------------------------------------------------------#
     # now we can do some var reg!
     # Will add the imager denoising function as well
     # regularisation is essentially denoising anyway
     #--------------------------------------------------------------------------#
-    img <- lapply(img, .regularise, lambda, niter,method, normalise) %>%
-           imappend("c")
+    images <- parallel::mclapply(images, .regularise,
+      lambda, niter,method, normalise,mc.cores = cores)
 
-    img <- tibble(as.data.frame(img))
-    if(!"cc" %in% colnames(img)) img$cc <- 1
-    #--------------------------------------------------------------------------#
-    # Adding meta data
-    #--------------------------------------------------------------------------#
-    img <- right_join(img, image, by  = c("x","y","cc")) %>%
-           select(c("barcodes","x","y","cc","value.x","tile")) %>% distinct()
-    colnames(img) <- c("barcodes","x","y","cc","value","tile")
-    #--------------------------------------------------------------------------#
-    # remove NAs
-    #--------------------------------------------------------------------------#
-    if(na.rm){
-        img <- img %>% na.exclude()
+    if(type == "vesaliusObject"){
+        vesalius <- .cToVes(images,vesalius,dims)
+    } else {
+        vesalius <- right_join(vesalius, images[[1]], by  = c("x","y","cc")) %>%
+               select(c("barcodes","x","y","cc","value.x","tile")) %>% tibble
+
+        colnames(vesalius) <- c("barcodes","x","y","cc","value","tile")
     }
     .simpleBar(verbose)
-    return(img)
+    return(vesalius)
 }
 
 # Internal regularise function.
 
-.regularise <- function(img,lambda, niter,method, normalise){
+.regularise <- function(img,lambda =1,
+                        niter=100,
+                        method = "TVL2.FiniteDifference",
+                        normalise =TRUE){
     #--------------------------------------------------------------------------#
     # might need to change the normalise part
     # it doesn't seem it works well
@@ -463,51 +464,123 @@ regulariseImage <- function(image,
 #' method = c("iso"), acrossLevels = "mean",sigma = seq(0.5,1.5,l = 10))
 #' }
 
-iterativeSegmentation.array <- function(image,
-                                        colDepth = 10,
-                                        smoothIter = 1,
-                                        method = c("median","iso","box"),
-                                        acrossLevels = "min",
-                                        sigma = 1,
-                                        box = 20,
-                                        threshold=0,
-                                        neuman=TRUE,
-                                        gaussian=TRUE,
-                                        useCenter=TRUE,
-                                        na.rm=FALSE,
-                                        invert = FALSE,
-                                        verbose = TRUE){
+imageSegmentation <- function(vesalius,
+                              method = c("kmeans","iterativeKmeans","SISKmeans","SIS"),
+                              colDepth = 10,
+                              dims = seq(1,3),
+                              smoothIter = 1,
+                              smoothType = c("median","iso","box"),
+                              acrossLevels = "min",
+                              sigma = 1,
+                              box = 20,
+                              threshold=0,
+                              neuman=TRUE,
+                              gaussian=TRUE,
+                              useCenter=TRUE,
+                              cores= 1,
+                              verbose = TRUE){
+
+  .simpleBar(verbose)
+  .checkVesalius(verbose)
+  #----------------------------------------------------------------------------#
+  # Check format - for now lets format covert but in the end we will
+  # depreciate and face out the RGB approach in favour of grey scale and
+  # Embedding approach
+  #----------------------------------------------------------------------------#
+  type <- "none"
+  if(is(vesalius)[1L] == "vesaliusObject"){
+      if(length(dims) != 3 | length(dims) !=1){
+          stop("iterativeSegmentation only support 1 or 3 color channels!")
+      }
+      images <- vesalius
+      type <- "vesaliusObject"
+  } else if(is(vesalius)[1L] == "data.frame" | is(vesalius)[1L] == "tibble"){
+      if(!"cc" %in% colnames(vesalius)) vesalius$cc <- 1
+      images <- vesalius
+  } else {
+    stop("Unsupported format to smoothArray function")
+  }
+  #----------------------------------------------------------------------------#
+  # Let's assume that we get an image parse to each function here
+  # NOTE we parse cimg image formats but we will need to convert to SIS format
+  # as well
+  #----------------------------------------------------------------------------#
+  image <- switch(method[1L],
+                  "kmeans" = .vesaliusKmeans(images,
+                    colDepth = colDepth,
+                    smoothIter = smoothIter,
+                    method = smoothType,
+                    acrossLevels = acrossLevels,
+                    sigma = sigma,
+                    box = box,
+                    threshold = threshold,
+                    neuman = neuman,
+                    gaussian = gaussian,
+                    useCenter = useCenter,
+                    na.rm = na.rm,
+                    dims = dims,
+                    verbose = verbose),
+                  "SISKmeans" = .SISKmeans(vesalius, dims,cores,verbose),
+                  "SIS" = .SIS(vesalius,dims,cores,verbose))
+
+  .simpleBar(verbose)
+  return(image)
+
+}
+
+.vesaliusKmeans <- function(vesalius,
+                            colDepth = 10,
+                            smoothIter = 1,
+                            method = c("median","iso","box"),
+                            acrossLevels = "min",
+                            sigma = 1,
+                            box = 20,
+                            threshold=0,
+                            neuman=TRUE,
+                            gaussian=TRUE,
+                            useCenter=TRUE,
+                            na.rm=FALSE,
+                            dims = seq(1,3),
+                            verbose = TRUE){
 
   .simpleBar(verbose)
   #----------------------------------------------------------------------------#
-  # Converting image to data.frame
-  # Need to check how things work here
-  # could be cleaner if you just go back and forth between data frame and cimg
-  #----------------------------------------------------------------------------#
-  if(is.cimg(image)){
-      image <- as.data.frame(image)
-  }
-
-  #----------------------------------------------------------------------------#
   # Segmenting image by iteratively decreasing colour depth and smoothing
+  # Well that's true only the user parse an array of decreasing values
+  # add some sanity checks maybe?
   #----------------------------------------------------------------------------#
   for(j in seq_along(colDepth)){
-
-
-
     #--------------------------------------------------------------------------#
     # Lets smooooooth this image
     # insert https://www.youtube.com/watch?v=4TYv2PhG89A&ab_channel=SadeVEVO
     #--------------------------------------------------------------------------#
-    image <- smoothArray(image,method =method,sigma = sigma, box = box,
-                        threshold=threshold, neuman=neuman, gaussian=gaussian,
-                        na.rm=FALSE,acrossLevels=acrossLevels,
-                        iter = smoothIter,invert = invert,verbose=verbose)
-
-
+    image <- smoothArray(vesalius,
+                         dims = dims,
+                         method =method,
+                         sigma = sigma,
+                         box = box,
+                         threshold=threshold,
+                         neuman=neuman,
+                         gaussian=gaussian,
+                         na.rm=FALSE,
+                         acrossLevels=acrossLevels,
+                         iter = smoothIter,
+                         verbose=verbose)
+    #--------------------------------------------------------------------------#
+    # If we output a vesalius object
+    # we create a df output for the kmeans clustering
+    # easier for conversion
+    # consider refactoring this in the future
+    #--------------------------------------------------------------------------#
+    if(is(vesalius)[1L] == "vesaliusObject"){
+        image <- .vesToDF(image, dims)
+    }
     cat("\n")
     .seg(j,verbose)
     cat("\n")
+    #--------------------------------------------------------------------------#
+    # Now let's cluster with or without centers
+    #--------------------------------------------------------------------------#
     if(useCenter){
 
       tmpImg <- image %>%
@@ -517,18 +590,20 @@ iterativeSegmentation.array <- function(image,
 
       #------------------------------------------------------------------------#
       # clustering with each colour together
-      # Clustering colours individually is just a pain.
+      # This is for
       #------------------------------------------------------------------------#
       colours <- select(tmpImg, c("cc","value"))
-      colours <- data.frame(colours$value[colours$cc ==1],
-                            colours$value[colours$cc ==2],
-                            colours$value[colours$cc ==3])
+      colours <- lapply(seq_along(dims), function(i,col){
+          return(filter(col,cc ==i))
+      })
+      colours <- as.matrix(do.call("cbind",colours))
+
       km <- kmeans(colours,colDepth[j],iter.max = 200,nstart = 50)
       cluster <- km$cluster
       Kcenters <- km$centers
       tmpImg$cluster <- 0
 
-      for(i in seq(1,3)){
+      for(i in seq_len(ncol(colours))){
           tmpImg$cluster[tmpImg$cc == i] <- cluster
           tmpImg$value[tmpImg$cc == i] <- Kcenters[cluster,i]
       }
@@ -547,18 +622,19 @@ iterativeSegmentation.array <- function(image,
       # Now lets do the same thing but where we use all values
       #------------------------------------------------------------------------#
       colours <- select(image, c("cc","value"))
-      colours <- data.frame(colours$value[colours$cc ==1],
-                            colours$value[colours$cc ==2],
-                            colours$value[colours$cc ==3])
-      km <- kmeans(colours,colDepth[j],iter.max = 200,nstart = 10)
+      colours <- lapply(seq_along(dims), function(i,col){
+          return(filter(col,cc ==i))
+      })
+      colours <- as.matrix(do.call("cbind",colours))
 
+      km <- kmeans(colours,colDepth[j],iter.max = 200,nstart = 50)
       cluster <- km$cluster
       Kcenters <- km$centers
-      image$cluster <- 0
+      tmpImg$cluster <- 0
 
-      for(i in seq(1,3)){
-          image$cluster[image$cc == i] <- cluster
-          image$value[image$cc == i] <- Kcenters[cluster,i]
+      for(i in seq_len(ncol(colours))){
+          tmpImg$cluster[tmpImg$cc == i] <- cluster
+          tmpImg$value[tmpImg$cc == i] <- Kcenters[cluster,i]
       }
       #------------------------------------------------------------------------#
       # This section is so we don't end up having barcode associated with
@@ -577,23 +653,12 @@ iterativeSegmentation.array <- function(image,
 
     }
   }
-
+  if(is(vesalius)[1L] == "vesaliusObject"){
+      image <- .dfToVes(image,vesalius,dims)
+  }
   .simpleBar(verbose)
   return(image)
 }
-
-#.intKmeans <- function(img,depth,cluster = TRUE){
- #   if(cluster){
-  #    k <- kmeans(img,depth, iter.max = 200)$cluster
-  #  } else {
-   #   k <- kmeans(img,depth, iter.max = 200)
-    #  k <- as.vector(k$centers)[k$cluster]
-    #}
-    #return(k)
-#}
-
-# Internal function to get to most represnted cluster
-# will be used to assign one and only one cluster value to a barcode
 
 .top_cluster <- function(cluster){
     top <- table(cluster)
@@ -602,6 +667,55 @@ iterativeSegmentation.array <- function(image,
 }
 
 
+.SISKmeans <- function(image, colDepth, box){
+  #----------------------------------------------------------------------------#
+  # First we need to convert cimg array to simple array
+  #----------------------------------------------------------------------------#
+  img <- as.array(image)
+  dim(img) <- c(nrow(img),ncol(img))
+  img <- replicate(3,img)
+  #----------------------------------------------------------------------------#
+  # Next we can run the super pixel segmentation
+  #----------------------------------------------------------------------------#
+  init <- Image_Segmentation$new()
+  spx_km <- init$spixel_segmentation(input_image = image,
+                                  superpixel = 600,
+                                  AP_data = TRUE,
+                                  use_median = TRUE,
+                                  sim_wL = 3,
+                                  sim_wA = 10,
+                                  sim_wB = 10,
+                                  sim_color_radius = box,
+                                  kmeans_method = "kmeans",
+                                  kmeans_initializer = "kmeans++",
+                                  kmeans_num_init = colDepth,
+                                  kmeans_max_iters = 100,
+                                  verbose = FALSE)
+    return(spx_km)
+}
+
+.SIS <- function(image){
+  #----------------------------------------------------------------------------#
+  # First we need to convert cimg array to simple array
+  #----------------------------------------------------------------------------#
+  img <- as.array(image)
+  dim(img) <- c(nrow(img),ncol(img))
+  img <- replicate(3,img)
+  #----------------------------------------------------------------------------#
+  # Next we can run the super pixel segmentation
+  #----------------------------------------------------------------------------#
+  init <- Image_Segmentation$new()
+  spx <- init$spixel_segmentation(input_image = image,
+                               superpixel = 600,
+                               AP_data = TRUE,
+                               use_median = TRUE,
+                               sim_wL = 3,
+                               sim_wA = 10,
+                               sim_wB = 10,
+                               sim_color_radius = 10,
+                               verbose = FALSE)
+   return(spx)
+}
 
 #' isolating territories from segmented Vesalius images
 #' @param image data.frame - Vesalius formatted data.frame (i.e. barcodes,
@@ -870,4 +984,69 @@ isolateTerritories.array <- function(image,
 
       }
       return(allTers)
+}
+
+
+
+# Currently not exported
+# This function is interesting for territory isolation
+# but needs to be reworked
+# TODO : test this function more in depth
+watershedPooling <- function(image,territory = NULL,threshold = "auto"){
+    #-------------------------------------------------------------------------#
+    # Getting seed colour fron each territories
+    # maybe base r would be faster in this case ??
+    # we can run it on more than territory maybe ??
+    #-------------------------------------------------------------------------#
+    if(is.null(territory)){
+        cols <- image %>% group_by(cluster,cc) %>%
+              select(value) %>% unique() %>%
+              pivot_wider(names_from = "cc", values_from = "value")
+    } else if(length(territory ==1)){
+        cols <- image %>% filter(territory == territory) %>%
+                group_by(cc) %>% select(value) %>%
+                unique() %>%
+                pivot_wider(names_from = "cc", values_from = "value")
+    } else {
+        cols <- image %>% filter(territory %in% territory) %>%
+                group_by(cc) %>% select(value) %>%
+                median() %>%
+                pivot_wider(names_from = "cc", values_from = "value")
+    }
+    #-------------------------------------------------------------------------#
+    # First convertin image to actual image
+    #-------------------------------------------------------------------------#
+    img <- as.cimg(image[,c("x","y","cc","value")])
+
+    #-------------------------------------------------------------------------#
+    # Next we can loop over each colour palette
+    # i.e each territory cluster
+    #-------------------------------------------------------------------------#
+    clusters <- vector("list", nrow(cols))
+    for(i in seq_along(clusters)){
+      tmp <- .selectSimilar(img = img,
+                            cols = cols,
+                            segment = i,
+                            threshold = threshold)
+      allPooled <- FALSE
+      territories <- list()
+      j <- 1
+      while(!allPooled){
+        pmap <- tmp %>% .detectEdges() %>% .pmap()
+        wt <- .watershed(tmp,pmap)
+        tmp <- .removeWaterPool(wt,tmp)
+        territories[[j]] <- wt %>% as.data.frame() %>% filter(value == 2)
+        j <- j + 1
+
+        if(sum(tmp == 2)==0){
+          allPooled <- TRUE
+        } else {
+          tmp <- suppressWarnings(as.cimg(tmp))
+        }
+        print(j)
+      }
+      clusters[[i]] <- territories
+   }
+
+    return(clusters)
 }
