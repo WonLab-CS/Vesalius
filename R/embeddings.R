@@ -24,7 +24,7 @@
 #' embeddings when coverting PCA to RGB. Default = FALSE
 #' @param cores numeric number of cores to use. Default = 1
 #' @param verbose logical output progress message or not. Default = TRUE
-#' @details 
+#' @details
 #'
 #' @return Returns a Vesalius data.frame with "barcodes","x","y","cc",
 #' "value","slice"
