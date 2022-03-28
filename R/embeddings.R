@@ -40,22 +40,23 @@
 #' image <- rgbPCA(image,slices = 1)
 #' }
 
-buildVesaliusEmbeddings <- function(counts,
-                             coordinates,
-                             method = c("PCA","UMAP"),
+buildVesaliusEmbeddings <- function(vesalius,
+                             method = c("PCA","PCA_L","UMAP","LSI","LSI_UMAP"),
                              pcs = 30,
                              tensorResolution = 1,
                              filterGrid =0.01,
                              filterThreshold = 0.995,
                              nfeatures = 2000,
-                             loadings = FALSE,
                              cores = 1,
                              verbose = TRUE){
     .simpleBar(verbose)
     #--------------------------------------------------------------------------#
-    # First we will create tiles
+    # get coord and counts
+    # TODO update this when you have written utility functions
     #--------------------------------------------------------------------------#
-    coordinates <- .checkCoordinates(coordinates, verbose)
+    coordinates <- vesalius@tiles
+    counts <- vesalius@counts
+
     #--------------------------------------------------------------------------#
     # Filter outlier points
     # Both 0 and 1 threshold will lead to the similar results i.e no filtering
@@ -70,6 +71,7 @@ buildVesaliusEmbeddings <- function(counts,
     #--------------------------------------------------------------------------#
     # If we want to reduce the number of tiles
     # reduced resolution
+    # TO DO look at knn algorithm for this one it might be better
     #--------------------------------------------------------------------------#
     if(tensorResolution < 1){
       .tensorRes(verbose)
@@ -95,13 +97,14 @@ buildVesaliusEmbeddings <- function(counts,
     #--------------------------------------------------------------------------#
     .raster(verbose)
     tiles <- .rasterise(filtered, cores)
-
+    vesalius@tiles <- tiles
     #--------------------------------------------------------------------------#
     # Now we can start creating colour embeddings
     # start with basic Seurat pre-processing
     # Will Need to adjust this!!! Once LSI comes into play we will need to adpat
     # this section of the code to ensure that we have the right approach
     # It might be time to move away from Seurat....
+    #### TO ADD -> pre processing section
     #--------------------------------------------------------------------------#
 
     #counts <- .checkCounts(counts,verbose)
@@ -110,56 +113,36 @@ buildVesaliusEmbeddings <- function(counts,
     counts <- NormalizeData(counts,verbose = FALSE)
     counts <- ScaleData(counts, verbose = FALSE)
     counts <- FindVariableFeatures(counts,nfeatures = nfeatures,verbose = FALSE)
+    vesalius@counts <- GetAssayData(counts,slot = "data")
     #--------------------------------------------------------------------------#
     # Embeddings
     #--------------------------------------------------------------------------#
+    if(!method[1L] %in% c("PCA","PCA_L","UMAP","LSI","LSI_UMAP")){
+        method <- "none"
+    }
     embeds <- switch(method[1L],
-                     "PCA" = .embedPCA(counts,pcs = pcs,loadings = loadings,
-                       cores = cores,verbose),
-                     "UMAP" = .embedUMAP(counts,pcs = pcs,verbose))
+                     "PCA" = .embedPCA(counts,pcs = pcs,cores = cores,
+                              verbose = verbose),
+                     "PCA_L" = .embedPCAL(counts,pcs = pcs,cores = cores,
+                                verbose = verbose),
+                     "UMAP" = .embedUMAP(counts,pcs = pcs,verbose),
+                     "LSI" = .embedLSI(...),
+                     "LSI_UMAP" = .embedLSIUMAP(...),
+                     "none" = stop("Unsupported embedding type!"))
+    
     #--------------------------------------------------------------------------#
-    # Now let's actually create the image tensor
+    # create run log
     #--------------------------------------------------------------------------#
-
-    ves <- vesaliusObject(tiles = tiles,
-                          embeddings = embeds,
-                          counts  = GetAssayData(counts,slot = "data"))
+    newLog <- as.list(match.call())
+    ves <- .commitLog(log = ves,
+                      commit = newLog,
+                      defaults = as.list(args(buildVesaliusEmbeddings)))
     .simpleBar(verbose)
     return(ves)
 }
 
-.checkCounts <- function(counts,verbose =TRUE){
-    .checkCounts(verbose)
-    if(class(counts) == "data.frame"){
-      counts <- as(as.matrix(counts),"dgCMatrix")
-    } else if(class(counts) == "matrix"){
-      counts <- as(counts,"dgCMatrix")
-    } else if(class(counts) == "dgCMatrix"){
-      counts <- counts
-    } else {
-      stop("Unsupported count format!")
-    }
-    return(counts)
-}
 
 
-.checkCoordinates <- function(coordinates, verbose = TRUE){
-    #--------------------------------------------------------------------------#
-    # Check coordinate input type
-    # for now let's put slide seq
-    # we can add some more loading functions later and santise from there
-    #--------------------------------------------------------------------------#
-    .checkCoord(verbose)
-    if(all(c("barcodes","xcoord","ycoord") %in% colnames(coordinates))){
-        coordinates <- coordinates[,c("barcodes","xcoord","ycoord")]
-        colnames(coordinates) <- c("barcodes","x","y")
-    } else if(all(c("barcodes","x","y") %in% colnames(coordinates))) {
-        coordinates <- coordinates[,c("barcodes","x","y")]
-    } else {
-        stop("Unknown column names")
-    }
-    return(coordinates)
-}
 
 .filterGrid <- function(coordinates,filterGrid){
   #----------------------------------------------------------------------------#
@@ -176,6 +159,9 @@ buildVesaliusEmbeddings <- function(counts,
   return(coordinates)
 }
 
+
+### might want to adjust this and use knn instead?
+### maybe that would be better -> aggregate points together so it's "fair"
 .reduceTensorResolution <- function(coordinates,tensorResolution = 1){
   #----------------------------------------------------------------------------#
   # we will reduce number of points this way
@@ -334,6 +320,8 @@ buildVesaliusEmbeddings <- function(counts,
                      "quantileNorm" = midFix(embeds))
 }
 
+
+### might move this over to misc
 .minMax <- function(embeds){
     embeds <- apply(embeds,2,function(embeds){
         return((embeds - min(embeds)) / (max(embeds) - min(embeds)))
@@ -360,15 +348,36 @@ buildVesaliusEmbeddings <- function(counts,
 }
 
 .embedPCA <- function(counts,pcs,loadings = TRUE,cores = 1,verbose = TRUE){
-  #----------------------------------------------------------------------------#
-  # First run PCA
-  #----------------------------------------------------------------------------#
-  .pcaTensor(verbose)
-  counts <- RunPCA(counts, npcs = pcs, verbose = FALSE)
-  #----------------------------------------------------------------------------#
-  # Then check of we want to fo down the loadings route or embeddings
-  #----------------------------------------------------------------------------#
-  if(loadings){
+    #--------------------------------------------------------------------------#
+    # First run PCA
+    #--------------------------------------------------------------------------#
+    .pcaTensor(verbose)
+    counts <- RunPCA(counts, npcs = pcs, verbose = FALSE)
+
+    .embedRGBTensor(verbose)
+    #--------------------------------------------------------------------------#
+    # Here we can just sum and normalise
+    # this is going to be much faster
+    # transpose at the end so we keep common format
+    #--------------------------------------------------------------------------#
+    pca <- Embeddings(counts, reduction = "pca")
+    #pca <- apply(pca,2,function(x)return(abs(x)))
+    pca <- apply(pca,2,function(x){
+      x <- (x - min(x)) / (max(x) - min(x))
+      return(x)
+    })
+    colourMatrix <- list(as.matrix(pca))
+    names(colourMatrix) <- "PCA"
+    return(colourMatrix)
+}
+
+.embedPCAL <- function(counts,pcs,cores = 1,verbose = TRUE){
+    #--------------------------------------------------------------------------#
+    # First run PCA
+    #--------------------------------------------------------------------------#
+    .pcaTensor(verbose)
+    counts <- RunPCA(counts, npcs = pcs, verbose = FALSE)
+
     #--------------------------------------------------------------------------#
     # get laodings and create matrix describing if there are any count values
     #--------------------------------------------------------------------------#
@@ -391,23 +400,9 @@ buildVesaliusEmbeddings <- function(counts,
 
       colourMatrix[,p] <- (bars - min(bars)) / (max(bars) - min(bars))
     }
-
-  } else {
-    .embedRGBTensor(verbose)
-    #--------------------------------------------------------------------------#
-    # Here we can just sum and normalise
-    # this is going to be much faster
-    # transpose at the end so we keep common format
-    #--------------------------------------------------------------------------#
-    pca <- Embeddings(counts, reduction = "pca")
-    #pca <- apply(pca,2,function(x)return(abs(x)))
-    pca <- apply(pca,2,function(x){
-      x <- (x - min(x)) / (max(x) - min(x))
-      return(x)
-    })
-    colourMatrix <- pca
-  }
-  return(as.matrix(colourMatrix))
+    colourMatrix <- list(as.matrix(pca))
+    names(colourMatrix) <- "PCA_L"
+    return(colourMatrix)
 }
 
 
@@ -430,5 +425,7 @@ buildVesaliusEmbeddings <- function(counts,
                      return((x-min(x))/(max(x) - min(x)))
                    })
 
-  return(as.matrix(counts))
+  counts <- list(as.matrix(counts))
+  names(counts) <- "UMAP"
+  return(counts)
 }
