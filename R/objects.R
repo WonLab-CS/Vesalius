@@ -4,10 +4,55 @@
 
 #----------------------------/Vesalius Objects/--------------------------------#
 
+#------------------------------------------------------------------------------#
+# Vesalius Log object
+# Keep track of what has been done
+#------------------------------------------------------------------------------#
 
+setClass("log",
+         slots=list(tiles="list",
+                    embeddings = "list",
+                    activeEmbeddings = "list",
+                    territories = "list",
+                    DEG = "list",
+                    counts  = "list"))
 
+setMethod("show",
+          signature = "log",
+          definition = function(object){
+            .simpleBar(TRUE)
+            #------------------------------------------------------------------#
+            # General log information
+            #------------------------------------------------------------------#
+
+            if(sum(unlist(.slotApply(object, length))) == 0){
+               cat("No commits to log tree\n")
+            } else {
+
+              #------------------------------------------------------------------#
+              # Last update
+              #------------------------------------------------------------------#
+              last <- .slotApply(object,names)
+              last <- sapply(last, function(x){
+                      return(max(as.numeric(x)))
+              })
+              lcom  <- which.max(last)
+              cat(max(last),"commits to vesalius Log tree \n")
+              cat("Last Log commit on",slotNames(object)[lcom],"branche\n")
+              
+            }
+
+            .simpleBar(TRUE)
+
+          })
+
+#------------------------------------------------------------------------------#
+# class unions
+#------------------------------------------------------------------------------#
 setClassUnion("mat",c("matrix","dgCMatrix"))
 setClassUnion("ter",c("data.frame","NULL"))
+setClassUnion("DEG",c("data.frame","NULL"))
+
 
 
 ### Need to clean these up
@@ -20,7 +65,7 @@ setClass("vesaliusObject",
                     embeddings = "list",
                     activeEmbeddings = "list",
                     territories = "ter",
-                    DEG = "data.frame",
+                    DEG = "DEG",
                     counts  = "mat",
                     log = "log"),
          prototype=c(tiles = data.frame(),
@@ -38,13 +83,13 @@ setClass("vesaliusObject",
         if(is(object@territories)[1L]!= "data.frame" & is(object@territories)[1L]!= "NULL"){
             stop("Unsupported territories Format")
         }
-        if(is(object@DEG)[1L] != "data.frame"){
+        if(is(object@DEG)[1L]!= "data.frame" & is(object@DEG)[1L]!= "NULL"){
             stop("Unsupported DEG Format")
         }
         if(is(object@counts)[1L]!= "matrix" & is(object@counts)[1L]!= "dgCMatrix"){
             stop("Unsupported Count Format")
         }
-        if(is(object@log)[1L]!= "list"){
+        if(is(object@log)[1L]!= "log"){
             stop("Unsupported log Format")
         }
         return(TRUE)
@@ -54,6 +99,7 @@ setClass("vesaliusObject",
 
 #------------------------------------------------------------------------------#
 # Create new object function
+# This one is on hold atm
 #------------------------------------------------------------------------------#
 
 .vesaliusObject <- function(tiles = NULL,
@@ -61,7 +107,7 @@ setClass("vesaliusObject",
                            activeEmbeddings = NULL,
                            territories = NULL,
                            DEG = NULL,
-                           counts = NULL
+                           counts = NULL,
                            log = NULL){
 
     ves <- new("vesaliusObject",
@@ -79,10 +125,12 @@ buildVesaliusObject <- function(coordinates,counts){
     #--------------------------------------------------------------------------#
     # First we will create tiles
     #--------------------------------------------------------------------------#
+
     coordinates <- .checkCoordinates(coordinates)
     counts <- .checkCounts(counts)
-    ves <- .vesaliusObject(tiles = coordinates,
-                          counts = counts)
+    ves <- new("vesaliusObject",
+               tiles = coordinates,
+               counts = counts)
     return(ves)
 }
 
@@ -137,14 +185,17 @@ setMethod("show",
       #------------------------------------------------------------------------#
       # This will change if we add multiple embedding type
       #------------------------------------------------------------------------#
-      embeds <- length(object@embeddings)
-      n <- names(object@embeddings)
-      cat(embeds, "embeddings (",n,")\n")
-      #------------------------------------------------------------------------#
-      # Adding active embedding
-      #------------------------------------------------------------------------#
-      n <- names(object@activeEmbeddings)
-      cat(n ,"as current active Embedding")
+      if((embeds <- length(object@embeddings)) > 0){
+        n <- names(object@embeddings)
+        cat(embeds, "embeddings (",n,")\n")
+        #----------------------------------------------------------------------#
+        # Adding active embedding
+        #----------------------------------------------------------------------#
+
+        n <- names(object@activeEmbeddings)
+        cat(n ,"as current active Embedding\n")
+      }
+
       #------------------------------------------------------------------------#
       # There will always a log for Vesalius objects unless you create a dummy
       # object
@@ -165,7 +216,7 @@ setMethod("show",
       #------------------------------------------------------------------------#
       if(!is.null(object@DEG)){
           deg <- nrow(object@DEG)
-          ters <- length(unique(c(object@DEG$seedTerritory,object@DEG$queryTerritory))
+          ters <- length(unique(c(object@DEG$seedTerritory,object@DEG$queryTerritory)))
           cat(deg, "Differentially Expressed Genes between", ters,"territories\n")
       }
 
@@ -174,46 +225,3 @@ setMethod("show",
     }
 
 )
-
-#------------------------------------------------------------------------------#
-# Vesalius Log object
-# Keep track of what has been done
-#------------------------------------------------------------------------------#
-
-setClass("log",
-         slots=list(tiles="list",
-                    embeddings = "list",
-                    activeEmbeddings = "list",
-                    territories = "list",
-                    DEG = "list",
-                    counts  = "list"))
-
-setMethod("show",
-          signature = "log",
-          definition = function(object){
-            .simpleBar(TRUE)
-            #------------------------------------------------------------------#
-            # General log information
-            #------------------------------------------------------------------#
-            leaves <- sum(.slotApply(object, length))
-            cat(leaves,"commits to vesalius Log tree")
-            #------------------------------------------------------------------#
-            # Last update
-            #------------------------------------------------------------------#
-            last <- .slotApply(object,names)
-            lcom <- which.max(sapply(last, function(x){
-                    return(max(as.numeric(x)))
-            }))
-            cat("Last Log commit on",slotNames(object)[lcom],"branche")
-            #------------------------------------------------------------------#
-            # Show last commit param
-            #------------------------------------------------------------------#
-            lastCommit <- .slotApply(object,function(x){
-                  return(x[[length(x)]])
-            })
-            for(i in seq_along(lastCommit)){
-                cat(slotNames(object)[i],":\n",lastCommit[[i]],"\n")
-            }
-            .simpleBar(TRUE)
-
-          })

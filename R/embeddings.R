@@ -97,6 +97,7 @@ buildVesaliusEmbeddings <- function(vesalius,
     #--------------------------------------------------------------------------#
     .raster(verbose)
     tiles <- .rasterise(filtered, cores)
+  
     vesalius@tiles <- tiles
     #--------------------------------------------------------------------------#
     # Now we can start creating colour embeddings
@@ -129,16 +130,18 @@ buildVesaliusEmbeddings <- function(vesalius,
                      "LSI" = .embedLSI(...),
                      "LSI_UMAP" = .embedLSIUMAP(...),
                      "none" = stop("Unsupported embedding type!"))
-    
+    vesalius@embeddings <- embeds
+    vesalius@activeEmbeddings <- embeds
+
     #--------------------------------------------------------------------------#
     # create run log
     #--------------------------------------------------------------------------#
     newLog <- as.list(match.call())
-    ves <- .commitLog(log = ves,
+    vesalius <- .commitLog(vesalius = vesalius,
                       commit = newLog,
                       defaults = as.list(args(buildVesaliusEmbeddings)))
     .simpleBar(verbose)
-    return(ves)
+    return(vesalius)
 }
 
 

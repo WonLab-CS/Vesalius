@@ -169,11 +169,7 @@
     cat( paste(t," Pooling territory ", ter,"\r"))
 }
 
-.checkCounts <- function(verbose =TRUE){
-    if(!verbose) return(NULL)
-    t <- Sys.time()
-    cat( paste(t," Checking and extracting Counts \n"))
-}
+
 
 .checkCoord <- function(verbose =TRUE){
     if(!verbose) return(NULL)
