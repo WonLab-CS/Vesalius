@@ -1,0 +1,10 @@
+cff-version: 1.1.0
+message: "If you use this software, please cite it as below."
+authors:
+  - family-names: Martin
+    given-names: Patrick C.N:
+    orcid: https://orcid.org/0000-0002-4093-8277
+title: Vesalius: high-resolution in silico anatomization of Spatial Transcriptomic data using Image Analysis.
+version: Release_1.0.0
+DOI: 10.5281/zenodo.6393245
+date-released: 2022-03-29
