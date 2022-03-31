@@ -10,7 +10,8 @@
 #------------------------------------------------------------------------------#
 
 setClass("log",
-         slots=list(tiles="list",
+         slots=list(assay = "list",
+                    tiles="list",
                     embeddings = "list",
                     activeEmbeddings = "list",
                     territories = "list",
@@ -29,17 +30,21 @@ setMethod("show",
                cat("No commits to log tree\n")
             } else {
 
-              #------------------------------------------------------------------#
+              #----------------------------------------------------------------#
               # Last update
-              #------------------------------------------------------------------#
-              last <- .slotApply(object,names)
-              last <- sapply(last, function(x){
-                      return(max(as.numeric(x)))
-              })
-              lcom  <- which.max(last)
-              cat(max(last),"commits to vesalius Log tree \n")
-              cat("Last Log commit on",slotNames(object)[lcom],"branche\n")
-              
+              #----------------------------------------------------------------#
+              cat("Log tree\n")
+              last <- .slotApply(object,length)
+              for(i in seq_along(last)){
+                  if(last[[i]] ==0){
+                      shape <- "/"
+                  } else {
+                      shape <- rep("*", times = last[[i]])
+                  }
+                  cat("|",shape,names(last)[i],"\n")
+              }
+
+
             }
 
             .simpleBar(TRUE)
@@ -49,7 +54,7 @@ setMethod("show",
 #------------------------------------------------------------------------------#
 # class unions
 #------------------------------------------------------------------------------#
-setClassUnion("mat",c("matrix","dgCMatrix"))
+
 setClassUnion("ter",c("data.frame","NULL"))
 setClassUnion("DEG",c("data.frame","NULL"))
 
@@ -66,7 +71,7 @@ setClass("vesaliusObject",
                     activeEmbeddings = "list",
                     territories = "ter",
                     DEG = "DEG",
-                    counts  = "mat",
+                    counts  = "list",
                     log = "log"),
          prototype=c(tiles = data.frame(),
                      embeddings = list()),
@@ -86,7 +91,7 @@ setClass("vesaliusObject",
         if(is(object@DEG)[1L]!= "data.frame" & is(object@DEG)[1L]!= "NULL"){
             stop("Unsupported DEG Format")
         }
-        if(is(object@counts)[1L]!= "matrix" & is(object@counts)[1L]!= "dgCMatrix"){
+        if(is(object@counts)[1L]!= "list"){
             stop("Unsupported Count Format")
         }
         if(is(object@log)[1L]!= "log"){
@@ -102,35 +107,23 @@ setClass("vesaliusObject",
 # This one is on hold atm
 #------------------------------------------------------------------------------#
 
-.vesaliusObject <- function(tiles = NULL,
-                           embeddings = NULL,
-                           activeEmbeddings = NULL,
-                           territories = NULL,
-                           DEG = NULL,
-                           counts = NULL,
-                           log = NULL){
 
-    ves <- new("vesaliusObject",
-               tiles = tiles,
-               embeddings = embeddings,
-               activeEmbeddings = activeEmbeddings,
-               DEG = DEG,
-               territories = territories,
-               counts = counts,
-               log = log)
-    return(ves)
-}
-
-buildVesaliusObject <- function(coordinates,counts){
+buildVesaliusObject <- function(coordinates,counts,assay = "ST"){
     #--------------------------------------------------------------------------#
     # First we will create tiles
+    # Definitely need some check here
     #--------------------------------------------------------------------------#
-
     coordinates <- .checkCoordinates(coordinates)
-    counts <- .checkCounts(counts)
+    counts <- list(.checkCounts(counts))
+    names(counts) <- "raw"
+    assay <- list(assay)
+    names(assay) <- "1"
+    log <- new("log",
+               assay = assay)
     ves <- new("vesaliusObject",
                tiles = coordinates,
-               counts = counts)
+               counts = counts,
+               log = log)
     return(ves)
 }
 
@@ -183,7 +176,20 @@ setMethod("show",
       ntiles <- length(unique(object@tiles$barcodes))
       cat(ntiles,"tiles \n")
       #------------------------------------------------------------------------#
-      # This will change if we add multiple embedding type
+      # Showing norm
+      #------------------------------------------------------------------------#
+      if((counts <- length(object@counts)) > 1){
+        n <- names(object@counts)[seq(2,counts)]
+        cat(counts-1, "normalization methods (",n,")\n")
+        #----------------------------------------------------------------------#
+        # Adding active embedding
+        #----------------------------------------------------------------------#
+
+        n <- names(object@counts)[counts]
+        cat(n ,"as active normalized data\n")
+      }
+      #------------------------------------------------------------------------#
+      # showing embeds
       #------------------------------------------------------------------------#
       if((embeds <- length(object@embeddings)) > 0){
         n <- names(object@embeddings)
@@ -193,7 +199,7 @@ setMethod("show",
         #----------------------------------------------------------------------#
 
         n <- names(object@activeEmbeddings)
-        cat(n ,"as current active Embedding\n")
+        cat(n ,"as active Embedding\n")
       }
 
       #------------------------------------------------------------------------#

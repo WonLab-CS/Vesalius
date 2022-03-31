@@ -449,7 +449,7 @@ buildImageArray <- function(coordinates,
   # at least we don't need to run tesselation on each slice
   #----------------------------------------------------------------------------#
 
-  coordinates <- .checkVesalius(coordinates, sliceID,verbose)
+  #coordinates <- .checkVesalius(coordinates, sliceID,verbose)
 
   #----------------------------------------------------------------------------#
   # Type changed
@@ -509,30 +509,7 @@ buildImageArray <- function(coordinates,
 }
 
 
-.checkVesalius <- function(coordinates, sliceID,verbose){
-    #--------------------------------------------------------------------------#
-    # First let's check if we have multiple slice in input data
-    #--------------------------------------------------------------------------#
 
-    slices <- unique(coordinates$slice)
-    inSlice <- slices %in% sliceID
-
-    #--------------------------------------------------------------------------#
-    # Let's do some checks
-    #--------------------------------------------------------------------------#
-    if(sum(inSlice) > 1){
-        warning("More than one slice provided!
-                 Only lowest slice value will be used",
-                immediate. = TRUE)
-    } else if(sum(inSlice) <1){
-        stop("SliceID is not present in coordinates.")
-    }
-    .checkVes(min(sliceID),verbose)
-    coordinates <- coordinates %>% filter(slice == min(sliceID))
-
-    return(coordinates)
-
-}
 
 
 .resShift <- function(image,resolution = 50,interpolation_type = 1,na.rm=TRUE){
