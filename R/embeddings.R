@@ -20,9 +20,15 @@
 #' @param filterThreshold numeric (range 0 -1) describing the quantile threshold
 #' at which tiles should be retained (seed details)
 #' @param nfeatures numeric describing the number of variable features to use.
+#' @param min.cutoff only used when dimensionality reduction method is LSI or LSI_UMAP
+#' cutoff for feature to be included in the VariableFeatures for the object. 
+#' for more detail please look "https://satijalab.org/signac/reference/findtopfeatures"
 #' @param loadings logical if loading values should be used instead of
 #' embeddings when coverting PCA to RGB. Default = FALSE
 #' @param cores numeric number of cores to use. Default = 1
+#' @param remove_LSI1 logical only used when dimensionality reduction method is LSI or LSI_UMAP 
+#' indicating if the first LSI component should be removed from further analysis
+#' as it usually captures sequencing depth (technical variation)
 #' @param verbose logical output progress message or not. Default = TRUE
 #' @details
 #'
@@ -42,13 +48,15 @@
 
 buildVesaliusEmbeddings <- function(vesalius,
                              method = c("PCA","PCA_L","UMAP","LSI","LSI_UMAP"),
-                             norm = c("log","SCT","raw"),
+                             norm = c("log","SCT","TFIDF","raw"),
                              pcs = 30,
                              tensorResolution = 1,
                              filterGrid =0.01,
                              filterThreshold = 0.995,
                              nfeatures = 2000,
+                             min.cutoff = "q5",
                              cores = 1,
+                             remove_LSI1 = TRUE,
                              verbose = TRUE){
     .simpleBar(verbose)
     #--------------------------------------------------------------------------#
@@ -121,7 +129,8 @@ buildVesaliusEmbeddings <- function(vesalius,
                              vesalius= vesalius,
                              commit = as.list(match.call()),
                              method = norm,
-                             nfeatures = nfeatures)
+                             nfeatures = nfeatures,
+                             min.cutoff = min.cutoff)
 
 
     if(counts$update == "update"){
@@ -343,7 +352,7 @@ buildVesaliusEmbeddings <- function(vesalius,
 
 
 #------------------------/ Preprocessing counts /------------------------------#
-.processCounts <- function(counts,vesalius,commit, method = "log",nfeatures = 2000){
+.processCounts <- function(counts,vesalius,commit, method = "log",nfeatures = 2000, min.cutoff = "q5"){
     #--------------------------------------------------------------------------#
     # We are still going to use Seurat for now
     # rememmber that if we do decide to change things
@@ -354,6 +363,7 @@ buildVesaliusEmbeddings <- function(vesalius,
                     "log" = .logNorm(counts, nfeatures),
                     "SCT" = .SCTransform(counts,assay= "Spatial",
                                          nfeatures = nfeatures),
+                    "TFIDF" = .TFIDFNorm(counts,min.cutoff=min.cutoff),
                     "raw" = .rawNorm(counts))
 
 
@@ -416,6 +426,14 @@ buildVesaliusEmbeddings <- function(vesalius,
     normCounts <- list(GetAssayData(counts,slot = "data"))
     names(normCounts) <- "SCTransform"
     return(list("SO" = counts, "norm" = normCounts))
+}
+
+.TFIDFNorm <- function(counts, min.cutoff) {
+  counts <- RunTFIDF(counts)
+  counts <- FindTopFeatures(counts, min.cutoff = min.cutoff)
+  normCounts <- list(GetAssayData(counts, slot = "data"))
+  names(normCounts) <- "TFIDFNorm"
+  return(list("SO" = counts, "norm" = normCounts))
 }
 
 #------------------------/ Normalising Embeds /--------------------------------#
@@ -544,12 +562,6 @@ buildVesaliusEmbeddings <- function(vesalius,
 .embedLSI <- function(counts,pcs = pcs,remove_LSI1){
   
   #--------------------------------------------------------------------------#
-  # counts is TF-IDF normalized matrix
-  #--------------------------------------------------------------------------#
-  
-  VariableFeatures(counts) <- rownames(counts)
-  
-  #--------------------------------------------------------------------------#
   # Run partial singular value decomposition(SVD) on TF-IDF normalized matrix
   #--------------------------------------------------------------------------#
   svd <- RunSVD(counts, n = pcs + 1, verbose = FALSE)
@@ -571,7 +583,7 @@ buildVesaliusEmbeddings <- function(vesalius,
   })
   
   colourMatrix <- list(as.matrix(embeddings))
-  names(colourMatrix) <- "PCA"
+  names(colourMatrix) <- "LSI"
   return(colourMatrix)
   
 }
@@ -580,12 +592,6 @@ buildVesaliusEmbeddings <- function(vesalius,
 
 
 .embedLSIUMAP <- function(counts,pcs = pcs,remove_LSI1){
-  
-  #--------------------------------------------------------------------------#
-  # counts is TF-IDF normalized matrix
-  #--------------------------------------------------------------------------#
-  
-  VariableFeatures(counts) <- rownames(counts)
   
   #--------------------------------------------------------------------------#
   # Run partial singular value decomposition(SVD) on TF-IDF normalized matrix
@@ -622,7 +628,7 @@ buildVesaliusEmbeddings <- function(vesalius,
   })
   
   embeddings <- list(as.matrix(embeddings))
-  names(embeddings) <- "UMAP"
+  names(embeddings) <- "LSI_UMAP"
   return(embeddings)
   
 }
