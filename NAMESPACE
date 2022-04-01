@@ -16,4 +16,5 @@ importFrom("imagerExtra","EqualizePiecewise","BalanceSimplest",
 importFrom("Matrix","Matrix")
 importFrom("RColorBrewer","brewer.pal")
 importFrom("parallel","mclapply","mcmapply")
+importFrom("Signac","RunTFIDF","FindTopFeatures","RunSVD","RunUMAP")
 exportPattern("^[[:alpha:]]+")
