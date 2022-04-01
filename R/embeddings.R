@@ -145,8 +145,8 @@ buildVesaliusEmbeddings <- function(vesalius,
                      "PCA_L" = .embedPCAL(counts$SO,pcs = pcs,cores = cores,
                                 verbose = verbose),
                      "UMAP" = .embedUMAP(counts$SO,pcs = pcs,verbose),
-                     "LSI" = .embedLSI(...),
-                     "LSI_UMAP" = .embedLSIUMAP(...),
+                     "LSI" = .embedLSI(counts$SO,pcs = pcs,remove_LSI1),
+                     "LSI_UMAP" = .embedLSIUMAP(counts$SO,pcs = pcs,remove_LSI1),
                      "none" = stop("Unsupported embedding type!"))
 
     vesalius <- .updateVesalius(vesalius=vesalius,
@@ -539,3 +539,92 @@ buildVesaliusEmbeddings <- function(vesalius,
   names(counts) <- "UMAP"
   return(counts)
 }
+
+                 
+.embedLSI <- function(counts,pcs = pcs,remove_LSI1){
+  
+  #--------------------------------------------------------------------------#
+  # counts is TF-IDF normalized matrix
+  #--------------------------------------------------------------------------#
+  
+  VariableFeatures(counts) <- rownames(counts)
+  
+  #--------------------------------------------------------------------------#
+  # Run partial singular value decomposition(SVD) on TF-IDF normalized matrix
+  #--------------------------------------------------------------------------#
+  svd <- RunSVD(counts, n = pcs + 1, verbose = FALSE)
+  
+  #--------------------------------------------------------------------------#
+  # Getting embedding values and normalize
+  #--------------------------------------------------------------------------#
+  if (remove_LSI1 == TRUE) {
+    embeddings <-
+      Embeddings(svd[["lsi"]])[, -1]
+  } else{
+    embeddings <-
+      Embeddings(svd[["lsi"]])[, 1:30]
+  }
+  
+  embeddings <- apply(embeddings,2,function(x){
+    x <- (x - min(x)) / (max(x) - min(x))
+    return(x)
+  })
+  
+  colourMatrix <- list(as.matrix(embeddings))
+  names(colourMatrix) <- "PCA"
+  return(colourMatrix)
+  
+}
+
+
+
+
+.embedLSIUMAP <- function(counts,pcs = pcs,remove_LSI1){
+  
+  #--------------------------------------------------------------------------#
+  # counts is TF-IDF normalized matrix
+  #--------------------------------------------------------------------------#
+  
+  VariableFeatures(counts) <- rownames(counts)
+  
+  #--------------------------------------------------------------------------#
+  # Run partial singular value decomposition(SVD) on TF-IDF normalized matrix
+  #--------------------------------------------------------------------------#
+  svd <- RunSVD(counts, n = pcs + 1, verbose = FALSE)
+  
+  if (remove_LSI1 == TRUE) {
+    reduc <-
+      RunUMAP(
+        svd,
+        reduction = 'lsi',
+        dims = 2:(pcs + 1),
+        n.components = 3L,
+        verbose = F
+      )
+  } else{
+    reduc <-
+      RunUMAP(
+        svd,
+        reduction = 'lsi',
+        dims = 1:pcs,
+        n.components = 3L,
+        verbose = F
+      )
+  }
+  
+  #--------------------------------------------------------------------------#
+  # Getting embedding values and normalize
+  #--------------------------------------------------------------------------#
+  embeddings <- FetchData(reduc, c("UMAP_1", "UMAP_2", "UMAP_3"))
+  
+  embeddings <- apply(embeddings, 2, function(x) {
+    return((x - min(x)) / (max(x) - min(x)))
+  })
+  
+  embeddings <- list(as.matrix(embeddings))
+  names(embeddings) <- "UMAP"
+  return(embeddings)
+  
+}
+
+                 
