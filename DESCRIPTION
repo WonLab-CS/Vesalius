@@ -41,6 +41,7 @@ Imports:
     parallel,
     imagerExtra,
     methods
+    Signac
 Suggests:
     knitr,
     RUnit,
