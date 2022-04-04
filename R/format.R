@@ -93,7 +93,7 @@
     for(i in seq_along(dims)){
       img <- as.data.frame(cimg[[i]])
       barcodes <- left_join(tiles,img, by = c("x","y")) %>%
-                  distinct(barcodes,value) %>% na.exclude()
+                  filter(origin == 1) %>% na.exclude()
 
       locs <- match(rownames(embeds),barcodes$barcodes)
       embeddings[locs,dims[i]] <- barcodes$value
@@ -134,7 +134,7 @@
       embeds <- data.frame(names(embeds),embeds)
       colnames(embeds) <- c("barcodes",as.character(dims[i]))
       sis <- right_join(tiles,embeds, by= "barcodes") %>% na.exclude()
-      colnames(cimg) <- c("barcodes","x","y","tile","value")
+      colnames(cimg) <- c("barcodes","x","y","origin","value")
       #------------------------------------------------------------------------#
       # Coreecting backgound with median value
       #------------------------------------------------------------------------#
@@ -198,7 +198,7 @@
   for(i in seq_along(dims)){
     img <- .SISToDF(image[[i]])
     barcodes <- left_join(tiles,img, by = c("x","y")) %>%
-                distinct(barcodes,value)
+                 filter(origin == 1) %>% na.exclude()
     locs <- match(barcodes$barcodes,rownames(embeds))
     embeddings[locs,dims[i]] <- barcodes$value
 

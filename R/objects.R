@@ -213,8 +213,9 @@ setMethod("show",
       #If there are territories
       #------------------------------------------------------------------------#
       if(!is.null(object@territories)){
-          ter <-length(unique(object@territories$territory))
-          cat(ter, "territories\n")
+          ter <-object@territories[,ncol(object@territories)]
+          cat(length(unique(ter)),
+          "territories in",colnames(object@territories)[ncol(object@territories)],"\n")
       }
       #------------------------------------------------------------------------#
       #If there are DEG

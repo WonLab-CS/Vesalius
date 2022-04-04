@@ -38,12 +38,23 @@
     # Lets keep those seperate
     #--------------------------------------------------------------------------#
 
-    if(append){
-            slot(vesalius,slot) <- c(slot(vesalius,slot),data)
-            vesalius <- .commitLog(vesalius,commit,defaults,slot,append)
+    if(append & slot != "territories" ){
+        slot(vesalius,slot) <- c(slot(vesalius,slot),data)
+        vesalius <- .commitLog(vesalius,commit,defaults,slot)
+    }else if(append & slot == "territories" ) {
+        if(!is.null(slot(vesalius,slot))){
+
+            df <- data.frame(slot(vesalius,slot),data[,ncol(data)])
+            colnames(df)  <- c(colnames(slot(vesalius,slot)),
+                               colnames(data)[ncol(data)])
+            slot(vesalius,slot) <- df
+        } else {
+            slot(vesalius,slot) <- data
+        }
+        vesalius <- .commitLog(vesalius,commit,defaults,slot)
     } else {
             slot(vesalius,slot) <- data
-            vesalius <- .commitLog(vesalius,commit,defaults,slot,append)
+            vesalius <- .commitLog(vesalius,commit,defaults,slot)
     }
     return(vesalius)
 }
@@ -92,6 +103,9 @@
 
     logdf <- list(logdf)
     names(logdf) <- last
+    #--------------------------------------------------------------------------#
+    # why did i set this? looking back wouldn't we want to always apped log?
+    #--------------------------------------------------------------------------#
 
     if(append){
         slot(vesalius@log,slot) <- c(slot(vesalius@log,slot),logdf)

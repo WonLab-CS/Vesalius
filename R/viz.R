@@ -32,12 +32,26 @@
 #' g <- imagePlot(image,as.cimg = F)
 #' }
 
-imagePlot <- function(image,
+imagePlot <- function(vesalius,
+                      dims = seq(1,3),
+                      embedding = "last",
                       as.cimg = TRUE,
                       cex=1){
+    #--------------------------------------------------------------------------#
+    # Can we somehow vizualise more than 3 dims? how would we go about doing that
+    #--------------------------------------------------------------------------#
+    if(length(dims)!=3 & length(dims)!=1){
+        stop("Only grey scale or RGB images are supported!")
+    }
     if(as.cimg){
-        plot(as.cimg(image[,c("x","y","cc","value")]))
+        image <- .vesToC(vesalius,dims,embed = embedding, verbose=F)
+
+        image <- imappend(image,"cc")
+        plot(image)
     } else {
+        image <- .vesToC(vesalius,dims,embed = embedding)
+
+        image <- as.data.frame(imappend(image,"cc"))
         fgcol <- select(image, c("cc","value"))
         fgcol <- data.frame(fgcol$value[fgcol$cc ==1],
                             fgcol$value[fgcol$cc ==2],
@@ -89,7 +103,8 @@ imagePlot <- function(image,
 #' g <- territoryPlot(image,cex = 12, cex.pt = 1)
 #' }
 
-territoryPlot <- function(territories,
+territoryPlot <- function(vesalius,
+                          trial = "last",
                           split = FALSE,
                           randomise = TRUE,
                           cex=1,
@@ -100,8 +115,20 @@ territoryPlot <- function(territories,
     # At the moment - I thinking the user should make their own
     # Not a prority for custom plotting functions
     #--------------------------------------------------------------------------#
-    ter <- territories %>% filter(tile==1) %>%
-           distinct(barcodes, .keep_all =TRUE)
+
+    if(trial == "last"){
+      trial <- colnames(vesalius@territories)[ncol(vesalius@territories)]
+      ter <- vesalius@territories[,c("x","y",trial)]
+      colnames(ter) <- c("x","y","territory")
+    } else {
+      if(!grepl(x = colnames(vesalius@territories),pattern = trial)){
+          stop(paste(deparse(substitute(trial)),"is not in territory data frame"))
+      }
+      ter <- vesalius@territories[,c("x","y",trial)]
+      colnames(ter) <- c("x","y","territory")
+
+    }
+
     #--------------------------------------------------------------------------#
     # Changing label order because factor can suck ass sometimes
     #--------------------------------------------------------------------------#
@@ -136,7 +163,7 @@ territoryPlot <- function(territories,
                      plot.title = element_text(size=cex * 1.5),
                      legend.title = element_text(size=cex * 1.2)) +
                guides(colour = guide_legend(override.aes = list(size=cex * 0.3)))+
-               labs(colour = "Territory nr.", title = "Vesalius - Territories",
+               labs(colour = "Territory nr.", title = paste("Vesalius",trial),
                      x = "X coordinates", y = "Y coordinates")
     } else {
       terPlot <- ggplot(ter, aes(x,y,col = territory)) +
@@ -150,7 +177,7 @@ territoryPlot <- function(territories,
                        plot.title = element_text(size=cex * 1.5),
                        legend.title = element_text(size=cex * 1.2)) +
                  guides(colour = guide_legend(override.aes = list(size=cex * 0.3)))+
-                 labs(colour = "Territory nr.", title = "Vesalius - Territories",
+                 labs(colour = "Territory nr.", title = paste("Vesalius",trial),
                                         x = "X coordinates", y = "Y coordinates")
     }
 
