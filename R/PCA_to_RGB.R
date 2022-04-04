@@ -580,7 +580,7 @@ buildImageArray <- function(coordinates,
   return(list("tessV" = tessV,"coordinates" = coordinates))
 }
 
-.rasterise <- function(filtered,cores = 1){
+.rasteriseOld <- function(filtered,cores = 1){
     idx <- seq_len(nrow(filtered$coordinates))
     tiles <- parallel::mclapply(idx, function(idx,filtered){
 

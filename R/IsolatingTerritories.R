@@ -73,6 +73,7 @@
 #' }
 smoothArray <- function(vesalius,
                         dims = seq(1,3),
+                        embedding = "last",
                         method = c("median","iso","box"),
                         iter = 1,
                         sigma = 1,
@@ -85,23 +86,13 @@ smoothArray <- function(vesalius,
                         cores = 1,
                         verbose = TRUE){
     #--------------------------------------------------------------------------#
-    # Class check and convert to image list
-    # The data frame approach will be depreciate in the future
-    # While it is still there though - add some checks to make sure its the
-    # right format...
-    # also should Probably write this a methods but they will all decpreciate
-    # with this verison
+    # shifting format
     #--------------------------------------------------------------------------#
     .simpleBar(verbose)
-    .checkVesalius(verbose)
+
     type <- "none"
     if(is(vesalius)[1L] == "vesaliusObject"){
-        images <- .vesToC(object = vesalius, dims = dims)
-        type <- "vesaliusObject"
-    } else if(is(vesalius)[1L] == "data.frame" | is(vesalius)[1L] == "tibble"){
-        if(!"cc" %in% colnames(vesalius)) vesalius$cc <- 1
-        images <- list(as.cimg(select(vesalius, c("x", "y", "cc", "value"))))
-
+        images <- .vesToC(object = vesalius,embed = embedding, dims = dims)
     } else {
       stop("Unsupported format to smoothArray function")
     }
@@ -125,13 +116,9 @@ smoothArray <- function(vesalius,
                                  na.rm=na.rm,
                                  acrossLevels = acrossLevels,
                                  mc.cores = cores)
-    if(type == "vesaliusObject"){
-        vesalius <- .cToVes(images,vesalius,dims)
-    } else {
-        vesalius <- right_join(vesalius,images[[1]], by  = c("x","y","cc")) %>%
-                   select(c("barcodes","x","y","cc","value.x","tile")) %>% tibble
-        colnames(vesalius) <- c("barcodes","x","y","cc","value","tile")
-    }
+
+    vesalius <- .cToVes(images,vesalius,dims,embed = embedding)
+
 
     .simpleBar(verbose)
     return(vesalius)
@@ -226,6 +213,7 @@ smoothArray <- function(vesalius,
 
 equalizeHistogram <- function(vesalius,
                               dims = seq(1,3),
+                              embedding = "last",
                               type = "BalanceSimplest",
                               N=1,
                               smax=1,
@@ -237,15 +225,8 @@ equalizeHistogram <- function(vesalius,
                               cores=1,
                               verbose=TRUE){
     .simpleBar(verbose)
-    .checkVesalius(verbose)
-    type <- "none"
     if(is(vesalius)[1L] == "vesaliusObject"){
-        images <- .vesToC(object = vesalius, dims = dims)
-        type <- "vesaliusObject"
-    } else if(is(vesalius)[1L] == "data.frame" | is(vesalius)[1L] == "tibble"){
-        if(!"cc" %in% colnames(vesalius)) vesalius$cc <- 1
-        images <- list(as.cimg(select(vesalius, c("x", "y", "cc", "value"))))
-
+        images <- .vesToC(object = vesalius,embed = embedding, dims = dims)
     } else {
       stop("Unsupported format to smoothArray function")
     }
@@ -270,15 +251,7 @@ equalizeHistogram <- function(vesalius,
            "ECDF" = parallel::mclapply(image,.ecdf.eq,
              mc.cores = cores))
 
-    if(type == "vesaliusObject"){
-      vesalius <- .cToVes(images,vesalius,dims)
-    } else {
-      vesalius <- right_join(vesalius, images[[1]], by  = c("x","y","cc")) %>%
-             select(c("barcodes","x","y","cc","value.x","tile")) %>% tibble
-
-      colnames(vesalius) <- c("barcodes","x","y","cc","value","tile")
-    }
-
+    vesalius <- .cToVes(images,vesalius,dims,embed = embedding)
     .simpleBar(verbose)
     return(vesalius)
 }
@@ -334,6 +307,7 @@ equalizeHistogram <- function(vesalius,
 
 regulariseImage <- function(vesalius,
                             dims = seq(1,3),
+                            embedding = "last",
                             lambda =1,
                             niter=100,
                             method = "TVL2.FiniteDifference",
@@ -342,19 +316,11 @@ regulariseImage <- function(vesalius,
                             cores=1,
                             verbose=TRUE){
     .simpleBar(verbose)
-    .checkVesalius(verbose)
-    type <- "none"
     if(is(vesalius)[1L] == "vesaliusObject"){
-        images <- .vesToC(object = vesalius, dims = dims)
-        type <- "vesaliusObject"
-    } else if(is(vesalius)[1L] == "data.frame" | is(vesalius)[1L] == "tibble"){
-        if(!"cc" %in% colnames(vesalius)) vesalius$cc <- 1
-        images <- list(as.cimg(select(vesalius, c("x", "y", "cc", "value"))))
-
+        images <- .vesToC(object = vesalius,embed = embedding, dims = dims)
     } else {
       stop("Unsupported format to smoothArray function")
     }
-
     .reg(verbose)
     #--------------------------------------------------------------------------#
     # now we can do some var reg!
@@ -364,14 +330,7 @@ regulariseImage <- function(vesalius,
     images <- parallel::mclapply(images, .regularise,
       lambda, niter,method, normalise,mc.cores = cores)
 
-    if(type == "vesaliusObject"){
-        vesalius <- .cToVes(images,vesalius,dims)
-    } else {
-        vesalius <- right_join(vesalius, images[[1]], by  = c("x","y","cc")) %>%
-               select(c("barcodes","x","y","cc","value.x","tile")) %>% tibble
-
-        colnames(vesalius) <- c("barcodes","x","y","cc","value","tile")
-    }
+    vesalius <- .cToVes(images,vesalius,dims,embed = embedding)
     .simpleBar(verbose)
     return(vesalius)
 }
@@ -466,6 +425,7 @@ regulariseImage <- function(vesalius,
 
 imageSegmentation <- function(vesalius,
                               method = c("kmeans","iterativeKmeans","SISKmeans","SIS"),
+                              embedding = "last",
                               colDepth = 10,
                               dims = seq(1,3),
                               smoothIter = 1,
@@ -481,22 +441,10 @@ imageSegmentation <- function(vesalius,
                               verbose = TRUE){
 
   .simpleBar(verbose)
-  .checkVesalius(verbose)
-  #----------------------------------------------------------------------------#
-  # Check format - for now lets format covert but in the end we will
-  # depreciate and face out the RGB approach in favour of grey scale and
-  # Embedding approach
-  #----------------------------------------------------------------------------#
-  type <- "none"
-  if(is(vesalius)[1L] == "vesaliusObject"){
-      if(length(dims) != 3 | length(dims) !=1){
-          stop("iterativeSegmentation only support 1 or 3 color channels!")
-      }
-      images <- vesalius
-      type <- "vesaliusObject"
-  } else if(is(vesalius)[1L] == "data.frame" | is(vesalius)[1L] == "tibble"){
-      if(!"cc" %in% colnames(vesalius)) vesalius$cc <- 1
-      images <- vesalius
+  if(is(vesalius)[1L] == "vesaliusObject" & !grepl(x=method[1L],pattern = "SIS")){
+      images <- .vesToC(object = vesalius,embed = embedding, dims = dims)
+  } else if(is(vesalius)[1L] == "vesaliusObject" & !grepl(x=method[1L],pattern = "SIS")){
+    images <- .vesToSIS(object = vesalius,embed = embedding, dims = dims)
   } else {
     stop("Unsupported format to smoothArray function")
   }
@@ -523,12 +471,18 @@ imageSegmentation <- function(vesalius,
                   "SISKmeans" = .SISKmeans(vesalius, dims,cores,verbose),
                   "SIS" = .SIS(vesalius,dims,cores,verbose))
 
+  if(grepl(x=method[1L],pattern = "SIS")){
+      vesalius <- .SISToVes(image,vesalius,dims,embed = "last")
+  }else{
+      vesalius <- .cToVes(image,vesalius,dims,embed = "last")
+  }
   .simpleBar(verbose)
   return(image)
 
 }
 
 .vesaliusKmeans <- function(vesalius,
+                            dims = seq(1,3),
                             colDepth = 10,
                             smoothIter = 1,
                             method = c("median","iso","box"),
@@ -538,9 +492,8 @@ imageSegmentation <- function(vesalius,
                             threshold=0,
                             neuman=TRUE,
                             gaussian=TRUE,
-                            useCenter=TRUE,
                             na.rm=FALSE,
-                            dims = seq(1,3),
+                            cores = 1,
                             verbose = TRUE){
 
   .simpleBar(verbose)
@@ -554,108 +507,55 @@ imageSegmentation <- function(vesalius,
     # Lets smooooooth this image
     # insert https://www.youtube.com/watch?v=4TYv2PhG89A&ab_channel=SadeVEVO
     #--------------------------------------------------------------------------#
-    image <- smoothArray(vesalius,
-                         dims = dims,
-                         method =method,
-                         sigma = sigma,
-                         box = box,
-                         threshold=threshold,
-                         neuman=neuman,
-                         gaussian=gaussian,
-                         na.rm=FALSE,
-                         acrossLevels=acrossLevels,
-                         iter = smoothIter,
-                         verbose=verbose)
+    images <- parallel::mclapply(images,.internalSmooth,
+                                 method = method,
+                                 iter = iter,
+                                 sigma = sigma,
+                                 box = box,
+                                 threshold=threshold,
+                                 neuman=neuman,
+                                 gaussian=gaussian,
+                                 na.rm=na.rm,
+                                 acrossLevels = acrossLevels,
+                                 mc.cores = cores)
     #--------------------------------------------------------------------------#
-    # If we output a vesalius object
-    # we create a df output for the kmeans clustering
-    # easier for conversion
-    # consider refactoring this in the future
+    # Let's get the value vector out of each gray scale image
     #--------------------------------------------------------------------------#
-    if(is(vesalius)[1L] == "vesaliusObject"){
-        image <- .vesToDF(image, dims)
-    }
+    colours <- lapply(images,function(img){
+        return(as.data.frame(img)$value)
+    })
+    colours <- as.matrix(do.call("cbind",colours))
     cat("\n")
     .seg(j,verbose)
     cat("\n")
     #--------------------------------------------------------------------------#
-    # Now let's cluster with or without centers
+    # Now lets cluster colours
     #--------------------------------------------------------------------------#
-    if(useCenter){
+    km <- kmeans(colours,colDepth[j],iter.max = 200,nstart = 10)
 
-      tmpImg <- image %>%
-                filter(tile == 1) %>%
-                group_by(cc) %>%
-                distinct(barcodes,.keep_all = TRUE)
-
-      #------------------------------------------------------------------------#
-      # clustering with each colour together
-      # This is for
-      #------------------------------------------------------------------------#
-      colours <- select(tmpImg, c("cc","value"))
-      colours <- lapply(seq_along(dims), function(i,col){
-          return(filter(col,cc ==i))
-      })
-      colours <- as.matrix(do.call("cbind",colours))
-
-      km <- kmeans(colours,colDepth[j],iter.max = 200,nstart = 50)
-      cluster <- km$cluster
-      Kcenters <- km$centers
-      tmpImg$cluster <- 0
-
-      for(i in seq_len(ncol(colours))){
-          tmpImg$cluster[tmpImg$cc == i] <- cluster
-          tmpImg$value[tmpImg$cc == i] <- Kcenters[cluster,i]
-      }
-
-
-      #------------------------------------------------------------------------#
-      # Replacing values in original image
-      #------------------------------------------------------------------------#
-
-      image <- inner_join(image,tmpImg, by = c("barcodes","cc")) %>%
-             select(c("barcodes","x.x","y.x","cc","value.y","tile.x","cluster"))
-
-      colnames(image) <- c("barcodes","x","y","cc","value","tile","cluster")
-    } else {
-      #------------------------------------------------------------------------#
-      # Now lets do the same thing but where we use all values
-      #------------------------------------------------------------------------#
-      colours <- select(image, c("cc","value"))
-      colours <- lapply(seq_along(dims), function(i,col){
-          return(filter(col,cc ==i))
-      })
-      colours <- as.matrix(do.call("cbind",colours))
-
-      km <- kmeans(colours,colDepth[j],iter.max = 200,nstart = 50)
-      cluster <- km$cluster
-      Kcenters <- km$centers
-      tmpImg$cluster <- 0
-
-      for(i in seq_len(ncol(colours))){
-          tmpImg$cluster[tmpImg$cc == i] <- cluster
-          tmpImg$value[tmpImg$cc == i] <- Kcenters[cluster,i]
-      }
-      #------------------------------------------------------------------------#
-      # This section is so we don't end up having barcode associated with
-      # multiple clusters/segments.
-      # There are a lot of pixel associated to each barcode. When smoothing
-      # it is possible that some pixel will be assigned to a different segment
-      # than the center pixel. This is a pain to deal with in later steps
-      # instead: take mean value per barcode and take the cluster that is the
-      # most represented as the cluster value that we will use
-      # this is mostly relevant when using useCentre =F and multiple colDepth
-      # values.
-      #------------------------------------------------------------------------#
-      image <- image %>% group_by(cc,barcodes) %>%
+    cluster <- km$cluster
+    Kcenters <- km$centers
+    image$cluster <- 0
+    for(i in seq_len(ncol(colours))){
+          colours[,i] <- Kcenters[cluster,i]
+          
+    }
+    #------------------------------------------------------------------------#
+    # This section is so we don't end up having barcode associated with
+    # multiple clusters/segments.
+    # There are a lot of pixel associated to each barcode. When smoothing
+    # it is possible that some pixel will be assigned to a different segment
+    # than the center pixel. This is a pain to deal with in later steps
+    # instead: take mean value per barcode and take the cluster that is the
+    # most represented as the cluster value that we will use
+    # this is mostly relevant when using useCentre =F and multiple colDepth
+    # values.
+    #------------------------------------------------------------------------#
+    image <- image %>% group_by(cc,barcodes) %>%
            mutate(value = mean(value),cluster = .top_cluster(cluster)) %>%
            ungroup
-
     }
-  }
-  if(is(vesalius)[1L] == "vesaliusObject"){
-      image <- .dfToVes(image,vesalius,dims)
-  }
+
   .simpleBar(verbose)
   return(image)
 }

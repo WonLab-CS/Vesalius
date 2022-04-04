@@ -106,6 +106,7 @@ buildVesaliusEmbeddings <- function(vesalius,
         #----------------------------------------------------------------------#
         .raster(verbose)
         tiles <- .rasterise(filtered, cores)
+        
         vesalius <- .updateVesalius(vesalius=vesalius,
                                     data=tiles,
                                     slot="tiles",
@@ -320,10 +321,15 @@ buildVesaliusEmbeddings <- function(vesalius,
         cell <- point.in.polygon(maxPolygonX,maxPolygonY,x,y)
         maxX <- maxPolygonX[cell %in% c(1,2,3)]
         maxY <- maxPolygonY[cell %in% c(1,2,3)]
+        cent <- which(maxX == round(indx) &
+                      maxY == round(indy))
+        centers <- rep(0, length(maxX))
+        centers[cent] <- 1
         tile <- data.frame("barcodes" = rep(filtered$coordinates$barcodes[idx],
                                             times = length(maxX)),
                            "x" = maxX,
-                           "y" = maxY)
+                           "y" = maxY,
+                           "origin" = centers)
         return(tile)
     },filtered = filtered, mc.cores = cores)
     tiles <- do.call("rbind",tiles)
