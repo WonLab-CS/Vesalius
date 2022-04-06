@@ -44,7 +44,7 @@ imagePlot <- function(vesalius,
         stop("Only grey scale or RGB images are supported!")
     }
     if(as.cimg){
-        image <- .vesToC(vesalius,dims,embed = embedding, verbose=F)
+        image <- .vesToC(vesalius,dims,embed = embedding, verbose=FALSE)
 
         image <- imappend(image,"cc")
         plot(image)
@@ -116,17 +116,19 @@ territoryPlot <- function(vesalius,
     # Not a prority for custom plotting functions
     #--------------------------------------------------------------------------#
 
-    if(trial == "last"){
+    if(!is.null(vesalius@territories) & trial == "last"){
       trial <- colnames(vesalius@territories)[ncol(vesalius@territories)]
       ter <- vesalius@territories[,c("x","y",trial)]
       colnames(ter) <- c("x","y","territory")
-    } else {
+    } else if(!is.null(vesalius@territories) & trial != "last") {
       if(!grepl(x = colnames(vesalius@territories),pattern = trial)){
           stop(paste(deparse(substitute(trial)),"is not in territory data frame"))
       }
       ter <- vesalius@territories[,c("x","y",trial)]
       colnames(ter) <- c("x","y","territory")
 
+    } else {
+      stop("No territories have been computed!")
     }
 
     #--------------------------------------------------------------------------#

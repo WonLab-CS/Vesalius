@@ -147,24 +147,13 @@ getSeuratCoordinates <- function(seurat){
 
 # Used to convert territories per cluster to territories across the whole
 # ST array
-.globaliseTerritories <- function(img,seurat=FALSE){
-    if(!seurat){
-      imgTmp <- img %>% filter(territory != "isolated")
-      ter <- paste0(imgTmp$cluster,"_", imgTmp$territory)
+.globaliseTerritories <- function(img){
+      imgTmp <- img %>% filter(trial != "isolated")
+      ter <- paste0(imgTmp$segment,"_", imgTmp$trial)
       allTer <- unique(ter)
       ter <- seq_along(allTer)[match(ter,allTer)]
-      img$territory[img$territory != "isolated"] <- ter
+      img$trial[img$trial != "isolated"] <- ter
       return(img)
-    } else {
-      imgTmp <- img %>% filter(territory != "isolated")
-      ter <- paste0(img$seurat_clusters,"_", img$territory)
-      allTer <- unique(ter)
-      ter <- seq_along(allTer)[match(ter,allTer)]
-      img$seurat_clusters[img$territory != "isolated"] <- ter
-      return(img)
-    }
-
-
 }
 
 

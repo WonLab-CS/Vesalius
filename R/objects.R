@@ -172,9 +172,9 @@ setMethod("show",
       #------------------------------------------------------------------------#
       ### To be modified later
       #------------------------------------------------------------------------#
-      cat("Vesalius Object containing:\n")
+      cat("Vesalius Object containing:\n\n")
       ntiles <- length(unique(object@tiles$barcodes))
-      cat(ntiles,"tiles \n")
+      cat(ntiles,"tiles \n\n")
       #------------------------------------------------------------------------#
       # Showing norm
       #------------------------------------------------------------------------#
@@ -186,7 +186,7 @@ setMethod("show",
         #----------------------------------------------------------------------#
 
         n <- names(object@counts)[counts]
-        cat(n ,"as active normalized data\n")
+        cat(n ,"as active normalized data\n\n")
       }
       #------------------------------------------------------------------------#
       # showing embeds
@@ -199,7 +199,7 @@ setMethod("show",
         #----------------------------------------------------------------------#
 
         n <- names(object@activeEmbeddings)
-        cat(n ,"as active Embedding\n")
+        cat(n ,"as active Embedding\n\n")
       }
 
       #------------------------------------------------------------------------#

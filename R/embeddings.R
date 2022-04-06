@@ -21,12 +21,12 @@
 #' at which tiles should be retained (seed details)
 #' @param nfeatures numeric describing the number of variable features to use.
 #' @param min.cutoff only used when dimensionality reduction method is LSI or LSI_UMAP
-#' cutoff for feature to be included in the VariableFeatures for the object. 
+#' cutoff for feature to be included in the VariableFeatures for the object.
 #' for more detail please look "https://satijalab.org/signac/reference/findtopfeatures"
 #' @param loadings logical if loading values should be used instead of
 #' embeddings when coverting PCA to RGB. Default = FALSE
 #' @param cores numeric number of cores to use. Default = 1
-#' @param remove_LSI1 logical only used when dimensionality reduction method is LSI or LSI_UMAP 
+#' @param remove_LSI1 logical only used when dimensionality reduction method is LSI or LSI_UMAP
 #' indicating if the first LSI component should be removed from further analysis
 #' as it usually captures sequencing depth (technical variation)
 #' @param verbose logical output progress message or not. Default = TRUE
@@ -106,7 +106,7 @@ buildVesaliusEmbeddings <- function(vesalius,
         #----------------------------------------------------------------------#
         .raster(verbose)
         tiles <- .rasterise(filtered, cores)
-        
+
         vesalius <- .updateVesalius(vesalius=vesalius,
                                     data=tiles,
                                     slot="tiles",
@@ -134,14 +134,13 @@ buildVesaliusEmbeddings <- function(vesalius,
                              min.cutoff = min.cutoff)
 
 
-    if(counts$update == "update"){
-      vesalius <- .updateVesalius(vesalius=vesalius,
+
+    vesalius <- .updateVesalius(vesalius=vesalius,
                                   data=counts$norm,
                                   slot="counts",
                                   commit = as.list(match.call()),
                                   defaults = as.list(args(buildVesaliusEmbeddings)),
                                   append=TRUE)
-    }
 
     #--------------------------------------------------------------------------#
     # Embeddings
@@ -373,35 +372,30 @@ buildVesaliusEmbeddings <- function(vesalius,
                     "raw" = .rawNorm(counts))
 
 
-    if(length(vesalius@log@counts)>0){
-      last <- vesalius@log@counts
-      last <- sapply(last, function(x){
-          return(filter(x,Argument == "norm") %>% select(Value) %>% as.character())
-      })
-      if(!is.null(commit[["norm"]])){
-          new <- ifelse(any(commit[["norm"]] %in% last),FALSE,TRUE)
-      } else{
-          new <- FALSE
-      }
-    }else{
-      new <- TRUE
-    }
+    #if(length(vesalius@log@counts)>0){
+    #  last <- vesalius@log@counts
+    #  last <- sapply(last, function(x){
+    #      return(filter(x,Argument == "norm") %>% select(Value) %>% as.character())
+    #  })
+    #  if(!is.null(commit[["norm"]])){
+    #      new <- ifelse(any(commit[["norm"]] %in% last),FALSE,TRUE)
+    #  } else{
+    #      new <- FALSE
+    #  }
+    #}else{
+    #  new <- TRUE
+    #}
 
-    if(new){
-        update <- list("update")
-        names(update) <- "update"
-        counts <- c(counts,update)
-    } else {
-      update <- list("noUpdate")
-      names(update) <- "update"
-      counts <- c(counts,update)
-    }
-
-
-
-    return(counts)
-
-
+  #  if(new){
+  #      update <- list("update")
+  #      names(update) <- "update"
+  #      counts <- c(counts,update)
+  #  } else {
+  #    update <- list("noUpdate")
+  #    names(update) <- "update"
+  #    counts <- c(counts,update)
+  #  }
+  return(counts)
 }
 
 .rawNorm <- function(counts){
@@ -515,6 +509,7 @@ buildVesaliusEmbeddings <- function(vesalius,
     #--------------------------------------------------------------------------#
     # get laodings and create matrix describing if there are any count values
     #--------------------------------------------------------------------------#
+
     pca <- Loadings(counts, reduction = "pca")
     pca <- apply(pca,2,function(x)return(abs(x)))
     mat <- as.matrix(GetAssayData(counts, slot = "data") > 0)
@@ -534,7 +529,7 @@ buildVesaliusEmbeddings <- function(vesalius,
 
       colourMatrix[,p] <- (bars - min(bars)) / (max(bars) - min(bars))
     }
-    colourMatrix <- list(as.matrix(pca))
+    colourMatrix <- list(as.matrix(colourMatrix))
     names(colourMatrix) <- "PCA_L"
     return(colourMatrix)
 }
@@ -564,14 +559,14 @@ buildVesaliusEmbeddings <- function(vesalius,
   return(counts)
 }
 
-                 
+
 .embedLSI <- function(counts,pcs = pcs,remove_LSI1){
-  
+
   #--------------------------------------------------------------------------#
   # Run partial singular value decomposition(SVD) on TF-IDF normalized matrix
   #--------------------------------------------------------------------------#
   svd <- RunSVD(counts, n = pcs + 1, verbose = FALSE)
-  
+
   #--------------------------------------------------------------------------#
   # Getting embedding values and normalize
   #--------------------------------------------------------------------------#
@@ -582,28 +577,28 @@ buildVesaliusEmbeddings <- function(vesalius,
     embeddings <-
       Embeddings(svd[["lsi"]])[, 1:30]
   }
-  
+
   embeddings <- apply(embeddings,2,function(x){
     x <- (x - min(x)) / (max(x) - min(x))
     return(x)
   })
-  
+
   colourMatrix <- list(as.matrix(embeddings))
   names(colourMatrix) <- "LSI"
   return(colourMatrix)
-  
+
 }
 
 
 
 
 .embedLSIUMAP <- function(counts,pcs = pcs,remove_LSI1){
-  
+
   #--------------------------------------------------------------------------#
   # Run partial singular value decomposition(SVD) on TF-IDF normalized matrix
   #--------------------------------------------------------------------------#
   svd <- RunSVD(counts, n = pcs + 1, verbose = FALSE)
-  
+
   if (remove_LSI1 == TRUE) {
     reduc <-
       RunUMAP(
@@ -623,20 +618,18 @@ buildVesaliusEmbeddings <- function(vesalius,
         verbose = F
       )
   }
-  
+
   #--------------------------------------------------------------------------#
   # Getting embedding values and normalize
   #--------------------------------------------------------------------------#
   embeddings <- FetchData(reduc, c("UMAP_1", "UMAP_2", "UMAP_3"))
-  
+
   embeddings <- apply(embeddings, 2, function(x) {
     return((x - min(x)) / (max(x) - min(x)))
   })
-  
+
   embeddings <- list(as.matrix(embeddings))
   names(embeddings) <- "LSI_UMAP"
   return(embeddings)
-  
-}
 
-                 
+}

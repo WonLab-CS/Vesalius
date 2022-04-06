@@ -41,6 +41,8 @@
     if(append & slot != "territories" ){
         slot(vesalius,slot) <- c(slot(vesalius,slot),data)
         vesalius <- .commitLog(vesalius,commit,defaults,slot)
+
+
     }else if(append & slot == "territories" ) {
         if(!is.null(slot(vesalius,slot))){
 
@@ -53,8 +55,8 @@
         }
         vesalius <- .commitLog(vesalius,commit,defaults,slot)
     } else {
-            slot(vesalius,slot) <- data
-            vesalius <- .commitLog(vesalius,commit,defaults,slot)
+        slot(vesalius,slot) <- data
+        vesalius <- .commitLog(vesalius,commit,defaults,slot)
     }
     return(vesalius)
 }

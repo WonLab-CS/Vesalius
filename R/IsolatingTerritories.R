@@ -233,7 +233,7 @@ equalizeHistogram <- function(vesalius,
     if(is(vesalius)[1L] == "vesaliusObject"){
         images <- .vesToC(object = vesalius,embed = embedding, dims = dims)
     } else {
-      stop("Unsupported format to smoothArray function")
+      stop("Unsupported format to equalizeHistogram function")
     }
     .eq(verbose)
     #--------------------------------------------------------------------------#
@@ -330,7 +330,7 @@ regulariseImage <- function(vesalius,
     if(is(vesalius)[1L] == "vesaliusObject"){
         images <- .vesToC(object = vesalius,embed = embedding, dims = dims)
     } else {
-      stop("Unsupported format to smoothArray function")
+      stop("Unsupported format to regulariseImage function")
     }
     .reg(verbose)
     #--------------------------------------------------------------------------#
@@ -518,7 +518,7 @@ imageSegmentation <- function(vesalius,
   if(is(vesalius)[1L] == "vesaliusObject"){
       images <- .vesToC(object = vesalius,embed = embedding, dims = dims)
   } else {
-    stop("Unsupported format to smoothArray function")
+    stop("Unsupported format to imageSegmentation function")
   }
   #----------------------------------------------------------------------------#
   # Segmenting image by iteratively decreasing colour depth and smoothing
@@ -576,7 +576,8 @@ imageSegmentation <- function(vesalius,
     #------------------------------------------------------------------------#
     clusters <- cbind(as.data.frame(images[[1L]])[,c("x","y")],colours,cluster)
     embeds <- colnames(clusters)[!colnames(clusters) %in% c("x","y","cluster")]
-    clusters <- right_join(clusters,vesalius@tiles,by=c("x","y")) %>% group_by(barcodes) %>%
+    clusters <- right_join(clusters,vesalius@tiles,by=c("x","y")) %>%
+           group_by(barcodes) %>%
            mutate(across(embeds,mean),cluster = .top_cluster(cluster)) %>%
            ungroup
 
@@ -589,7 +590,8 @@ imageSegmentation <- function(vesalius,
     #--------------------------------------------------------------------------#
     # Let's rebuild everything
     #--------------------------------------------------------------------------#
-    vesalius <- .cToVes(images,vesalius,dims,embed = "last")
+
+    vesalius <- .cToVes(images,vesalius,dims,embed = embedding)
     clusters <- clusters %>% filter(origin ==1) %>%
                 select(c("barcodes","x","y","cluster")) %>% as.data.frame()
 
@@ -597,10 +599,10 @@ imageSegmentation <- function(vesalius,
          m <- gregexpr('[0-9]+',colnames(vesalius@territories))
          last <- max(as.numeric(unlist(regmatches(colnames(vesalius@territories),m))))
          colnames(clusters) <- c(colnames(clusters)[seq_len(ncol(clusters)-1)],
-                                 paste0("Territory_Trial_",last + 1))
+                                 paste0("Segment_Trial_",last + 1))
     }else{
          colnames(clusters) <- c(colnames(clusters)[seq_len(ncol(clusters)-1)],
-                                 "Territory_Trial_1")
+                                 "Segment_Trial_1")
     }
 
   return(list("vesalius" = vesalius,"clusters" = clusters))
@@ -715,31 +717,92 @@ imageSegmentation <- function(vesalius,
 #' image <- isolateTerritories.array(image, minBar = 5)
 #' }
 
-isolateTerritories.array <- function(image,
-                                     method = c("distance"),
-                                     captureRadius = 0.025,
-                                     global = TRUE,
-                                     minBar = 10,
-                                     verbose =TRUE){
+isolateTerritories <- function(vesalius,
+                               method = c("distance"),
+                               trial = "last",
+                               captureRadius = 0.025,
+                               global = TRUE,
+                               minBar = 10,
+                               verbose =TRUE){
+
+    .simpleBar(verbose)
+    #--------------------------------------------------------------------------#
+    # Get stuff out as usual
+    # Not super happy with this check
+    # it's a bit messy - we might need to consider to do a whole sanity check
+    # of inout data and see if that makes sense - this will include checking log
+    #--------------------------------------------------------------------------#
+    if(is(vesalius)[1L] == "vesaliusObject" & !is.null(vesalius@territories)){
+      if(any(grepl(x= colnames(vesalius@territories),pattern = "Segment")) &
+         trial == "last"){
+        #----------------------------------------------------------------------#
+        # Making sure you get the last colour segment computed
+        # not to be confused with territories
+        #----------------------------------------------------------------------#
+        trial <- grep(x= colnames(vesalius@territories),
+                      pattern = "Segment", value=TRUE)
+
+        ter <- vesalius@territories[,c("barcodes","x","y",trial[length(trial)])]
+        colnames(ter) <- c("barcodes","x","y","segment")
+
+      } else if(any(grepl(x= colnames(vesalius@territories),pattern = "Segment")) &
+                trial != "last") {
+
+        if(!grepl(x = colnames(vesalius@territories),pattern = trial)){
+            stop(paste(deparse(substitute(trial)),"is not in territory data frame"))
+        }
+        ter <- vesalius@territories[,c("barcodes","x","y",trial)]
+        colnames(ter) <- c("barcodes","x","y","segment")
+
+      } else {
+        stop("No image segments have been computed!")
+      }
+
+    } else if(is(vesalius)[1L] == "vesaliusObject" & is.null(vesalius@territories)) {
+        stop("No image segments have been computed!")
+    } else {
+        stop("Unsupported format to isolateTerritories function")
+    }
+
 
     #--------------------------------------------------------------------------#
     # Compute real capture Radius
     #--------------------------------------------------------------------------#
-    .simpleBar(verbose)
+
     if(method[1L] == "distance"){
-      captureRadius <- sqrt((max(image$x)-min(image$x))^2 +
-                            (max(image$y)-min(image$y))^2) *
+      captureRadius <- sqrt((max(ter$x)-min(ter$x))^2 +
+                            (max(ter$y)-min(ter$y))^2) *
                             captureRadius
     }
 
 
     #--------------------------------------------------------------------------#
-    # IsolatingTerritories dispatching
+    # Creating new trial column name and adding it to input data
+    # The input data here is a subset of the full territory df
+    # we at least make sure that we are using the right input
     #--------------------------------------------------------------------------#
-    clust <- unique(image$cluster)
+    if(any(grepl(x = colnames(vesalius@territories),pattern = "Territory"))){
+      previous <- grep(x=colnames(vesalius@territories),
+                                    pattern = "Territory",
+                                    value = TRUE)
+      m <- gregexpr('[0-9]+', previous)
+      last <- max(as.numeric(unlist(regmatches(previous,m))))
+      ter$trial <- 0
+      newTrial <- paste0("Territory_Trial_",last+1)
+      #colnames(ter) <- c("barcodes","x","y","segment",paste0("Territory_Trial_",last+1))
 
-    image$territory <- 0
-    for(i in seq_along(clust)){
+    } else {
+      ter$trial <- 0
+      newTrial <- "Territory_Trial_1"
+      #colnames(ter) <- c("barcodes","x","y","segment","Territory_Trial_1")
+    }
+    #--------------------------------------------------------------------------#
+    # Now we can dispatch the necessary information
+    # and run the pooling algorithm
+    #--------------------------------------------------------------------------#
+    segment <- unique(ter$segment)
+
+    for(i in seq_along(segment)){
       .terPool(i,verbose)
       #------------------------------------------------------------------------#
       # We don't need all data in this case only clusters and locations
@@ -750,9 +813,8 @@ isolateTerritories.array <- function(image,
       # Argument could be removed
       #------------------------------------------------------------------------#
 
-      tmp <- filter(image,cluster == clust[i] & cc == 1)
-
-      ter <- switch(method[1L],
+      tmp <- ter[ter$segment == segment[i],]
+      tmp <- switch(method[1L],
                     "distance" = .distancePooling.array(tmp,captureRadius,
                                                         minBar))
                   #  "neighbor" = .neighborPooling.array(tmp,captureRadius),
@@ -761,33 +823,37 @@ isolateTerritories.array <- function(image,
       # Skipping if does not meet min cell requirements
       # filtering can be done later
       #------------------------------------------------------------------------#
-      if(is.null(ter))next()
+      if(is.null(tmp))next()
       #------------------------------------------------------------------------#
-      # adding territories to each channel
+      # adding territories
       #------------------------------------------------------------------------#
-      for(j in seq(1,3)){
-          image$territory[image$cluster == clust[i] & image$cc == j] <- ter
-      }
-    }
 
-    #--------------------------------------------------------------------------#
-    # Filtering out territories that do not meat he minimum number of cell
-    # criteria - by default they should have a territory value of 0
-    #--------------------------------------------------------------------------#
-    image <- image %>% filter(territory!=0)
+      ter$trial[ter$segment == segment[i]] <- tmp
+
+    }
 
     #--------------------------------------------------------------------------#
     # Globalise territories crate a numbering system for all colour clusters
     # If set to false territories only describe territories for any given colour
     # cluster
     #--------------------------------------------------------------------------#
-
     if(global){
-        image <- .globaliseTerritories(image)
+        ter <- .globaliseTerritories(ter)
     }
+    #--------------------------------------------------------------------------#
+    #Now we can add it to the full territory df and update vesalius
+    #--------------------------------------------------------------------------#
+  
+    colnames(ter) <- c(colnames(ter)[seq(1,length(colnames(ter))-1)], newTrial)
+    vesalius <- .updateVesalius(vesalius=vesalius,
+                                data=ter,
+                                slot="territories",
+                                commit = as.list(match.call()),
+                                defaults = as.list(args(isolateTerritories)),
+                                append=TRUE)
     cat("\n")
     .simpleBar(verbose)
-    return(image)
+    return(vesalius)
 }
 
 
@@ -799,7 +865,7 @@ isolateTerritories.array <- function(image,
     # Dont need to run it for all channels
     #--------------------------------------------------------------------------#
 
-    imgCopy <- img %>% filter(tile == 1) %>% distinct(barcodes,.keep_all = TRUE)
+    imgCopy <- img  %>% distinct(barcodes,.keep_all = TRUE)
     if(nrow(imgCopy)<1){return(NULL)}
 
 
@@ -916,19 +982,16 @@ isolateTerritories.array <- function(image,
     # Clean up drop outs
     #--------------------------------------------------------------------------#
 
-      allTers <- img$territory
+    allTers <- img$trial
 
-      for(ter in seq_along(territories)){
-            loc <- img$barcodes %in% territories[[ter]]
-            if(length(territories[[ter]]) <= minBar){
-               allTers[loc] <- "isolated"
-            } else {
-               allTers[loc] <- ter
-            }
-
-
-
-      }
+    for(ter in seq_along(territories)){
+        loc <- img$barcodes %in% territories[[ter]]
+        if(length(territories[[ter]]) <= minBar){
+            allTers[loc] <- "isolated"
+        } else {
+            allTers[loc] <- ter
+        }
+    }
       return(allTers)
 }
 

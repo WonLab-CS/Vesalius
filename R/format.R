@@ -9,12 +9,15 @@
     #--------------------------------------------------------------------------#
     # For this function we will not create a "method". There are too many
     # other options that we need to account for.
+    # TODO if embed is not last then you have to switch the last active embed
+    # to the one that is being requested.
     #--------------------------------------------------------------------------#
     tiles <- object@tiles
+
     if(embed == "last"){
-        embeddings <- object@activeEmbeddings[[length(object@activeEmbeddings)]]
+        embeddings <- object@activeEmbeddings[[1L]]
     }else{
-       embeddings <- object@activeEmbeddings[embed]
+       embeddings <- object@embeddings[embed]
        if(length(embeddings)==0){
           stop(paste(deparse(substitute(embed)),":Unknown embedding selected!"))
        } else if(length(embeddings)>1){
@@ -25,7 +28,7 @@
          embeddings <- embeddings[[1L]]
        }
     }
-
+  
     #--------------------------------------------------------------------------#
     # generate a list of images based on the number of dims
     # Remember that any time you do anything to an image
@@ -69,22 +72,22 @@
     #--------------------------------------------------------------------------#
     tiles <- object@tiles
     if(embed == "last"){
-        embeddings <- object@activeEmbeddings[[length(object@activeEmbeddings)]]
-        loc <- length(object@activeEmbeddings)
+        embeddings <- object@activeEmbeddings[[1L]]
+        embed <- names(object@activeEmbeddings[[1L]])
     }else{
-       embeddings <- object@activeEmbeddings[embed]
-       loc <- which(names(object@activeEmbeddings) == embed)
+       embeddings <- object@embeddings[embed]
        if(length(embeddings)==0){
           stop(paste(deparse(substitute(embed)),":Unknown embedding selected!"))
        } else if(length(embeddings)>1){
           warning(paste("More than 1",deparse(substitute(embed)),"embedding.
           Vesalius will use the latest entry - See Vesalius Log"))
           embeddings <- embeddings[[length(embeddings)]]
-          loc <- loc[length(embeddings)]
        } else {
          embeddings <- embeddings[[1L]]
        }
     }
+
+
     #--------------------------------------------------------------------------#
     # Always going to be a gray scale image.
     # Colour are only used when during viz
@@ -99,7 +102,10 @@
       embeddings[locs,dims[i]] <- barcodes$value
 
     }
-    object@activeEmbeddings[[loc]] <- embeddings
+
+    embeddings <- list(embeddings)
+    names(embeddings) <- embed
+    object@activeEmbeddings <- embeddings
 
     return(object)
 }
@@ -112,7 +118,7 @@
     #--------------------------------------------------------------------------#
     tiles <- object@tiles
     if(embed == "last"){
-        embeddings <- object@activeEmbeddings[[length(object@activeEmbeddings)]]
+        embeddings <- object@activeEmbeddings[[1L]]
     }else{
        embeddings <- object@activeEmbeddings[embed]
        if(length(embeddings)==0){
@@ -174,18 +180,16 @@
   #--------------------------------------------------------------------------#
   tiles <- object@tiles
   if(embed == "last"){
-      embeddings <- object@activeEmbeddings[[length(object@activeEmbeddings)]]
-      loc <- length(object@activeEmbeddings)
+      embeddings <- object@activeEmbeddings[[1L]]
+      embed <- names(object@activeEmbeddings[[1L]])
   }else{
-     embeddings <- object@activeEmbeddings[embed]
-     loc <- which(names(object@activeEmbeddings) == embed)
+     embeddings <- object@embeddings[embed]
      if(length(embeddings)==0){
         stop(paste(deparse(substitute(embed)),":Unknown embedding selected!"))
      } else if(length(embeddings)>1){
         warning(paste("More than 1",deparse(substitute(embed)),"embedding.
         Vesalius will use the latest entry - See Vesalius Log"))
         embeddings <- embeddings[[length(embeddings)]]
-        loc <- loc[length(embeddings)]
      } else {
        embeddings <- embeddings[[1L]]
      }
@@ -203,7 +207,9 @@
     embeddings[locs,dims[i]] <- barcodes$value
 
   }
-    object@activeEmbeddings[[loc]] <- embeddings
+  embeddings <- list(embeddings)
+  names(embeddings) <- embed
+  object@activeEmbeddings <- embeddings
 
   return(object)
 }
