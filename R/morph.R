@@ -48,33 +48,82 @@
 #' c <- territoryMorphing(ter,morphologyFactor = c(-5,5), image = image)
 #' }
 
-territoryMorphing <- function(territories,
-                              morphologyFactor,
-                              image,
+territoryMorphing <- function(vesalius,
+                              territory = NULL,
+                              trial = "last",
+                              morphologyFactor = 1,
                               verbose=TRUE){
-
-
+      .simpleBar(verbose)
+      #------------------------------------------------------------------------#
+      # lets make a few checks
+      # for now we will assume that either segments or territories can be used
+      # TOADD methods to access parameters associated with each trial run
+      #------------------------------------------------------------------------#
+      if(is.null(territory)){
+          stop("No specified territory for territory morphing!")
+      } else {
+          adjustedTerritoryValues <- min(territory)
+      }
+      if(!is.null(vesalius@territories) & trial == "last"){
+        trial <- colnames(vesalius@territories)[ncol(vesalius@territories)]
+        ter <- vesalius@territories[,c("barcodes","x","y",trial)]
+        colnames(ter) <- c("barcodes","x","y","trial")
+        buffer <- ter
+        ter <- right_join(ter,vesalius@tiles, by = c("barcodes","x","y")) %>%
+               filter(trial %in% territory) %>%
+               mutate(value = 1)
+      } else if(!is.null(vesalius@territories) & trial != "last") {
+        if(!grepl(x = colnames(vesalius@territories),pattern = trial)){
+            stop(paste(deparse(substitute(trial)),"is not in territory data frame"))
+        }
+        ter <- vesalius@territories[,c("barcodes","x","y",trial)]
+        colnames(ter) <- c("barcodes","x","y","trial")
+        buffer <- ter
+        ter <- filter(ter,trial %in% territory) %>%
+               right_join(vesalius@tiles, by = "barcodes") %>%
+               mutate(value = 1)
+      } else {
+        stop("No territories have been computed!")
+      }
       .morph(verbose)
+      #------------------------------------------------------------------------#
+      # getting last name if any to create new column
+      # Later it would be good to write these sections as utility functions
+      # they often do the same thing and it make things cleaner
+      # not high priority - for now we need to make it work
+      #------------------------------------------------------------------------#
+
+      if(any(grepl(x = colnames(vesalius@territories),pattern = "Morphology"))){
+        previous <- grep(x=colnames(vesalius@territories),
+                                      pattern = "Morphology",
+                                      value = TRUE)
+        m <- gregexpr('[0-9]+', previous)
+        last <- max(as.numeric(unlist(regmatches(previous,m))))
+
+        newTrial <- paste0("Morphology_Trial_",last+1)
+
+
+      } else {
+        newTrial <- "Morphology_Trial_1"
+
+      }
       #------------------------------------------------------------------------#
       # First we define territory limits and add a little on each
       # side - this ensures that we won't be clipping any parts of the
       # territory
       #------------------------------------------------------------------------#
-      seed <- territories %>% mutate(value=1)
-
-
-      ymin <- ifelse((min(seed$y) - max(abs(morphologyFactor)) *2) <=0,1,
-         min(seed$y) - morphologyFactor *2)
-      xmin <- ifelse((min(seed$x) - max(abs(morphologyFactor)) *2) <=0,1,
-         min(seed$x) - max(abs(morphologyFactor)) *2)
-      ymax <- max(seed$y) + max(abs(morphologyFactor)) * 2
-      xmax <- max(seed$x) + max(abs(morphologyFactor)) * 2
+      ymin <- ifelse((min(ter$y) - max(abs(morphologyFactor)) *2) <=0,1,
+         min(ter$y) - morphologyFactor *2)
+      xmin <- ifelse((min(ter$x) - max(abs(morphologyFactor)) *2) <=0,1,
+         min(ter$x) - max(abs(morphologyFactor)) *2)
+      ymax <- max(ter$y) + max(abs(morphologyFactor)) * 2
+      xmax <- max(ter$x) + max(abs(morphologyFactor)) * 2
       #------------------------------------------------------------------------#
       # Now we convert add buffer boundaries, covert to grey scale a
       #------------------------------------------------------------------------#
-      seed <- seed %>% select(c("x","y","cc","value")) %>%
+      ter <- ter %>% select(c("x","y","value")) %>%
               rbind(.,c(xmin,ymin,1,0),c(xmax,ymax,1,0)) %>%
-              as.cimg() %>% grayscale()
+              as.cimg()
       #------------------------------------------------------------------------#
       # Now we can do the morphing - grow, erode, clean and fill
       # For some reason I need to create mf seperately
@@ -84,23 +133,28 @@ territoryMorphing <- function(territories,
       for(i in seq_along(morphologyFactor)){
           mf <- abs(morphologyFactor[i])
           if(morphologyFactor[i] >=0){
-              seed <- grow(seed,mf)
+              ter <- grow(ter,mf)
           } else {
-              seed <- shrink(seed, mf)
+              ter <- shrink(ter, mf)
           }
       }
       #------------------------------------------------------------------------#
       # Next we rebuild the image data frame with dilated
       #------------------------------------------------------------------------#
-      seed <- seed %>% as.data.frame()
-      seed <- inner_join(seed,image,by = c("x","y"))%>%
-             select(c("barcodes","x","y","cc.y","z","tile",
-                      "cluster","territory"))%>%
-             filter(cc.y ==1)
-      colnames(seed) <- c("barcodes","x","y","cc","value","tile",
-                         "cluster","territory")
+      ter <- ter %>% as.data.frame()
+      ter <- inner_join(ter,vesalius@tiles,by = c("x","y")) %>%
+             filter(origin ==1)
+      buffer$trial[buffer$barcodes %in% ter$barcodes] <- adjustedTerritoryValues
+      colnames(buffer) <- c(colnames(buffer)[seq(1,ncol(buffer)-1)],newTrial)
 
-     return(seed)
+      vesalius <- .updateVesalius(vesalius=vesalius,
+                                  data=buffer,
+                                  slot="territories",
+                                  commit = as.list(match.call()),
+                                  defaults = as.list(args(territoryMorphing)),
+                                  append=TRUE)
+    .simpleBar(verbose)
+     return(vesalius)
 
 }
 
@@ -151,7 +205,9 @@ territoryMorphing <- function(territories,
 #' layer <- layerTerritory.concave(image, seedTerritory = 1)
 #' }
 
-layerTerritory.concave <- function(image,
+
+## Depreciated until further notice!!!
+.layerTerritory.concave <- function(image,
                                    seedTerritory = NULL,
                                    layerDepth = NULL,
                                    concavity=1,
@@ -297,63 +353,93 @@ layerTerritory.concave <- function(image,
 #' layer <- layerTerritory.edge(image, seedTerritory = 1)
 #' }
 
-layerTerritory.edge <- function(image,
-                                seedTerritory = NULL,
-                                layerDepth = NULL,
-                                morphologyFactor = 3,
-                                verbose =TRUE){
+layerTerritory <- function(vesalius,
+                           territory = NULL,
+                           trial = "last",
+                           layerDepth = NULL,
+                           morphologyFactor = 0,
+                           verbose =TRUE){
 
     .simpleBar(verbose)
-
     #--------------------------------------------------------------------------#
-    # Get pixels that are part of that territory
-    # and prepare df for image transformations
-    # adding extra layer so we don't loose any information
-    # There is a whole lot of empty space but I'll keep for Now
-    # Removing it is trivial but I need the original coordinates and barcodes
-    # I will use the dilaltion factor as a way of expanding the image
-    # Initial image set up
+    # This might be a bit messier but i'm just going to make a call to
+    # territoryMorphing function
+    # this has some un necssary transformations but this is cleaner
+    # We check first if we need to run this if no morphological operator
+    # If we run this then we always take the last trial run
+    # this will update the morphology only if it is run
     #--------------------------------------------------------------------------#
-    .seedSelect(verbose)
-    ter <- image %>% filter(territory %in% seedTerritory) %>% mutate(value=1)
-
-    ymin <- ifelse((min(ter$y) - max(abs(morphologyFactor)) *2) <=0,1,
-        min(ter$y) - max(abs(morphologyFactor)) *2)
-    xmin <- ifelse((min(ter$x) - max(abs(morphologyFactor)) *2) <=0,1,
-        min(ter$x) - max(abs(morphologyFactor)) *2)
-    ymax <- max(ter$y) + max(abs(morphologyFactor)) * 2
-    xmax <- max(ter$x) + max(abs(morphologyFactor)) * 2
-
-
-    #--------------------------------------------------------------------------#
-    # Dilate territory to ensure that we cover the outer layers as well
-    #--------------------------------------------------------------------------#
-    .morph(verbose)
-    terTmp <- ter %>% select(c("x","y","cc","value")) %>%
-              rbind(.,c(xmin,ymin,1,0),c(xmax,ymax,1,0)) %>%
-              as.cimg %>% grayscale()
-    for(i in seq_along(morphologyFactor)){
-        mf <- abs(morphologyFactor[i])
-        if(morphologyFactor[i] >=0){
-            terTmp <- grow(terTmp,mf)
-        } else {
-            terTmp <- shrink(terTmp, mf)
-        }
+    if(sum(morphologyFactor)!=0){
+       .morph(verbose)
+        vesalius <- territoryMorphing(vesalius,
+                                      territory,
+                                      trial,
+                                      morphologyFactor,
+                                      verbose =FALSE)
+        trial <- "last"
     }
 
-    terForLoop <- terTmp %>% as.data.frame()
+    if(!is.null(vesalius@territories) & trial == "last"){
+      trial <- colnames(vesalius@territories)[ncol(vesalius@territories)]
+      ter <- vesalius@territories[,c("barcodes","x","y",trial)]
+      colnames(ter) <- c("barcodes","x","y","trial")
+      buffer <- ter
+      ter <- right_join(ter,vesalius@tiles, by = c("barcodes","x","y")) %>%
+             filter(trial %in% territory) %>%
+             mutate(value = 1)
+      terForLoop <- ter
+    } else if(!is.null(vesalius@territories) & trial != "last") {
+      if(!grepl(x = colnames(vesalius@territories),pattern = trial)){
+          stop(paste(deparse(substitute(trial)),"is not in territory data frame"))
+      }
+      ter <- vesalius@territories[,c("barcodes","x","y",trial)]
+      colnames(ter) <- c("barcodes","x","y","trial")
+      buffer <- ter
+      ter <- filter(ter,trial %in% territory) %>%
+             right_join(vesalius@tiles, by = "barcodes") %>%
+             mutate(value = 1)
+      terForLoop <- ter
+    } else {
+      stop("No territories have been computed!")
+    }
 
-    terForLoop <- inner_join(terForLoop,image,by = c("x","y"))%>%
-                  select(c("barcodes","x","y","cc.y","z",
-                           "tile","cluster","territory"))%>%
-                  filter(cc.y ==1)
-    colnames(terForLoop) <- c("barcodes","x","y","cc","value",
-                              "tile","cluster","territory")
-    ter <- terForLoop
-    colnames(ter) <- c("barcodes","x","y","cc","value","tile",
-                       "cluster","territory")
+    #------------------------------------------------------------------------#
+    # getting last name if any to create new column
+    # This will yield two new columns
+    #------------------------------------------------------------------------#
+
+    if(any(grepl(x = colnames(vesalius@territories),pattern = "Layer"))){
+      previous <- grep(x=colnames(vesalius@territories),
+                                    pattern = "Layer",
+                                    value = TRUE)
+      m <- gregexpr('[0-9]+', previous)
+      last <- max(as.numeric(unlist(regmatches(previous,m))))
+
+      newTrial <- paste0("Layer_Trial_",last+1)
 
 
+    } else {
+      newTrial <- "Layer_Trial_1"
+
+    }
+
+    #------------------------------------------------------------------------#
+    # First we define territory limits and add a little on each
+    # side - this ensures that we won't be clipping any parts of the
+    # territory
+    #------------------------------------------------------------------------#
+    ymin <- ifelse((min(ter$y) - max(abs(morphologyFactor)) *2) <=0,1,
+       min(ter$y) - morphologyFactor *2)
+    xmin <- ifelse((min(ter$x) - max(abs(morphologyFactor)) *2) <=0,1,
+       min(ter$x) - max(abs(morphologyFactor)) *2)
+    ymax <- max(ter$y) + max(abs(morphologyFactor)) * 2
+    xmax <- max(ter$x) + max(abs(morphologyFactor)) * 2
+    #------------------------------------------------------------------------#
+    # Now we convert add buffer boundaries, covert to grey scale a
+    #------------------------------------------------------------------------#
+    ter <- ter %>% select(c("x","y","value")) %>%
+            rbind(.,c(xmin,ymin,1,0),c(xmax,ymax,1,0)) %>%
+            as.cimg()
     #--------------------------------------------------------------------------#
     # Now we can get edges of shape and compare this to tiles
     # and pool this "edge" into layers
@@ -362,8 +448,10 @@ layerTerritory.edge <- function(image,
     .layerTer(verbose)
     counter <- 1
     layer <- list()
+
     while(nrow(terForLoop)>0){
-      grad <- terTmp  %>%
+
+      grad <- ter  %>%
               .detectEdges() %>%
               grow(1) %>%
               as.cimg() %>%
@@ -375,7 +463,7 @@ layerTerritory.edge <- function(image,
 
       edge <- inner_join(grad,terForLoop, by = c("x","y")) %>%
                         select(c("barcodes"))
-
+                        
       #------------------------------------------------------------------------#
       # Resizing ter - removing barcodes that are part of the edge
       #------------------------------------------------------------------------#
@@ -393,9 +481,9 @@ layerTerritory.edge <- function(image,
       ymax <- max(terForLoop$y) + max(abs(morphologyFactor)) * 2
       xmax <- max(terForLoop$x) + max(abs(morphologyFactor)) * 2
 
-      terTmp <- terForLoop %>% select(c("x","y","cc","value")) %>%
-                rbind(.,c(xmin,ymin,1,0),c(xmax,ymax,1,0)) %>%
-                as.cimg
+      ter <- terForLoop %>% select(c("x","y","value")) %>%
+             rbind(.,c(xmin,ymin,1,0),c(xmax,ymax,1,0)) %>%
+            as.cimg()
       }
       #------------------------------------------------------------------------#
       # Adding edge to layer list and counting up
@@ -410,16 +498,16 @@ layerTerritory.edge <- function(image,
     # A rename layer if required
     #--------------------------------------------------------------------------#
 
-    ter$layer <-0
+    buffer$trial <- "out"
     for(lay in seq_along(layer)){
 
-        ter$layer[ter$barcodes %in% layer[[lay]]] <- lay
+        buffer$trial[buffer$barcodes %in% layer[[lay]]] <- lay
     }
 
     #--------------------------------------------------------------------------#
     # Finally we can split the different layers if we want to combine
     #--------------------------------------------------------------------------#
-    layers <- unique(ter$layer)
+    layers <- unique(buffer$trial)
     if(!is.null(layerDepth)){
         if(length(layers) < layerDepth){
             warning("Layer depth exceeds layers in Territory -
@@ -428,11 +516,20 @@ layerTerritory.edge <- function(image,
         } else {
             idx <- floor(seq(1,length(layers), length.out = layerDepth +1))
             for(i in seq(1,length.out = layerDepth)){
-                ter$layer[ter$layer %in% seq(idx[i], idx[i+1])] <- i
+                buffer$trial[buffer$trial %in% seq(idx[i], idx[i+1])] <- i
             }
         }
     }
-    .simpleBar(verbose)
+    #--------------------------------------------------------------------------#
+    # rename new column
+    colnames(buffer) <- c(colnames(buffer)[seq(1,ncol(buffer)-1)],newTrial)
 
-    return(ter)
+    vesalius <- .updateVesalius(vesalius=vesalius,
+                                data=buffer,
+                                slot="territories",
+                                commit = as.list(match.call()),
+                                defaults = as.list(args(layerTerritory)),
+                                append=TRUE)
+  .simpleBar(verbose)
+   return(vesalius)
 }

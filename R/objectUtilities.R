@@ -81,6 +81,8 @@
     defs <- sapply(defaults, function(x){
         if(class(x)=="call"){
             x <- as.character(x)[2L]
+        } else if(is.null(x)){
+            x <- "NULL"
         }
         return(unlist(x))
     })
@@ -93,8 +95,12 @@
     #--------------------------------------------------------------------------#
     if(length(commit)>1){
       for(i in seq(2,length(commit))){
-
-          logdf$Value[logdf$Argument == names(commit)[i]] <- as.character(commit[[i]])
+          if(length(as.character(commit[[i]]))>1){
+              com <- paste0(as.character(commit[[i]]), collapse ="_")
+          } else {
+              com <-as.character(commit[[i]])
+          }
+          logdf$Value[logdf$Argument == names(commit)[i]] <- com
       }
     }
     #--------------------------------------------------------------------------#
