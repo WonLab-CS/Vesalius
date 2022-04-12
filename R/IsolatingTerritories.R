@@ -242,18 +242,18 @@ equalizeHistogram <- function(vesalius,
     # optimized for real images.
     #--------------------------------------------------------------------------#
 
-    image <- switch(type,
-           "EqualizePiecewise" = parallel::mclapply(image,EqualizePiecewise,
+    images <- switch(type,
+           "EqualizePiecewise" = parallel::mclapply(images,EqualizePiecewise,
              N,mc.cores =cores),
-           "BalanceSimplest" = parallel::mclapply(image,BalanceSimplest,
+           "BalanceSimplest" = parallel::mclapply(images,BalanceSimplest,
              sleft,sright,range = c(0,1),mc.cores=cores),
            "SPE" = parallel::mclapply(image,SPE,
              lambda,mc.cores = cores),
-           "EqualizeDP"  = parallel::mclapply(image,EqualizeDP,
+           "EqualizeDP"  = parallel::mclapply(images,EqualizeDP,
              down,up,mc.cores = cores),
-           "EqualizeADP" = parallel::mclapply(image,EqualizeADP,
+           "EqualizeADP" = parallel::mclapply(images,EqualizeADP,
              mc.cores = cores),
-           "ECDF" = parallel::mclapply(image,.ecdf.eq,
+           "ECDF" = parallel::mclapply(images,.ecdf.eq,
              mc.cores = cores))
 
     vesalius <- .cToVes(images,vesalius,dims,embed = embedding)
@@ -454,6 +454,7 @@ imageSegmentation <- function(vesalius,
                               neuman=TRUE,
                               gaussian=TRUE,
                               na.rm = TRUE,
+                              useCenter = TRUE,
                               cores= 1,
                               verbose = TRUE){
 
@@ -465,6 +466,7 @@ imageSegmentation <- function(vesalius,
   image <- switch(method[1L],
                   "kmeans" = .vesaliusKmeans(vesalius,
                     colDepth = colDepth,
+                    dims = dims,
                     embedding = embedding,
                     smoothIter = smoothIter,
                     method = smoothType,
@@ -475,7 +477,7 @@ imageSegmentation <- function(vesalius,
                     neuman = neuman,
                     gaussian = gaussian,
                     na.rm = na.rm,
-                    dims = dims,
+                    useCenter = useCenter,
                     verbose = verbose),
                   "SISKmeans" = .SISKmeans(vesalius, dims,cores,verbose),
                   "SIS" = .SIS(vesalius,dims,cores,verbose))
@@ -510,6 +512,7 @@ imageSegmentation <- function(vesalius,
                             neuman=TRUE,
                             gaussian=TRUE,
                             na.rm=FALSE,
+                            useCenter = TRUE,
                             cores = 1,
                             verbose = TRUE){
 
@@ -548,13 +551,22 @@ imageSegmentation <- function(vesalius,
         return(as.data.frame(img)$value)
     })
     colours <- as.matrix(do.call("cbind",colours))
+    if(useCenter){
+        colours <- cbind(as.data.frame(images[[1L]])[,c("x","y")],
+                         as.data.frame(colours)) %>%
+                   right_join(vesalius@tiles,by=c("x","y"))%>%
+                   filter(origin == 1)
+        coord <- colours[,c("x","y")]
+        colours <- colours[,!colnames(colours) %in%
+                            c("x","y","barcodes","origin")] %>% as.matrix()
+    }
     .seg(j,verbose)
     cat("\n")
     #--------------------------------------------------------------------------#
     # Now lets cluster colours
     # Remember that here colours are your new active embedding values
     #--------------------------------------------------------------------------#
-    km <- kmeans(colours,colDepth[j],iter.max = 200,nstart = 10)
+    km <- kmeans(colours,colDepth[j],iter.max = 200,nstart = 50)
 
     cluster <- km$cluster
     Kcenters <- km$centers
@@ -574,12 +586,21 @@ imageSegmentation <- function(vesalius,
     # this is mostly relevant when using useCentre =F and multiple colDepth
     # values.
     #------------------------------------------------------------------------#
-    clusters <- cbind(as.data.frame(images[[1L]])[,c("x","y")],colours,cluster)
-    embeds <- colnames(clusters)[!colnames(clusters) %in% c("x","y","cluster")]
-    clusters <- right_join(clusters,vesalius@tiles,by=c("x","y")) %>%
-           group_by(barcodes) %>%
-           mutate(across(embeds,mean),cluster = .top_cluster(cluster)) %>%
-           ungroup
+    if(useCenter){
+      clusters <- data.frame(coord,colours, cluster) %>%
+                  right_join(vesalius@tiles, by = c("x","y"))
+      embeds <- colnames(clusters)[!colnames(clusters) %in%
+                                    c("x","y","cluster","barcodes","origin")]
+
+    } else {
+      clusters <- cbind(as.data.frame(images[[1L]])[,c("x","y")],colours,cluster)
+      embeds <- colnames(clusters)[!colnames(clusters) %in% c("x","y","cluster")]
+      clusters <- right_join(clusters,vesalius@tiles,by=c("x","y")) %>%
+             group_by(barcodes) %>%
+             mutate(across(all_of(embeds),mean),cluster = .top_cluster(cluster)) %>%
+             ungroup
+    }
+
 
      images <- lapply(embeds,function(idx,cols){
           tmp <- cols[,c("x","y",as.character(idx))]
@@ -592,7 +613,7 @@ imageSegmentation <- function(vesalius,
     #--------------------------------------------------------------------------#
 
     vesalius <- .cToVes(images,vesalius,dims,embed = embedding)
-    clusters <- clusters %>% filter(origin ==1) %>%
+    clusters <- clusters %>% filter(origin == 1) %>%
                 select(c("barcodes","x","y","cluster")) %>% as.data.frame()
 
     if(!is.null(vesalius@territories)){
@@ -747,8 +768,7 @@ isolateTerritories <- function(vesalius,
 
       } else if(any(grepl(x= colnames(vesalius@territories),pattern = "Segment")) &
                 trial != "last") {
-
-        if(!grepl(x = colnames(vesalius@territories),pattern = trial)){
+        if(length(grep(x = colnames(vesalius@territories),pattern = trial))==0){
             stop(paste(deparse(substitute(trial)),"is not in territory data frame"))
         }
         ter <- vesalius@territories[,c("barcodes","x","y",trial)]
@@ -843,7 +863,7 @@ isolateTerritories <- function(vesalius,
     #--------------------------------------------------------------------------#
     #Now we can add it to the full territory df and update vesalius
     #--------------------------------------------------------------------------#
-  
+
     colnames(ter) <- c(colnames(ter)[seq(1,length(colnames(ter))-1)], newTrial)
     vesalius <- .updateVesalius(vesalius=vesalius,
                                 data=ter,
@@ -1001,7 +1021,7 @@ isolateTerritories <- function(vesalius,
 # This function is interesting for territory isolation
 # but needs to be reworked
 # TODO : test this function more in depth
-watershedPooling <- function(image,territory = NULL,threshold = "auto"){
+.watershedPooling <- function(image,territory = NULL,threshold = "auto"){
     #-------------------------------------------------------------------------#
     # Getting seed colour fron each territories
     # maybe base r would be faster in this case ??

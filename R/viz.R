@@ -107,7 +107,7 @@ territoryPlot <- function(vesalius,
                           trial = "last",
                           split = FALSE,
                           randomise = TRUE,
-                          cex=1,
+                          cex=10,
                           cex.pt=0.25){
     #--------------------------------------------------------------------------#
     # Dirty ggplot - this is just a quick and dirty plot to show what it look
@@ -120,12 +120,16 @@ territoryPlot <- function(vesalius,
       trial <- colnames(vesalius@territories)[ncol(vesalius@territories)]
       ter <- vesalius@territories[,c("x","y",trial)]
       colnames(ter) <- c("x","y","territory")
+      ter$territory <- as.factor(ter$territory)
+      legend <- sapply(strsplit(trial,"_"),"[[",1)
     } else if(!is.null(vesalius@territories) & trial != "last") {
-      if(!grepl(x = colnames(vesalius@territories),pattern = trial)){
+      if(length(grep(x = colnames(vesalius@territories),pattern = trial))==0){
           stop(paste(deparse(substitute(trial)),"is not in territory data frame"))
       }
       ter <- vesalius@territories[,c("x","y",trial)]
       colnames(ter) <- c("x","y","territory")
+      ter$territory <- as.factor(ter$territory)
+      legend <- sapply(strsplit(trial,"_"),"[[",1)
 
     } else {
       stop("No territories have been computed!")
@@ -135,9 +139,8 @@ territoryPlot <- function(vesalius,
     # Changing label order because factor can suck ass sometimes
     #--------------------------------------------------------------------------#
 
-    sorted_labels <- order(levels(as.factor(ter$territory)))
-    sorted_labels[length(sorted_labels)] <- "isolated"
-    ter$territory <- factor(ter$territory, levels = sorted_labels)
+    #sorted_labels <- order(levels(ter$territory))
+    #ter$territory <- factor(ter$territory) %>% fct_reorder(sorted_labels)
 
 
     #--------------------------------------------------------------------------#
@@ -165,7 +168,7 @@ territoryPlot <- function(vesalius,
                      plot.title = element_text(size=cex * 1.5),
                      legend.title = element_text(size=cex * 1.2)) +
                guides(colour = guide_legend(override.aes = list(size=cex * 0.3)))+
-               labs(colour = "Territory nr.", title = paste("Vesalius",trial),
+               labs(colour = legend, title = paste("Vesalius",trial),
                      x = "X coordinates", y = "Y coordinates")
     } else {
       terPlot <- ggplot(ter, aes(x,y,col = territory)) +
@@ -179,7 +182,7 @@ territoryPlot <- function(vesalius,
                        plot.title = element_text(size=cex * 1.5),
                        legend.title = element_text(size=cex * 1.2)) +
                  guides(colour = guide_legend(override.aes = list(size=cex * 0.3)))+
-                 labs(colour = "Territory nr.", title = paste("Vesalius",trial),
+                 labs(colour = legend, title = paste("Vesalius",trial),
                                         x = "X coordinates", y = "Y coordinates")
     }
 
@@ -255,8 +258,8 @@ territoryPlot <- function(vesalius,
 #' }
 
 
-viewGeneExpression <- function(image,
-                               counts,
+viewGeneExpression <- function(vesalius,
+                               normMethod = "last",
                                ter = NULL,
                                genes = NULL,
                                normalise = TRUE,

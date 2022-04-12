@@ -24,9 +24,7 @@ Collate: IsolatingTerritories.R
 Depends: R (>= 4.0.0),
     Seurat,
     imager,
-    dplyr,
-    tidyr,
-    ggplot2
+    tidyverse
 Imports:
     grDevices,
     graphics,

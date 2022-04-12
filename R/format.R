@@ -28,7 +28,7 @@
          embeddings <- embeddings[[1L]]
        }
     }
-  
+
     #--------------------------------------------------------------------------#
     # generate a list of images based on the number of dims
     # Remember that any time you do anything to an image
@@ -98,7 +98,7 @@
       barcodes <- left_join(tiles,img, by = c("x","y")) %>%
                   filter(origin == 1) %>% na.exclude()
 
-      locs <- match(rownames(embeds),barcodes$barcodes)
+      locs <- match(rownames(embed),barcodes$barcodes)
       embeddings[locs,dims[i]] <- barcodes$value
 
     }

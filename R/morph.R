@@ -384,9 +384,11 @@ layerTerritory <- function(vesalius,
       ter <- vesalius@territories[,c("barcodes","x","y",trial)]
       colnames(ter) <- c("barcodes","x","y","trial")
       buffer <- ter
-      ter <- right_join(ter,vesalius@tiles, by = c("barcodes","x","y")) %>%
+      ter <- right_join(ter,vesalius@tiles, by = "barcodes") %>%
              filter(trial %in% territory) %>%
-             mutate(value = 1)
+             mutate(value = 1)%>%
+             select(c("barcodes","x.y","y.y","value","origin","trial"))
+      colnames(ter) <- c("barcodes","x","y","value","origin","trial")
       terForLoop <- ter
     } else if(!is.null(vesalius@territories) & trial != "last") {
       if(!grepl(x = colnames(vesalius@territories),pattern = trial)){
@@ -397,7 +399,9 @@ layerTerritory <- function(vesalius,
       buffer <- ter
       ter <- filter(ter,trial %in% territory) %>%
              right_join(vesalius@tiles, by = "barcodes") %>%
-             mutate(value = 1)
+             mutate(value = 1) %>%
+             select(c("barcodes","x.y","y.y","value","origin","trial"))
+      colnames(ter) <- c("barcodes","x","y","value","origin","trial")
       terForLoop <- ter
     } else {
       stop("No territories have been computed!")
@@ -457,13 +461,15 @@ layerTerritory <- function(vesalius,
               as.cimg() %>%
               as.data.frame() %>%
               filter(value >0)
+
+      
       #------------------------------------------------------------------------#
       # getting barcodes from territory
       #------------------------------------------------------------------------#
 
       edge <- inner_join(grad,terForLoop, by = c("x","y")) %>%
                         select(c("barcodes"))
-                        
+
       #------------------------------------------------------------------------#
       # Resizing ter - removing barcodes that are part of the edge
       #------------------------------------------------------------------------#
@@ -483,7 +489,7 @@ layerTerritory <- function(vesalius,
 
       ter <- terForLoop %>% select(c("x","y","value")) %>%
              rbind(.,c(xmin,ymin,1,0),c(xmax,ymax,1,0)) %>%
-            as.cimg()
+             as.cimg()
       }
       #------------------------------------------------------------------------#
       # Adding edge to layer list and counting up

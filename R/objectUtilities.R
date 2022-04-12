@@ -193,3 +193,28 @@ getCounts <- function(vesalius, type = "raw"){
 viewLogTree <- function(vesalius){
     return(vesalius@log)
 }
+
+viewTrialSummary <- function(vesalius){
+    trials <- lapply(c("Segment","Territory","Morphology","Layer"),
+                        function(id,vesalius){
+                        return(grep(x=colnames(vesalius@territories),
+                                    pattern = id, value = TRUE))
+                        },vesalius)
+    maxTrials <- max(sapply(trials, length))
+    
+    if(maxTrials == 0){
+        stop("No Territory Trials to be found!")
+    } else {
+        trials <- lapply(trials,function(trial,max){
+            if(max - length(trial)==0){
+               return(trial)
+            }else{
+               return(c(trial,rep("-",times = max - length(trial))))
+            }
+
+        },max = maxTrials)
+        trials <- do.call("cbind", trials)
+        colnames(trials) <- c("Segment","Territory","Morphology","Layer")
+    }
+    return(trials)
+}

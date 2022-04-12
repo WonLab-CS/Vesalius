@@ -1,4 +1,4 @@
-import("Seurat","imager","dplyr",  "tidyr","ggplot2")
+import("Seurat","imager","tidyverse")
 importFrom("grDevices", "rainbow", "rgb","colorRampPalette")
 importFrom("graphics", "hist.default", "par", "points", "rect", "text")
 importFrom("stats", "kmeans", "median", "quantile","ecdf",
