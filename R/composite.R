@@ -17,7 +17,12 @@ buildMosaic <- function(vesalius,
                         box =3,
                         acrossLevels =c("mean","min","max"),
                         cores = 1,
-                        verbose = TRUE){
+                        verbose = TRUE,
+                        lambda = 5,
+                        niter = 100,
+                        regMethod = "TVL2.FiniteDifference",
+                        regularization = T,
+                        histEqual = T){
     #---------------------------------------------------,-----------------------#
     # First let's get the embeddings
     #--------------------------------------------------------------------------#
@@ -37,22 +42,28 @@ buildMosaic <- function(vesalius,
     # At the moment only one eq type. I want to be able to automate this
     # selection process
     #--------------------------------------------------------------------------#
-    .eq(verbose)
-    eqThresh <- (1-maskThreshold)
-    imgList <- equalizeHistogram(imgList,
-                                 sleft = eqThresh,sright=eqThresh,
-                                 verbose=FALSE,
-                                 cores = cores)
+    if (histEqual) {
+      .eq(verbose)
+      eqThresh <- (1-maskThreshold)
+      imgList <- equalizeHistogram(imgList,
+                                   sleft = eqThresh,sright=eqThresh,
+                                   verbose=FALSE,
+                                   cores = cores)
+    }
     #--------------------------------------------------------------------------#
     # We smooth all arrays -
     # So this goes against the idea of not keeping arrays in memory -
     # At least for this function we don't need to but at the moment lets just
     # check the proof of concept
     #--------------------------------------------------------------------------#
-    .reg(verbose)
-    imgList <- parallel::mclapply(imgList,.regularise,
-                                 lambda = lambda,
-                                 mc.cores = cores)
+    if (regularization) {
+      .reg(verbose)
+      imgList <- parallel::mclapply(imgList,.regularise,
+                                    lambda = lambda,
+                                    mc.cores = cores,
+                                    niter = niter,
+                                    method = regMethod)
+    }
     .smooth(verbose)
     imgList <- parallel::mclapply(imgList,.internalSmooth,
                                   method = smoothingMethod,
