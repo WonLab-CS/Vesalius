@@ -22,7 +22,10 @@ buildMosaic <- function(vesalius,
                         niter = 100,
                         regMethod = "TVL2.FiniteDifference",
                         regularization = T,
-                        histEqual = T){
+                        histEqual = T,
+                        elementSize = 5,
+                        distThresh = 0,
+                        sizeThresh = 0){
     #---------------------------------------------------,-----------------------#
     # First let's get the embeddings
     #--------------------------------------------------------------------------#
@@ -91,7 +94,7 @@ buildMosaic <- function(vesalius,
         #----------------------------------------------------------------------#
         img <- imgList[[i]]
         .msk(i,verbose)
-        mosaic <- .mosaic(img,tiles,mosaic,maskThreshold,maskType,method,k)
+        mosaic <- .mosaic(img,tiles,mosaic,maskThreshold,maskType,method,k, elementSize, distThresh, sizeThresh)
     }
     vesalius@territories <- mosaic
     cat("\n")
@@ -107,7 +110,10 @@ buildMosaic <- function(vesalius,
                     maskThreshold = 0.9,
                     maskType="double",
                     method ="simpleMask",
-                    k=10){
+                    k=10,
+                    elementSize = 5,
+                    distThresh = 0,
+                    sizeThresh = 0){
     #--------------------------------------------------------------------------#
     # Set up the threshold and what not
     #--------------------------------------------------------------------------#
@@ -128,7 +134,8 @@ buildMosaic <- function(vesalius,
                     "SIS" = .SISMask(img, tiles,maskThreshold,maskType),
                     "SISKmeans" = .SISKmeansMask(img,tiles,maskThreshold,maskType),
                     "Kmeans" = .kmeansMask(img,tiles,maskThreshold,maskType,k),
-                    "KmeansIter" = .kmeansIterMask(img,tiles,maskThreshold))
+                    "KmeansIter" = .kmeansIterMask(img,tiles,maskThreshold),
+                    "thresholdML" = .thresholdMlMask(img, tiles, elementSize, maskType=maskType, distThresh=distThresh, sizeThresh = sizeThresh))
         mosaic <- .stackCheck(pix,mosaic)
     }
   return(mosaic)
@@ -335,6 +342,150 @@ buildMosaic <- function(vesalius,
     return(pix)
 
 }
+
+#' Segment territories by iterative threshold-based segmentation.
+#'
+#' @param img a cimg object
+#' @param tiles from vesalius object
+#' @param elementSize an integer describing the size of the element for erosion and dilation. 
+#' @param maskType a string describing mask type to use. "pos" segments territories with pixel values higher than the median, "neg" lower than the median and "double" on both sides. It is recommended to use "double".
+#' @param distThresh a float describing the minimum mean pixel value distance of a territory from the image median. Should only be used in combination with quantile normalized embeddings.
+#' @param sizeThresh an integer describing the minimum size of a territory in pixels.
+#' @return Territories: as a list of a list of bar codes.
+.thresholdMlMask <- function(img,
+                             tiles,
+                             elementSize = 5,
+                             maskType="double",
+                             distThresh = 0,
+                             sizeThresh = 0) {
+  # run the iterative image segmentation with erosion and dilation
+  segImg <- .thresholdMlSmooth(img,
+                               maskType,
+                               elementSize,
+                               distThresh,
+                               sizeThresh)
+  
+  # convert the labeled image into a list of lists of barcodes
+  pix <- left_join(tiles, as.data.frame(segImg), by = c("x", "y")) %>%
+    distinct(barcodes, value) %>%
+    na.exclude()
+  
+  pix <- filter(pix, value  != 0)
+  pix <- split(pix, pix$value)
+  
+  pix <- lapply(
+    pix,
+    FUN = function(x)
+      x$barcodes
+  )
+  return(pix)
+}
+
+#' Iterative threshold-based segmentation.
+#'
+#' @param img a cimg object
+#' @param elementSize an integer describing the size of the element for erosion and dilation. 
+#' @param maskType a string describing mask type to use. "pos" segments territories with pixel values higher than the median, "neg" lower than the median and "double" on both sides.
+#' @param distThresh a float describing the minimum mean pixel value distance of a territory from the image median. Should only be used in combination with quantile normalized embeddings
+#' @param sizeThresh an integer describing the minimum size of a territory in pixels.
+#' @param dev logical: return segmented image before assigning labels to territories. Only for development purposes.
+#' @return a cimg object. A segmented image with territories labeled continuously with positive integers and the background labeled as 0.
+.thresholdMlSmooth <- function(img,
+                               maskType = "double",
+                               elementSize = 5,
+                               distThresh = 0,
+                               sizeThresh = 0) {
+  
+  # perform first round of image segmentation with 1 threshold.
+  segImg1 <- ThresholdML(img, k = 1)
+  
+  # perform erosion and dilation to close small gaps and remove small artifacts
+  segImg1 <- mclosing_square(segImg1, size = elementSize)
+  segImg1 <- mopening_square(segImg1, size = elementSize)
+  
+  # label background as 0 and foreground (segmented territories) as 1
+  # assumption that segmented area is smaller than the background.
+  label1 <- ifelse(sum(segImg1) > (prod(dim(segImg1)) / 2), 0, 1)
+  if (label1 == 0) {
+    segImg1 <- abs(segImg1 - 1)
+  }
+  segment1 <- img[segImg1 == 1]
+  # if (sum(segment1) == 0) {
+  #   stop("No territories segmented. Possibly too little smoothing or too large structure element.\n")
+  # }
+  
+  # replace the segmented territories with the image median before the second round of segmentation
+  imgMedian <- median(as.matrix(img))
+  maskedImg <- img
+  maskedImg[segImg1 == 1] <- imgMedian
+  
+  # second round of segmentation, again with 1 threshold
+  segImg2 <- ThresholdML(maskedImg, k = 1)
+  
+  # erosion and dilation
+  segImg2 <- mclosing_square(segImg2, elementSize)
+  segImg2 <- mopening_square(segImg2, elementSize)
+  
+  # check if segmented part is 0 or 1 labeled
+  label2 <- ifelse(sum(segImg2) > (prod(dim(segImg2)) / 2), 0, 1)
+  if (label2 == 0) {
+    segImg2 <- abs(segImg2 - 1)
+  }
+  segment2 <- img[segImg2 == 1]
+  # if (sum(segment2) == 0) {
+  #   # warning("No territories segmented. Possibly too little smoothing or too large structure element.\n")
+  #   return(segImg1)
+  # }
+  segImgComb <- segImg1
+  # if segmentations are on both sides of the median, combine segmentations.
+  # otherwise, only the first segmentation will be used.
+  if (sign(mean(segment1) - mean(img)) != sign(mean(segment2) - mean(img))) {
+    segImgComb[segImg2 == 1] <- max(segImgComb) + 1
+  }
+  
+  # Give every separate territory it's own label
+  segImgCombLab <- label(segImgComb)
+  # reset inclusions to background label
+  segImgCombLab[segImgComb == 0] <- 0
+  
+  # label territories continuously
+  segImgCombLabCont <- segImgCombLab
+  segImgCombLabCont[, ] <- 0
+  iterator <- 0
+  # iterate over labels
+  for (l in seq(max(segImgCombLab))) {
+    territoryMask <- segImgCombLab == l
+    terMean <- mean(img[territoryMask])
+    # in case label was an inclusion, it has already been removed
+    if (sum(territoryMask) == 0) {
+      next
+      # Filter size of territories and distance from image median to obtain high information territories
+    } else if (abs(terMean - imgMedian) < distThresh) {
+      next
+    } else if (sum(territoryMask) < sizeThresh) {
+      next
+    } else {
+      iterator <- iterator + 1
+    }
+    
+    # negative and positive option
+    if (maskType == "double") {
+      segImgCombLabCont[territoryMask] <- iterator
+    } else if (maskType == "neg") {
+      if (terMean < imgMedian) {
+        segImgCombLab[territoryMask] <- 0
+        segImgCombLabCont[territoryMask] <- iterator
+      }
+    } else if (maskType == "pos") {
+      if (terMean > imgMedian) {
+        segImgCombLab[territoryMask] <- 0
+        segImgCombLabCont[territoryMask] <- iterator
+      }
+    }
+  }
+  return(segImgCombLabCont)
+}
+
 
 ## Need stack check improvement 
 .stackCheck <- function(pix,mosaic){
