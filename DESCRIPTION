@@ -33,13 +33,13 @@ Imports:
     deldir,
     sp,
     tvR,
-    concaveman,
     Matrix,
     RColorBrewer,
     parallel,
     imagerExtra,
-    methods
-    Signac
+    methods,
+    Signac,
+    ggpubr
 Suggests:
     knitr,
     RUnit,

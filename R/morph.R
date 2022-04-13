@@ -158,162 +158,6 @@ territoryMorphing <- function(vesalius,
 
 }
 
-#' layerTerritory.concave layers selected territories using concave hulling
-#' @param image data.frame - Vesalius formatted data.frame (i.e. barcodes,
-#' x,y,cc,value,cluster, territory)
-#' @param seedTerritory integer describing which territory should be layered
-#' @param layerDepth integer describing maximum number of layers
-#' @param concavity numeric describing concavity of the territory. 1 for highly
-#' detailed structures. At higher values the territory will be considered as
-#' a convex hull.
-#' @param length_threshold numeric describing the minimum distance between
-#' points to be considered during hulling. High values = simpler shapes
-#' @param morphologyFactor integer or vector of integers describing growth
-#' and/or shrink extent.
-#' @param captureRadius numeric - proportion of maximum distance between
-#' barcodes that will be used to pool barcodes together (range 0 - 1).
-#' @param minBar integer - minimum number of barcodes allowed in each territory
-#' @param verbose logical - progress message output.
-#' @details To divide a territory into layers, one approach is to use concave
-#' hulling. This approach considers all barcodes locations (only center pixels)
-#' as points on a 2D grid and extracts the "outer" layer of barcodes.
-#'
-#' This outer layer is extracted and defined as the first layer of the
-#' territory. The process is applied until no more barcodes can be pooled into
-#' a layer.
-#'
-#' It should be noted that due to the geometrical nature of this approach,
-#' sub-territories are isolated prior to concave hulling to ensure that the
-#' hulling is only applied to contiguous barcodes (defined by captureRadius).
-#'
-#' @return Returns a Vesalius data.frame with "barcodes","x","y","cc",
-#' "value","tile","cluster","territory" and "layer".
-#' Layer describes the layer to which a barcode belongs.
-#' @examples
-#' \dontrun{
-#' data("vesalius")
-#' # Seurat pre-processing
-#' image <- NormalizeData(vesalius)
-#' image <- FindVariableFeatures(image, nfeatures = 2000)
-#' image <- ScaleData(image)
-#' # converting to rgb
-#' image <- rgbPCA(image,slices = 1)
-#' image <- buildImageArray(image, sliceID=1)
-#' # One segmentation round
-#' image <- iterativeSegmentation.array(image)
-#' image <- isolateTerritories.array(image, minBar = 5)
-#' layer <- layerTerritory.concave(image, seedTerritory = 1)
-#' }
-
-
-## Depreciated until further notice!!!
-.layerTerritory.concave <- function(image,
-                                   seedTerritory = NULL,
-                                   layerDepth = NULL,
-                                   concavity=1,
-                                   length_threshold=0,
-                                   morphologyFactor = 3,
-                                   captureRadius=0.2,
-                                   minBar = 10,
-                                   verbose =TRUE){
-
-    .simpleBar(verbose)
-
-    #--------------------------------------------------------------------------#
-    # Get pixels that are part of that territory
-    #--------------------------------------------------------------------------#
-    .seedSelect(verbose)
-    ter <- image %>% filter(territory %in% seedTerritory)
-    image <- filter(image,cc == 1)
-
-    #--------------------------------------------------------------------------#
-    # Splitting territory if it consists of multiple sub territories
-    # Otherwise the concave hulling parameters become tricky to tune
-    # not ideal - will need to fix and improve
-    #--------------------------------------------------------------------------#
-
-    pooled <- isolateTerritories.array(ter, method = c("distance"),
-                                       captureRadius = captureRadius,
-                                       global=TRUE,
-                                       minBar = minBar,
-                                       verbose =FALSE)
-    colnames(pooled)[colnames(pooled) == "territory"] <- "subTerritory"
-
-    pooled <- split(pooled, pooled$subTerritory)
-
-    for(te in seq_along(pooled)){
-      layer <- list()
-      #------------------------------------------------------------------------#
-      # Next for convenience we will convert to grey scale and dillate
-      # as Default lets set dillation to 3 pixels
-      #------------------------------------------------------------------------#
-      .morph(verbose)
-      ter <- pooled[[te]]
-      ter <- ter %>% select(c("x","y","cc","value")) %>%
-             as.cimg %>% grayscale %>% grow(morphologyFactor)
-      #------------------------------------------------------------------------#
-      # Once we have dilated we can start iterative layayering
-      # We will do this on tile centers and that is what we really care about
-      # First let's convert back to a data frame and add back the barcodes
-      #------------------------------------------------------------------------#
-      .rebuildDF(verbose)
-
-      ter <- as.data.frame(ter)
-      ter <- right_join(ter,pooled[[te]],by = c("x","y"))
-      ter <- inner_join(ter, image,by = c("x","y")) %>%
-             select(c("barcodes.x","x","y","cluster.x",
-                      "territory","subTerritory","tile.y"))
-      colnames(ter) <-c("barcodes","x","y","cluster",
-                        "territory","subTerritory","tile")
-      ter <- ter %>% filter(tile == 1)
-
-      #------------------------------------------------------------------------#
-      # Next we will iteratively pool beads into single layers
-      #------------------------------------------------------------------------#
-      .layerTer(verbose)
-      counter <- 1
-
-      while(nrow(ter)>0){
-          edge <- concaveman::concaveman(as.matrix(ter[,c("x","y")]),
-                                concavity,length_threshold)
-          colnames(edge) <- c("x","y")
-          edge <- inner_join(as.data.frame(edge), ter, by = c("x","y"))
-          edge$layer <- counter
-          ter <- filter(ter,!barcodes %in% edge$barcodes)
-          layer[[counter]] <- edge
-
-          counter <- counter +1
-      }
-      layer <- do.call("rbind",layer)
-      #------------------------------------------------------------------------#
-      # Now we can pool layers together to equal the desired layer number
-      # with a few checks for the number of layers
-      #------------------------------------------------------------------------#
-      layers <- unique(layer$layer)
-      if(!is.null(layerDepth)){
-          if(length(layers) < layerDepth){
-              warning("Layer depth exceeds layers in Territory -
-                       Using layers in territories", immediate. = TRUE)
-
-          } else {
-              idx <- floor(seq(1,length(layers), length.out = layerDepth +1))
-              for(i in seq(1,length.out = layerDepth)){
-                  layer$layer[layer$layer %in% seq(idx[i], idx[i+1])] <- i
-              }
-          }
-      }
-
-      pooled[[te]] <- layer
-
-    }
-
-    pooled <- do.call("rbind", pooled)
-
-    .simpleBar(verbose)
-    return(pooled)
-
-
-}
 
 
 #' extractIdentity compute differentially expressed genes for each territory
@@ -391,7 +235,7 @@ layerTerritory <- function(vesalius,
       colnames(ter) <- c("barcodes","x","y","value","origin","trial")
       terForLoop <- ter
     } else if(!is.null(vesalius@territories) & trial != "last") {
-      if(!grepl(x = colnames(vesalius@territories),pattern = trial)){
+      if(!any(grepl(x = colnames(vesalius@territories),pattern = trial))){
           stop(paste(deparse(substitute(trial)),"is not in territory data frame"))
       }
       ter <- vesalius@territories[,c("barcodes","x","y",trial)]
@@ -462,7 +306,7 @@ layerTerritory <- function(vesalius,
               as.data.frame() %>%
               filter(value >0)
 
-      
+
       #------------------------------------------------------------------------#
       # getting barcodes from territory
       #------------------------------------------------------------------------#

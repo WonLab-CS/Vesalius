@@ -191,26 +191,6 @@ territoryPlot <- function(vesalius,
 
 
 
-# Not in use at the moment
-# Might add in futur iterations of the packages
-#.cellProportion <- function(image){
-#    prop <- FetchData(image,"seurat_clusters") %>% table %>% as.data.frame
-#    colnames(prop) <- c("Cell","Cell Proportion")
-
-#    ter_col <- nrow(prop)
-#    ter_pal <- colorRampPalette(brewer.pal(8, "Accent"))
-#    ter_col <- ter_pal(ter_col)
-
-#    treemap(prop,
-#            index="Cell",
-#            vSize="Cell Proportion",
-#            type="index",
-#            palette = ter_col
-#            )
-#}
-
-
-
 
 #' viewGeneExpression - plot gene expression.
 #' @param image a Vesalius data frame containing barcodes, x, y, cc, value,
@@ -259,20 +239,23 @@ territoryPlot <- function(vesalius,
 
 
 viewGeneExpression <- function(vesalius,
+                               genes = NULL,
                                normMethod = "last",
                                trial = "last",
-                               territory = NULL,
-                               genes = NULL,
-                               normalise = TRUE,
+                               territory1 = NULL,
+                               territory2 = NULL,
+                               cells = NULL,
+                               norm = TRUE,
+                               as.layer = FALSE,
                                cex =10){
     #--------------------------------------------------------------------------#
     # First lets get the norm method out and the associated counts
     #--------------------------------------------------------------------------#
-    if(normMethod == " last"){
+    if(normMethod == "last"){
         counts <- as.matrix(vesalius@counts[[length(vesalius@counts)]])
 
     }else{
-        if(length(grep(x=names(vesalius@counts, pattern = normMethod)))==0){
+        if(length(grep(x=names(vesalius@counts), pattern = normMethod))==0){
             stop(paste0(deparse(substitute(normMethod)),"is not in count list!"))
         }
         counts <- as.matrix(vesalius@counts[[normMethod]])
@@ -282,28 +265,63 @@ viewGeneExpression <- function(vesalius,
     # it occurs to me that If done propely I could remove the view layer
     # expression function
     #--------------------------------------------------------------------------#
-    if(!is.null(vesalius@territories) & trial == "last" & !is.null(territory)){
+    if(!is.null(vesalius@territories) & trial == "last"){
       trial <- colnames(vesalius@territories)[ncol(vesalius@territories)]
       ter <- vesalius@territories[,c("barcodes","x","y",trial)]
       colnames(ter) <- c("barcodes","x","y","trial")
-      nonTer <- ter
-      ter$trial[ter$trial %in% territory] <- paste0(territory,collapse=" ")
+      #------------------------------------------------------------------------#
+      # Getting and setting territory categories
+      #------------------------------------------------------------------------#
+      if(is.null(territory1) & is.null(territory2)){
+        ter <- select(ter, c("barcodes","x","y","trial"))
+      }else if(!is.null(territory1) & is.null(territory2)){
+        ter$trial[!ter$trial %in% territory1 ] <- "other"
+        if(!is.null(cells)){
+            ter$trial[ter$trial != "other" & ter$barcodes %in% cells] <-
+            paste0(territory1, collapse=" ")
+        }
 
-    } else if(!is.null(vesalius@territories) & trial != "last"& !is.null(territory)){
-      if(!grepl(x = colnames(vesalius@territories),pattern = trial)){
+      }else if(is.null(territory1) & !is.null(territory2)){
+        ter$trial[!ter$trial %in% territory2 ] <- "other"
+        if(!is.null(cells)){
+            ter$trial[ter$trial != "other" & ter$barcodes %in% cells] <-
+            paste0(territory2, collapse=" ")
+        }
+      }else {
+        ter$trial[!ter$trial %in% c(territory1,territory2) ] <- "other"
+        if(!is.null(cells)){
+            ter$trial[ter$trial %in% territory1 & ter$barcodes %in% cells] <-
+            paste0(territory1, collapse=" ")
+            ter$trial[ter$trial %in% territory2 & ter$barcodes %in% cells] <-
+            paste0(territory2, collapse=" ")
+        }
+      }
+
+
+
+    } else if(!is.null(vesalius@territories) & trial != "last"){
+      if(!any(grepl(x = colnames(vesalius@territories),pattern = trial))){
           stop(paste(deparse(substitute(trial)),"is not in territory data frame"))
       }
       ter <- vesalius@territories[,c("barcodes","x","y",trial)]
       colnames(ter) <- c("barcodes","x","y","trial")
-      ter$trial[!ter$trial %in% territory ] <- "other"
-      ter$trial[ter$trial %in% territory] <- paste0(territory,collapse=" ")
+      #------------------------------------------------------------------------#
+      # Getting and setting territory categories
+      #------------------------------------------------------------------------#
+      if(is.null(territory1) & is.null(territory2)){
+        ter <- select(ter, c("barcodes","x","y","trial"))
+      }else if(!is.null(territory1) & is.null(territory2)){
+        ter$trial[!ter$trial %in% territory1 ] <- "other"
 
-    }else if(!is.null(vesalius@territories) & is.null(territory)){
-      ter <- vesalius@territories[,c("barcodes","x","y")]
+      }else if(is.null(territory1) & !is.null(territory2)){
+        ter$trial[!ter$trial %in% territory1 ] <- "other"
+      }else {
+        ter$trial[!ter$trial %in% c(territory1,territory2) ] <- "other"
+      }
+
     }else{
       ter <- vesalius@tiles %>% filter(origin == 1)
     }
-
 
     #--------------------------------------------------------------------------#
     # Getting genes
@@ -313,316 +331,118 @@ viewGeneExpression <- function(vesalius,
         stop("Please specifiy which gene you would like to visualize")
     } else {
         #----------------------------------------------------------------------#
-        # will need some regex here probs
+        # First lets make a list to store our counts and then plots
         #----------------------------------------------------------------------#
-        inCount <- rownames(counts) == genes
+        geneList <- vector("list",length(genes))
+        names(geneList) <- genes
         #----------------------------------------------------------------------#
-        # Just in case the gene is not present
-        # this should probably be cleaned up
+        # Next we loop,extract, combine
         #----------------------------------------------------------------------#
-        if(sum(inCount) == 0){
-            warning(paste(genes," is not present in count matrix.
-                          Returning NULL"),immediate.=T)
-            return(NULL)
+        for(i in seq_along(genes)){
+            gene <- rownames(counts) == genes[i]
+            if(sum(gene) == 0){
+                warning(paste(genes[i]," is not present in count matrix.
+                              Returning NULL"),immediate.=T)
+                geneList[[i]] <- NULL
+                next()
+            }
+
+            gene <- counts[gene,]
+            gene <- data.frame(names(gene),gene)
+            colnames(gene) <- c("barcodes","gene")
+
+            gene <- left_join(gene,ter, by = c("barcodes")) %>% na.exclude()
+            if(norm){
+                gene$gene <- (gene$gene - min(gene$gene)) /
+                                 (max(gene$gene) - min(gene$gene))
+                type <- "Norm. Expression"
+            }else{
+                type <- "Expression"
+            }
+            geneList[[i]] <- gene
         }
+    }
 
-        counts <- counts[inCount,]
 
-        counts <- data.frame(names(counts),counts)
-        colnames(counts) <-c("barcodes","counts")
-        if(normalise){
-            counts$counts <- (counts$counts - min(counts$counts)) /
-                             (max(counts$counts) - min(counts$counts))
-            type <- "Norm. Expression"
+    #--------------------------------------------------------------------------#
+    # Now we can loop of gene list
+    #--------------------------------------------------------------------------#
+    for(i in seq_along(geneList)){
+        #----------------------------------------------------------------------#
+        # Okay let's check if there are territories to prioritise
+        #----------------------------------------------------------------------#
+
+        if(any(grepl("trial",colnames(ter)))){
+          #--------------------------------------------------------------------#
+          # Extract data and convert count to mean count if as.layer=T
+          #--------------------------------------------------------------------#
+          other <- filter(geneList[[i]],trial == "other") %>% droplevels()
+          territory <- filter(geneList[[i]],trial != "other") %>% droplevels()
+
+          if(as.layer){
+            territory <- territory %>% group_by(trial) %>% mutate(gene = mean(gene))
+          }
+          #--------------------------------------------------------------------#
+          # Create background
+          #--------------------------------------------------------------------#
+          if(nrow(other)>0){
+            ge <- ggplot() + geom_point(data = other ,
+                       aes(x,y),
+                       alpha =0.75,
+                       fill="#2e2e2e",size =cex* 0.01,show.legend=T)
+          } else{
+            ge <- ggplot()
+          }
+          #--------------------------------------------------------------------#
+          # Create ggplot with foreground
+          #--------------------------------------------------------------------#
+          if(is.null(cells)){
+            ge <- ge + geom_point(data = territory,
+                             aes(x=x,y=y,col =gene),
+                             size = cex *0.1)
+          } else {
+            ge <- ge + geom_point(data = territory,
+                             aes(x=x,y=y,shape = trial,col =gene),
+                             size = cex *0.1)
+          }
+
+          ge <- ge +
+                scale_color_gradientn(colors = rev(brewer.pal(11,"Spectral")))+
+                theme_classic()+
+                theme(#panel.background = element_rect(fill = "#474747"),
+                      legend.title = element_text(size = cex),
+                      legend.text = element_text(size = cex),
+                      plot.margin = margin(1, 1, 1, 1, "cm")) +
+                labs(col = type,title = names(geneList)[i])+
+                guides(shape = guide_legend(override.aes = list(size=cex * 0.5)))
+
+            geneList[[i]] <- ge
+        }else{
+          #--------------------------------------------------------------------#
+          # Create simple ggplot as there is not background here
+          #--------------------------------------------------------------------#
+          ge <- ggplot()+
+                geom_point(data = geneList[[i]],
+                           aes(x=x,y=y,col =gene),
+                           size = cex *0.1)+
+                scale_color_gradientn(colors = rev(brewer.pal(11,"Spectral")))+
+                theme_classic()+
+                theme(#panel.background = element_rect(fill = "#474747"),
+                      legend.title = element_text(size = cex),
+                      legend.text = element_text(size = cex),
+                      plot.margin = margin(1, 1, 1, 1, "cm")) +
+                labs(col = type,title = names(geneList)[i])+
+                guides(shape = guide_legend(override.aes = list(size=cex * 0.5)))
+            geneList[[i]] <- ge
         }
-
     }
     #--------------------------------------------------------------------------#
-    # Adding count values to iamge
+    # returning ggplot or ggplot list with ggarrange
     #--------------------------------------------------------------------------#
-    image <- right_join(image,counts,by = "barcodes")
-
-    ge <- ggplot(image,aes(x,y))+
-          geom_raster(aes(fill = counts))+
-          scale_fill_gradientn(colors = rev(brewer.pal(11,"Spectral")))+
-          theme_classic()+
-          theme(axis.text = element_text(size = cex ),
-                axis.title = element_text(size = cex),
-                legend.title = element_text(size = cex),
-                legend.text = element_text(size = cex),
-                plot.title = element_text(size=cex)) +
-          labs(title = genes,fill = type,
-               x = "X coordinates", y = "Y coordinates")
-    return(ge)
-}
-
-
-#' viewLayerExpression - plot gene expression in layered Vesalius territories
-#' @param image a Vesalius data frame containing barcodes, x, y, cc, value,
-#' cluster, and territory.
-#' @param counts count matrix - either matrix, sparse matrix or seurat object
-#' This matrix should contain genes as rownames and cells/barcodes as colnames
-#' @param genes character - gene of interest (only on gene at a time)
-#' @param normalise logical - If TRUE, gene expression values will be min/max
-#' normalised.
-#' @param cex numeric - font size modulator
-#' @details Visualization of gene expression a layered territory.
-#' After isolation or a territory, Vesalius can apply territory layering. The
-#' expression shown here describes the mean expression in each layer.
-#'
-#' Gene expression is shown "as is". This means that if no transformation
-#' is applied to the data then normalized raw count will be used for each layer.
-#'
-#' If normalization and scaling have been applied, normalized counts will be
-#' used for each layer
-#'
-#' This also applies to any data transformation applied on the count matrix
-#' or the Seurat object.
-#'
-#' We recommend using Seurat Objects.
-#'
-#' NOTE : You might be promoted to use geom_tiles instead of geom_raster.
-#' However - this will increase file size to unreasonable heights.
-#'
-#' @return a ggplot object (geom_raster)
-#' @examples
-#' \dontrun{
-#' data("vesalius")
-#' # Seurat pre-processing
-#' image <- NormalizeData(vesalius)
-#' image <- FindVariableFeatures(image, nfeatures = 2000)
-#' image <- ScaleData(image)
-#' # converting to rgb
-#' image <- rgbPCA(image,slices = 1)
-#' image <- buildImageArray(image, sliceID=1)
-#' # One segmentation round
-#' image <- iterativeSegmentation.array(image)
-#' image <- isolateTerritories.array(image, minBar = 5)
-#' layer <- layerTerritory.edge(image, seedTerritory = 1)
-#' g <- viewLayerExpression(layer, vesalius, genes = "Cst3")
-#' }
-
-
-viewLayerExpression <- function(image,
-                                counts,
-                                genes = NULL,
-                                normalise =TRUE,
-                                cex =10){
-
-    #------------------------------------------------------------------------#
-    # Next lets get the unique barcodes associated to the selected territories
-    # Not great but it gets the job done I guess
-    #------------------------------------------------------------------------#
-    barcodes <- image %>% distinct(barcodes, .keep_all = FALSE)
-    barcodes <- barcodes$barcodes
-
-    #------------------------------------------------------------------------#
-    # Extract counts from the seurat object
-    # This will need to be cleaned up later
-    #------------------------------------------------------------------------#
-    counts <- subset(counts,cells = barcodes)
-    if(is(counts) == "Seurat"){
-        counts <- GetAssayData(counts, slot = "data")
+    if(length(geneList)==1){
+        geneList <- geneList[[1L]]
+    }else{
+        geneList <- ggarrange(plotlist = geneList,ncol = floor(sqrt(length(geneList))))
     }
-
-
-    #--------------------------------------------------------------------------#
-    # Getting genes - For now it will stay as null
-    # I could add multiple gene viz and what not
-    # And yes I know it would be better to be consitent between tidyr and base
-    #--------------------------------------------------------------------------#
-    if(is.null(genes)){
-        stop("Please specifiy which gene you would like to visualize")
-    } else {
-        #----------------------------------------------------------------------#
-        # will need some regex here probs
-        #----------------------------------------------------------------------#
-        inCount <- rownames(counts) == genes
-        #----------------------------------------------------------------------#
-        # Just in case the gene is not present
-        # this should probably be cleaned up
-        #----------------------------------------------------------------------#
-        if(sum(inCount) == 0){
-            warning(paste(genes," is not present in count matrix.
-                          Returning NULL"),immediate.=T)
-            return(NULL)
-        }
-
-        counts <- counts[inCount,]
-
-        counts <- data.frame(names(counts),counts)
-        colnames(counts) <-c("barcodes","counts")
-
-
-    }
-    #--------------------------------------------------------------------------#
-    # Adding count values to iamge
-    #--------------------------------------------------------------------------#
-    image <- right_join(image,counts,by = "barcodes")
-
-    image <- image %>% group_by(layer) %>% mutate(counts = mean(counts))
-    #--------------------------------------------------------------------------#
-    # Normalising counts in image
-    # There might be a cleaner way of doing This
-    # Should I norm over all counts?
-    #--------------------------------------------------------------------------#
-
-    if(normalise){
-        image$counts <- (image$counts - min(image$counts)) /
-                         (max(image$counts) - min(image$counts))
-    }
-    ge <- ggplot(image,aes(x,y))+
-          geom_raster(aes(fill = counts))+
-          scale_fill_gradientn(colors = rev(brewer.pal(11,"Spectral")))+
-          theme_classic()+
-          theme(axis.text = element_text(size = cex ),
-                axis.title = element_text(size = cex),
-                legend.title = element_text(size = cex),
-                legend.text = element_text(size = cex),
-                plot.title = element_text(size=cex)) +
-          labs(title = genes,fill = "Mean Expression",
-               x = "X coordinates", y = "Y coordinates")
-    return(ge)
-}
-
-
-
-
-#' viewCellExpression - plot gene expression in cell of choice
-#' @param image a Vesalius data frame containing barcodes, x, y, cc, value,
-#' cluster, and territory.
-#' @param counts count matrix - either matrix, sparse matrix or seurat object
-#' This matrix should contain genes as rownames and cells/barcodes as colnames
-#' @param cells - character vector containing cells of interest.
-#' @param genes character - gene of interest (only on gene at a time)
-#' @param ter1  vector/integer - Territory ID in which gene expression will be viewed.
-#' See details.
-#' @param ter2 vector/integer - Territory ID in which gene expression will be viewed.
-#' See details.
-#' @param normalise logical - If TRUE, gene expression values will be min/max
-#' normalised.
-#' @param cex numeric - font size modulator
-#' @details Visualization of gene expression in selected territories.
-#' The purpose of this function is to contrast the expression of genes between
-#' different territories.
-#' The cells argument should be supplied as a vector of barcodes containing
-#' all barcodes of the cell type of interest. Theoretically, you can supply
-#' more than one cell type in this vector but Vesalius will treat them as single
-#' cell type.
-#' If you do not provide any territory and leave the \code{ter1} and \code{ter2}
-#' as NULL, this function will plot the expression of your gene of interest
-#' in your cell type of interest accross the whole ST assay.
-#' Supplying territories to only one of \code{ter1} or \code{ter2} will plot
-#' cell type of interest in one set of territories.
-#' Supplying territories to both will contrast expression between territories
-#'
-#' @return a ggplot object
-#' @examples
-#' \dontrun{
-#' data(vesalius)
-#' # Seurat pre-processing
-#' image <- NormalizeData(vesalius)
-#' image <- FindVariableFeatures(image, nfeatures = 2000)
-#' image <- ScaleData(image)
-#' # converting to rgb
-#' image <- rgbPCA(image,slices = 1)
-#' image <- buildImageArray(image, sliceID=1)
-#' # One segmentation round
-#' image <- iterativeSegmentation.array(image)
-#' image <- isolateTerritories.array(image, minBar = 5)
-#' # For the example we will take a random selection of barcodes
-#' cells <- GetAssayData(vesalius, slot = "data")
-#' cells <- sample(colnames(cells), 200, replace =F)
-#' g <- viewCellExpression(image, vesalius,cells,
-#'                         gene = "Cst3",ter1 = 1,ter2=2)
-#' }
-
-viewCellExpression <- function(image,
-                               counts,
-                               cells,
-                               gene = NULL,
-                               ter1=NULL,
-                               ter2=NULL,
-                               normalise=FALSE,
-                               cex =10){
-
-    #--------------------------------------------------------------------------#
-    # First lets do some checks
-    # make sure you have at least 1 gene and 1 territory
-    #--------------------------------------------------------------------------#
-    if(is.null(gene)){
-        stop("Please supply the gene you would like to visualise!")
-    }
-    if(is.null(ter1) & is.null(ter2)){
-      CellCoord <- image %>%
-                   filter(barcodes %in% cells & tile ==1)%>%
-                   droplevels()
-      CellCoord$territory <- "Territory 1"
-    } else if(!is.null(ter1) & is.null(ter2)){
-      CellCoord <- image %>%
-                   filter(barcodes %in% cells & tile ==1 &
-                          territory %in% ter1) %>%
-                   droplevels()
-      CellCoord[CellCoord$territory %in% ter1,"territory"] <- "Territory 1"
-
-    } else if(is.null(ter1) & !is.null(ter2)){
-      CellCoord <- image %>%
-                   filter(barcodes %in% cells & tile ==1 &
-                          territory %in% ter2) %>%
-                   droplevels()
-      CellCoord[CellCoord$territory %in% ter2,"territory"] <- "Territory 2"
-    } else {
-      CellCoord <- image %>%
-                   filter(barcodes %in% cells & tile ==1 &
-                          territory %in% c(ter1,ter2)) %>%
-                   droplevels()
-      CellCoord[CellCoord$territory %in% ter1,"territory"] <- "Territory 1"
-      CellCoord[CellCoord$territory %in% ter2,"territory"] <- "Territory 2"
-    }
-    #--------------------------------------------------------------------------#
-    # All non cell barcodes - we still want to plot them so you can at least
-    # your cells are with respect to the other beads
-    #--------------------------------------------------------------------------#
-    NonCellCoord <- image %>% filter(!barcodes %in% cells & tile ==1)%>%
-      droplevels()
-
-    #--------------------------------------------------------------------------#
-    # Get your count data - using normalized data
-    #--------------------------------------------------------------------------#
-    if(is(counts)=="Seurat"){
-        counts <- GetAssayData(counts, slot = "data")
-    }
-
-    #--------------------------------------------------------------------------#
-    # Lets prep the data - counts and coords
-    #--------------------------------------------------------------------------#
-    counts <- counts[gene,cells]
-
-    counts <- counts[!is.na(match(names(counts),CellCoord$barcodes))]
-    counts <- as.data.frame(cbind(CellCoord,counts))
-    if(normalise){
-        counts$counts <- (counts$counts - min(counts$counts)) /
-                         (max(counts$counts) - min(counts$counts))
-    }
-    #--------------------------------------------------------------------------#
-    # Lets make the ggplot - dark background for now...
-    # If compplaints I will change this
-    #--------------------------------------------------------------------------#
-    ge <- ggplot()+
-          geom_point(data = NonCellCoord ,
-                     aes(x,y),
-                     alpha =0.75,
-                     fill="#2e2e2e",size =cex* 0.01,show.legend=F)+
-          geom_point(data = counts,
-                     aes(x=x,y=y,shape = territory,col =counts),
-                     size = cex *0.125)+
-          scale_color_gradientn(colors = rev(brewer.pal(11,"Spectral")))+
-          theme_void()+
-          theme(panel.background = element_rect(fill = "#474747"),
-                legend.title = element_text(size = cex),
-                legend.text = element_text(size = cex),
-                plot.margin = margin(1, 1, 1, 1, "cm")) +
-          labs(col = "Expression")+
-          guides(shape = guide_legend(override.aes = list(size=cex * 0.5)))
-    return(ge)
+    return(geneList)
 }
