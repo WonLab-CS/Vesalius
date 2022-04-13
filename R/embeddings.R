@@ -416,7 +416,7 @@ buildVesaliusEmbeddings <- function(vesalius,
   counts <- ScaleData(counts, verbose = FALSE)
   counts <- FindVariableFeatures(counts,nfeatures = nfeatures,verbose = FALSE)
   normCounts <- list(GetAssayData(counts,slot = "data"))
-  names(normCounts) <- "logNorm"
+  names(normCounts) <- "log"
   return(list("SO" = counts, "norm" = normCounts))
 }
 
@@ -424,7 +424,7 @@ buildVesaliusEmbeddings <- function(vesalius,
     counts <- SCTransform(counts,assay= "Spatial",
               variable.features.n = nfeatures,verbose=FALSE)
     normCounts <- list(GetAssayData(counts,slot = "data"))
-    names(normCounts) <- "SCTransform"
+    names(normCounts) <- "SCT"
     return(list("SO" = counts, "norm" = normCounts))
 }
 
@@ -432,7 +432,7 @@ buildVesaliusEmbeddings <- function(vesalius,
   counts <- RunTFIDF(counts)
   counts <- FindTopFeatures(counts, min.cutoff = min.cutoff)
   normCounts <- list(GetAssayData(counts, slot = "data"))
-  names(normCounts) <- "TFIDFNorm"
+  names(normCounts) <- "TFIDF"
   return(list("SO" = counts, "norm" = normCounts))
 }
 

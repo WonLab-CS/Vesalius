@@ -260,46 +260,54 @@ territoryPlot <- function(vesalius,
 
 viewGeneExpression <- function(vesalius,
                                normMethod = "last",
-                               ter = NULL,
+                               trial = "last",
+                               territory = NULL,
                                genes = NULL,
                                normalise = TRUE,
                                cex =10){
     #--------------------------------------------------------------------------#
-    # We will assume that you parse the image with all pixel for now
-    # if no territory is specified gene expression on all
-    # First let's get the territory
+    # First lets get the norm method out and the associated counts
     #--------------------------------------------------------------------------#
-    if(!is.null(ter)){
-      image <- filter(image, territory %in% as.character(ter)) %>%
-               select(c("barcodes","x","y"))
+    if(normMethod == " last"){
+        counts <- as.matrix(vesalius@counts[[length(vesalius@counts)]])
 
+    }else{
+        if(length(grep(x=names(vesalius@counts, pattern = normMethod)))==0){
+            stop(paste0(deparse(substitute(normMethod)),"is not in count list!"))
+        }
+        counts <- as.matrix(vesalius@counts[[normMethod]])
     }
     #--------------------------------------------------------------------------#
-    # Next lets get the unique barcodes associated to the selected territories
-    # Not great but it gets the job done I guess
+    # Next let's get the territory data
+    # it occurs to me that If done propely I could remove the view layer
+    # expression function
     #--------------------------------------------------------------------------#
-    barcodes <- image %>% distinct(barcodes, .keep_all = FALSE)
-    barcodes <- barcodes$barcodes
+    if(!is.null(vesalius@territories) & trial == "last" & !is.null(territory)){
+      trial <- colnames(vesalius@territories)[ncol(vesalius@territories)]
+      ter <- vesalius@territories[,c("barcodes","x","y",trial)]
+      colnames(ter) <- c("barcodes","x","y","trial")
+      nonTer <- ter
+      ter$trial[ter$trial %in% territory] <- paste0(territory,collapse=" ")
 
+    } else if(!is.null(vesalius@territories) & trial != "last"& !is.null(territory)){
+      if(!grepl(x = colnames(vesalius@territories),pattern = trial)){
+          stop(paste(deparse(substitute(trial)),"is not in territory data frame"))
+      }
+      ter <- vesalius@territories[,c("barcodes","x","y",trial)]
+      colnames(ter) <- c("barcodes","x","y","trial")
+      ter$trial[!ter$trial %in% territory ] <- "other"
+      ter$trial[ter$trial %in% territory] <- paste0(territory,collapse=" ")
 
-
-    #--------------------------------------------------------------------------#
-    # Extract counts from the seurat object
-    # This will need to be cleaned up later
-    #--------------------------------------------------------------------------#
-
-    if(is(counts) == "Seurat"){
-        counts <- subset(counts,cells = barcodes)
-        counts <- GetAssayData(counts, slot = "data")
-    } else {
-        counts <- counts[,barcodes]
+    }else if(!is.null(vesalius@territories) & is.null(territory)){
+      ter <- vesalius@territories[,c("barcodes","x","y")]
+    }else{
+      ter <- vesalius@tiles %>% filter(origin == 1)
     }
-    type <- "Expression"
+
 
     #--------------------------------------------------------------------------#
-    # Getting genes - For now it will stay as null
-    # I could add multiple gene viz and what not
-    # And yes I know it would be better to be consitent between tidyr and base
+    # Getting genes
+    # We will facet wrap if there is more than one.
     #--------------------------------------------------------------------------#
     if(is.null(genes)){
         stop("Please specifiy which gene you would like to visualize")
