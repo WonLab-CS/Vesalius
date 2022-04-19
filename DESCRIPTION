@@ -13,7 +13,7 @@ License: GPL-3
 Collate: IsolatingTerritories.R
     morph.R
     misc.R
-    PCA_to_RGB.R
+    composite.R
     Prog.R
     Territory_identity.R
     viz.R
@@ -21,6 +21,9 @@ Collate: IsolatingTerritories.R
     data.R
     objects.R
     embeddings.R
+    format.R
+    objectUtilities.R
+    PCA_to_RGB.R
 Depends: R (>= 4.0.0),
     Seurat,
     imager,
