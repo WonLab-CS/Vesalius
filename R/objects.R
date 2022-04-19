@@ -56,7 +56,7 @@ setMethod("show",
 #------------------------------------------------------------------------------#
 
 setClassUnion("ter",c("data.frame","NULL"))
-setClassUnion("DEG",c("data.frame","NULL"))
+#setClassUnion("DEG",c("data.frame","NULL"))
 
 
 
@@ -70,7 +70,7 @@ setClass("vesaliusObject",
                     embeddings = "list",
                     activeEmbeddings = "list",
                     territories = "ter",
-                    DEG = "DEG",
+                    DEG = "list",
                     counts  = "list",
                     log = "log"),
          prototype=c(tiles = data.frame(),
@@ -88,7 +88,7 @@ setClass("vesaliusObject",
         if(is(object@territories)[1L]!= "data.frame" & is(object@territories)[1L]!= "NULL"){
             stop("Unsupported territories Format")
         }
-        if(is(object@DEG)[1L]!= "data.frame" & is(object@DEG)[1L]!= "NULL"){
+        if(is(object@DEG)[1L]!= "list"){
             stop("Unsupported DEG Format")
         }
         if(is(object@counts)[1L]!= "list"){
@@ -176,6 +176,19 @@ setMethod("show",
       ntiles <- length(unique(object@tiles$barcodes))
       cat(ntiles,"tiles \n\n")
       #------------------------------------------------------------------------#
+      # Showing assays
+      #------------------------------------------------------------------------#
+      if((assay <- length(object@log@assay)) > 0){
+        n <- unlist(object@log@assay)
+        cat(assay, "assays (",n,")\n")
+        #----------------------------------------------------------------------#
+        # Adding active embedding
+        #----------------------------------------------------------------------#
+
+        n <- object@log@assay[[length(object@log@assay)]]
+        cat(n ,"as active assay\n\n")
+      }
+      #------------------------------------------------------------------------#
       # Showing norm
       #------------------------------------------------------------------------#
       if((counts <- length(object@counts)) > 1){
@@ -215,16 +228,16 @@ setMethod("show",
       if(!is.null(object@territories)){
           ter <-object@territories[,ncol(object@territories)]
           cat(length(unique(ter)),
-          "territories in",colnames(object@territories)[ncol(object@territories)],"\n")
+          "territories in",colnames(object@territories)[ncol(object@territories)],"\n\n")
       }
       #------------------------------------------------------------------------#
       #If there are DEG
       #To update based on how we call the base groups
       #------------------------------------------------------------------------#
-      if(!is.null(object@DEG)){
-          deg <- nrow(object@DEG)
-          ters <- length(unique(c(object@DEG$seedTerritory,object@DEG$queryTerritory)))
-          cat(deg, "Differentially Expressed Genes between", ters,"territories\n")
+      if(length(object@DEG)>0){
+          deg <- object@DEG[[length(object@DEG)]]
+          ters <- length(unique(c(deg$seedTerritory,deg$queryTerritory)))
+          cat(nrow(deg), "Differentially Expressed Genes between", ters,"territories\n")
       }
 
 

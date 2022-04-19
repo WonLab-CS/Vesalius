@@ -51,16 +51,6 @@ getSeuratCoordinates <- function(seurat){
 
 
 
-# not in use
-.bindCounts <- function(territories,counts){
-    #--------------------------------------------------------------------------#
-    # Binding all count matrices together and filling all the "gaps"
-    #--------------------------------------------------------------------------#
-
-    cells <- unlist(lapply(territories,colnames))
-    counts <- counts[,cells]
-    return(counts)
-}
 
 
 # Extracting count values for each cell in a cluster/territory

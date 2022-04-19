@@ -136,7 +136,7 @@
 .degProg <- function(verbose =TRUE){
     if(!verbose) return(NULL)
     t <- Sys.time()
-    cat( paste(t," Computing Differentially Expressed Genes\n"))
+    cat( paste(t,"Computing Differentially Expressed Genes\n"))
 }
 
 .degEachProg <- function(seed,query,verbose =TRUE){
@@ -216,11 +216,7 @@
     cat( paste(t," Generating layers\n"))
 }
 
-.checkVes <- function(sliceID,verbose =TRUE){
-    if(!verbose) return(NULL)
-    t <- Sys.time()
-    cat(paste(t," Checking Vesalius Input - Using slice ",sliceID, "\n"))
-}
+
 
 .tensorRes <- function(verbose =TRUE){
     if(!verbose) return(NULL)
