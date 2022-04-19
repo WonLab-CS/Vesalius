@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/306332649.svg)](https://zenodo.org/badge/latestdoi/306332649)
+
 # Vesalius
 
 Welcome to the Vesalius GitHub page!
