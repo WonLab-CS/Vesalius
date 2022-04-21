@@ -130,11 +130,11 @@ buildVesaliusObject <- function(coordinates,counts,assay = "ST"){
 
 .checkCounts <- function(counts){
 
-    if(class(counts) == "data.frame"){
+    if(any(is(counts)== "data.frame")){
       counts <- as(as.matrix(counts),"dgCMatrix")
-    } else if(class(counts) == "matrix"){
+    } else if(any(is(counts) == "matrix")){
       counts <- as(counts,"dgCMatrix")
-    } else if(class(counts) == "dgCMatrix"){
+    } else if(any(is(counts) == "dgCMatrix")){
       counts <- counts
     } else {
       stop("Unsupported count format!")
@@ -147,7 +147,6 @@ buildVesaliusObject <- function(coordinates,counts,assay = "ST"){
     #--------------------------------------------------------------------------#
     # Check coordinate input type
     # for now let's put slide seq
-    # we can add some more loading functions later and santise from there
     #--------------------------------------------------------------------------#
     if(all(c("barcodes","xcoord","ycoord") %in% colnames(coordinates))){
         coordinates <- coordinates[,c("barcodes","xcoord","ycoord")]
@@ -157,6 +156,19 @@ buildVesaliusObject <- function(coordinates,counts,assay = "ST"){
     } else {
         stop("Unknown column names")
     }
+    #--------------------------------------------------------------------------#
+    # making sure that we have a data frame
+    #--------------------------------------------------------------------------#
+    if(any(is(coordinates) == "matrix")){
+        coordinates <- as.data.frame(coordinates)
+    }
+    #--------------------------------------------------------------------------#
+    # ensuring that we have the right type in each column
+    #--------------------------------------------------------------------------#
+    coordinates$barcodes <- as.character(coordinates$barcodes)
+    coordinates$x <- as.numeric(coordinates$x)
+    coordinates$y <- as.numeric(coordinates$y)
+
     return(coordinates)
 }
 
