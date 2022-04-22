@@ -72,7 +72,7 @@ extractMarkers <- function(vesalius,
                            seed = NULL,
                            query = NULL,
                            cells = NULL,
-                           method = "wilcox",
+                           method = c("wilcox","t.test","chisq"),
                            logFC = 0.25,
                            pval = 0.05,
                            minPct = 0.05,
@@ -467,10 +467,13 @@ extractMarkers <- function(vesalius,
     }
 
     deg <- sapply(idx,function(idx,seed,query,method){
-                  
-                  res <- switch(method,
+
+                  res <- switch(method[1L],
                          "wilcox" = wilcox.test(seed[idx,],query[idx,])$p.value,
-                         "t.test" = t.test(seed[idx,],query[idx,])$p.value)
+                         # maybe add eq of variance for internal function
+                         "t.test" = t.test(seed[idx,],query[idx,])$p.value,
+                         "chisq" = chisq.test(cbind(table(seed[idx,]),
+                                                    table(query[,idx])))$p.value)
                   return(res)
     },seed,query,method)
 
