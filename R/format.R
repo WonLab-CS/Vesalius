@@ -47,9 +47,9 @@
       if(correctBackground){
           cimgTmp <- cimg %>%
              select(c("x","y","value")) %>%
-             suppressWarnings %>%
-             as.cimg %>%
-             as.data.frame
+             suppressWarnings() %>%
+             as.cimg() %>%
+             as.data.frame()
           nonImg <- paste0(cimg$x,"_",cimg$y)
           inImg <- paste0(cimgTmp$x,"_",cimgTmp$y)
           cimgTmp[!inImg %in% nonImg,"value"] <- median(cimg$value)
