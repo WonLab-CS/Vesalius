@@ -245,6 +245,9 @@ buildVesaliusEmbeddings <- function(vesalius,
     coordBar <- unique(coordinates$barcodes)
     countBar <- unique(colnames(counts))
     concat <- sapply(strsplit(coordBar,"_et_"),length) > 1
+    if(sum(concat) ==0){
+        return(counts)
+    }
     coordBar <- coordBar[concat]
     countBar <- countBar[!concat]
 
@@ -260,7 +263,9 @@ buildVesaliusEmbeddings <- function(vesalius,
     },count = counts, mc.cores = cores)
 
     empty <- do.call("cbind",empty)
-
+    if(is.null(dim(empty)) & length(empty) !=0){
+        empty <- Matrix(empty,ncol=1)
+    } 
     colnames(empty) <- coordBar
 
     merged <- cbind(counts[,countBar],empty)
