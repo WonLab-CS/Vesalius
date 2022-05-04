@@ -35,41 +35,58 @@
 imagePlot <- function(vesalius,
                       dims = seq(1,3),
                       embedding = "last",
-                      as.cimg = TRUE,
-                      cex=1){
+                      cex=10){
     #--------------------------------------------------------------------------#
-    # Can we somehow vizualise more than 3 dims? how would we go about doing that
+    # Checking dims - only gray scale or 3 coloured images for now
     #--------------------------------------------------------------------------#
-    if(length(dims)!=3 & length(dims)!=1){
-        stop("Only grey scale or RGB images are supported!")
+    if(length(dims) > 3){
+       stop("To many dims selected")
+    } else if(length(dims) !=3 & length(dims)!=1 ){
+       stop("Non RGB /gray scale images not supported")
     }
-    if(as.cimg){
-        image <- .vesToC(vesalius,dims,embed = embedding, verbose=FALSE)
+    #----------------------------------------------------------------------------#
+    # First get image data from vesalius object
+    #----------------------------------------------------------------------------#
+    coordinates <- vesalius@tiles
+    # need to check this -
+    tileColour <- vesalius@activeEmbeddings[[1L]][,dims]
+    #### format needs to be reworked here
+    tileColour <- as.data.frame(tileColour)
+    tileColour$barcodes <- rownames(tileColour)
+    coordinates <- right_join(coordinates, tileColour, by = "barcodes")
+    coordinates <- coordinates %>% na.exclude()
 
-        image <- imappend(image,"cc")
-        plot(image)
-    } else {
-        image <- .vesToC(vesalius,dims,embed = embedding)
 
-        image <- as.data.frame(imappend(image,"cc"))
-        fgcol <- select(image, c("cc","value"))
-        fgcol <- data.frame(fgcol$value[fgcol$cc ==1],
-                            fgcol$value[fgcol$cc ==2],
-                            fgcol$value[fgcol$cc ==3])
-        fgcol <- rgb(fgcol[,1],fgcol[,2],fgcol[,3])
-        image <- image %>% filter(cc==1)
-        image <- ggplot(image,aes(x,y))+
-                     geom_raster(aes(fill=fgcol))+
+    if(length(dims)==3){
+
+        cols <- rgb(coordinates[,5],coordinates[,6],coordinates[,7])
+        image <- ggplot(coordinates,aes(x,y))+
+                     geom_raster(aes(fill=cols))+
                      scale_fill_identity()+
                      theme_classic()+
                      theme(axis.text = element_text(size = cex *1.2),
                            axis.title = element_text(size = cex *1.2),
                            plot.tag = element_text(size=cex * 2),
                            plot.title = element_text(size=cex * 1.5)) +
-                    labs(title = "Vesalius - Image",
+                    labs(title = paste0("Vesalius - Dims = ",paste0(dims,collapse = "-")),
                            x = "X coordinates", y = "Y coordinates")
 
          return(image)
+    } else {
+      # to do
+      cols <- gray(coordinates[,"tileColour"])
+      image <- ggplot(coordinates,aes(x,y))+
+                   geom_raster(aes(fill=cols))+
+                   scale_fill_identity()+
+                   theme_classic()+
+                   theme(axis.text = element_text(size = cex *1.2),
+                         axis.title = element_text(size = cex *1.2),
+                         plot.tag = element_text(size=cex * 2),
+                         plot.title = element_text(size=cex * 1.5)) +
+                  labs(title = paste0("Vesalius - Dim = ",dims),
+                         x = "X coordinates", y = "Y coordinates")
+
+       return(image)
     }
 }
 
