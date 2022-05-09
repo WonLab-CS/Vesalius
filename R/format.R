@@ -28,6 +28,9 @@
          embeddings <- object@embeddings[[inCol]]
        }
     }
+    if(length(dims)> ncol(embeddings)){
+        stop(paste0("To many dimesnions supplied! Only",ncol(embeddings)," present")
+    }
 
     #--------------------------------------------------------------------------#
     # generate a list of images based on the number of dims
@@ -86,7 +89,9 @@
         embeddings <- object@embeddings[[inCol]]
       }
     }
-
+    if(length(dims)> ncol(embeddings)){
+        stop(paste0("To many dimesnions supplied! Only",ncol(embeddings)," present")
+    }
 
     #--------------------------------------------------------------------------#
     # Always going to be a gray scale image.
@@ -130,6 +135,9 @@
         } else {
           embeddings <- object@embeddings[[inCol]]
         }
+    }
+    if(length(dims)> ncol(embeddings)){
+        stop(paste0("To many dimesnions supplied! Only",ncol(embeddings)," present")
     }
 
     #--------------------------------------------------------------------------#
@@ -194,6 +202,9 @@
     } else {
       embeddings <- object@embeddings[[inCol]]
     }
+  }
+  if(length(dims)> ncol(embeddings)){
+      stop(paste0("To many dimesnions supplied! Only",ncol(embeddings)," present")
   }
   #--------------------------------------------------------------------------#
   # Always going to be a gray scale image.
