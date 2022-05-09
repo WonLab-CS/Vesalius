@@ -17,15 +17,15 @@
     if(embed == "last"){
         embeddings <- object@activeEmbeddings[[1L]]
     }else{
-       embeddings <- object@embeddings[embed]
-       if(length(embeddings)==0){
+       inCol <- grep(pattern = embed,x = names(object@embeddings))
+       if(length(inCol)==0){
           stop(paste(deparse(substitute(embed)),":Unknown embedding selected!"))
-       } else if(length(embeddings)>1){
+       } else if(length(inCol)>1){
           warning(paste("More than 1",deparse(substitute(embed)),"embedding.
           Vesalius will use the latest entry - See Vesalius Log"))
-          embeddings <- embeddings[[length(embeddings)]]
+          embeddings <- object@embeddings[[inCol[length(inCol)]]]
        } else {
-         embeddings <- embeddings[[1L]]
+         embeddings <- object@embeddings[[inCol]]
        }
     }
 
@@ -75,16 +75,16 @@
         embeddings <- object@activeEmbeddings[[1L]]
         embed <- names(object@activeEmbeddings[[1L]])
     }else{
-       embeddings <- object@embeddings[embed]
-       if(length(embeddings)==0){
-          stop(paste(deparse(substitute(embed)),":Unknown embedding selected!"))
-       } else if(length(embeddings)>1){
-          warning(paste("More than 1",deparse(substitute(embed)),"embedding.
-          Vesalius will use the latest entry - See Vesalius Log"))
-          embeddings <- embeddings[[length(embeddings)]]
-       } else {
-         embeddings <- embeddings[[1L]]
-       }
+      inCol <- grep(pattern = embed,x = names(object@embeddings))
+      if(length(inCol)==0){
+         stop(paste(deparse(substitute(embed)),":Unknown embedding selected!"))
+      } else if(length(inCol)>1){
+         warning(paste("More than 1",deparse(substitute(embed)),"embedding.
+         Vesalius will use the latest entry - See Vesalius Log"))
+         embeddings <- object@embeddings[[inCol[length(inCol)]]]
+      } else {
+        embeddings <- object@embeddings[[inCol]]
+      }
     }
 
 
@@ -120,17 +120,18 @@
     if(embed == "last"){
         embeddings <- object@activeEmbeddings[[1L]]
     }else{
-       embeddings <- object@activeEmbeddings[embed]
-       if(length(embeddings)==0){
+        inCol <- grep(pattern = embed,x = names(object@embeddings))
+        if(length(inCol)==0){
           stop(paste(deparse(substitute(embed)),":Unknown embedding selected!"))
-       } else if(length(embeddings)>1){
+        } else if(length(inCol)>1){
           warning(paste("More than 1",deparse(substitute(embed)),"embedding.
           Vesalius will use the latest entry - See Vesalius Log"))
-          embeddings <- embeddings[[length(embeddings)]]
-       } else {
-         embeddings <- embeddings[[1L]]
-       }
+          embeddings <- object@embeddings[[inCol[length(inCol)]]]
+        } else {
+          embeddings <- object@embeddings[[inCol]]
+        }
     }
+
     #--------------------------------------------------------------------------#
     # Now we can create the image list
     #--------------------------------------------------------------------------#
@@ -183,16 +184,16 @@
       embeddings <- object@activeEmbeddings[[1L]]
       embed <- names(object@activeEmbeddings[[1L]])
   }else{
-     embeddings <- object@embeddings[embed]
-     if(length(embeddings)==0){
-        stop(paste(deparse(substitute(embed)),":Unknown embedding selected!"))
-     } else if(length(embeddings)>1){
-        warning(paste("More than 1",deparse(substitute(embed)),"embedding.
-        Vesalius will use the latest entry - See Vesalius Log"))
-        embeddings <- embeddings[[length(embeddings)]]
-     } else {
-       embeddings <- embeddings[[1L]]
-     }
+    inCol <- grep(pattern = embed,x = names(object@embeddings))
+    if(length(inCol)==0){
+       stop(paste(deparse(substitute(embed)),":Unknown embedding selected!"))
+    } else if(length(inCol)>1){
+       warning(paste("More than 1",deparse(substitute(embed)),"embedding.
+       Vesalius will use the latest entry - See Vesalius Log"))
+       embeddings <- object@embeddings[[inCol[length(inCol)]]]
+    } else {
+      embeddings <- object@embeddings[[inCol]]
+    }
   }
   #--------------------------------------------------------------------------#
   # Always going to be a gray scale image.
