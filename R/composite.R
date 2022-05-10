@@ -18,7 +18,6 @@ buildMosaic <- function(vesalius,
                         acrossLevels =c("mean","min","max"),
                         cores = 1,
                         verbose = TRUE,
-                        lambda = 5,
                         niter = 100,
                         regMethod = "TVL2.FiniteDifference",
                         regularization = T,
@@ -347,7 +346,7 @@ buildMosaic <- function(vesalius,
 #'
 #' @param img a cimg object
 #' @param tiles from vesalius object
-#' @param elementSize an integer describing the size of the element for erosion and dilation. 
+#' @param elementSize an integer describing the size of the element for erosion and dilation.
 #' @param maskType a string describing mask type to use. "pos" segments territories with pixel values higher than the median, "neg" lower than the median and "double" on both sides. It is recommended to use "double".
 #' @param distThresh a float describing the minimum mean pixel value distance of a territory from the image median. Should only be used in combination with quantile normalized embeddings.
 #' @param sizeThresh an integer describing the minimum size of a territory in pixels.
@@ -364,15 +363,15 @@ buildMosaic <- function(vesalius,
                                elementSize,
                                distThresh,
                                sizeThresh)
-  
+
   # convert the labeled image into a list of lists of barcodes
   pix <- left_join(tiles, as.data.frame(segImg), by = c("x", "y")) %>%
     distinct(barcodes, value) %>%
     na.exclude()
-  
+
   pix <- filter(pix, value  != 0)
   pix <- split(pix, pix$value)
-  
+
   pix <- lapply(
     pix,
     FUN = function(x)
@@ -384,7 +383,7 @@ buildMosaic <- function(vesalius,
 #' Iterative threshold-based segmentation.
 #'
 #' @param img a cimg object
-#' @param elementSize an integer describing the size of the element for erosion and dilation. 
+#' @param elementSize an integer describing the size of the element for erosion and dilation.
 #' @param maskType a string describing mask type to use. "pos" segments territories with pixel values higher than the median, "neg" lower than the median and "double" on both sides.
 #' @param distThresh a float describing the minimum mean pixel value distance of a territory from the image median. Should only be used in combination with quantile normalized embeddings
 #' @param sizeThresh an integer describing the minimum size of a territory in pixels.
@@ -395,14 +394,14 @@ buildMosaic <- function(vesalius,
                                elementSize = 5,
                                distThresh = 0,
                                sizeThresh = 0) {
-  
+
   # perform first round of image segmentation with 1 threshold.
   segImg1 <- ThresholdML(img, k = 1)
-  
+
   # perform erosion and dilation to close small gaps and remove small artifacts
   segImg1 <- mclosing_square(segImg1, size = elementSize)
   segImg1 <- mopening_square(segImg1, size = elementSize)
-  
+
   # label background as 0 and foreground (segmented territories) as 1
   # assumption that segmented area is smaller than the background.
   label1 <- ifelse(sum(segImg1) > (prod(dim(segImg1)) / 2), 0, 1)
@@ -413,19 +412,19 @@ buildMosaic <- function(vesalius,
   # if (sum(segment1) == 0) {
   #   stop("No territories segmented. Possibly too little smoothing or too large structure element.\n")
   # }
-  
+
   # replace the segmented territories with the image median before the second round of segmentation
   imgMedian <- median(as.matrix(img))
   maskedImg <- img
   maskedImg[segImg1 == 1] <- imgMedian
-  
+
   # second round of segmentation, again with 1 threshold
   segImg2 <- ThresholdML(maskedImg, k = 1)
-  
+
   # erosion and dilation
   segImg2 <- mclosing_square(segImg2, elementSize)
   segImg2 <- mopening_square(segImg2, elementSize)
-  
+
   # check if segmented part is 0 or 1 labeled
   label2 <- ifelse(sum(segImg2) > (prod(dim(segImg2)) / 2), 0, 1)
   if (label2 == 0) {
@@ -442,12 +441,12 @@ buildMosaic <- function(vesalius,
   if (sign(mean(segment1) - mean(img)) != sign(mean(segment2) - mean(img))) {
     segImgComb[segImg2 == 1] <- max(segImgComb) + 1
   }
-  
+
   # Give every separate territory it's own label
   segImgCombLab <- label(segImgComb)
   # reset inclusions to background label
   segImgCombLab[segImgComb == 0] <- 0
-  
+
   # label territories continuously
   segImgCombLabCont <- segImgCombLab
   segImgCombLabCont[, ] <- 0
@@ -467,7 +466,7 @@ buildMosaic <- function(vesalius,
     } else {
       iterator <- iterator + 1
     }
-    
+
     # negative and positive option
     if (maskType == "double") {
       segImgCombLabCont[territoryMask] <- iterator
@@ -487,7 +486,7 @@ buildMosaic <- function(vesalius,
 }
 
 
-## Need stack check improvement 
+## Need stack check improvement
 .stackCheck <- function(pix,mosaic){
     #--------------------------------------------------------------------------#
     # create a size vector for the mosaic
