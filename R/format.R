@@ -29,7 +29,7 @@
        }
     }
     if(length(dims)> ncol(embeddings)){
-        stop(paste0("To many dimesnions supplied! Only",ncol(embeddings)," present")
+        stop(paste0("To many dimesnions supplied! Only",ncol(embeddings)," present"))
     }
 
     #--------------------------------------------------------------------------#
@@ -90,7 +90,7 @@
       }
     }
     if(length(dims)> ncol(embeddings)){
-        stop(paste0("To many dimesnions supplied! Only",ncol(embeddings)," present")
+        stop(paste0("To many dimesnions supplied! Only",ncol(embeddings)," present"))
     }
 
     #--------------------------------------------------------------------------#
@@ -137,7 +137,7 @@
         }
     }
     if(length(dims)> ncol(embeddings)){
-        stop(paste0("To many dimesnions supplied! Only",ncol(embeddings)," present")
+        stop(paste0("To many dimesnions supplied! Only",ncol(embeddings)," present"))
     }
 
     #--------------------------------------------------------------------------#
@@ -204,7 +204,7 @@
     }
   }
   if(length(dims)> ncol(embeddings)){
-      stop(paste0("To many dimesnions supplied! Only",ncol(embeddings)," present")
+      stop(paste0("To many dimesnions supplied! Only",ncol(embeddings)," present"))
   }
   #--------------------------------------------------------------------------#
   # Always going to be a gray scale image.
