@@ -243,18 +243,16 @@ buildVesaliusEmbeddings <- function(vesalius,
     # First get all barcode names and compare which ones are missing
     #--------------------------------------------------------------------------#
     coordBar <- unique(coordinates$barcodes)
-    countBar <- unique(colnames(counts))
-    concat <- sapply(strsplit(coordBar,"_et_"),length) > 1
-    if(sum(concat) ==0){
+    coordBar <- coordBar[sapply(strsplit(coordBar,"_et_"),length) > 1]
+    if(length(coordBar) ==0){
         return(counts)
     }
-    coordBar <- coordBar[concat]
-    countBar <- countBar[!concat]
 
     #--------------------------------------------------------------------------#
     # next we merge counts together when barcodes have been merged
     #--------------------------------------------------------------------------#
     tmpBar <- strsplit(coordBar,"_et_")
+
 
     empty <- parallel::mclapply(tmpBar, function(coord,count){
 
@@ -265,13 +263,16 @@ buildVesaliusEmbeddings <- function(vesalius,
     empty <- do.call("cbind",empty)
     if(is.null(dim(empty)) & length(empty) !=0){
         empty <- Matrix(empty,ncol=1)
-    } 
+    }
     colnames(empty) <- coordBar
-
-    merged <- cbind(counts[,countBar],empty)
+    browser()
+    merged <- cbind(counts[,!colnames(counts) %in% unlist(unique(tmpBar))],empty)
+    #--------------------------------------------------------------------------#
+    # next we remove any barcodes that were dropped during filtering
+    #--------------------------------------------------------------------------#
+    merged <- merged[,colnames(merged) %in% coordinates$barcodes]
     return(merged)
 }
-
 #------------------------/ Creating pixel tiles /------------------------------#
 .filterTiles <- function(tesselation,coordinates,filterThreshold){
   maxArea <- quantile(tesselation$summary$dir.area, filterThreshold)
