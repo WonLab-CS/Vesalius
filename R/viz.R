@@ -463,3 +463,20 @@ viewGeneExpression <- function(vesalius,
     }
     return(geneList)
 }
+
+
+
+
+
+
+
+## assuming a list after chunking images
+viewTransform <- function(ves){
+    for(i in seq_along(ves)){
+        for(j in seq_along(ves[[i]])){
+            plot(ves[[i]][[j]]$img,main="Image")
+            plot(ves[[i]][[j]]$fft,main="Imaginary")
+            sqrt(ves[[i]][[j]]$real^2+ves[[i]][[j]]$fft^2) %>% plot(main="Power spectrum")
+        }
+    }
+}

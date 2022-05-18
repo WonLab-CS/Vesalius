@@ -256,3 +256,9 @@
     t <- Sys.time()
     cat(paste(t," Applying Masks in dim",em, "\r"))
 }
+
+.chunk <- function(verbose=TRUE){
+    if(!verbose) return(NULL)
+    t <- Sys.time()
+    cat( paste(t," Chunking images into bite size pieces\n"))
+}

@@ -265,7 +265,7 @@ buildVesaliusEmbeddings <- function(vesalius,
         empty <- Matrix(empty,ncol=1)
     }
     colnames(empty) <- coordBar
-    browser()
+    
     merged <- cbind(counts[,!colnames(counts) %in% unlist(unique(tmpBar))],empty)
     #--------------------------------------------------------------------------#
     # next we remove any barcodes that were dropped during filtering
