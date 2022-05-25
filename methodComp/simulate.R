@@ -74,7 +74,7 @@ pureDist <- function(n_celltypes,n_territories, xlim = c(1,3000), ylim=c(1,3000)
             simulated$cells[i] <- sample(seq(1,n_celltypes),1)
         }
     }
-    simulated <- globaliseTerritories(simulated)
+    #simulated <- globaliseTerritories(simulated)
     return(simulated)
 
 }
@@ -149,7 +149,7 @@ expDist <- function(n_celltypes,n_territories,xlim = c(1,3000), ylim=c(1,3000),n
             simulated$cells[i] <- sample(seq(1,n_celltypes),1)
         }
     }
-    simulated <- globaliseTerritories(simulated)
+    #simulated <- globaliseTerritories(simulated)
     return(simulated)
 }
 
@@ -226,64 +226,61 @@ dottedDist <- function(n_celltypes,
     return(simulated)
 }
 
-simulateCells <- function(cells,
-                          method = c("pure","uni","exp","dot")){
-    return(NULL)
+simulateCells <- function(cells,sim,counts){
+    #--------------------------------------------------------------------------#
+    # Assuming that we receive a data frame with barcodes and the cell types
+    # associated to each cell type
+    #--------------------------------------------------------------------------#
+    sim$celltype <- sample(unique(cells$celltype), size = length(unique(sim$cells)),replace = TRUE)[sim$cells]
+    sim$barcodes <- "none"
+    for(i in seq_along(unique(sim$celltype))){
+        barcodes <- cells$barcodes[cells$celltype == unique(sim$celltype)[i]]
+        simBarcodes <- sim$celltype == unique(sim$celltype)[i]
+        sim$barcodes[simBarcodes] <- sample(barcodes,size = sum(simBarcodes), replace = TRUE)
+    }
+    #--------------------------------------------------------------------------#
+    # let's use some recursion to check if the data set works with Seurat
+    # sometimes it doesn't work - if this work we move on
+    # if it turns out iot crashes in other tools we will reSample a new set
+    # and re run that run for all of the tools
+    #--------------------------------------------------------------------------#
+    counts <- counts[,sim$barcodes]
+    #----------------------------------------------------------------------------#
+    # Rename barcodes to avoid potential duplicated names
+    #----------------------------------------------------------------------------#
+    colnames(counts) <- paste0("bar_",seq_len(ncol(counts)))
+
+    sim$tmp <- paste0("bar_",seq_len(nrow(sim)))
+    rownames(sim) <- sim$tmp
+    ss <- new(Class = 'SlideSeq',
+              assay = "Spatial",
+              coordinates = sim[,c("x","y")])
+
+    rownames(ss@coordinates) <- sim$tmp
+
+    st <- CreateSeuratObject(counts, assay ="Spatial")
+    ss <- ss[Cells(x = st)]
+    DefaultAssay(object = ss) <- "Spatial"
+    st[["slice1"]] <- ss
+    st <- AddMetaData(st,metadata = sim$ter,col.name = "Territory")
+
+    seu <- tryCatch(suppressWarnings(SCTransform(st,assay = "Spatial")),
+                    error = function(cond){
+                        return(NULL)
+                    })
+
+    if(is.null(seu)){
+        seu <- simulateCells(counts,n_c,d_t,celltypes,cells)
+        return(seu)
+    } else{
+        sim <- sim[,colnames(sim) != "tmp"]
+        rownames(sim) <- NULL
+        return(sim)
+    }
+
 
 }
 
-reSample <- function(counts,n_c,d_t,celltypes,cells){
-  #----------------------------------------------------------------------------#
-  # for some reason some cell compositions just don't work and I have no idea
-  # why so I will reSample cells and try again
-  # Hopefully it won't lead to anything weird
-  #----------------------------------------------------------------------------#
-  tmpCells <- celltypes[sample(seq_along(celltypes),n_c)]
-  sim <- simulateCells(n_t=3,
-                         n_c=n_c,
-                         d_t=d_t,
-                         n_cells=6000,
-                         xlims=c(1,3000),
-                         ylims=c(1,3000),
-                         celltypes = tmpCells,
-                         cells = cells)
-  counts <- counts[,sim$barcodes]
-  #----------------------------------------------------------------------------#
-  # Rename barcodes to avoid potential duplicated names
-  #----------------------------------------------------------------------------#
-  colnames(counts) <- paste0("bar_",seq_len(ncol(counts)))
-  rownames(counts)<- rownames(brainCounts)
-  sim$barcodes <- paste0("bar_",seq_len(nrow(sim)))
-  rownames(sim) <- sim$barcodes
-  #----------------------------------------------------------------------------#
-  # Running sims with various tools
-  # Just coercing seurat to use slide seq data
-  #----------------------------------------------------------------------------#
-  ss <- new(Class = 'SlideSeq',
-            assay = "Spatial",
-            coordinates = sim[,c("xcoord","ycoord")])
-
-  rownames(ss@coordinates) <- sim$barcodes
-
-  st <- CreateSeuratObject(counts, assay ="Spatial")
-  ss <- ss[Cells(x = st)]
-  DefaultAssay(object = ss) <- "Spatial"
-  st[["slice1"]] <- ss
-  st <- AddMetaData(st,metadata = sim$territory,col.name = "Territory")
-
-  seu <- tryCatch(suppressWarnings(SCTransform(st,assay = "Spatial")),
-                  error = function(cond){
-                      return(NULL)
-                  })
-
-  if(is.null(seu)){
-      seu <- reSample(counts,n_c,d_t,celltypes,cells)
-      return(seu)
-  } else{
-      return(list("cells" = tmpCells,"sim"=sim,"st" =st,"counts" =counts))
-  }
-
-}
 
 #------------------------------------------------------------------------------#
 
@@ -304,11 +301,32 @@ brainCounts <- read.table("~/group/slide_seqV2/Puck_200115_08.digital_expression
 rownames(brainCounts) <- brainCounts[,1]
 brainCounts <- brainCounts[,-1]
 
-
+# PARAMS
+n_runs <- 10
+n_territories <- c(3,3,3,3,3,3,3,10)
+n_cells <- c(3,3,3,4,4,5,5,3)
+method <- c("pure","uni","exp","uni","exp","uni","exp","dot")
 
 ## Let's run this bad boy or girl or which ever gender makes you a happy human
+## we are just going to create data sets that will be used for each tool
 input <- "/home/pcnmartin/Vesalius"
 output <- paste0(input,"/Simulation")
 if(!dir.exists(output)){
     dir.create(output)
+}
+
+for(i in seq_len(n_runs)){
+    for(j in seq_along(n_territories)){
+        sim <- switch(method[j],
+                      "pure" = pureDist(n_cells[j],n_territories[j]),
+                      "uni" = uniformDist(n_cells[j],n_territories[j]),
+                      "exp" = expDist(n_cells[j],n_territories[j]),
+                      "dot" = dottedDist(n_cells[j],n_territories[j]))
+        sim <- simulateCells(bar_cells,sim, brainCounts)
+        write.table(sim,
+                    file = paste0(output,"/Simulation_",method[j],"_",n_territories[j],"_",n_cells[j],"_",i,".csv"),
+                    sep =",",
+                    quote = FALSE,
+                    row.names = FALSE)
+    }
 }
