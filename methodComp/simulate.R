@@ -33,100 +33,203 @@ library(grDevices)
 set.seed(1)
 
 #------------------------------/ Functions /-----------------------------------#
-pureDist <- function(n_celltypes,n_territories){
 
+globaliseTerritories <- function(sim){
+
+    ter <- paste0(sim$ter,"_", sim$cells)
+    allTer <- unique(ter)
+    ter <- seq_along(allTer)[match(ter,allTer)]
+    sim$cells <- ter
+    return(sim)
+
+}
+
+pureDist <- function(n_celltypes,n_territories, xlim = c(1,3000), ylim=c(1,3000),n_cells=6000){
+    #--------------------------------------------------------------------------#
+    # First lets set up the the coordinates dor each tissue.
+    # I think I will only do the split along the x axis
+    #--------------------------------------------------------------------------#
     if(n_celltypes!=n_territories){
         stop("Number of cells don't match number territories in pure Dist")
-        return(NULL)
-    } else {
-        dist <- diag(n_celltypes)
-        return(dist)
 
     }
+    xlims <- seq(1,max(xlim),length.out = n_territories + 1)
+
+    simulated <- data.frame("x" = runif(n = n_cells,min = min(xlim),max = max(xlim)),
+                            "y" = runif(n = n_cells,min = min(ylim), max = max(ylim)),
+                            "ter" = rep(0,n_cells),
+                            "cells" = rep(0,n_cells))
+
+    #--------------------------------------------------------------------------#
+    # Set territories
+    # There is only one cell per territory
+    #--------------------------------------------------------------------------#
+    for(i in seq(1,length(xlims)-1)){
+        simulated$ter[simulated$x >= xlims[i] & simulated$x <= xlims[i+1]] <- i
+        simulated$cells[simulated$x >= xlims[i] & simulated$x <= xlims[i+1]] <- 1
+    }
+    zeroes <- which(simulated$cells == 0)
+    if(length(zeroes)>0){
+        for(i in zeroes){
+            simulated$cells[i] <- sample(seq(1,n_celltypes),1)
+        }
+    }
+    simulated <- globaliseTerritories(simulated)
+    return(simulated)
+
 }
 
-##A bit odd as this need to be able to split cells between territories
-uniformDist <- function(n_celltypes,n_territories){
-      n_groups <- n_celltypes %/% n_territories
 
-      if(n_groups ==0){
-          stop("Not enough different cell types to populate each territory")
-      } else {
-          mat <- matrix(0,ncol =n_territories,nrow=n_territories*n_groups)
-          locs <- seq(1,n_groups)
-          for(i in seq_len(n_territories)){
-              mat[locs,i] <- 1/ n_groups
-              locs <- locs + n_groups
-          }
-      }
-      return(mat)
+uniformDist <- function(n_celltypes,n_territories,xlim = c(1,3000), ylim=c(1,3000),n_cells=6000){
+    #--------------------------------------------------------------------------#
+    # get lims and set up df
+    #--------------------------------------------------------------------------#
+    xlims <- seq(1,max(xlim),length.out = n_territories + 1)
+
+    simulated <- data.frame("x" = runif(n = n_cells,min = min(xlim),max = max(xlim)),
+                            "y" = runif(n = n_cells,min = min(ylim), max = max(ylim)),
+                            "ter" = rep(0,n_cells),
+                            "cells" = rep(0,n_cells))
+    #--------------------------------------------------------------------------#
+    # Now we assign territories and cells by sampling idices
+    #--------------------------------------------------------------------------#
+    for(i in seq(1, length(xlims)-1)){
+        simulated$ter[simulated$x >= xlims[i] & simulated$x <= xlims[i+1]] <- i
+        tmp <- which(simulated$ter == i)
+
+        for(j in seq(1,n_celltypes)){
+            ter <- sample(x=tmp,size = floor(sum(simulated$ter == i)/n_celltypes), replace=FALSE)
+            simulated$cells[ter] <- j
+            tmp <- tmp[!tmp %in% ter]
+        }
+    }
+    #--------------------------------------------------------------------------#
+    # Due to rounding there might still be some "0" valued territories
+    # so we will randomly assign a cell and territory to those ones
+    #--------------------------------------------------------------------------#
+    zeroes <- which(simulated$cells == 0)
+    if(length(zeroes)>0){
+        for(i in zeroes){
+            simulated$cells[i] <- sample(seq(1,n_celltypes),1)
+        }
+    }
+    simulated <- globaliseTerritories(simulated)
+    return(simulated)
 
 }
 
 
-expDist <- function(n_celltypes,n_territories){
+expDist <- function(n_celltypes,n_territories,xlim = c(1,3000), ylim=c(1,3000),n_cells=6000){
     divs <- exp(1)^seq(1,n_celltypes)
-    divs <- divs/sum(divs)
+    divs <- round(divs/sum(divs), digits = 2)
     mat <- matrix(0,ncol =n_territories, nrow = n_celltypes)
     for(i in seq_len(n_celltypes)){
         mat[i,] <- seq(divs[i], divs[1+n_celltypes-i], length.out = n_territories)
 
     }
-    return(mat)
+    xlims <- seq(1,max(xlim),length.out = n_territories + 1)
+
+    simulated <- data.frame("x" = runif(n = n_cells,min = min(xlim),max = max(xlim)),
+                            "y" = runif(n = n_cells,min = min(ylim), max = max(ylim)),
+                            "ter" = rep(0,n_cells),
+                            "cells" = rep(0,n_cells))
+    for(i in seq(1, length(xlims)-1)){
+        simulated$ter[simulated$x >= xlims[i] & simulated$x <= xlims[i+1]] <- i
+        tmp <- which(simulated$ter == i)
+        for(j in seq(1,n_celltypes)){
+
+            ter <- sample(x=tmp,size = floor(sum(simulated$ter == i)* mat[j,i]), replace=FALSE)
+            simulated$cells[ter] <- j
+            tmp <- tmp[!tmp %in% ter]
+          }
+    }
+    zeroes <- which(simulated$cells == 0)
+    if(length(zeroes)>0){
+        for(i in zeroes){
+            simulated$cells[i] <- sample(seq(1,n_celltypes),1)
+        }
+    }
+    simulated <- globaliseTerritories(simulated)
+    return(simulated)
 }
 
-simulateCells <- function(n_t,n_c,d_t,n_cells,xlims,ylims,celltypes,cells){
+dottedDist <- function(n_celltypes,
+                       n_territories,
+                       randomise = TRUE,
+                       xlim = c(1,3000),
+                       ylim=c(1,3000),
+                       n_cells=6000,
+                       radius = c(50, 500)){
+    #--------------------------------------------------------------------------#
+    # we first create a back ground that will serve as a canvas
+    # this back ground can contain more than one cell type
+    #--------------------------------------------------------------------------#
+    simulated <- data.frame("x" = runif(n = n_cells,min = min(xlim),max = max(xlim)),
+                            "y" = runif(n = n_cells,min = min(ylim), max = max(ylim)),
+                            "ter" = rep(1,n_cells),
+                            "cells" = rep(0,n_cells))
+    seeds <- simulated[sample(seq(1,n_cells), size = n_territories -1 , replace= FALSE),]
+    if(randomise){
+        rad <- sample(seq(radius[1L],radius[2L],l = n_territories -1))
+        for(i in seq(1, length(rad))){
+            simulated$ter[sqrt(((simulated$x - seeds$x[i])^2 + (simulated$y - seeds$y[i])^2)) <= rad[i]] <- i+1
+            tmp <- which(simulated$ter == i+1)
+            types <- sample(seq(1,n_celltypes),size = 1)
+            for(j in seq(1,types)){
 
-  #------------------------------------------------------------------#
-  # we create the territory splits
-  # we only going to split along the x axis for now
-  # It shouldnt change to much tbh
-  # creating coordinates for each territory
-  # Here im just going to randomly distribute all cells
-  # Not sure if it matters how many cells there are in each territory
-  # There should be roughly the same amount anyway
-  #------------------------------------------------------------------#
-  bounds <- round(seq(xlims[1],xlims[2], length.out = n_t + 1))
-  coord <- data.frame("xcoord" = jitter(sample(seq(xlims[1],xlims[2]),size = n_cells, replace =T)),
-                      "ycoord" = jitter(sample(seq(ylims[1],ylims[2]),size = n_cells, replace =T)))
-  #------------------------------------------------------------------#
-  # Next we create cell sampling probability templates
-  #------------------------------------------------------------------#
+                ter <- sample(x=tmp,size = floor(sum(simulated$ter == i+1)/types), replace=FALSE)
+                simulated$cells[ter] <- j
+                tmp <- tmp[!tmp %in% ter]
+              }
+        }
+        #----------------------------------------------------------------------#
+        # Assigning random number of cell types to background
+        # Okay this is a bit messy - I agree
+        #----------------------------------------------------------------------#
+        types <- sample(seq(1,n_celltypes),size = 1)
+        tmp <- which(simulated$ter == 1)
+        for(j in seq(1,types)){
 
-  dist <- switch(d_t,
-                "pure" = pureDist(n_c,n_t),
-                "uniform" = uniformDist(n_c,n_t),
-                "exp" = expDist(n_c,n_t))
-  if(is.null(dist))return(NULL)
-  #------------------------------------------------------------------#
-  # Using these proportion templates to sample barcodes
-  # and generate coordinates
-  # for now we will used imposed cell types.. you can just do the sampling
-  # out of function
-  #------------------------------------------------------------------#
-  #ct <- sample(celltypes,n_c, replace = FALSE)
+            ter <- sample(x=tmp,size = floor(sum(simulated$ter == 1)/types), replace=FALSE)
+            simulated$cells[ter] <- j
+            tmp <- tmp[!tmp %in% ter]
+        }
 
-  territory_barcodes <- vector("list", n_t)
-  for(l in seq_len(ncol(dist))){
-      tmp <- c()
-      for(m in seq_len(nrow(dist))){
-          r <- nrow(filter(coord,xcoord >= bounds[l] & xcoord < bounds[l+1]))
+    } else {
+        rad <- seq(radius[1L],radius[2L], l = n_territories -1)
+        for(i in seq(1, length(rad))){
+            simulated$ter[sqrt(((simulated$x - seeds$x[i])^2 + (simulated$y - seeds$y[i])^2)) <= rad[i]] <- i+1
+            tmp <- which(simulated$ter == i+1)
 
-          n_points <- r * dist[m,l]
-          if(m == nrow(dist)){
-              n_points <- r - length(tmp)
-          }
-          tmp <- c(tmp,sample(cells$barcodes[cells$celltype==celltypes[m]],n_points, replace =TRUE))
-      }
+            for(j in seq(1,n_celltypes)){
+                ter <- sample(x=tmp,size = round(sum(simulated$ter == i+1)/n_celltypes), replace=FALSE)
+                simulated$cells[ter] <- j
+                tmp <- tmp[!tmp %in% ter]
+              }
+        }
 
-      territory_barcodes[[l]] <- data.frame("barcodes" = tmp,
-                                            filter(coord,xcoord >= bounds[l] & xcoord < bounds[l+1]),
-                                            "territory" = rep(l,length(tmp)))
-  }
+        tmp <- which(simulated$ter == 1)
+        for(j in seq(1,types)){
 
-  territory_barcodes <- do.call("rbind",territory_barcodes)
+            ter <- sample(x=tmp,size = round(sum(simulated$ter == 1)/n_celltypes), replace=FALSE)
+            simulated$cells[ter] <- j
+            tmp <- tmp[!tmp %in% ter]
+        }
+    }
+    zeroes <- which(simulated$cells == 0)
+    if(length(zeroes)>0){
+        for(i in zeroes){
+            simulated$cells[i] <- sample(seq(1,n_celltypes),1)
+        }
+    }
+    simulated <- globaliseTerritories(simulated)
+    return(simulated)
+}
 
-  return(territory_barcodes)
+simulateCells <- function(cells,
+                          method = c("pure","uni","exp","dot")){
+    return(NULL)
+
 }
 
 reSample <- function(counts,n_c,d_t,celltypes,cells){
