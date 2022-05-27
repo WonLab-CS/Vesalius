@@ -250,19 +250,19 @@ simulateCells <- function(cells,sim,counts){
     #----------------------------------------------------------------------------#
     colnames(counts) <- paste0("bar_",seq_len(ncol(counts)))
 
-    sim$tmp <- paste0("bar_",seq_len(nrow(sim)))
-    rownames(sim) <- sim$tmp
+    sim$simBarcode <- paste0("bar_",seq_len(nrow(sim)))
+    rownames(sim) <- sim$simBarcode
     ss <- new(Class = 'SlideSeq',
               assay = "Spatial",
               coordinates = sim[,c("x","y")])
 
-    rownames(ss@coordinates) <- sim$tmp
+    rownames(ss@coordinates) <- sim$simBarcode
 
     st <- CreateSeuratObject(counts, assay ="Spatial")
     ss <- ss[Cells(x = st)]
     DefaultAssay(object = ss) <- "Spatial"
     st[["slice1"]] <- ss
-    st <- AddMetaData(st,metadata = sim$ter,col.name = "Territory")
+    st <- AddMetaData(st,metadata = sim$simBarcode,col.name = "Territory")
 
     seu <- tryCatch(suppressWarnings(SCTransform(st,assay = "Spatial")),
                     error = function(cond){
@@ -273,7 +273,7 @@ simulateCells <- function(cells,sim,counts){
         seu <- simulateCells(counts,n_c,d_t,celltypes,cells)
         return(seu)
     } else{
-        sim <- sim[,colnames(sim) != "tmp"]
+        
         rownames(sim) <- NULL
         return(sim)
     }
