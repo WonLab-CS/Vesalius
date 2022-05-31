@@ -12,8 +12,11 @@ library(BayesSpace)
 library(SingleCellExperiment)
 library(Seurat)
 
+library(mclust)
+library(mcclust)
+
 # Out put directory
-input <- "/home/pcnmartin/Vesalius/Simulation"
+input <- "~/group/slide_seqV2/"
 output <- paste0(input,"/bayesSim")
 if(!dir.exists(output)){
     dir.create(output)
@@ -25,6 +28,13 @@ if(!file.exists(time)){
     file.create(time)
 }
 
+# performance benchmarking file
+perf <- paste0(input,"/bayesSim/performance.txt")
+if(!file.exists(perf)){
+    file.create(perf)
+}
+
+
 # Get files
 simFiles <- list.files(pattern = ".csv",full.names = TRUE)
 fileTag <- list.files(pattern = ".csv",full.names = FALSE)
@@ -34,7 +44,7 @@ counts <- counts[,-1]
 
 # run benchmarking
 
-for(i in seq_along(files)){
+for(i in seq_along(simFiles)){
     sim <- read.table(simFiles[i], sep = ",", header=T)
     if(grepl(pattern = "dot", x = simFiles[i])){
         # Dotted regime should contain 10 total territories
@@ -45,6 +55,7 @@ for(i in seq_along(files)){
     }
 
     subCounts <- counts[,sim$barcodes]
+    colnames(subCounts) <- paste0("bar_",seq_len(ncol(subCounts)))
     #----------------------------------------------------------------------------#
     # Rename barcodes to avoid potential duplicated names
     #----------------------------------------------------------------------------#
@@ -72,10 +83,10 @@ for(i in seq_along(files)){
     ftime <- paste0(fileTag[i],",",as.numeric(t),",",units(t),"\n")
     cat(ftime,file=time,append=TRUE)
 
-    aligned <- match(rownames(tmpPred), tmpSim$barcodes)
-    simTer <- as.character(tmpSim$territory)[aligned]
-    ari <- adjustedRandIndex(tmpPred$spatial.cluster,simTer)
-    vi <- vi.dist(tmpPred$spatial.cluster,simTer)
+    aligned <- match(rownames(bayes), sim$simBarcode)
+    simTer <- as.character(sim$ter)[aligned]
+    ari <- adjustedRandIndex(bayes$spatial.cluster,simTer)
+    vi <- vi.dist(bayes$spatial.cluster,simTer)
 
     fperf <- paste0(fileTag[i],",",ari,",",vi,"\n")
     cat(fperf, file = perf, append = TRUE)

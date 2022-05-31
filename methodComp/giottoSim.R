@@ -16,7 +16,7 @@ library(mcclust)
 #------------------------------------------------------------------------------#
 
 # Out put directory
-input <- "/home/pcnmartin/Vesalius/Simulation"
+input <- "~/group/slide_seqV2/"
 output <- paste0(input,"/giottoSim")
 if(!dir.exists(output)){
     dir.create(output)
@@ -28,6 +28,12 @@ if(!file.exists(time)){
     file.create(time)
 }
 
+# performance benchmarking file
+perf <- paste0(input,"/giottoSim/performance.txt")
+if(!file.exists(perf)){
+    file.create(perf)
+}
+
 # Get files
 simFiles <- list.files(pattern = ".csv",full.names = TRUE)
 fileTag <- list.files(pattern = ".csv",full.names = FALSE)
@@ -37,7 +43,7 @@ counts <- counts[,-1]
 
 # run benchmarking
 
-for(i in seq_along(files)){
+for(i in seq_along(simFiles)){
     sim <- read.table(simFiles[i], sep = ",", header=T)
     subCounts <- counts[,sim$barcodes]
     if(grepl(pattern = "dot", x = simFiles[i])){
@@ -92,6 +98,7 @@ for(i in seq_along(files)){
     HMRF_spatial_genes <- doHMRF(gobject=giotto,
                                  expression_values='scaled',
                                  spatial_genes=ext_spatial_genes,
+                                 dimensions_to_use = 1:30,
                                  k=k,
                                  spatial_network_name="spatial_network",
                                  betas=c(0, 10, 5),
@@ -99,7 +106,7 @@ for(i in seq_along(files)){
 
     giotto <- addHMRF(gobject=giotto,
                       HMRFoutput=HMRF_spatial_genes,
-                      k=3,
+                      k=k,
                       betas_to_add=c(0, 10, 20, 30, 40),
                       hmrf_name='HMRF')
     giotto <- giotto@cell_metadata
@@ -109,14 +116,14 @@ for(i in seq_along(files)){
     ftime <- paste0(fileTag[i],",",as.numeric(t),",",units(t),"\n")
     cat(ftime,file=time,append=TRUE)
 
-    ari <- adjustedRandIndex(tmpPred$territory,tmpPred$HMRF_k3_b.40)
-    vi <- vi.dist(tmpPred$territory,tmpPred$HMRF_k3_b.40)
+    ari <- adjustedRandIndex(giotto$ter,giotto$HMRF_k3_b.40)
+    vi <- vi.dist(giotto$ter,giotto$HMRF_k3_b.40)
 
     fperf <- paste0(fileTag[i],",",ari,",",vi,"\n")
     cat(fperf, file = perf, append = TRUE)
 
     fileOut <- paste0(output,"/Giotto_",fileTags[i])
-    write.table(ves,file =fileOut,sep =",",quote=F)
+    write.table(giotto,file =fileOut,sep =",",quote=F)
     rm(giotto); gc()
 
     frem <- list.files(pattern =".txt")

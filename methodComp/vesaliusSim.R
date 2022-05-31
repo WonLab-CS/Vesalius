@@ -23,7 +23,7 @@ library(mcclust)
 #------------------------------------------------------------------------------#
 
 # Out put directory
-input <- "/home/pcnmartin/Vesalius/Simulation"
+input <- "~/group/slide_seqV2/"
 output <- paste0(input,"/vesaliusSim")
 if(!dir.exists(output)){
     dir.create(output)
@@ -50,14 +50,14 @@ counts <- counts[,-1]
 
 # run benchmarking
 
-for(i in seq_along(files)){
+for(i in seq_along(simFiles)){
     sim <- read.table(simFiles[i], sep = ",", header=T)
     subCounts <- counts[,sim$barcodes]
     if(grepl(pattern = "dot", x = simFiles[i])){
-        colDepth <- 6
+        colDepth <- 6^seq(3,1)
         iter <- 5
     } else {
-        colDepth <- c(81,27,9,3)
+        colDepth <- 3^seq(4,1)
         iter <- 15
     }
     #----------------------------------------------------------------------------#
@@ -77,7 +77,7 @@ for(i in seq_along(files)){
     ss <- ss[Cells(x = st)]
     DefaultAssay(object = ss) <- "Spatial"
     st[["slice1"]] <- ss
-    st <- AddMetaData(st,metadata = sim$ter,col.name = "Territory")
+    #st <- AddMetaData(st,metadata = sim$ter,col.name = "Territory")
 
     s <- Sys.time()
 
@@ -86,14 +86,17 @@ for(i in seq_along(files)){
            ScaleData()%>%
            rgbUMAP()%>%
            buildImageArray(resolution=50,filterThreshold=1,cores =1)%>%
-           #equalizeHistogram(sleft =2.5,sright=2.5)%>%
-           regulariseImage(lambda = 5,niter=200)%>%
-           iterativeSegmentation.array(colDepth=colDepth,
+           regulariseImage(lambda = 5,niter=200)
+    if(grepl(pattern = "dot", x = simFiles[i])){
+        ves <- equalizeHistogram(ves,sleft =5, sright=5)
+    }
+
+    ves <- iterativeSegmentation.array(ves,colDepth=colDepth,
                                        smoothIter = iter,
                                        method = c("iso","box"),
                                        sigma=6,box = 15,
                                        useCenter = T) %>%
-          isolateTerritories.array(captureRadius=0.1,minBar=1) %>%
+          isolateTerritories.array(captureRadius=0.1,minBar=0) %>%
           filter(tile==1) %>%
           distinct(barcodes, .keep_all =TRUE)
 
@@ -101,22 +104,23 @@ for(i in seq_along(files)){
     ftime <- paste0(fileTag[i],",",as.numeric(t),",",units(t),"\n")
     cat(ftime,file=time,append = TRUE)
 
-    aligned <- match(tmpPred$barcodes, tmpSim$barcodes)
-    simTer <- as.character(tmpSim$territory)[aligned]
-    ari <- adjustedRandIndex(tmpPred$territory,simTer)
-    vi <- vi.dist(tmpPred$territory,simTer)
+    aligned <- match(ves$barcodes, sim$simBarcode)
+    simTer <- as.character(sim$ter)[aligned]
+    ari <- adjustedRandIndex(ves$territory,simTer)
+    vi <- vi.dist(ves$territory,simTer)
 
     fperf <- paste0(fileTag[i],",",ari,",",vi,"\n")
     cat(fperf, file = perf, append = TRUE)
 
-    fileOut <- paste0(output,"/Vesalius_",fileTags[i])
+    fileOut <- paste0(output,"/Vesalius_",fileTag[i])
     write.table(ves,file =fileOut,sep =",",quote=F)
     rm(ves); gc()
 }
 
 
-pdf("test.pdf", width = 12, height=5)
-g <- ggplot(ves, aes(x,y, col = as.factor(territory))) + geom_point()
-g1 <- ggplot(sim, aes(x,y, col = as.factor(ter))) + geom_point()
-g + g1
-dev.off()
+#pdf("test.pdf", width = 18, height=5)
+#g0 <- imagePlot(ves, as.cimg=F)
+#g <- territoryPlot(tmp, cex.pt = 1, cex =10)
+#g1 <- ggplot(sim, aes(x,y, col = as.factor(ter))) + geom_point()
+#g0 + g + g1
+#dev.off()

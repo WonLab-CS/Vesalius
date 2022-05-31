@@ -11,13 +11,16 @@ library(RColorBrewer)
 library(dplyr)
 library(grid)
 
+library(mclust)
+library(mcclust)
+
 #------------------------------------------------------------------------------#
 # NOTE: Simulated data sets are produced by the simulate.R file and
 # saved as csv files.
 #------------------------------------------------------------------------------#
 
 # Out put directory
-input <- "/home/pcnmartin/Vesalius/Simulation"
+input <- "~/group/slide_seqV2/"
 output <- paste0(input,"/seuratSim")
 if(!dir.exists(output)){
     dir.create(output)
@@ -29,6 +32,13 @@ if(!file.exists(time)){
     file.create(time)
 }
 
+# performance benchmarking file
+perf <- paste0(input,"/seuratSim/performance.txt")
+if(!file.exists(perf)){
+    file.create(perf)
+}
+
+
 # Get files
 simFiles <- list.files(pattern = ".csv",full.names = TRUE)
 fileTag <- list.files(pattern = ".csv",full.names = FALSE)
@@ -38,7 +48,7 @@ counts <- counts[,-1]
 
 # run benchmarking
 
-for(i in seq_along(files)){
+for(i in seq_along(simFiles)){
     sim <- read.table(simFiles[i], sep = ",", header=T)
     subCounts <- counts[,sim$barcodes]
     #----------------------------------------------------------------------------#
@@ -54,7 +64,7 @@ for(i in seq_along(files)){
 
     rownames(ss@coordinates) <- sim$simBarcode
 
-    st <- CreateSeuratObject(counts, assay ="Spatial")
+    st <- CreateSeuratObject(subCounts, assay ="Spatial")
     ss <- ss[Cells(x = st)]
     DefaultAssay(object = ss) <- "Spatial"
     st[["slice1"]] <- ss
@@ -64,27 +74,32 @@ for(i in seq_along(files)){
            RunPCA(dims =1:30) %>%
            RunUMAP(dims =1:30) %>%
            FindNeighbors() %>%
-           FindClusters(st,verbose = FALSE)
+           FindClusters(verbose = FALSE)
 
 
 
 
-    seuData <- FetchData(st, c("UMAP_1","UMAP_2","seurat_clusters")) %>%
-               group_by(seurat_clusters) %>%
-               mutate(xs = mean(UMAP_1), ys = mean(UMAP_2))
+    seuData <- FetchData(st, c("UMAP_1","UMAP_2","seurat_clusters","Territory"))
     coordSeu <- GetTissueCoordinates(st)
     seuData <- cbind(seuData,coordSeu[,c("x","y")])
     t <- Sys.time() - s
     ftime <- paste0(fileTag[i],",",as.numeric(t),",",units(t),"\n")
     cat(ftime,file=time,append=TRUE)
 
-    ari <- adjustedRandIndex(tmpPred$seurat_clusters,tmpSim$territory)
-    vi <- vi.dist(tmpPred$seurat_clusters,tmpSim$territory)
+
+    ari <- adjustedRandIndex(seuData$seurat_clusters,seuData$Territory)
+    vi <- vi.dist(seuData$seurat_clusters,seuData$Territory)
 
     fperf <- paste0(fileTag[i],",",ari,",",vi,"\n")
     cat(fperf, file = perf, append = TRUE)
 
-    fileOut <- paste0(output,"/Seurat_",fileTags[i])
+    fileOut <- paste0(output,"/Seurat_",fileTag[i])
     write.table(seuData,file =fileOut,sep =",",quote=F)
     rm(seuData); gc()
 }
+
+#pdf("test.pdf",width=12, height=5)
+#g <- ggplot(seuData,aes(x,y,col = seurat_clusters)) + geom_point()
+#g1 <- ggplot(seuData, aes(x,y,col = as.factor(Territory))) + geom_point()
+#g+g1
+#dev.off()

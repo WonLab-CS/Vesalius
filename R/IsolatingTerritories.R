@@ -259,7 +259,12 @@ equalizeHistogram <- function(image,
            "ECDF" = lapply(img,.ecdf.eq) %>% imappend("c"))
     .rebuildDF(verbose)
     img <- as.data.frame(img)
-    if(!"cc" %in% colnames(img)) img$cc <- 1
+    if(!"cc" %in% colnames(img)){
+      img$cc <- 1
+    }
+    if(img$value < 0 | img$value>1){
+      img$value <- (img$value - min(img$value)) /(max(img$value) - min(img$value)) 
+    }
     img <- right_join(img, image, by  = c("x","y","cc")) %>%
            select(c("barcodes","x","y","cc","value.x","tile")) %>% tibble
 
