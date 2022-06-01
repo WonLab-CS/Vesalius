@@ -23,7 +23,7 @@ library(mcclust)
 #------------------------------------------------------------------------------#
 
 # Out put directory
-input <- "~/group/slide_seqV2/"
+input <- "~/group/slide_seqV2"
 output <- paste0(input,"/vesaliusSim")
 if(!dir.exists(output)){
     dir.create(output)
@@ -42,8 +42,8 @@ if(!file.exists(perf)){
 }
 
 # Get files
-simFiles <- list.files(pattern = ".csv",full.names = TRUE)
-fileTag <- list.files(pattern = ".csv",full.names = FALSE)
+simFiles <- list.files("/home/pcnmartin/Vesalius/Simulation",pattern = ".csv",full.names = TRUE)
+fileTag <- list.files("/home/pcnmartin/Vesalius/Simulation",pattern = ".csv",full.names = FALSE)
 counts <- read.table("~/group/slide_seqV2/Puck_200115_08.digital_expression.txt.gz", header = TRUE )
 rownames(counts) <- counts[,1]
 counts <- counts[,-1]
@@ -63,7 +63,7 @@ for(i in seq_along(simFiles)){
     #----------------------------------------------------------------------------#
     # Rename barcodes to avoid potential duplicated names
     #----------------------------------------------------------------------------#
-    colnames(subCounts) <- paste0("bar_",seq_len(ncol(subCounts)))
+    colnames(subCounts) <- sim$simBarcode
 
 
     rownames(sim) <- sim$simBarcode
@@ -124,3 +124,17 @@ for(i in seq_along(simFiles)){
 #g1 <- ggplot(sim, aes(x,y, col = as.factor(ter))) + geom_point()
 #g0 + g + g1
 #dev.off()
+# files <- list.files(pattern = ".csv")
+# simFiles <- list.files("~/Vesalius/Simulation", pattern =".csv", full.names=T)
+#
+# pdf("/home/pcnmartin/Vesalius/test.pdf", width = 8, height=4)
+# for(i in seq_along(simFiles)){
+#     print(i)
+#     #tmp <- read.table(files[i],sep=",", header=T)
+#     sim <- read.table(simFiles[i], sep =",",header=T)
+#     #g <- ggplot(tmp, aes(x,y,col = as.factor(territory))) +geom_point() + theme_void()
+#     g1 <- ggplot(sim, aes(x,y,col = as.factor(ter))) +geom_point()+theme_void()
+#     g2 <- ggplot(sim, aes(x,y,col = as.factor(cells))) +geom_point()+theme_void()
+#     print(g1+g2)
+# }
+# dev.off()

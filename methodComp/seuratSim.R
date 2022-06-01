@@ -20,7 +20,7 @@ library(mcclust)
 #------------------------------------------------------------------------------#
 
 # Out put directory
-input <- "~/group/slide_seqV2/"
+input <- "~/group/slide_seqV2"
 output <- paste0(input,"/seuratSim")
 if(!dir.exists(output)){
     dir.create(output)
@@ -40,8 +40,8 @@ if(!file.exists(perf)){
 
 
 # Get files
-simFiles <- list.files(pattern = ".csv",full.names = TRUE)
-fileTag <- list.files(pattern = ".csv",full.names = FALSE)
+simFiles <- list.files("/home/pcnmartin/Vesalius/Simulation",pattern = ".csv",full.names = TRUE)
+fileTag <- list.files("/home/pcnmartin/Vesalius/Simulation",pattern = ".csv",full.names = FALSE)
 counts <- read.table("~/group/slide_seqV2/Puck_200115_08.digital_expression.txt.gz", header = TRUE )
 rownames(counts) <- counts[,1]
 counts <- counts[,-1]
@@ -54,7 +54,7 @@ for(i in seq_along(simFiles)){
     #----------------------------------------------------------------------------#
     # Rename barcodes to avoid potential duplicated names
     #----------------------------------------------------------------------------#
-    colnames(subCounts) <- paste0("bar_",seq_len(ncol(subCounts)))
+    colnames(subCounts) <- sim$simBarcode
 
 
     rownames(sim) <- sim$simBarcode

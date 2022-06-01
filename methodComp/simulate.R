@@ -3,22 +3,18 @@
 # This file contains all code related to data simumlation in high res data sets
 # We used slide-seq data as basis for data simulation.
 #------------------------------------------------------------------------------#
-library(vesalius)
-library(BayesSpace)
+
 library(Seurat)
-library(Giotto)
 
 
-library(imagerExtra)
+
+
 library(ggplot2)
 library(patchwork)
 library(viridis)
 library(RColorBrewer)
 library(dplyr)
-library(tvR)
-library(sp)
-library(grid)
-library(SingleCellExperiment)
+
 
 #library(devtools)
 #install_github("patrickCNMartin/BayesSpace")
@@ -66,7 +62,7 @@ pureDist <- function(n_celltypes,n_territories, xlim = c(1,3000), ylim=c(1,3000)
     #--------------------------------------------------------------------------#
     for(i in seq(1,length(xlims)-1)){
         simulated$ter[simulated$x >= xlims[i] & simulated$x <= xlims[i+1]] <- i
-        simulated$cells[simulated$x >= xlims[i] & simulated$x <= xlims[i+1]] <- 1
+        simulated$cells[simulated$x >= xlims[i] & simulated$x <= xlims[i+1]] <- i
     }
     zeroes <- which(simulated$cells == 0)
     if(length(zeroes)>0){
@@ -226,58 +222,32 @@ dottedDist <- function(n_celltypes,
     return(simulated)
 }
 
-simulateCells <- function(cells,sim,counts){
+simulateCells <- function(c,s,co){
+    cells <- c
+    sim <- s
+    counts <- co
     #--------------------------------------------------------------------------#
     # Assuming that we receive a data frame with barcodes and the cell types
     # associated to each cell type
     #--------------------------------------------------------------------------#
-    sim$celltype <- sample(unique(cells$celltype), size = length(unique(sim$cells)),replace = TRUE)[sim$cells]
-    sim$barcodes <- "none"
+    if(length(unique(sim$cells)) > length(unique(cells$celltype))){
+      tmp <- sample(unique(cells$celltype), size = length(unique(cells$celltype)),replace = FALSE)
+      tmp <- c(tmp,sample(unique(cells$celltype), size = length(unique(sim$cells)) - length(unique(cells$celltype)),replace = FALSE))
+
+      sim$celltype <- tmp[sim$cells]
+      sim$barcodes <- "none"
+    } else {
+      sim$celltype <- sample(unique(cells$celltype), size = length(unique(sim$cells)),replace = FALSE)[sim$cells]
+      sim$barcodes <- "none"
+    }
+
     for(i in seq_along(unique(sim$celltype))){
         barcodes <- cells$barcodes[cells$celltype == unique(sim$celltype)[i]]
         simBarcodes <- sim$celltype == unique(sim$celltype)[i]
         sim$barcodes[simBarcodes] <- sample(barcodes,size = sum(simBarcodes), replace = TRUE)
     }
-    #--------------------------------------------------------------------------#
-    # let's use some recursion to check if the data set works with Seurat
-    # sometimes it doesn't work - if this work we move on
-    # if it turns out iot crashes in other tools we will reSample a new set
-    # and re run that run for all of the tools
-    #--------------------------------------------------------------------------#
-    counts <- counts[,sim$barcodes]
-    #----------------------------------------------------------------------------#
-    # Rename barcodes to avoid potential duplicated names
-    #----------------------------------------------------------------------------#
-    colnames(counts) <- paste0("bar_",seq_len(ncol(counts)))
-
     sim$simBarcode <- paste0("bar_",seq_len(nrow(sim)))
-    rownames(sim) <- sim$simBarcode
-    ss <- new(Class = 'SlideSeq',
-              assay = "Spatial",
-              coordinates = sim[,c("x","y")])
-
-    rownames(ss@coordinates) <- sim$simBarcode
-
-    st <- CreateSeuratObject(counts, assay ="Spatial")
-    ss <- ss[Cells(x = st)]
-    DefaultAssay(object = ss) <- "Spatial"
-    st[["slice1"]] <- ss
-    st <- AddMetaData(st,metadata = sim$simBarcode,col.name = "Territory")
-
-    seu <- tryCatch(suppressWarnings(SCTransform(st,assay = "Spatial")),
-                    error = function(cond){
-                        return(NULL)
-                    })
-
-    if(is.null(seu)){
-        seu <- simulateCells(counts,n_c,d_t,celltypes,cells)
-        return(seu)
-    } else{
-        
-        rownames(sim) <- NULL
-        return(sim)
-    }
-
+    return(sim)
 
 }
 
@@ -296,6 +266,7 @@ celltypes <- paste0(cells,"+",cells)
 
 bar_cells <- ref@meta.data[ref@meta.data$celltype %in% celltypes,]
 bar_cells <- data.frame("barcodes"=rownames(bar_cells),"celltype"=bar_cells$celltype)
+bar_cells <- bar_cells[bar_cells$celltype %in% names(table(bar_cells$celltype))[table(bar_cells$celltype)>50],]
 
 brainCounts <- read.table("~/group/slide_seqV2/Puck_200115_08.digital_expression.txt.gz", header = TRUE )
 rownames(brainCounts) <- brainCounts[,1]
@@ -328,5 +299,6 @@ for(i in seq_len(n_runs)){
                     sep =",",
                     quote = FALSE,
                     row.names = FALSE)
+        rm(sim);gc()
     }
 }
