@@ -49,7 +49,7 @@ for(i in seq_along(simFiles)){
     if(grepl(pattern = "dot", x = simFiles[i])){
         # Dotted regime should contain 10 total territories
         # one background and 9 "spots"
-        q <- 10
+        q <- 6
     } else {
         q <- 3
     }
@@ -60,8 +60,10 @@ for(i in seq_along(simFiles)){
     # Rename barcodes to avoid potential duplicated names
     #----------------------------------------------------------------------------#
     sce <- SingleCellExperiment(list(counts=as(as.matrix(subCounts), "dgCMatrix")))
-    coord <- sim[colnames(sce),c("y","x")]
+    #colnames(sce) <- sim$simBarcode
+    coord <- sim[,c("y","x")]
     colnames(coord)<- c("row","col")
+    rownames(coord) <- sim$simBarcode
     colData(sce) <- DataFrame(coord)
 
     genes <- data.frame(rownames(subCounts), rownames(subCounts))
@@ -91,7 +93,7 @@ for(i in seq_along(simFiles)){
     fperf <- paste0(fileTag[i],",",ari,",",vi,"\n")
     cat(fperf, file = perf, append = TRUE)
 
-    fileOut <- paste0(output,"/BayesSpace_",fileTags[i])
+    fileOut <- paste0(output,"/BayesSpace_",fileTag[i])
     write.table(bayes,file =fileOut,sep =",",quote=F)
     rm(bayes); gc()
 }

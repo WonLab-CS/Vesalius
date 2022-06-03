@@ -25,8 +25,7 @@ library(utils)
 library(stats)
 library(graphics)
 library(grDevices)
-### Set seed
-set.seed(1)
+
 
 #------------------------------/ Functions /-----------------------------------#
 
@@ -155,7 +154,7 @@ dottedDist <- function(n_celltypes,
                        xlim = c(1,3000),
                        ylim=c(1,3000),
                        n_cells=6000,
-                       radius = c(50, 500)){
+                       radius = c(100, 500)){
     #--------------------------------------------------------------------------#
     # we first create a back ground that will serve as a canvas
     # this back ground can contain more than one cell type
@@ -251,6 +250,39 @@ simulateCells <- function(c,s,co){
 
 }
 
+quickTest <- function(cells,sim,counts){
+  subCounts <- counts[,sim$barcodes]
+
+  colnames(subCounts) <- sim$simBarcode
+  rownames(subCounts)<- rownames(subCounts)
+
+  rownames(sim) <- sim$simBarcode
+  #----------------------------------------------------------------------------#
+  # trying the data set with seurat - some data sets don't work for some reason
+  #----------------------------------------------------------------------------#
+  ss <- new(Class = 'SlideSeq',
+          assay = "Spatial",
+          coordinates = sim[,c("x","y")])
+
+  rownames(ss@coordinates) <- sim$simBarcode
+
+  st <- CreateSeuratObject(subCounts, assay ="Spatial")
+  ss <- ss[Cells(x = st)]
+  DefaultAssay(object = ss) <- "Spatial"
+  st[["slice1"]] <- ss
+
+
+  seu <- tryCatch(suppressWarnings(SCTransform(st,assay = "Spatial",verbose=F)),
+                error = function(cond){
+                    return(NULL)
+                })
+
+  if(is.null(seu)){
+    return(NULL)
+  } else{
+    return(sim)
+  }
+}
 
 #------------------------------------------------------------------------------#
 
@@ -274,9 +306,9 @@ brainCounts <- brainCounts[,-1]
 
 # PARAMS
 n_runs <- 10
-n_territories <- c(3,3,3,3,3,3,3,10)
-n_cells <- c(3,3,3,4,4,5,5,3)
-method <- c("pure","uni","exp","uni","exp","uni","exp","dot")
+n_territories <- c(3,3,3,3,3,3,6,3)
+n_cells <- c(3,3,4,4,5,5,3,3)
+method <- c("uni","exp","uni","exp","uni","exp","dot","pure")
 
 ## Let's run this bad boy or girl or which ever gender makes you a happy human
 ## we are just going to create data sets that will be used for each tool
@@ -293,12 +325,37 @@ for(i in seq_len(n_runs)){
                       "uni" = uniformDist(n_cells[j],n_territories[j]),
                       "exp" = expDist(n_cells[j],n_territories[j]),
                       "dot" = dottedDist(n_cells[j],n_territories[j]))
-        sim <- simulateCells(bar_cells,sim, brainCounts)
-        write.table(sim,
+        tmp <- simulateCells(bar_cells,sim, brainCounts)
+        print(paste("Simulated Cells run",i))
+
+        buffer <- quickTest(bar_cells,tmp, brainCounts)
+        # NEED to reset the seed otherwise it porduces the same data sets
+        set.seed(Sys.time())
+        print("Quick Test")
+
+
+        if(is.null(buffer)){
+          while(is.null(buffer)){
+              # Neew to reset seed for recusrion to work. Could write recursive
+              # function to this instead but it be written now...
+              print("Re sample")
+              tmp2 <- simulateCells(bar_cells,sim, brainCounts)
+
+              buffer <- quickTest(bar_cells,tmp2, brainCounts)
+              # NEED to reset the seed otherwise it porduces the same data sets
+              set.seed(Sys.time())
+              if(!is.null(buffer)){
+                tmp <- tmp2
+                rm(tmp2)
+              }
+
+          }
+        }
+        write.table(tmp,
                     file = paste0(output,"/Simulation_",method[j],"_",n_territories[j],"_",n_cells[j],"_",i,".csv"),
                     sep =",",
                     quote = FALSE,
                     row.names = FALSE)
-        rm(sim);gc()
+        rm(sim,tmp,buffer);gc()
     }
 }

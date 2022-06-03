@@ -419,83 +419,6 @@ dev.off()
 # Simulation scores for all regimes
 # Figure 2g
 #------------------------------------------------------------------------------#
-files <- list.files(pattern = ".csv")
-gt <- list.files(pattern = "homotypic.Rda")
-gt <- gt[gt!= "SimulationTimes_homotypic.Rda"]
-
-## reorder because 1 and 10
-gt <- gt[c(1,3:10,2)]
-
-library(mclust)
-library(mcclust)
-library(dplyr)
-library(ggplot2)
-
-performance <- data.frame("Method" = character(),
-                          "Regime" = character(),
-                          "Rep" = numeric(),
-                          "ARI" = numeric(),
-                          "viDist" = numeric())
-
-for(i in seq_along(gt)){
-    ## We can assign names to the simList as we know what they are
-    load(gt[i])
-    n_c <-c(9,12,15,3,3,4,5)
-    d_t <-c(rep("uniform",3),"pure",rep("exp",3))
-    names(simList) <- paste0("nt3_nc",n_c,"_",d_t)
-    for(j in seq_along(simList)){
-        tmpSim <- simList[[j]]
-        tmpSim$barcodes <- paste0("bar_",seq_len(nrow(tmpSim)))
-        fileTag <- sapply(strsplit(files,"_"),"[[",3)
-        repsByRegime <- files[fileTag == paste0("rep",i) &
-                              grepl(names(simList)[j],files)]
-        for(k in seq_along(repsByRegime)){
-            if(grepl("BayesSpace",repsByRegime[k])){
-                tmpPred <- read.csv(repsByRegime[k],header=T)
-                aligned <- match(rownames(tmpPred), tmpSim$barcodes)
-                simTer <- as.character(tmpSim$territory)[aligned]
-                ari <- adjustedRandIndex(tmpPred$spatial.cluster,simTer)
-                vi <- vi.dist(tmpPred$spatial.cluster,simTer)
-                tmpPred <- data.frame("BayesSpace",names(simList)[j],i,ari,vi)
-                colnames(tmpPred)<- c("Method","Regime","Rep","ARI","viDist")
-                performance <- rbind(performance,tmpPred)
-
-            }else if(grepl("Giotto",repsByRegime[k])){
-                tmpPred <- read.csv(repsByRegime[k],header=T)
-                ari <- adjustedRandIndex(tmpPred$territory,tmpPred$HMRF_k3_b.40)
-                vi <- vi.dist(tmpPred$territory,tmpPred$HMRF_k3_b.40)
-                tmpPred <- data.frame("Giotto",names(simList)[j],i,ari,vi)
-                colnames(tmpPred)<- c("Method","Regime","Rep","ARI","viDist")
-                performance <- rbind(performance,tmpPred)
-
-            }else if(grepl("Seurat",repsByRegime[k])){
-                tmpPred <- read.csv(repsByRegime[k],header=T)
-                #aligned <- match(tmpPred$barcodes, tmpSim$barcodes)
-                #simTer <- as.character(tmpSim$territory)[aligned]
-                ari <- adjustedRandIndex(tmpPred$seurat_clusters,tmpSim$territory)
-                vi <- vi.dist(tmpPred$seurat_clusters,tmpSim$territory)
-                tmpPred <- data.frame("Seurat",names(simList)[j],i,ari,vi)
-                colnames(tmpPred)<- c("Method","Regime","Rep","ARI","viDist")
-                performance <- rbind(performance,tmpPred)
-
-            }else if(grepl("Vesalius",repsByRegime[k])){
-                tmpPred <- read.csv(repsByRegime[k],header=T)
-                aligned <- match(tmpPred$barcodes, tmpSim$barcodes)
-                simTer <- as.character(tmpSim$territory)[aligned]
-                ari <- adjustedRandIndex(tmpPred$territory,simTer)
-                vi <- vi.dist(tmpPred$territory,simTer)
-                tmpPred <- data.frame("Vesalius",names(simList)[j],i,ari,vi)
-                colnames(tmpPred)<- c("Method","Regime","Rep","ARI","viDist")
-                performance <- rbind(performance,tmpPred)
-
-            } else {
-                message("Yeah nah don't know what that is...")
-            }
-        }
-    }
-}
-
-
 
 performance$Method <- as.factor(performance$Method)
 cols <- c("#999999", "#E69F00", "#56B4E9", "#009E73",
@@ -544,18 +467,6 @@ convertToSecs <- function(x){
 
 }
 
-time <- get(load("SimulationTimes_homotypic.Rda"))
-df <- data.frame("time" = numeric(), "method" = character(),"Replicate" = numeric())
-
-
-for(i in seq_along(time)){
-    for(j in seq_along(time[[i]])){
-        tmp <- convertToSecs(time[[i]][[j]])
-        tmp <- data.frame("time" = tmp, "method" = names(time[[i]])[j],"Replicate" = i)
-        df <- rbind(df, tmp)
-    }
-}
-
 #### changing to minutes for now
 df$time <- df$time / 60
 
@@ -577,46 +488,6 @@ pdf("~/Vesalius/MethodCompSim_time.pdf",width = 7, height = 3.5)
 print(g)
 dev.off()
 
-#------------------------------------------------------------------------------#
-# concat cell types use in each sim round
-# Suplemntary material
-#------------------------------------------------------------------------------#
-
-gt <- list.files(pattern = "homotypic.Rda")
-gt <- gt[gt!= "SimulationTimes_homotypic.Rda"]
-
-## reorder because 1 and 10
-gt <- gt[c(1,3:10,2)]
-cells <- data.frame("Replicate" = numeric(),
-                    "Regime" = character(),
-                    "n_cells" = numeric(),
-                    "territory" = numeric(),
-                    "cellType" = character())
-for(i in seq_along(gt)){
-  load(gt[i])
-  n_c <-c(9,12,15,3,3,4,5)
-  d_t <-c(rep("uniform",3),"pure",rep("exp",3))
-  regime <- paste0("nt3_nc",n_c,"_",d_t)
-  for(j in seq_along(tmpCells)){
-    if(d_t[j] == "exp"){
-      df <- data.frame("Replicate" = rep(i,n_c[j]*3),
-                       "Regime" = rep(regime[j],n_c[j]*3),
-                       "n_cells" = rep(n_c[j],n_c[j]*3),
-                       "territory" = rep(1:3,each=n_c[j]),
-                       "cellType" = rep(tmpCells[[j]], times = 3))
-    } else {
-      df <- data.frame("Replicate" = rep(i,n_c[j]),
-                       "Regime" = rep(regime[j],n_c[j]),
-                       "n_cells" = rep(n_c[j],n_c[j]),
-                       "territory" = rep(1:3,each=n_c[j]/3),
-                       "cellType" = tmpCells[[j]])
-    }
-
-    cells <- rbind(cells,df)
-  }
-
-}
-write.csv(cells, file = "~/Vesalius/Simulation_CellTypes.csv")
 
 #------------------------------------------------------------------------------#
 # Simulation Plots for all regimes

@@ -104,46 +104,46 @@ save(time, file = paste0(output,"Seurat_SSV2_Time.Rda"))
 
 ### Input directories containing Visium data
 
-input <- list.dirs("~/group/visium/DLPFC_globus",recursive =F)
-time <-vector("list",length(input))
-count <- 1
-n <-c(7,7,7,7,5,5,5,5,7,7,7,7)
-for(i in input){
-  s <- Sys.time()
-  output <- paste0(i,"/Seurat")
-  if(!dir.exists(output)){
-      dir.create(output)
-  }
-
-  sec <- Read10X(i)
-  img <- Read10X_Image(i)
-  sec <- CreateSeuratObject(counts = sec, assay = "Spatial")
-  img <- img[Cells(x = sec)]
-  DefaultAssay(object = img) <- "Spatial"
-  sec[["slice1"]] <- img
-
-  #sec <- NormalizeData(sec)
-  #sec <- FindVariableFeatures(sec, selection.method = "vst", nfeatures = 2000)
-  #sec <- ScaleData(sec)
-  sec <- SCTransform(sec,variable.features.n = 2000, assay = "Spatial")
-  sec <- RunPCA(sec, npcs = 30)
-  sec <- FindNeighbors(sec, dims = 1:30,verbose =F)
-  for(k in seq(0.5,1,by = 0.01)){
-      sec <- FindClusters(sec, resolution = k, verbose = FALSE)
-      cl <- FetchData(sec, c("seurat_clusters"))$seurat_clusters
-      if(length(levels(cl))==n[count]){
-        break
-      }
-  }
-
-  tag <- strsplit(i, "/")[[1]]
-  tag <- tag[length(tag)]
-  file <- paste0(i,"/Seurat/",tag,"_seurat.rda")
-  save(sec,file = file)
-  e <- Sys.time()
-  time[[count]] <- e - s
-  count <- count +1
-
-}
-## Saving run time
-save(time,file = "~/group/visium/DLPFC_globus/Seurat_Visium_Time.Rda")
+# input <- list.dirs("~/group/visium/DLPFC_globus",recursive =F)
+# time <-vector("list",length(input))
+# count <- 1
+# n <-c(7,7,7,7,5,5,5,5,7,7,7,7)
+# for(i in input){
+#   s <- Sys.time()
+#   output <- paste0(i,"/Seurat")
+#   if(!dir.exists(output)){
+#       dir.create(output)
+#   }
+#
+#   sec <- Read10X(i)
+#   img <- Read10X_Image(i)
+#   sec <- CreateSeuratObject(counts = sec, assay = "Spatial")
+#   img <- img[Cells(x = sec)]
+#   DefaultAssay(object = img) <- "Spatial"
+#   sec[["slice1"]] <- img
+#
+#   #sec <- NormalizeData(sec)
+#   #sec <- FindVariableFeatures(sec, selection.method = "vst", nfeatures = 2000)
+#   #sec <- ScaleData(sec)
+#   sec <- SCTransform(sec,variable.features.n = 2000, assay = "Spatial")
+#   sec <- RunPCA(sec, npcs = 30)
+#   sec <- FindNeighbors(sec, dims = 1:30,verbose =F)
+#   for(k in seq(0.5,1,by = 0.01)){
+#       sec <- FindClusters(sec, resolution = k, verbose = FALSE)
+#       cl <- FetchData(sec, c("seurat_clusters"))$seurat_clusters
+#       if(length(levels(cl))==n[count]){
+#         break
+#       }
+#   }
+#
+#   tag <- strsplit(i, "/")[[1]]
+#   tag <- tag[length(tag)]
+#   file <- paste0(i,"/Seurat/",tag,"_seurat.rda")
+#   save(sec,file = file)
+#   e <- Sys.time()
+#   time[[count]] <- e - s
+#   count <- count +1
+#
+# }
+# ## Saving run time
+# save(time,file = "~/group/visium/DLPFC_globus/Seurat_Visium_Time.Rda")

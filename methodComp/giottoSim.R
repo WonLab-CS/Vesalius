@@ -16,7 +16,7 @@ library(mcclust)
 #------------------------------------------------------------------------------#
 
 # Out put directory
-input <- "~/group/slide_seqV2"
+input <- "/home/pcnmartin/group/slide_seqV2"
 output <- paste0(input,"/giottoSim")
 if(!dir.exists(output)){
     dir.create(output)
@@ -37,7 +37,7 @@ if(!file.exists(perf)){
 # Get files
 simFiles <- list.files("/home/pcnmartin/Vesalius/Simulation",pattern = ".csv",full.names = TRUE)
 fileTag <- list.files("/home/pcnmartin/Vesalius/Simulation",pattern = ".csv",full.names = FALSE)
-counts <- read.table("~/group/slide_seqV2/Puck_200115_08.digital_expression.txt.gz", header = TRUE )
+counts <- read.table("/home/pcnmartin/group/slide_seqV2/Puck_200115_08.digital_expression.txt.gz", header = TRUE )
 rownames(counts) <- counts[,1]
 counts <- counts[,-1]
 
@@ -47,7 +47,7 @@ for(i in seq_along(simFiles)){
     sim <- read.table(simFiles[i], sep = ",", header=T)
     subCounts <- counts[,sim$barcodes]
     if(grepl(pattern = "dot", x = simFiles[i])){
-        k <- 10
+        k <- 6
     } else {
         k <- 3
     }
@@ -115,14 +115,19 @@ for(i in seq_along(simFiles)){
     t <- Sys.time() - s
     ftime <- paste0(fileTag[i],",",as.numeric(t),",",units(t),"\n")
     cat(ftime,file=time,append=TRUE)
+    if(grepl(pattern = "dot", x = simFiles[i])){
+      ari <- adjustedRandIndex(giotto$ter,giotto$HMRF_k6_b.40)
+      vi <- vi.dist(giotto$ter,giotto$HMRF_k6_b.40)
+    } else {
+      ari <- adjustedRandIndex(giotto$ter,giotto$HMRF_k3_b.40)
+      vi <- vi.dist(giotto$ter,giotto$HMRF_k3_b.40)
+    }
 
-    ari <- adjustedRandIndex(giotto$ter,giotto$HMRF_k3_b.40)
-    vi <- vi.dist(giotto$ter,giotto$HMRF_k3_b.40)
 
     fperf <- paste0(fileTag[i],",",ari,",",vi,"\n")
     cat(fperf, file = perf, append = TRUE)
 
-    fileOut <- paste0(output,"/Giotto_",fileTags[i])
+    fileOut <- paste0(output,"/Giotto_",fileTag[i])
     write.table(giotto,file =fileOut,sep =",",quote=F)
     rm(giotto); gc()
 
