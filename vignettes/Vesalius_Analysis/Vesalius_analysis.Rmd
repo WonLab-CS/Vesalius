@@ -864,6 +864,275 @@ dev.off()
 
 ```
 
+## Visium 10X - Mouse Brain SP
+To demonstrate the wide applicability of Vesalius, we also ran Vesalius on
+10X Visium mouse brain data.
+
+```{r Vesalius_Visium_BrainSP2, eval = F, echo = TRUE}
+#------------------------------------------------------------------------------#
+# Load data set
+#------------------------------------------------------------------------------#
+sec <- Read10X("/home/pcnmartin/group/visium/mouseBrainSP2/stVis")
+img <- Read10X_Image("/home/pcnmartin/group/visium/mouseBrainSP2/stVis")
+sec <- CreateSeuratObject(counts = sec, assay = "Spatial")
+img <- img[Cells(x = sec)]
+DefaultAssay(object = img) <- "Spatial"
+sec[["slice1"]] <- img
+#------------------------------------------------------------------------------#
+# Pre-processing data
+#------------------------------------------------------------------------------#
+sec <- NormalizeData(sec)
+sec <- FindVariableFeatures(sec, nfeatures = 2000)
+sec <- ScaleData(sec)
+
+
+#------------------------------------------------------------------------------#
+# Convert to Image
+#------------------------------------------------------------------------------#
+sec <- rgbUMAP(sec, pcs = 30, conserveSparse =F)
+
+image <- buildImageArray(sec,filterGrid=1, resolution = 100, filterThreshold = 1)
+image <- equalizeHistogram(image, sleft = 15,sright =15)
+
+image <- iterativeSegmentation.array(image,
+    colDepth = 15,
+    method = c("box","iso"))
+image <- isolateTerritories.array(image, captureRadius = 0.05,minBar =1)
+
+pdf("mouseBrainSP2_Visium_vesalius.pdf", height= 6, width = 8)
+g1 <-territoryPlot(image,cex = 15,cex.pt=2)+
+   theme_void()+
+   theme(legend.text = element_text(size = 12),
+         legend.title = element_text(size=12),
+         plot.title = element_text(size =15),
+         legend.position = "right")+
+  labs(colour= "Territory nr.")
+print(g1)
+dev.off()
+
+```
+
+## Visium 10X - Mouse Kidney  
+The same process was applied to another 10X Visium but this time in Kidney.
+
+```{r Vesalius_Visium_Kidney, eval = F, echo = TRUE}
+#------------------------------------------------------------------------------#
+# Load data set
+#------------------------------------------------------------------------------#
+sec <- Read10X("/home/pcnmartin/group/visium/mouseKidney/stVis")
+img <- Read10X_Image("/home/pcnmartin/group/visium/mouseKidney/stVis")
+sec <- CreateSeuratObject(counts = sec, assay = "Spatial")
+img <- img[Cells(x = sec)]
+DefaultAssay(object = img) <- "Spatial"
+sec[["slice1"]] <- img
+#------------------------------------------------------------------------------#
+# Pre-processing data
+#------------------------------------------------------------------------------#
+sec <- NormalizeData(sec)
+sec <- FindVariableFeatures(sec, nfeatures = 2000)
+sec <- ScaleData(sec)
+
+
+#------------------------------------------------------------------------------#
+# Convert to Image
+#------------------------------------------------------------------------------#
+sec <- rgbUMAP(sec, pcs = 30, conserveSparse =F)
+
+image <- buildImageArray(sec,filterGrid=1, resolution = 100, filterThreshold = 1)
+image <- equalizeHistogram(image, sleft = 15,sright =15)
+
+image <- iterativeSegmentation.array(image,
+    colDepth = 6,
+    method = c("box","iso"))
+image <- isolateTerritories.array(image, captureRadius = 0.035,minBar =1)
+
+pdf("mouseKidney_Visium_vesalius.pdf", height= 8, width = 8)
+g1 <-territoryPlot(image,cex = 15,cex.pt=3.5)+
+   theme_void()+
+   theme(legend.text = element_text(size = 12),
+         legend.title = element_text(size=12),
+         plot.title = element_text(size =15),
+         legend.position = "right")+
+  labs(colour= "Territory nr.")
+print(g1)
+dev.off()
+
+```
+## Visium 10X - Human Breast
+
+We also applied Vesalius in Human breast Visium 10X.
+```{r Vesalius_Visium_breast, eval = F, echo = TRUE}
+#------------------------------------------------------------------------------#
+# Load data set
+#------------------------------------------------------------------------------#
+sec <- Read10X("/home/pcnmartin/group/visium/humanBreast/stVis")
+img <- Read10X_Image("/home/pcnmartin/group/visium/humanBreast/stVis")
+sec <- CreateSeuratObject(counts = sec, assay = "Spatial")
+img <- img[Cells(x = sec)]
+DefaultAssay(object = img) <- "Spatial"
+sec[["slice1"]] <- img
+#------------------------------------------------------------------------------#
+# Pre-processing data
+#------------------------------------------------------------------------------#
+sec <- NormalizeData(sec)
+sec <- FindVariableFeatures(sec, nfeatures = 2000)
+sec <- ScaleData(sec)
+
+
+#------------------------------------------------------------------------------#
+# Convert to Image
+#------------------------------------------------------------------------------#
+sec <- rgbUMAP(sec, pcs = 30, conserveSparse =F)
+
+image <- buildImageArray(sec,filterGrid=1, resolution = 100, filterThreshold = 1)
+image <- equalizeHistogram(image, sleft = 5,sright =5)
+
+image <- iterativeSegmentation.array(image,
+    colDepth = 15,
+    box = 10, sigma = 3,
+    method = c("iso","median"))
+image <- isolateTerritories.array(image, captureRadius = 0.035,minBar =5)
+
+pdf("humanBreast_Visium_vesalius.pdf", height= 8, width = 8)
+g1 <-territoryPlot(image,cex = 15,cex.pt=2.5)+
+   theme_void()+
+   theme(legend.text = element_text(size = 12),
+         legend.title = element_text(size=12),
+         plot.title = element_text(size =15),
+         legend.position = "right")+
+  labs(colour= "Territory nr.")
+print(g1)
+
+dev.off()
+
+```
+
+## SeqFISH - Embryo
+We also tested Vesalius in seqFISH data taken from [here](https://content.cruk.cam.ac.uk/jmlab/SpatialMouseAtlas2020/). To run Vesalius, we first create a Seurat object. As Seurat does not handle seqFISH data yet, we created a "slide-seq"-like object to handle coordinates.
+This does not affect in anyway the downstream analysis. It only serve as a way of handling the data internally. We ran Vesalius on all 3 seqFISH embryo data sets availbale.
+
+```{r seqFISH_vesalius, eval = F , echo = T}
+#------------------------------------------------------------------------------#
+# Loading all data
+#------------------------------------------------------------------------------#
+coord <- readRDS("metadata.Rds")
+rownames(coord) <- coord$uniqueID
+coord <- coord[,c("x_global","y_global","celltype_mapped_refined")]
+colnames(coord) <- c("x","y","celltype_mapped_refined")
+counts <- readRDS("counts.Rds")
+nfeatures <- nrow(counts)
+
+#------------------------------------------------------------------------------#
+# Looping over each embryo slice
+#------------------------------------------------------------------------------#
+em <- c("embryo1","embryo2","embryo3")
+emves <- vector("list",3)
+emcounts <- vector("list",3)
+
+for(i in seq_along(em)){
+  subCoord <- coord[grep(x = rownames(coord), pattern = em[i]),]
+  subCounts <- counts[,colnames(counts) %in% rownames(subCoord)]
+  ss <- new(Class = 'SlideSeq',
+            assay = "Spatial",
+            coordinates = subCoord[,c("x","y")])
+
+  rownames(ss@coordinates) <- rownames(subCoord)
+
+  st <- CreateSeuratObject(subCounts, assay ="Spatial")
+  ss <- ss[Cells(x = st)]
+  DefaultAssay(object = ss) <- "Spatial"
+  st[["slice1"]] <- ss
+  #----------------------------------------------------------------------------#
+  # Seuart pre-processing steps
+  #----------------------------------------------------------------------------#
+  st <- NormalizeData(st)
+  st <- FindVariableFeatures(st, nfeatures =nfeatures )
+  st <- ScaleData(st)
+  emcounts[[i]] <- st
+  #----------------------------------------------------------------------------#
+  # getting colour code and create image arrays
+  #----------------------------------------------------------------------------#
+  st <- rgbUMAP(st, pcs =30, conserveSparse = FALSE)
+
+  image <- buildImageArray(st,filterGrid=1, resolution = 100, filterThreshold = 0.99,cores=10)
+
+  #----------------------------------------------------------------------------#
+  # Segment image
+  #----------------------------------------------------------------------------#
+  img <- iterativeSegmentation.array(image,
+      colDepth = 15,
+      box = 10, sigma = 1,
+      method = c("iso","box"))
+  img <- isolateTerritories.array(img, captureRadius = 0.01,minBar =10)
+  emves[[i]] <- img
+  #----------------------------------------------------------------------------#
+  # plotting territories and cell types
+  #----------------------------------------------------------------------------#
+  filename <- paste0("seqFISH_vesalius_",em[i],".pdf")
+  if(em[i] != "embryo3"){
+    pdf(filename, height= 8, width = 18)
+    g1 <-territoryPlot(img,cex = 15,cex.pt=0.8)+
+       theme_void()+
+       theme(legend.text = element_text(size = 12),
+             legend.title = element_text(size=12),
+             plot.title = element_text(size =15),
+             legend.position = "right")+
+      labs(colour= "Territory nr.")
+    ter_col <- length(levels(subCoord$celltype_mapped_refined))
+    ter_pal <- colorRampPalette(brewer.pal(8, "Accent"))
+    ter_col <- ter_pal(ter_col)
+
+    g2 <- ggplot(subCoord,aes(x,y, col = celltype_mapped_refined))+
+          geom_point(size = 0.8,alpha = 0.65)+
+          theme_void() +
+          scale_color_manual(values = ter_col)+
+          theme(legend.text = element_text(size = 12),
+                legend.position='left',
+                plot.title = element_text(size=15),
+                legend.title = element_text(size=12)) +
+          guides(colour = guide_legend(override.aes = list(size=15 * 0.3)))+
+          labs(colour = "Cell Type", title = "SeqFISH Cell Types",
+                x = "X coordinates", y = "Y coordinates")
+
+    print(g2 + g1)
+    dev.off()
+  } else {
+    pdf(filename, height= 8, width = 22)
+    g1 <-territoryPlot(img,cex = 15,cex.pt=0.8)+
+       theme_void()+
+       theme(legend.text = element_text(size = 12),
+             legend.title = element_text(size=12),
+             plot.title = element_text(size =15),
+             legend.position = "right")+
+      labs(colour= "Territory nr.")
+      ter_col <- length(levels(subCoord$celltype_mapped_refined))
+      ter_pal <- colorRampPalette(brewer.pal(8, "Accent"))
+      ter_col <- ter_pal(ter_col)
+
+      g2 <- ggplot(subCoord,aes(x,y, col = celltype_mapped_refined))+
+            geom_point(size = 0.8,alpha = 0.65)+
+            theme_void() +
+            scale_color_manual(values = ter_col)+
+            theme(legend.text = element_text(size = 12),
+                  legend.position='left',
+                  plot.title = element_text(size=15),
+                  legend.title = element_text(size=12)) +
+            guides(colour = guide_legend(override.aes = list(size=15 * 0.3)))+
+            labs(colour = "Cell Type", title = "SeqFISH Cell Types",
+                  x = "X coordinates", y = "Y coordinates")
+
+      print(g2 + g1)
+      dev.off()
+  }
+
+
+}
+```
+
+
+
+
+
 # Visualising Gene expression patterns.
 ## Expression Pattern in the isolated CA Field
 We showed that we recovered the CA2 field in isolated CA territory.
@@ -982,6 +1251,7 @@ dev.off()
 ```
 
 # Territory specific expression patterns within cell types
+## Slide-SeqV2 - Mouse Hippocampus
 Thanks to easy territory isolation, Vesalius can easily compare the expression
 of cells between different anatomical structures. Here, we present how we
 compared the expression of different cell types between anatomical structures in the mouse hippocampus. The data is taken from *Puck_200115_08*. First,
@@ -1123,6 +1393,44 @@ p1 <- viewCellExpression(image = imageBrain ,
 
 print(p + p1)
 dev.off()
+```
+## SeqFISH - Embryo
+Observing the territories obtained in seqFISH data, we noticed that some cell types are divided into different territories. Using Vesalius, we can compare the expression of each territory.
+
+```{r seqFISH_terComp, eval =F, echo = T}
+# em<- paste0("embryo",1:3)
+# for(i in seq_along(emves)){
+#   filename <- paste0("seqFISH_vesalius_split",em[i],".pdf")
+#   pdf(filename, height= 20, width = 20)
+#   g1 <-territoryPlot(emves[[i]],cex = 15,cex.pt=1)+
+#      theme_void()+
+#      facet_wrap(~territory)+
+#      theme(legend.text = element_text(size = 12),
+#            legend.title = element_text(size=12),
+#            plot.title = element_text(size =15),
+#            legend.position = "right")+
+#     labs(colour= "Territory nr.")
+#   print(g1)
+#
+#   dev.off()
+# }
+
+fmh1 <- extractMarkers(emves[[1]],emcounts[[1]], seed = 1, query = 6) %>%
+        arrange(desc(logFC)) %>% head(30)
+
+fmh2 <- extractMarkers(emves[[1]],emcounts[[1]], seed = 1, query = 10) %>%
+        arrange(desc(logFC)) %>% head(30)
+
+fmh3 <- extractMarkers(emves[[1]],emcounts[[1]], seed = 10, query = 6) %>%
+        arrange(desc(logFC)) %>% head(30)
+
+pdf("Fgfr3.pdf")
+viewGeneExpression(emves[[1]],emcounts[[1]],ter=NULL,"Fgfr3")
+dev.off()
+
+
+
+
 ```
 
 # Tissue border expression

@@ -2,7 +2,7 @@
 #------------------------------------------------------------------------------#
 # Running SpaGCN on Simulated data sets for the purpose of benchmarking
 #------------------------------------------------------------------------------#
-import os,csv,re,sys,timeit,time
+import os,csv,re
 import pandas as pd
 import numpy as np
 import scanpy as sc
@@ -11,7 +11,11 @@ import SpaGCN as spg
 from scipy.sparse import issparse
 import random, torch
 import warnings
-from igraph import compare_communities
+import timeit
+import time
+warnings.filterwarnings("ignore")
+torch.set_num_threads(1)
+
 #------------------------------------------------------------------------------#
 # NOTE: Simulated data sets are produced by the simulate.R file and
 # saved as csv files.
@@ -20,18 +24,18 @@ from igraph import compare_communities
 
 # Create output directory
 input = '/home/pcnmartin/group/slide_seqV2/'
-output = os.path.join(input,'spaGCNSim/')
-if !path.exists(output):
+output = os.path.join(input,'spagcnSim/')
+if not os.path.exists(output):
     os.mkdir(output)
 
 # create time file
-time = os.path.join(input,'spaGCNSim/time.txt')
-if !path.exists(time):
+time = os.path.join(input,'spagcnSim/time.txt')
+if not os.path.exists(time):
     ft = open(time,'x').close()
 
 # create performance file
-perf = os.path.join(input,'spaGCNSim/performance.txt')
-if !path.exists(perf):
+perf = os.path.join(input,'spagcnSim/performance.txt')
+if not os.path.exists(perf):
     fp = open(perf,'x').close()
 
 # Listing simulation files
@@ -51,34 +55,31 @@ for i in range(0,len(simFiles)):
     #sim.rows = list(sim["simBarcode"])
     subCounts = counts.loc[:,list(sim["barcodes"])]
     subCounts.columns = list(sim.index)
-    # if re.search("dot",fileTag[i]):
-    #     q = 6
-    # else:
-    #     q = 3
+    if re.search("dot",fileTag[i]):
+         q = 6
+    else:
+         q = 3
     s = timeit.default_timer()
-    adata = sc.AnnData(X :subCounts)
+
+    adata = sc.AnnData(subCounts.T)
     adata.var_names_make_unique()
     ##### read data
-    # adata.obs["x1"]=spatial[1]
-    # adata.obs["x2"]=spatial[2]
-    # adata.obs["x3"]=spatial[3]
-    # adata.obs["x4"]=spatial[4]
-    # adata.obs["x5"]=spatial[5]
-    # adata.obs["x_array"]=adata.obs["x2"]
-    # adata.obs["y_array"]=adata.obs["x3"]
-    # adata.obs["x_pixel"]=adata.obs["x4"]
-    # adata.obs["y_pixel"]=adata.obs["x5"]
-    # adata=adata[adata.obs["x1"]==1]
-    # adata.var_names=[i.upper() for i in list(adata.var_names)]
-    # adata.var["genename"]=adata.var.index.astype("str")
-    # adata.write_h5ad(f"{dir_output}/sample_data.h5ad")
+
+    adata.obs["x_array"]=sim["x"]
+    adata.obs["y_array"]=sim["y"]
+    adata.obs["x_pixel"]=sim["x"]
+    adata.obs["y_pixel"]=sim["y"]
+    x_array=adata.obs["x_array"].tolist()
+    y_array=adata.obs["y_array"].tolist()
+    x_pixel=adata.obs["x_pixel"].tolist()
+    y_pixel=adata.obs["y_pixel"].tolist()
 
     #Calculate adjacent matrix
     b=49
     a=1
     # Check for no image approach!!!!
-    adj=calculate_adj_matrix(x=x_pixel,y=y_pixel, histology=False)
-    np.savetxt(f'{dir_output}/adj.csv', adj, delimiter=',')
+    adj=spg.calculate_adj_matrix(x=x_pixel,y=y_pixel, histology=False)
+
 
 
     ##### Spatial domain detection using SpaGCN
@@ -93,7 +94,11 @@ for i in range(0,len(simFiles)):
 
     p=0.5
     spg.test_l(adj,[1, 10, 100, 500, 1000])
-    l=spg.find_l(p=p,adj=adj,start=100, end=500,sep=1, tol=0.01)
+
+    l=spg.find_l(p=p,adj=adj,start=0, end=2500,sep=0.5, tol=0.01)
+    print(type(l))
+    if l is not np.float64:
+        l=np.float64(10)
 
     r_seed=t_seed=n_seed=100
     res=spg.search_res(adata, adj, l, q, start=0.7, step=0.1, tol=5e-3, lr=0.05, max_epochs=20, r_seed=r_seed,
@@ -117,22 +122,14 @@ for i in range(0,len(simFiles)):
     refined_pred=spg.refine(sample_id=adata.obs.index.tolist(), pred=adata.obs["pred"].tolist(), dis=adj_2d, shape="hexagon")
     adata.obs["refined_pred"]=refined_pred
     adata.obs["refined_pred"]=adata.obs["refined_pred"].astype('category')
+    export = pd.concat([sim,adata.obs["pred"],adata.obs["refined_pred"]], axis =1)
     e = timeit.default_timer() - s
 
-    ftime = fileTag[0] + "," + str(e) + "," + "sec" + "\n"
+    ftime = fileTag[i] + "," + str(e) + "," + "sec" + "\n"
     ft = open(time,'a')
     ft.write(ftime)
     ft.close()
-    ### TO adjust!!!!!!!!
-    ### Should I run this in R? Make sure that the same package is used
-    ### in all cases
-    #ari = compare_communities(comm1,comm2,method = "adjusted_rand")
-    #vi = compare_communities(comm1,comm2,method = "vi")
-    fperf = fileTag[0] + "," + str(ari) + "," + str(vi) + "\n"
-    fp = open(perf,'a')
-    fp.write(fperf)
-    fp.close()
-    #Save results
-    adata.write_h5ad(f"{dir_output}/results.h5ad")
 
-    adata.obs.to_csv(f'{dir_output}/metadata.tsv', sep='\t')
+    filename = 'SpaGCN_' + fileTag[i] + ".csv"
+    filename = os.path.join(output,filename)
+    export.to_csv(filename)

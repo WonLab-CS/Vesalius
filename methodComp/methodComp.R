@@ -416,13 +416,119 @@ s2s
 dev.off()
 
 #------------------------------------------------------------------------------#
+# scoring of STAGATE
+#------------------------------------------------------------------------------#
+input <- "~/group/slide_seqV2"
+files <- list.files(paste0(input,"/stagateSim"), pattern =".csv",full.names=T)
+fileTag <- list.files(paste0(input,"/stagateSim"), pattern =".csv",full.names=F)
+perf <- paste0(input,"/stagateSim/performance.txt")
+if(!file.exists(perf)){
+    file.create(perf)
+}
+for(i in seq_along(files)){
+    tmp <- read.csv(files[i], header=T)
+    ari <- adjustedRandIndex(tmp$ter,tmp$louvain)
+    vi <- vi.dist(tmp$ter,tmp$louvain)
+    fperf <- paste0(fileTag[i],",",ari,",",vi,"\n")
+    cat(fperf, file = perf, append = TRUE)
+}
+
+perf <- read.table(paste0(input,"/stagateSim/performance.txt"), sep =",")
+tag <- sapply(strsplit(perf$V1,"_"),"[",4:6)
+tag <- apply(tag,2, paste0, sep =" ", collapse ="")
+perf$V1 <- tag
+
+#------------------------------------------------------------------------------#
+# scoring of SpaGCN
+#------------------------------------------------------------------------------#
+input <- "~/group/slide_seqV2"
+files <- list.files(paste0(input,"/spagcnSim"), pattern =".csv",full.names=T)
+fileTag <- list.files(paste0(input,"/spagcnSim"), pattern =".csv",full.names=F)
+perf <- paste0(input,"/spagcnSim/performance.txt")
+if(!file.exists(perf)){
+    file.create(perf)
+}
+for(i in seq_along(files)){
+    tmp <- read.csv(files[i], header=T)
+    ari <- adjustedRandIndex(tmp$ter,tmp$refined_pred)
+    vi <- vi.dist(tmp$ter,tmp$refined_pred)
+    fperf <- paste0(fileTag[i],",",ari,",",vi,"\n")
+    cat(fperf, file = perf, append = TRUE)
+}
+
+#perf <- read.table(paste0(input,"/spagcnSim/performance.txt"), sep =",")
+#tag <- sapply(strsplit(perf$V1,"_"),"[",4:6)
+#tag <- apply(tag,2, paste0, sep =" ", collapse ="")
+#perf$V1 <- tag
+
+
+#------------------------------------------------------------------------------#
+# Combine performances
+#------------------------------------------------------------------------------#
+input <- "~/group/slide_seqV2"
+methods <- c("vesaliusSim","bayesSim","giottoSim","seuratSim","stagateSim","spagcnSim")
+
+perf <- paste0(input,"/",methods,"/performance.txt")
+performance <- data.frame("method" = character(),
+                          "regime" = character(),
+                          "ARI" = numeric(),
+                          "VI" = numeric())
+for(i in seq_along(perf)){
+    tmp <- read.table(perf[i], sep =",")
+    if(methods[i] == "stagateSim" | methods[i] == "spagcnSim"){
+      tag <- gsub(".csv","",tmp$V1)
+      tag <- sapply(strsplit(tmp$V1,"_"),"[",3:5)
+      tag <- apply(tag,2, paste0, sep =" ", collapse ="")
+    } else {
+      tag <- gsub(".csv","",tmp$V1)
+      tag <- sapply(strsplit(tmp$V1,"_"),"[",2:4)
+      tag <- apply(tag,2, paste0, sep =" ", collapse ="")
+    }
+    df <- data.frame("method" = rep(gsub("Sim","",methods[i]),nrow(tmp)),
+                     "regime" = tag,
+                     "ARI" = tmp$V2,
+                     "VI" = tmp$V3)
+    performance <- rbind(performance,df)
+
+}
+performance$method <- as.factor(performance$method)
+performance$regime <- as.factor(performance$regime)
+
+
+#------------------------------------------------------------------------------#
+# Plotting performance
+#------------------------------------------------------------------------------#
+cols <- c("#999999", "#E69F00", "#56B4E9", "#009E73",
+          "#F0E442", "#0072B2", "#D55E00", "#CC79A7")[c(3,4,5,6,7,8)]
+
+ari <- ggplot(performance, aes(method,ARI,fill = method)) +
+       geom_boxplot()+
+       scale_fill_manual(values=cols)+
+       theme_light()+
+       facet_wrap(~regime)
+vi <- ggplot(performance, aes(method,VI,fill = method)) +
+      geom_boxplot()+
+      scale_fill_manual(values=cols)+
+      theme_light()+
+      facet_wrap(~regime)
+
+pdf("ari.pdf", width = 14, height = 10)
+print(ari)
+dev.off()
+
+pdf("vi.pdf", width = 14, height = 10)
+print(vi)
+dev.off()
+
+#------------------------------------------------------------------------------#
 # Simulation scores for all regimes
 # Figure 2g
 #------------------------------------------------------------------------------#
 
+
+
 performance$Method <- as.factor(performance$Method)
-cols <- c("#999999", "#E69F00", "#56B4E9", "#009E73",
-          "#F0E442", "#0072B2", "#D55E00", "#CC79A7")[c(3,4,7,8)]
+
 
 g <- ggplot(performance, aes(x = Method, y= ARI,fill = Method)) +
   geom_boxplot()+

@@ -2,18 +2,30 @@
 #------------------------------------------------------------------------------#
 # Running STAGATE on Simulated data sets for the purpose of benchmarking
 #------------------------------------------------------------------------------#
+import os
+os.environ["OMP_NUM_THREADS"] = "1" # export OMP_NUM_THREADS=1
+os.environ["OPENBLAS_NUM_THREADS"] = "1" # export OPENBLAS_NUM_THREADS=1
+os.environ["MKL_NUM_THREADS"] = "1" # export MKL_NUM_THREADS=1
+os.environ["VECLIB_MAXIMUM_THREADS"] = "1" # export VECLIB_MAXIMUM_THREADS=1
+os.environ["NUMEXPR_NUM_THREADS"] = "1" # export NUMEXPR_NUM_THREADS=1
 import re
 import pandas as pd
 import numpy as np
 import scanpy as sc
-import matplotlib.pyplot as plt
-import os
+#import matplotlib.pyplot as plt
+
 import sys
 import STAGATE
 import timeit
 import time
 
 
+import tensorflow as tf
+
+session_conf = tf.compat.v1.ConfigProto(
+      intra_op_parallelism_threads=1,
+      inter_op_parallelism_threads=1)
+sess = tf.compat.v1.Session(config=session_conf)
 
 from igraph import compare_communities
 
@@ -26,17 +38,17 @@ from igraph import compare_communities
 # Create output directory
 input = '/home/pcnmartin/group/slide_seqV2/'
 output = os.path.join(input,'stagateSim/')
-if !path.exists(output):
+if not os.path.exists(output):
     os.mkdir(output)
 
 # create time file
 time = os.path.join(input,'stagateSim/time.txt')
-if !path.exists(time):
+if not os.path.exists(time):
     ft = open(time,'x').close()
 
 # create performance file
 perf = os.path.join(input,'stagateSim/performance.txt')
-if !path.exists(perf):
+if not os.path.exists(perf):
     fp = open(perf,'x').close()
 
 # Listing simulation files
@@ -63,9 +75,9 @@ for i in range(0,len(simFiles)):
     # else:
     #     q = 3
     s = timeit.default_timer()
-    adata = sc.AnnData(X :subCounts)
+    adata = sc.AnnData(subCounts.T,dtype = np.float32)
     adata.var_names_make_unique()
-    coord_df = sim.loc[:, ['x', 'y','ter']]
+    coord_df = sim.loc[:, ['x', 'y']]
     adata.obsm["spatial"] = coord_df.to_numpy()
     sc.pp.calculate_qc_metrics(adata, inplace=True)
     sc.pp.highly_variable_genes(adata, flavor="seurat_v3", n_top_genes=2000)
@@ -80,23 +92,23 @@ for i in range(0,len(simFiles)):
     sc.pp.neighbors(adata, use_rep='STAGATE')
     sc.tl.umap(adata)
     sc.tl.louvain(adata, resolution=0.5)
-    adata.obsm["spatial"] = adata.obsm["spatial"] * (-1)
+    export = pd.concat([sim,adata.obs["louvain"]], axis =1)
 
     e = timeit.default_timer() - s
-    ftime = fileTag[0] + "," + str(e) + "," + "sec" + "\n"
+    ftime = fileTag[i] + "," + str(e) + "," + "sec" + "\n"
     ft = open(time,'a')
     ft.write(ftime)
     ft.close()
     ### TO adjust!!!!!!!!
     ### Should I run this in R? Make sure that the same package is used
     ### in all cases
-    #ari = compare_communities(comm1,comm2,method = "adjusted_rand")
-    #vi = compare_communities(comm1,comm2,method = "vi")
-    fperf = fileTag[0] + "," + str(ari) + "," + str(vi) + "\n"
-    fp = open(perf,'a')
-    fp.write(fperf)
-    fp.close()
 
-    export = adata.obsm["spatial"]
-    filename = os.path.join(output,'/STAGATE_',fileTag[i])
+
+    #fperf = fileTag[0] + "," + str(ari) + "," + str(vi) + "\n"
+    #fp = open(perf,'a')
+    #fp.write(fperf)
+    #fp.close()
+
+    filename = 'STAGATE_' + fileTag[i] + ".csv"
+    filename = os.path.join(output,filename)
     export.to_csv(filename)
