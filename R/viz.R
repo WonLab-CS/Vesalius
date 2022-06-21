@@ -107,7 +107,10 @@ territoryPlot <- function(territories,
     #--------------------------------------------------------------------------#
 
     sorted_labels <- order(levels(as.factor(ter$territory)))
-    sorted_labels[length(sorted_labels)] <- "isolated"
+    if(any(grepl("isolated",ter$territory))){
+      sorted_labels[length(sorted_labels)] <- "isolated"
+    }
+
     ter$territory <- factor(ter$territory, levels = sorted_labels)
 
 
