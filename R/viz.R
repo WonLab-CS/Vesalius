@@ -100,8 +100,7 @@ territoryPlot <- function(territories,
     # At the moment - I thinking the user should make their own
     # Not a prority for custom plotting functions
     #--------------------------------------------------------------------------#
-    ter <- territories %>% filter(tile==1) %>%
-           distinct(barcodes, .keep_all =TRUE)
+    ter <- territories %>% filter(tile==1) 
     #--------------------------------------------------------------------------#
     # Changing label order because factor can suck ass sometimes
     #--------------------------------------------------------------------------#

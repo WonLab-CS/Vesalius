@@ -781,15 +781,24 @@ tmpImage <- isolateTerritories.array(tmpImage,minBar=5,captureRadius = 0.035)
 #------------------------------------------------------------------------------#
 # Get single slice for plotting example
 #------------------------------------------------------------------------------#
-plotTmp <- filter(tmpImage, x > 800 & x < 1700)
-
-for(i in seq_len(length(unique(plotTmp$territory)))){
-  print(i)
-    plotTmp$territory[plotTmp$territory == unique(plotTmp$territory)[i]] <- i
+plotTmp <- filter(tmpImage, x > 800 & x < 1700 & tile ==1)
+uniter <- unique(plotTmp$territory)
+count <- 1
+#------------------------------------------------------------------------------#
+# As we ran Vesalius on all slice we can select the slice we want to visualise
+# For clarity we re-label the territories
+#------------------------------------------------------------------------------#
+for(i in seq_along(uniter)){
+  if(uniter[i] == "isolated"){
+      next
+  }else{
+    plotTmp$territory[plotTmp$territory == unique(plotTmp$territory)[i]] <- count
+  }
+  count <- count +1
 }
 
 pdf("seqScopeTerLiver.pdf", width = 7, height=6)
-g <-territoryPlot(plotTmp,cex = 15,cex.pt=2)+
+g <-territoryPlot(plotTmp,cex = 15,cex.pt=1.8)+
    theme_void()+
    theme(legend.text = element_text(size = 12),
          legend.title = element_text(size=12),
@@ -846,13 +855,24 @@ tmpImage <- isolateTerritories.array(tmpImage,minBar=5,captureRadius = 0.035)
 #------------------------------------------------------------------------------#
 
 plotTmp <- filter(tmpImage, x > 4500 & y >900)
-for(i in seq_len(length(unique(plotTmp$territory)))){
-  print(i)
-    plotTmp$territory[plotTmp$territory == unique(plotTmp$territory)[i]] <- i
+uniter <- unique(plotTmp$territory)
+count <- 1
+#------------------------------------------------------------------------------#
+# As we ran Vesalius on all slice we can select the slice we want to visualise
+# For clarity we re-label the territories
+#------------------------------------------------------------------------------#
+for(i in seq_along(uniter)){
+  if(uniter[i] == "isolated"){
+      next
+  }else{
+    plotTmp$territory[plotTmp$territory == unique(plotTmp$territory)[i]] <- count
+  }
+  count <- count +1
 }
 
+
 pdf("seqScopeTerColon.pdf", width = 7, height=6)
-g1 <-territoryPlot(plotTmp,cex = 15,cex.pt=2)+
+g1 <-territoryPlot(plotTmp,cex = 15,cex.pt=1.8)+
    theme_void()+
    theme(legend.text = element_text(size = 12),
          legend.title = element_text(size=12),
