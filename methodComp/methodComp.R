@@ -115,9 +115,12 @@ dev.off()
 seurat <- get(load("~/group/slide_seqV2/SeuratBenchMarking/Puck_200115_08_SSV2_BM.Rda"))
 ter_col <- length(unique(seurat$seurat_clusters))
 ter_pal <- colorRampPalette(brewer.pal(8, "Accent"))
-ter_col <- ter_pal(ter_col)
+#ter_pal <- colorRampPalette(c("#999999", "#E69F00", "#56B4E9", "#009E73",
+#          "#F0E442", "#0072B2", "#D55E00", "#CC79A7"))
+ter_col <- ter_pal(ter_col)[sample(seq_len(ter_col),ter_col)]
+#ter_col <- viridis(ter_col)
 s1 <- ggplot(data = seurat,aes(x = x,y=y, col = as.factor(seurat_clusters)))+
-      geom_point(size = 0.2, alpha = 0.65)+
+      geom_point(size = 0.2, alpha = 1)+
       theme_void() +
       scale_color_manual(values = ter_col)+
       theme(legend.text = element_text(size = 12),
@@ -295,12 +298,12 @@ ari <- ggplot(performance, aes(method,ARI,fill = method)) +
        scale_fill_manual(values=cols)+
        theme_bw()+
        facet_wrap(~regime)+
-       stat_compare_means(method = "anova", label.y = 1)+      # Add global p-value
+       stat_compare_means(method = "anova", label.y = 1.15,label.x ="Seurat")+      # Add global p-value
        stat_compare_means(label = "p.signif", method = "t.test",
-                     ref.group = "Vesalius",hide.ns = TRUE)+
+                     ref.group = "Vesalius",hide.ns = TRUE,label.y=1)+
        theme(legend.text = element_text(size = 12),
-                           axis.text = element_text(size = 15),
-                           axis.title = element_text(size = 15),
+                           axis.text = element_text(size = 10),
+                           axis.title = element_text(size = 10),
                            plot.tag = element_text(size=15),
                            plot.title = element_text(size=15),
                            legend.title = element_text(size=15),
@@ -311,16 +314,16 @@ ari <- ggplot(performance, aes(method,ARI,fill = method)) +
 
 vi <- ggplot(performance, aes(method,VI,fill = method)) +
       geom_boxplot()+
-      ylim(-0.2,7.5)+
+      ylim(-0.2,8)+
       scale_fill_manual(values=cols)+
       theme_bw()+
       facet_wrap(~regime)+
-      stat_compare_means(method = "anova", label.y = 6)+      # Add global p-value
+      stat_compare_means(method = "anova", label.y = 7.5,label.x ="Seurat")+      # Add global p-value
       stat_compare_means(label = "p.signif", method = "t.test",
-                    ref.group = "Vesalius",hide.ns = TRUE)+
+                    ref.group = "Vesalius",hide.ns = TRUE,label.y = 6.7)+
       theme(legend.text = element_text(size = 15),
-            axis.text = element_text(size = 15),
-            axis.title = element_text(size = 15),
+            axis.text = element_text(size = 10),
+            axis.title = element_text(size = 10),
             plot.tag = element_text(size=15),
             plot.title = element_text(size=15),
             legend.title = element_text(size=15),
@@ -329,86 +332,80 @@ vi <- ggplot(performance, aes(method,VI,fill = method)) +
       guides(colour = guide_legend(override.aes = list(size=5)))+
       labs(fill = " ",y = "Variation of Information",x="")
 
-pdf("ari.pdf", width = 15, height = 9)
+pdf("ari.pdf", width = 9, height = 9)
 print(ari)
 dev.off()
 
-pdf("vi.pdf", width = 15, height = 9)
+pdf("vi.pdf", width = 9, height = 9)
 print(vi)
 dev.off()
 
-#------------------------------------------------------------------------------#
-# Simulation scores for all regimes
-# Figure 2g
-#------------------------------------------------------------------------------#
 
-
-
-performance$Method <- as.factor(performance$Method)
-
-
-g <- ggplot(performance, aes(x = Method, y= ARI,fill = Method)) +
-  geom_boxplot()+
-  scale_fill_manual(values=cols)+
-  theme_minimal()+
-  theme(axis.text = element_text(size = 15),
-        axis.title = element_text(size = 15),
-        legend.text = element_text(size =15)) +
-  #guides(colour = guide_legend(override.aes = list(size=4)))+
-  labs(x = "", y = "ARI",fill = " ")
-
-pdf("MethodCompSim_ARI.pdf",width = 7, height = 3.5)
-print(g)
-dev.off()
-
-g1 <- ggplot(performance, aes(x = Method, y= viDist,fill = Method)) +
-  geom_boxplot()+
-  scale_fill_manual(values=cols)+
-  theme_minimal()+
-  theme(axis.text = element_text(size = 15),
-        axis.title = element_text(size = 15),
-        legend.text = element_text(size =15)) +
-  #guides(colour = guide_legend(override.aes = list(size=4)))+
-  labs(x = "", y = "Variation of information",fill = " ")
-
-pdf("MethodCompSim_viDist.pdf",width = 7, height = 3.5)
-print(g1)
-dev.off()
 
 #------------------------------------------------------------------------------#
 # Simulation run times Figure 2h
 #------------------------------------------------------------------------------#
-convertToSecs <- function(x){
-    u <- units(x)
-    if(u == "mins"){
-        return(as.numeric(x) *60)
-    }else if(u == "hours"){
-        return(as.numeric(x) * 60 * 60)
-    } else {
-        stop("what this?")
+
+library(stringr)
+input <- "~/group/slide_seqV2"
+methods <- c("vesaliusSim","bayesSim","giottoSim","seuratSim","stagateSim","spagcnSim","sedrSim")
+
+time <- paste0(input,"/",methods,"/time.txt")
+runTime <- data.frame("method" = character(),
+                          "regime" = character(),
+                          "time" = numeric(),
+                          "unit" = character())
+for(i in seq_along(time)){
+    tmp <- read.table(time[i], sep =",")
+    colnames(tmp) <- c("regime","time","unit")
+    tag <- gsub(".csv","",tmp$regime)
+    tag <- sapply(strsplit(tmp$regime,"_"),"[",2:4)
+    tag <- apply(tag,2, paste0, sep =" ", collapse ="")
+    ## Convert to munites
+    if(all(tmp$unit == "hours")){
+        tmp$time <- tmp$time * 60
+        tmp$unit <- "minutes"
+    } else if(all(tmp$unit == "sec")){
+        tmp$time <- tmp$time/60
+        tmp$unit <- "minutes"
     }
+    meth <- str_to_title(rep(gsub("Sim","",methods[i]),nrow(tmp)))
+    df <- data.frame("method" = meth,
+                     tmp)
+    runTime <- rbind(runTime,df)
 
 }
+runTime$method <- as.factor(runTime$method)
+runTime$regime <- as.factor(runTime$regime)
 
-#### changing to minutes for now
-df$time <- df$time / 60
+library(ggplot2)
+library(ggpubr)
 
-df$method <- as.factor(df$method)
 cols <- c("#999999", "#E69F00", "#56B4E9", "#009E73",
-          "#F0E442", "#0072B2", "#D55E00", "#CC79A7")[c(3,4,7,8)]
+          "#F0E442", "#0072B2", "#D55E00", "#CC79A7")[c(2,3,4,5,6,7,8)]
+runTime$time <- log(runTime$time)
+ti <- ggplot(runTime, aes(method,time,fill = method)) +
+       geom_boxplot()+
+       scale_fill_manual(values=cols)+
+       theme_bw()+
+       #facet_wrap(~regime)+
+       #stat_compare_means(method = "anova", label.y = 1.15)+      # Add global p-value
+       #stat_compare_means(label = "p.signif", method = "t.test",
+        #             ref.group = "Vesalius",hide.ns = TRUE,label.y=1)+
+       theme(legend.text = element_text(size = 12),
+              legend.position = "bottom",
+                           axis.text = element_text(size = 15),
+                           axis.title = element_text(size = 15),
+                           plot.tag = element_text(size=15),
+                           plot.title = element_text(size=15),
+                           legend.title = element_text(size=15),
+                           strip.text.x = element_text(size = 15),
+                          axis.text.x=element_text(angle=45,hjust=1)) +
+       guides(colour = guide_legend(override.aes = list(size=5)))+
+       labs(fill = " ",y = "Log(Time in minutes)",x="")
 
-g <- ggplot(df, aes(x = method, y= time,fill = method)) +
-  geom_boxplot()+
-  scale_fill_manual(values=cols)+
-  theme_minimal()+
-  theme(axis.text = element_text(size = 15),
-        axis.title = element_text(size = 15),
-        legend.text = element_text(size =15)) +
-  #guides(colour = guide_legend(override.aes = list(size=4)))+
-  labs(x = "", y = "Time in Minutes",fill = " ")
-
-pdf("~/Vesalius/MethodCompSim_time.pdf",width = 7, height = 3.5)
-print(g)
+pdf("~/Vesalius/MethodCompSim_time.pdf",width = 7, height = 4.5)
+print(ti)
 dev.off()
 
 
@@ -418,173 +415,266 @@ dev.off()
 # Figure 2i
 #------------------------------------------------------------------------------#
 library(ggplot2)
+library(stringr)
 library(patchwork)
 library(dplyr)
 library(grid)
 library(RColorBrewer)
 
-files <- list.files(pattern = ".csv")
+input <- "~/group/slide_seqV2"
+methods <- c("vesaliusSim","bayesSim","giottoSim","seuratSim","stagateSim","spagcnSim","sedrSim")
+
+sim <- list.files("~/Vesalius/Simulation", pattern = ".csv",full.names=T)
+
+predictions <- paste0(input,"/",methods)
+predictions <- lapply(predictions,function(x){return(list.files(x,pattern=".csv",full.names=T))})
+names(predictions) <- str_to_title(gsub("Sim","",methods))
 
 
-plots <- vector("list", length(files))
-plotNames <- rep("Simulation", length(files))
-for(i in seq_along(files)){
-    tmp <- read.csv(files[i], header=T)
-    tag <- sapply(strsplit(files[i],"_"),"[[",1)
-    title <- gsub("_"," ",files[i])
-    title <- gsub(".csv","",title)
-    plotNames[i] <- title
-    if(tag == "Seurat"){
-        seurat <- tmp[,c("x","y","seurat_clusters")]
-        seurat$seurat_clusters <- as.factor(as.numeric(as.character(seurat$seurat_clusters))+1)
 
-        cols <- length(levels(seurat$seurat_clusters))
-        pal <- colorRampPalette(c("#999999", "#E69F00", "#56B4E9", "#009E73",
-                                        "#F0E442", "#0072B2", "#D55E00", "#CC79A7"))
-        cols <- pal(cols)#[sample(1:cols)]
+generateSimPlots <- function(sim,predictions){
+    n_plots <- length(sim) + sum(sapply(predictions, length))
+    plotList <- vector("list", n_plots)
+    count <- 1
+    for(i in seq_along(sim)){
+        simTmp <- read.csv(sim[i], header=T)
+        simTag <- strsplit(sim[i],"Simulation/")[[1]][2]
+        tag <- gsub(".csv","",simTag)
+        tag <- sapply(strsplit(tag,"_"),"[",2:5)
+        tag <- apply(tag,2, paste0, sep =" ", collapse ="")
+        ter_col <- length(unique(simTmp$ter))
+        if(ter_col <= 8){
+          ter_pal <- colorRampPalette(brewer.pal(ter_col, "Accent"))
+        } else {
+          ter_pal <- colorRampPalette(brewer.pal(8, "Accent"))
+        }
 
+        ter_col <- ter_pal(ter_col)
+        g <- ggplot(simTmp, aes(x,y, col = as.factor(ter)))+
+                             geom_point(size =0.25)+
+                             scale_color_manual(values = ter_col)+
+                             theme_void()+
+                             theme(legend.text = element_text(size = 8),
+                                   legend.title = element_text(size=8),
+                                   plot.title = element_text(size =10),
+                                   legend.position = "left")+
+                             guides(colour = guide_legend(override.aes = list(size=3)))+
+                             labs(title = paste("Ground Truth",str_to_title(tag)), col = "Ter.")
+        plotList[[count]] <-g
+        count <- count +1
+        for(j in seq_along(predictions)){
+            predTmp <- grep(pattern = simTag,x=predictions[[j]], value = T)
+            predTmp <- read.csv(predTmp,header=T)
+            if(names(predictions)[j] == "Vesalius"){
+              ter_col <- length(unique(predTmp$territory))
+              if(ter_col <= 8){
+                ter_pal <- colorRampPalette(brewer.pal(ter_col, "Accent"))
+              } else {
+                ter_pal <- colorRampPalette(brewer.pal(8, "Accent"))
+              }
 
-        seu <- ggplot(seurat, aes(x,y,col = as.factor(seurat_clusters))) +
-             geom_point(size = 1.5,alpha = 1)+
-             theme_void()+
-             scale_color_manual(values = cols)+
-             theme(legend.text = element_text(size = 10),
-                   legend.title = element_text(size=10),
-                   plot.title = element_text(size =12),
-                   legend.position = "right",
-                   plot.margin = margin(0.5, 0.5, 0.5, 0.5, "cm"))+
-             labs(title = title, col = "Cluster")+
-             guides(colour = guide_legend(override.aes = list(size=3)))
-        plots[[i]] <- seu
-    } else if(tag == "Vesalius"){
+              ter_col <- ter_pal(ter_col)
+              g <- ggplot(predTmp, aes(x,y, col = as.factor(territory)))+
+                                   geom_point(size =0.25)+
+                                   scale_color_manual(values = ter_col)+
+                                   theme_void()+
+                                   theme(legend.text = element_text(size = 8),
+                                         legend.title = element_text(size=8),
+                                         plot.title = element_text(size =10),
+                                         legend.position = "none")+
+                                   guides(colour = guide_legend(override.aes = list(size=3)))+
+                                   labs(title = paste(names(predictions)[j],str_to_title(tag)), col = "Ter.")
+              plotList[[count]] <-g
+              count <- count +1
 
-        vesalius <- tmp %>% filter(tile == 1) %>% distinct(barcodes,.keep_all = TRUE)
+            } else if(names(predictions)[j] == "Seurat"){
+              ter_col <- length(unique(predTmp$seurat_clusters))
+              if(ter_col <= 8){
+                ter_pal <- colorRampPalette(brewer.pal(ter_col, "Accent"))
+              } else {
+                ter_pal <- colorRampPalette(brewer.pal(8, "Accent"))
+              }
 
+              ter_col <- ter_pal(ter_col)
+              g <- ggplot(predTmp, aes(x,y, col = as.factor(seurat_clusters)))+
+                                   geom_point(size =0.25)+
+                                   scale_color_manual(values = ter_col)+
+                                   theme_void()+
+                                   theme(legend.text = element_text(size = 8),
+                                         legend.title = element_text(size=8),
+                                         plot.title = element_text(size =10),
+                                         legend.position = "none")+
+                                   guides(colour = guide_legend(override.aes = list(size=3)))+
+                                   labs(title = paste(names(predictions)[j],str_to_title(tag)), col = "Ter.")
+              plotList[[count]] <-g
+              count <- count +1
 
-        cols <- length(unique(vesalius$territory))
-        pal <- colorRampPalette(c("#999999", "#E69F00", "#56B4E9", "#009E73",
-                                        "#F0E442", "#0072B2", "#D55E00", "#CC79A7"))
-        cols <- pal(cols)[sample(1:cols)]
+            } else if(names(predictions)[j] == "Bayes"){
+              ter_col <- length(unique(predTmp$spatial.cluster))
+              if(ter_col <= 8){
+                ter_pal <- colorRampPalette(brewer.pal(ter_col, "Accent"))
+              } else {
+                ter_pal <- colorRampPalette(brewer.pal(8, "Accent"))
+              }
 
+              ter_col <- ter_pal(ter_col)
+              g <- ggplot(predTmp, aes(col,row, col = as.factor(spatial.cluster)))+
+                                   geom_point(size =0.25)+
+                                   scale_color_manual(values = ter_col)+
+                                   theme_void()+
+                                   theme(legend.text = element_text(size = 8),
+                                         legend.title = element_text(size=8),
+                                         plot.title = element_text(size =10),
+                                         legend.position = "none")+
+                                   guides(colour = guide_legend(override.aes = list(size=3)))+
+                                   labs(title = paste0(names(predictions)[j],"Space ",str_to_title(tag)), col = "Ter.")
+              plotList[[count]] <-g
+              count <- count +1
+            } else if(names(predictions)[j] == "Giotto"){
+              ter_col <- length(unique(predTmp[,ncol(predTmp)]))
+              if(ter_col <= 8){
+                ter_pal <- colorRampPalette(brewer.pal(ter_col, "Accent"))
+              } else {
+                ter_pal <- colorRampPalette(brewer.pal(8, "Accent"))
+              }
 
-        ves <- ggplot(vesalius, aes(x,y,col = as.factor(territory))) +
-             geom_point(size = 1.5,alpha = 1)+
-             theme_void()+
-             scale_color_manual(values = cols)+
-             theme(legend.text = element_text(size = 10),
-                   legend.title = element_text(size=10),
-                   plot.title = element_text(size =12),
-                   legend.position = "right",
-                   plot.margin = margin(0.5, 0.5, 0.5, 0.5, "cm"))+
-             labs(title = title, col = "Territory")+
-             guides(colour = guide_legend(override.aes = list(size=3)))
-        plots[[i]] <- ves
-    }else if(tag == "BayesSpace"){
-        bayes <- tmp[,c("col","row","spatial.cluster")]
-        cols <- length(unique(bayes$spatial.cluster))
-        pal <- colorRampPalette(c("#999999", "#E69F00", "#56B4E9", "#009E73",
-                                        "#F0E442", "#0072B2", "#D55E00", "#CC79A7"))
-        cols <- pal(cols)#[sample(1:cols)]
+              ter_col <- ter_pal(ter_col)
+              if(grepl("dot",tag)){
+                g <- ggplot(predTmp, aes(x,y, col = as.factor(HMRF_k6_b.40)))
 
+              }else{
+                g <- ggplot(predTmp, aes(x,y, col = as.factor(HMRF_k3_b.40)))
 
-        bay <- ggplot(bayes, aes(col,row,col = as.factor(spatial.cluster))) +
-             geom_point(size = 1.5,alpha = 1)+
-             theme_void()+
-             scale_color_manual(values = cols)+
-             theme(legend.text = element_text(size = 10),
-                   legend.title = element_text(size=10),
-                   plot.title = element_text(size =12),
-                   legend.position = "right",
-                   plot.margin = margin(0.5, 0.5, 0.5, 0.5, "cm"))+
-             labs(title = title, col = "Spatial Cluster")+
-             guides(colour = guide_legend(override.aes = list(size=3)))
-        plots[[i]] <- bay
-    }else if(tag == "Giotto"){
-      # If everything is NA assign a single territory.
-      # Giotto does not work in some case and I have no idea why.
-      if(all(is.na(tmp$HMRF_k3_b.40))){
-          tmp$HMRF_k3_b.40 <- 1
-      }
-      cols <- length(unique(tmp$HMRF_k3_b.40))
-      pal <- colorRampPalette(c("#999999", "#E69F00", "#56B4E9", "#009E73",
-                                      "#F0E442", "#0072B2", "#D55E00", "#CC79A7"))
-      cols <- pal(cols)#[sample(1:cols)]
+              }
 
+                g <- g + geom_point(size =0.25)+
+                         scale_color_manual(values = ter_col)+
+                                   theme_void()+
+                                   theme(legend.text = element_text(size = 8),
+                                         legend.title = element_text(size=8),
+                                         plot.title = element_text(size =10),
+                                         legend.position = "none")+
+                                   guides(colour = guide_legend(override.aes = list(size=3)))+
+                                   labs(title = paste(names(predictions)[j],str_to_title(tag)), col = "Ter.")
+              plotList[[count]] <-g
+              count <- count +1
 
-      gio <- ggplot(tmp, aes(xcoord,ycoord,col = as.factor(HMRF_k3_b.40))) +
-           geom_point(size = 1.5,alpha = 1)+
-           theme_void()+
-           scale_color_manual(values = cols)+
-           theme(legend.text = element_text(size = 10),
-                 legend.title = element_text(size=10),
-                 plot.title = element_text(size =12),
-                 legend.position = "right",
-                 plot.margin = margin(0.5, 0.5, 0.5, 0.5, "cm"))+
-           labs(title = title, col = "Spatial Domain")+
-           guides(colour = guide_legend(override.aes = list(size=3)))
-        plots[[i]] <- gio
-    } else{
-      message("No idea what this is...")
+            }else if(names(predictions)[j] == "Stagate"){
+              ter_col <- length(unique(predTmp$louvain))
+              if(ter_col <= 8){
+                ter_pal <- colorRampPalette(brewer.pal(ter_col, "Accent"))
+              } else {
+                ter_pal <- colorRampPalette(brewer.pal(8, "Accent"))
+              }
+
+              ter_col <- ter_pal(ter_col)
+              g <- ggplot(predTmp, aes(x,y, col = as.factor(louvain)))+
+                                   geom_point(size =0.25)+
+                                   scale_color_manual(values = ter_col)+
+                                   theme_void()+
+                                   theme(legend.text = element_text(size = 8),
+                                         legend.title = element_text(size=8),
+                                         plot.title = element_text(size =10),
+                                         legend.position = "none")+
+                                   guides(colour = guide_legend(override.aes = list(size=3)))+
+                                   labs(title = paste(names(predictions)[j],str_to_title(tag)), col = "Ter.")
+                plotList[[count]] <-g
+                count <- count +1
+            } else if(names(predictions)[j] == "Spagcn"){
+              ter_col <- length(unique(predTmp$refined_pred))
+              if(ter_col <= 8){
+                ter_pal <- colorRampPalette(brewer.pal(ter_col, "Accent"))
+              } else {
+                ter_pal <- colorRampPalette(brewer.pal(8, "Accent"))
+              }
+
+              ter_col <- ter_pal(ter_col)
+              g <- ggplot(predTmp, aes(x,y, col = as.factor(refined_pred)))+
+                                   geom_point(size =0.25)+
+                                   scale_color_manual(values = ter_col)+
+                                   theme_void()+
+                                   theme(legend.text = element_text(size = 8),
+                                         legend.title = element_text(size=8),
+                                         plot.title = element_text(size =10),
+                                         legend.position = "none")+
+                                   guides(colour = guide_legend(override.aes = list(size=3)))+
+                                   labs(title = paste(names(predictions)[j],str_to_title(tag)), col = "Ter.")
+                plotList[[count]] <-g
+                count <- count +1
+
+            } else if (names(predictions)[j] == "Sedr"){
+              ter_col <- length(unique(predTmp$SEDR_leiden))
+              if(ter_col <= 8){
+                ter_pal <- colorRampPalette(brewer.pal(ter_col, "Accent"))
+              } else {
+                ter_pal <- colorRampPalette(brewer.pal(8, "Accent"))
+              }
+
+              ter_col <- ter_pal(ter_col)
+              g <- ggplot(predTmp, aes(x,y, col = as.factor(SEDR_leiden)))+
+                                   geom_point(size =0.25)+
+                                   scale_color_manual(values = ter_col)+
+                                   theme_void()+
+                                   theme(legend.text = element_text(size = 8),
+                                         legend.title = element_text(size=8),
+                                         plot.title = element_text(size =10),
+                                         legend.position = "none")+
+                                   guides(colour = guide_legend(override.aes = list(size=3)))+
+                                   labs(title = paste(names(predictions)[j],str_to_title(tag)), col = "Ter.")
+              plotList[[count]] <-g
+              count <- count +1
+            } else {
+              stop("don't know what this is")
+            }
+        }
     }
+    return(plotList)
 }
-names(plots) <- plotNames
 
 
-# Get main manuscript plots
-purePlots <- plots[grepl("rep6",plotNames) & grepl("pure", plotNames)]
-uniformPlots <- plots[grepl("rep6",plotNames) & grepl("uniform", plotNames) & grepl("nc9",plotNames)]
-expPlots <- plots[grepl("rep6",plotNames) & grepl("exp", plotNames) & grepl("nc4",plotNames)]
+plots <- generateSimPlots(sim, predictions)
+count <- 1
 
-tmpPlots <- c(purePlots,uniformPlots,expPlots)
+for(k in seq(1,8)){
 
-## Figure 2i
-pdf("Simulation.pdf",width = 19,height=15)
-plotCols <- 4
-plotRows <- 3
 
-grid.newpage()
-pushViewport(viewport(layout = grid.layout(plotRows, plotCols)))
-vplayout <- function(x, y) {viewport(layout.pos.row = x, layout.pos.col = y)}
-
-for (i in seq(1,plotCols*plotRows)) {
-  curRow <- ceiling(i/plotCols)
-  curCol <- (i-1) %% plotCols + 1
-  print(tmpPlots[[i]], vp = vplayout(curRow, curCol ))
-
-}
-dev.off()
-
-#------------------------------------------------------------------------------#
-# Simulation plots for manuscript
-# NOTE this uses the for loop shown above - we are just selecting a subset of
-# of those plots to be shown in the main manuscript
-# Figure S7 to S17
-#------------------------------------------------------------------------------#
-
-reorder <- c(4,7,1,2,3,5,6)
-reorder <- c(reorder,reorder+7,reorder+14,reorder+21)
-
-#for(k in seq(1,10)){
-for(k in 10){
-  locs <- sapply(strsplit(plotNames," "),"[[",3)
-  tmpPlots <- plots[locs == paste0("rep",k)]
-  tmpPlots <- tmpPlots[reorder]
-  png(paste0("~/Vesalius/Simulation_rep",k,".png"),width =1800,height=2400)
-  plotCols <- 4
-  plotRows <- 7
+  png(paste0("~/Vesalius/Simulation_rep",k,".png"),width =2400,height=2400)
+  plotCols <- 10
+  plotRows <- 8
 
   grid.newpage()
   pushViewport(viewport(layout = grid.layout(plotRows, plotCols)))
   vplayout <- function(x, y) {viewport(layout.pos.row = x, layout.pos.col = y)}
 
-  for (i in seq_along(tmpPlots)) {
+  for (i in seq_len(plotCols * plotRows)) {
     curCol <- ceiling(i/plotRows)
     curRow <- (i-1) %% plotRows + 1
-    print(tmpPlots[[i]], vp = vplayout(curRow,curCol ))
-
+    print(plots[[count]], vp = vplayout(curRow,curCol ))
+    count <- count +1
   }
   dev.off()
 }
+
+
+simSub <- sim[c(10,12,27,39,41,55,62,74)]
+simSub <-simSub[c(1,4,5,6)]
+plotSub <- generateSimPlots(simSub, predictions)
+count <- 1
+pdf(paste0("~/Vesalius/Simulation_summary.pdf"),width = 20, height=12)
+plotCols <- 8
+plotRows <- 4
+
+grid.newpage()
+pushViewport(viewport(layout = grid.layout(plotRows, plotCols)))
+vplayout <- function(x, y) {viewport(layout.pos.row = x, layout.pos.col = y)}
+
+for (i in seq_len(plotCols * plotRows)) {
+    curCol <- ceiling(i/plotCols)
+    curRow <- (i-1) %% plotCols + 1
+    print(plotSub[[count]], vp = vplayout(curCol,curRow ))
+    count <- count +1
+}
+dev.off()
 
 
 

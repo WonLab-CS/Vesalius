@@ -631,7 +631,7 @@ imageEmbryo <- isolateTerritories.array(imageEmbryo,
 # Finally some plotting - Figure 2c
 #----------------------------------------------------------------------------#
 imgSmoothedEm <- imagePlot(imageEmbryo, as.cimg = F,cex = 15) + theme_void()
-imgTerritoryEm <- territoryPlot(imageEmbryo, randomise = TRUE,cex =15 , cex.pt=0.25)+
+imgTerritoryEm <- territoryPlot(imageEmbryo, randomise = TRUE,cex =15,cex.pt=0.25)+
                     theme_void()+
                     theme(legend.text = element_text(size = 12),
                           legend.title = element_text(size=12),
@@ -909,9 +909,9 @@ sec <- ScaleData(sec)
 #------------------------------------------------------------------------------#
 # Convert to Image
 #------------------------------------------------------------------------------#
-sec <- rgbUMAP(sec, pcs = 30, conserveSparse =F)
+s <- rgbUMAP(sec, pcs = 30, conserveSparse =F)
 
-image <- buildImageArray(sec,filterGrid=1, resolution = 100, filterThreshold = 1)
+image <- buildImageArray(s,filterGrid=1, resolution = 100, filterThreshold = 1)
 image <- equalizeHistogram(image, sleft = 15,sright =15)
 
 image <- iterativeSegmentation.array(image,
@@ -919,14 +919,24 @@ image <- iterativeSegmentation.array(image,
     method = c("box","iso"))
 image <- isolateTerritories.array(image, captureRadius = 0.05,minBar =1)
 
+bars <- image %>% filter(tile==1 & cc == 1) %>%select(c(barcodes,territory))
+sub <- subset(sec,cells=bars$barcodes)
+sub <- AddMetaData(object = sub,metadata= bars$territory,col.name = "Territory")
+
+ter_col <- length(unique(bars$territory))
+ter_pal <- colorRampPalette(brewer.pal(8, "Accent"))
+ter_col <- ter_pal(ter_col)
+
 pdf("mouseBrainSP2_Visium_vesalius.pdf", height= 6, width = 8)
-g1 <-territoryPlot(image,cex = 15,cex.pt=2)+
-   theme_void()+
-   theme(legend.text = element_text(size = 12),
+g1 <-SpatialPlot(sub, group.by = "Territory",alpha=0.5,label =F)+
+    theme_void()+
+    scale_fill_manual(values = ter_col)+
+    theme(legend.text = element_text(size = 12),
          legend.title = element_text(size=12),
          plot.title = element_text(size =15),
          legend.position = "right")+
-  labs(colour= "Territory nr.")
+    guides(fill = guide_legend(override.aes = list(size=5,alpha=1)))+
+    labs(fill = "Territory nr.")
 print(g1)
 dev.off()
 
@@ -956,9 +966,9 @@ sec <- ScaleData(sec)
 #------------------------------------------------------------------------------#
 # Convert to Image
 #------------------------------------------------------------------------------#
-sec <- rgbUMAP(sec, pcs = 30, conserveSparse =F)
+s <- rgbUMAP(sec, pcs = 30, conserveSparse =F)
 
-image <- buildImageArray(sec,filterGrid=1, resolution = 100, filterThreshold = 1)
+image <- buildImageArray(s,filterGrid=1, resolution = 100, filterThreshold = 1)
 image <- equalizeHistogram(image, sleft = 15,sright =15)
 
 image <- iterativeSegmentation.array(image,
@@ -966,16 +976,27 @@ image <- iterativeSegmentation.array(image,
     method = c("box","iso"))
 image <- isolateTerritories.array(image, captureRadius = 0.035,minBar =1)
 
-pdf("mouseKidney_Visium_vesalius.pdf", height= 8, width = 8)
-g1 <-territoryPlot(image,cex = 15,cex.pt=3.5)+
-   theme_void()+
-   theme(legend.text = element_text(size = 12),
+bars <- image %>% filter(tile==1 & cc == 1) %>%select(c(barcodes,territory))
+sub <- subset(sec,cells=bars$barcodes)
+sub <- AddMetaData(object = sub,metadata= as.factor(bars$territory),col.name = "Territory")
+
+ter_col <- length(unique(bars$territory))
+ter_pal <- colorRampPalette(brewer.pal(8, "Accent"))
+ter_col <- ter_pal(ter_col)
+
+pdf("mouseKidney_Visium_vesalius.pdf", height= 6, width = 6)
+g1 <-SpatialPlot(sub, group.by = "Territory",alpha=0.85,label =F,pt.size.factor=2)+
+    theme_void()+
+    scale_fill_manual(values = ter_col)+
+    theme(legend.text = element_text(size = 12),
          legend.title = element_text(size=12),
          plot.title = element_text(size =15),
          legend.position = "right")+
-  labs(colour= "Territory nr.")
+    guides(fill = guide_legend(override.aes = list(size=5,alpha=1)))+
+    labs(fill = "Territory nr.")
 print(g1)
 dev.off()
+
 
 ```
 ## Visium 10X - Human Breast
@@ -1002,9 +1023,9 @@ sec <- ScaleData(sec)
 #------------------------------------------------------------------------------#
 # Convert to Image
 #------------------------------------------------------------------------------#
-sec <- rgbUMAP(sec, pcs = 30, conserveSparse =F)
+s <- rgbUMAP(sec, pcs = 30, conserveSparse =F)
 
-image <- buildImageArray(sec,filterGrid=1, resolution = 100, filterThreshold = 1)
+image <- buildImageArray(s,filterGrid=1, resolution = 100, filterThreshold = 1)
 image <- equalizeHistogram(image, sleft = 5,sright =5)
 
 image <- iterativeSegmentation.array(image,
@@ -1013,16 +1034,27 @@ image <- iterativeSegmentation.array(image,
     method = c("iso","median"))
 image <- isolateTerritories.array(image, captureRadius = 0.035,minBar =5)
 
-pdf("humanBreast_Visium_vesalius.pdf", height= 8, width = 8)
-g1 <-territoryPlot(image,cex = 15,cex.pt=2.5)+
-   theme_void()+
-   theme(legend.text = element_text(size = 12),
+image <- isolateTerritories.array(image, captureRadius = 0.035,minBar =1)
+
+bars <- image %>% filter(tile==1 & cc == 1) %>%select(c(barcodes,territory))
+sub <- subset(sec,cells=bars$barcodes)
+sub <- AddMetaData(object = sub,metadata= as.factor(bars$territory),col.name = "Territory")
+
+ter_col <- length(unique(bars$territory))
+ter_pal <- colorRampPalette(brewer.pal(8, "Accent"))
+ter_col <- ter_pal(ter_col)
+
+pdf("humanBreast_Visium_vesalius.pdf", height= 6, width = 6)
+g1 <-SpatialPlot(sub, group.by = "Territory",alpha=0.75,label =F,pt.size.factor=1.5)+
+    theme_void()+
+    scale_fill_manual(values = ter_col)+
+    theme(legend.text = element_text(size = 12),
          legend.title = element_text(size=12),
          plot.title = element_text(size =15),
          legend.position = "right")+
-  labs(colour= "Territory nr.")
+    guides(fill = guide_legend(override.aes = list(size=5,alpha=1)))+
+    labs(fill = "Territory nr.")
 print(g1)
-
 dev.off()
 
 ```
