@@ -6,8 +6,8 @@
 #------------------------------------------------------------------------------#
 
 ### NOTE To run BayesSpace on slide_seqV2 please install BayesSpace via:
-library(devtools)
-install_github("patrickCNMartin/BayesSpace")
+#library(devtools)
+#install_github("patrickCNMartin/BayesSpace")
 ## This contain a modified version of BayesSpace that accomodates Slide-seq data
 
 library(BayesSpace)
