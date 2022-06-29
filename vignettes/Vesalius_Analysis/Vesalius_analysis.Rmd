@@ -365,18 +365,26 @@ imageBrain <- buildImageArray(countList[[1]],
                               resolution = 40,
                               cores = 10)
 
-
+pdf("raw_brain.pdf")
+imagePlot(imageBrain,as.cimg =F)
+dev.off()
 
 
 imageBrain <- regulariseImage(imageBrain, lambda = 5,
                               niter = 50, normalise=T)
 
+pdf("reg_brain.pdf")
+imagePlot(imageBrain,as.cimg =F)
+dev.off()
 
 imageBrain <- iterativeSegmentation.array(imageBrain, colDepth =11,
                                           smoothIter = 20,
                                           method = c("iso","box"),
                                           sigma=1,box = 15,
                                           useCenter = T)
+pdf("seg_brain.pdf")
+imagePlot(imageBrain,as.cimg =F)
+dev.off()
 imageBrain <- isolateTerritories.array(imageBrain,
                                         captureRadius = 0.008,
                                         minBar = 50)
@@ -605,13 +613,16 @@ imageEmbryo <- buildImageArray(countList[[2]],
                                resolution = 40,
                                cores = 5)
 
+pdf("raw_embryo.pdf")
+imagePlot(imageEmbryo,as.cimg =F)
+dev.off()
 
-#imageEmbryo <- equalizeHistogram(imageEmbryo,
-#                                 sleft = 2.5, sright = 2.5,invert = T)
 
 
 imageEmbryo <- regulariseImage(imageEmbryo,lambda =10)
-
+pdf("reg_embryo.pdf")
+imagePlot(imageEmbryo,as.cimg =F)
+dev.off()
 
 imageEmbryo <- iterativeSegmentation.array(imageEmbryo,
                                            colDepth = 12,
@@ -620,7 +631,9 @@ imageEmbryo <- iterativeSegmentation.array(imageEmbryo,
                                            sigma = 1,
                                            box = 10,
                                            useCenter=T)
-
+pdf("seg_embryo.pdf")
+imagePlot(imageEmbryo,as.cimg =F)
+dev.off()
 
 imageEmbryo <- isolateTerritories.array(imageEmbryo,
                                         captureRadius = 0.025,minBar = 40)
@@ -943,7 +956,7 @@ dev.off()
 ```
 
 ## Visium 10X - Mouse Kidney  
-The same process was applied to another 10X Visium but this time in Kidney.
+The same process was applied to another 10X Visium.
 
 ```{r Vesalius_Visium_Kidney, eval = F, echo = TRUE}
 #------------------------------------------------------------------------------#
@@ -1000,8 +1013,7 @@ dev.off()
 
 ```
 ## Visium 10X - Human Breast
-
-We also applied Vesalius in Human breast Visium 10X.
+For a final example in Visium data, We also applied Vesalius in Human breast.
 ```{r Vesalius_Visium_breast, eval = F, echo = TRUE}
 #------------------------------------------------------------------------------#
 # Load data set
@@ -1061,7 +1073,9 @@ dev.off()
 
 ## SeqFISH - Embryo
 We also tested Vesalius in seqFISH data taken from [here](https://content.cruk.cam.ac.uk/jmlab/SpatialMouseAtlas2020/). To run Vesalius, we first create a Seurat object. As Seurat does not handle seqFISH data yet, we created a "slide-seq"-like object to handle coordinates.
-This does not affect in anyway the downstream analysis. It only serve as a way of handling the data internally. We ran Vesalius on all 3 seqFISH embryo data sets availbale.
+This does not affect in anyway the downstream analysis. It only serve as a way of handling the data internally. We ran Vesalius on all 3 seqFISH embryo data sets availble.
+
+
 
 ```{r seqFISH_vesalius, eval = F , echo = T}
 #------------------------------------------------------------------------------#

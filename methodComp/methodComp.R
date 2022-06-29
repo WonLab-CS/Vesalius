@@ -1,35 +1,14 @@
 #-----------------------------/Method comparison/------------------------------#
 #------------------------------------------------------------------------------#
 # This file contains all the code used to compare methods - Table of content:
-# * Time Plots For Visum
-# * ARI for Visium
-# * Example data set in visium for viz - using the common example 151673
-# * Plotting slide-seqV2 output for BayesSpace and Seurat
-# * Simulation scores for all regimes
-# * Simulation Run times
-# * Concat cell types use in each sim round
-# * Simulation Plots for all regimes
-# * Simulation plots for the manuscript
-# * Concat all diff gene expression files into a single file
+# * BayesSpace and Seurat in slide_seqV2
+# * scoring of STAGATE, SPAGCN and SEDR
+# * Plotting performance (ARI and VI)
+# * Plotting run time
+# * Plotting Simulation runs
+# * Concet DEG from Vesalius and Seurat
+# * Concat of ssimulation cell types
 #------------------------------------------------------------------------------#
-
-#------------------------------------------------------------------------------#
-# Time Plots for Visium Figure S18
-#------------------------------------------------------------------------------#
-library(ggplot2)
-files <- list.files(pattern = "time.Rda")
-
-convertToSecs <- function(x,u){
-    m <- which(u == "mins")
-    h <- which(u == "hours")
-
-    x[m] <- x[m] * 60
-    x[h] <- x[h] * 60 * 60
-    return(x)
-}
-
-
-
 
 
 
@@ -40,15 +19,24 @@ convertToSecs <- function(x,u){
 # Figure 2b and Figure 2d
 # Figure S3 to Figure S6
 #------------------------------------------------------------------------------#
+library(spdep)
+library(RColorBrewer)
+library(ggplot2)
+
 bayes <- get(load("~/group/slide_seqV2/BayesSpaceBenchMarking/Puck_200115_08_SSV2_BM.Rda"))
 bayes$row <- as.numeric(bayes$row)
 bayes$col <- as.numeric(bayes$col)
+
+# coord <- Rotation(bayes[,c("col","row")],angle = 190)
+# colnames(coord) <- c("x","y")
+# bayes <- cbind(bayes,coord)
 
 ter_col <- length(unique(bayes$spatial.cluster))
 ter_pal <- colorRampPalette(brewer.pal(8, "Accent"))
 ter_col <- ter_pal(ter_col)
 b1 <- ggplot(data = bayes,aes(x = col,y=row, col = as.factor(spatial.cluster)))+
       geom_point(size = 0.2, alpha = 0.65)+
+      coord_polar()+
       theme_void() +
       scale_color_manual(values = ter_col)+
       theme(legend.text = element_text(size = 12),
@@ -63,12 +51,15 @@ dev.off()
 b1s <- ggplot(data = bayes,aes(x = col,y=row, col = as.factor(spatial.cluster)))+
       geom_point(size = 0.5, alpha = 0.65)+
       facet_wrap(~spatial.cluster)+
-      theme_light() +
+      theme_bw() +
       scale_color_manual(values = ter_col)+
       theme(legend.text = element_text(size = 12),
             legend.title = element_text(size=12),
             plot.title = element_text(size =15),
-            legend.position = "bottom")+
+            legend.position = "bottom",
+            panel.border = element_blank(),
+            panel.grid.major = element_blank(),
+            panel.grid.minor = element_blank())+
       guides(colour = guide_legend(override.aes = list(size=3)))+
       labs(title = "BayesSpace", col = "Spatial Cluster")
 pdf("~/Vesalius/BayesSpaceBrainSplit.pdf", width = 16, height=18)
@@ -134,13 +125,16 @@ s1
 dev.off()
 s1s <- ggplot(data = seurat,aes(x = x,y=y, col = as.factor(seurat_clusters)))+
       geom_point(size = 0.5, alpha = 0.65)+
-      theme_light() +
+      theme_bw() +
       facet_wrap(~seurat_clusters)+
       scale_color_manual(values = ter_col)+
       theme(legend.text = element_text(size = 12),
             legend.title = element_text(size=12),
             plot.title = element_text(size =15),
-            legend.position = "bottom")+
+            legend.position = "bottom",
+            panel.border = element_blank(),
+            panel.grid.major = element_blank(),
+            panel.grid.minor = element_blank())+
       guides(colour = guide_legend(override.aes = list(size=3)))+
       labs(title = "Seurat", col = "Seurat Cluster")
 pdf("~/Vesalius/SeuratBrainSplit.pdf", width = 16, height=18)
@@ -731,3 +725,19 @@ for(i in seq_along(seu)){
 }
 seuDEG <- do.call("rbind", seuDEG)
 write.csv(seuDEG,file = "~/seurat_DEG_concat.csv")
+
+#------------------------------------------------------------------------------#
+# Concat cell types from sims
+#------------------------------------------------------------------------------#
+library(tidyverse)
+sim <- list.files("~/Vesalius/Simulation", pattern = ".csv",full.names=T)
+df <- vector("list", length(sim))
+for(i in seq_along(sim)){
+    tmp <- read.csv(sim[i],header=T)
+    tmp <- tmp %>% group_by(ter) %>% distinct(celltype,.keep_all=T)
+    tag <- gsub(".csv","",sim[i])
+    tag <- gsub("/home/pcnmartin/Vesalius/Simulation/","",tag)
+    tmp$sim <- tag
+    df[[i]] <- select(tmp,c(sim,ter,cells, celltype)) %>% arrange(ter, group_by=sim)
+}
+df <- do.call("rbind",df)

@@ -112,55 +112,55 @@ save(time, file = paste0(output,"Vesalius_SSV2_Time.Rda"))
 
 ### Input directories containing Visium data
 
-input <- list.dirs("~/group/visium/DLPFC_globus",recursive =F)
-time <-vector("list",length(input))
-count <- 1
-n <-c(7,7,7,7,5,5,5,5,7,7,7,7)
-for(i in input){
-
-  s <- Sys.time()
-  output <- paste0(i,"/Vesalius")
-  if(!dir.exists(output)){
-      dir.create(output)
-  }
-  sec <- Read10X(i)
-  img <- Read10X_Image(i)
-  sec <- CreateSeuratObject(counts = sec, assay = "Spatial")
-  img <- img[Cells(x = sec)]
-  DefaultAssay(object = img) <- "Spatial"
-  sec[["slice1"]] <- img
-
-  sec <- NormalizeData(sec)
-  sec <- FindVariableFeatures(sec, nfeatures = 2000)
-  sec <- ScaleData(sec)
-
-
-
-  sec <- rgbUMAP(sec, pcs = 30, conserveSparse =F)
-
-  image <- buildImageArray(sec,filterGrid=1, resolution = 100, filterThreshold = 1, invert =F)
-  image <- equalizeHistogram(image, sleft = 15,sright =15,invert =F)
-
-  image <- iterativeSegmentation.array(image,
-      colDepth = seq(15,n[count], by =-2),
-      smoothIter = 1,
-      method = c("median","iso"),
-      sigma=1,
-      box = 13,
-      useCenter = T,
-      invert =F)
-  image <- isolateTerritories.array(image, captureRadius = 0.035,minBar =5)
-
-  tag <- strsplit(i, "/")[[1]]
-  tag <- tag[length(tag)]
-
-  file <- paste0(i,"/Vesalius/",tag,"_vesalius.rda")
-  save(image,file = file)
-  e <- Sys.time()
-  time[[count]] <- e - s
-  count <- count +1
-
-}
-
-## Saving run time
-save(time,file = "~/group/visium/DLPFC_globus/Vesalius_Visium_Time.Rda")
+# input <- list.dirs("~/group/visium/DLPFC_globus",recursive =F)
+# time <-vector("list",length(input))
+# count <- 1
+# n <-c(7,7,7,7,5,5,5,5,7,7,7,7)
+# for(i in input){
+#
+#   s <- Sys.time()
+#   output <- paste0(i,"/Vesalius")
+#   if(!dir.exists(output)){
+#       dir.create(output)
+#   }
+#   sec <- Read10X(i)
+#   img <- Read10X_Image(i)
+#   sec <- CreateSeuratObject(counts = sec, assay = "Spatial")
+#   img <- img[Cells(x = sec)]
+#   DefaultAssay(object = img) <- "Spatial"
+#   sec[["slice1"]] <- img
+#
+#   sec <- NormalizeData(sec)
+#   sec <- FindVariableFeatures(sec, nfeatures = 2000)
+#   sec <- ScaleData(sec)
+#
+#
+#
+#   sec <- rgbUMAP(sec, pcs = 30, conserveSparse =F)
+#
+#   image <- buildImageArray(sec,filterGrid=1, resolution = 100, filterThreshold = 1, invert =F)
+#   image <- equalizeHistogram(image, sleft = 15,sright =15,invert =F)
+#
+#   image <- iterativeSegmentation.array(image,
+#       colDepth = seq(15,n[count], by =-2),
+#       smoothIter = 1,
+#       method = c("median","iso"),
+#       sigma=1,
+#       box = 13,
+#       useCenter = T,
+#       invert =F)
+#   image <- isolateTerritories.array(image, captureRadius = 0.035,minBar =5)
+#
+#   tag <- strsplit(i, "/")[[1]]
+#   tag <- tag[length(tag)]
+#
+#   file <- paste0(i,"/Vesalius/",tag,"_vesalius.rda")
+#   save(image,file = file)
+#   e <- Sys.time()
+#   time[[count]] <- e - s
+#   count <- count +1
+#
+# }
+#
+# ## Saving run time
+# save(time,file = "~/group/visium/DLPFC_globus/Vesalius_Visium_Time.Rda")

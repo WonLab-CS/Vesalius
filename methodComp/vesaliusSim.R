@@ -53,15 +53,7 @@ counts <- counts[,-1]
 for(i in seq_along(simFiles)){
     sim <- read.table(simFiles[i], sep = ",", header=T)
     subCounts <- counts[,sim$barcodes]
-    if(grepl(pattern = "dot", x = simFiles[i])){
 
-        sigma <- 10
-        box <- 20
-    } else {
-
-        sigma <- 6
-        box <- 15
-    }
     #----------------------------------------------------------------------------#
     # Rename barcodes to avoid potential duplicated names
     #----------------------------------------------------------------------------#
@@ -94,7 +86,7 @@ for(i in seq_along(simFiles)){
     if(grepl(pattern = "dot", x = simFiles[i])){
         ves<- equalizeHistogram(ves,sleft = 5, sright = 5)
     }
-    
+
     ves <- iterativeSegmentation.array(ves,colDepth=3^seq(4,1),
                                        smoothIter = 20,
                                        method = c("iso","box"),
@@ -120,25 +112,3 @@ for(i in seq_along(simFiles)){
     write.table(ves,file =fileOut,sep =",",quote=F)
     rm(ves); gc()
 }
-
-
-#pdf("test.pdf", width = 18, height=5)
-#g0 <- imagePlot(ves, as.cimg=F)
-#g <- territoryPlot(tmp, cex.pt = 1, cex =10)
-#g1 <- ggplot(sim, aes(x,y, col = as.factor(ter))) + geom_point()
-#g0 + g + g1
-#dev.off()
-# files <- list.files("~/group/slide_seqV2/vesaliusSim/",pattern = ".csv",full.names=T)
-# simFiles <- list.files("~/Vesalius/Simulation", pattern =".csv", full.names=T)
-#
-# pdf("/home/pcnmartin/Vesalius/test.pdf", width = 12, height=4)
-# for(i in seq_along(simFiles)){
-#     print(i)
-#     tmp <- read.table(files[i],sep=",", header=T)
-#     simdf <- read.table(simFiles[i], sep =",",header=T)
-#     g <- ggplot(tmp, aes(x,y,col = as.factor(territory))) +geom_point() + theme_void()
-#     g1 <- ggplot(simdf, aes(x,y,col = as.factor(ter))) +geom_point()+theme_void()
-#     g2 <- ggplot(simdf, aes(x,y,col = as.factor(cells))) +geom_point()+theme_void()
-#     print(g2+g1+g)
-# }
-# dev.off()
