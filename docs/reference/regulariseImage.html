@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">vesalius</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">0.1.0</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">1.0.0</span>
       </span>
     </div>
 
@@ -29,7 +29,7 @@
   <a href="../reference/index.html">Reference</a>
 </li>
 <li class="dropdown">
-  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
     Articles
      
     <span class="caret"></span>
@@ -66,16 +66,16 @@
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">regulariseImage</span><span class="op">(</span>
-  <span class="va">image</span>,
-  lambda <span class="op">=</span> <span class="fl">1</span>,
-  niter <span class="op">=</span> <span class="fl">100</span>,
-  method <span class="op">=</span> <span class="st">"TVL2.FiniteDifference"</span>,
-  normalise <span class="op">=</span> <span class="cn">TRUE</span>,
-  na.rm <span class="op">=</span> <span class="cn">TRUE</span>,
-  invert <span class="op">=</span> <span class="cn">FALSE</span>,
-  verbose <span class="op">=</span> <span class="cn">TRUE</span>
-<span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">regulariseImage</span><span class="op">(</span></span>
+<span>  <span class="va">image</span>,</span>
+<span>  lambda <span class="op">=</span> <span class="fl">1</span>,</span>
+<span>  niter <span class="op">=</span> <span class="fl">100</span>,</span>
+<span>  method <span class="op">=</span> <span class="st">"TVL2.FiniteDifference"</span>,</span>
+<span>  normalise <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  na.rm <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  invert <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  verbose <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
@@ -83,30 +83,47 @@
     <dl><dt>image</dt>
 <dd><p>data.frame - Vesalius formatted data.frame (i.e. barcodes,
 x,y,cc,value,tile,...)</p></dd>
+
+
 <dt>lambda</dt>
 <dd><p>numeric - positive real numbers describing regularization
 parameter (see details)</p></dd>
+
+
 <dt>niter</dt>
 <dd><p>numeric - number of variance regularization iterations
 (Default = 100)</p></dd>
+
+
 <dt>method</dt>
 <dd><p>character - regularization method.
 Select from: "TVL2.FiniteDifference","TVL1.PrimalDual",and "TVL2.PrimalDual"
 (see details)</p></dd>
+
+
 <dt>normalise</dt>
 <dd><p>logical - If TRUE, regularized colour values will be
 min max normalised.</p></dd>
+
+
 <dt>na.rm</dt>
 <dd><p>logical - If TRUE, NAs are removed</p></dd>
+
+
 <dt>invert</dt>
 <dd><p>logical - If TRUE, colours will be inverted i.e. 1 - colorValue
 (background set to 1 instead of 0).</p></dd>
+
+
 <dt>verbose</dt>
 <dd><p>logical - progress message output.</p></dd>
+
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    <p>Returns a Vesalius data.frame with "barcodes","x","y","cc",
+    
+
+<p>Returns a Vesalius data.frame with "barcodes","x","y","cc",
 "value","tile",etc</p>
     </div>
     <div id="details">
@@ -119,17 +136,17 @@ function <a href="tvR">https://cran.r-project.org/web/packages/tvR/tvR.pdf</a>.<
 
     <div id="ref-examples">
     <h2>Examples</h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span></span>
-<span class="r-in"><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">vesalius</span><span class="op">)</span></span>
-<span class="r-in"><span class="co"># Seurat pre-processing</span></span>
-<span class="r-in"><span class="va">image</span> <span class="op">&lt;-</span> <span class="fu">NormalizeData</span><span class="op">(</span><span class="va">vesalius</span><span class="op">)</span></span>
-<span class="r-in"><span class="va">image</span> <span class="op">&lt;-</span> <span class="fu">FindVariableFeatures</span><span class="op">(</span><span class="va">image</span>, nfeatures <span class="op">=</span> <span class="fl">2000</span><span class="op">)</span></span>
-<span class="r-in"><span class="va">image</span> <span class="op">&lt;-</span> <span class="fu">ScaleData</span><span class="op">(</span><span class="va">image</span><span class="op">)</span></span>
-<span class="r-in"><span class="co"># converting to rgb</span></span>
-<span class="r-in"><span class="va">image</span> <span class="op">&lt;-</span> <span class="fu"><a href="rgbPCA.html">rgbPCA</a></span><span class="op">(</span><span class="va">image</span>,slices <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
-<span class="r-in"><span class="va">image</span> <span class="op">&lt;-</span> <span class="fu"><a href="buildImageArray.html">buildImageArray</a></span><span class="op">(</span><span class="va">image</span>, sliceID<span class="op">=</span><span class="fl">1</span><span class="op">)</span></span>
-<span class="r-in"><span class="va">image</span> <span class="op">&lt;-</span> <span class="fu">regulariseImage</span><span class="op">(</span><span class="va">image</span><span class="op">)</span></span>
-<span class="r-in"><span class="op">}</span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">vesalius</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="co"># Seurat pre-processing</span></span></span>
+<span class="r-in"><span><span class="va">image</span> <span class="op">&lt;-</span> <span class="fu">NormalizeData</span><span class="op">(</span><span class="va">vesalius</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">image</span> <span class="op">&lt;-</span> <span class="fu">FindVariableFeatures</span><span class="op">(</span><span class="va">image</span>, nfeatures <span class="op">=</span> <span class="fl">2000</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">image</span> <span class="op">&lt;-</span> <span class="fu">ScaleData</span><span class="op">(</span><span class="va">image</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="co"># converting to rgb</span></span></span>
+<span class="r-in"><span><span class="va">image</span> <span class="op">&lt;-</span> <span class="fu"><a href="rgbPCA.html">rgbPCA</a></span><span class="op">(</span><span class="va">image</span>,slices <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">image</span> <span class="op">&lt;-</span> <span class="fu"><a href="buildImageArray.html">buildImageArray</a></span><span class="op">(</span><span class="va">image</span>, sliceID<span class="op">=</span><span class="fl">1</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">image</span> <span class="op">&lt;-</span> <span class="fu">regulariseImage</span><span class="op">(</span><span class="va">image</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="op">}</span></span></span>
 </code></pre></div>
     </div>
   </div>
@@ -144,7 +161,7 @@ function <a href="tvR">https://cran.r-project.org/web/packages/tvR/tvR.pdf</a>.<
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.1.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.</p>
 </div>
 
       </footer></div>

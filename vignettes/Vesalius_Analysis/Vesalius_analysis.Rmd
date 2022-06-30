@@ -44,7 +44,6 @@ library(imagerExtra)
 library(Seurat)
 library(ggplot2)
 library(patchwork)
-library(viridis)
 library(RColorBrewer)
 library(dplyr)
 library(tvR)
@@ -1193,7 +1192,7 @@ image <- iterativeSegmentation.array(image,
     colDepth = 15,
     box = 10, sigma = 3,
     method = c("iso","median"))
-image <- isolateTerritories.array(image, captureRadius = 0.035,minBar =5)
+
 
 image <- isolateTerritories.array(image, captureRadius = 0.035,minBar =1)
 

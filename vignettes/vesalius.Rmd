@@ -92,7 +92,7 @@ vesalius <- buildImageArray(vesaliusPCA,
 
 
 # Let's have a look shall we?
-Vesalius_image <- imagePlot(vesalius,as.cimg =FALSE) + theme_void()
+Vesalius_image <- imagePlot(vesalius,as.cimg =FALSE) + theme_void() 
 
 
 print(Vesalius_image)

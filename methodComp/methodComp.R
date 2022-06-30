@@ -90,13 +90,16 @@ b2
 dev.off()
 b2s <- ggplot(data = bayes,aes(x = col,y=row, col = as.factor(spatial.cluster)))+
       geom_point(size = 0.5, alpha = 0.65)+
-      theme_light() +
+      theme_bw() +
       facet_wrap(~spatial.cluster)+
       scale_color_manual(values = ter_col)+
       theme(legend.text = element_text(size = 12),
             legend.title = element_text(size=12),
             plot.title = element_text(size =15),
-            legend.position = "bottom")+
+            legend.position = "bottom",
+            panel.border = element_blank(),
+            panel.grid.major = element_blank(),
+            panel.grid.minor = element_blank())+
       guides(colour = guide_legend(override.aes = list(size=3)))+
       labs(title = "BayesSpace", col = "Spatial Cluster")
 pdf("~/Vesalius/BayesSpaceEmbryoSplit.pdf", width = 16, height=18)
@@ -160,13 +163,16 @@ s2
 dev.off()
 s2s <- ggplot(data = seurat,aes(x = x,y=y, col = as.factor(seurat_clusters)))+
       geom_point(size = 0.5, alpha = 0.65)+
-      theme_light() +
       facet_wrap(~seurat_clusters)+
+      theme_bw() +
       scale_color_manual(values = ter_col)+
       theme(legend.text = element_text(size = 12),
             legend.title = element_text(size=12),
             plot.title = element_text(size =15),
-            legend.position = "bottom")+
+            legend.position = "bottom",
+            panel.border = element_blank(),
+            panel.grid.major = element_blank(),
+            panel.grid.minor = element_blank())+
       guides(colour = guide_legend(override.aes = list(size=3)))+
       labs(title = "Seurat", col = "Seurat Cluster")
 pdf("~/Vesalius/SeuratEmbryoSplit.pdf", width = 16, height=18)

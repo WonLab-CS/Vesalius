@@ -262,7 +262,7 @@ equalizeHistogram <- function(image,
     if(!"cc" %in% colnames(img)){
       img$cc <- 1
     }
-    if(img$value < 0 | img$value>1){
+    if(any(img$value < 0 | img$value>1)){
       img$value <- (img$value - min(img$value)) /(max(img$value) - min(img$value)) 
     }
     img <- right_join(img, image, by  = c("x","y","cc")) %>%
