@@ -271,7 +271,13 @@ for(i in seq_along(perf)){
       tag <- sapply(strsplit(tmp$V1,"_"),"[",2:4)
       tag <- apply(tag,2, paste0, sep =" ", collapse ="")
     }
-    meth <- str_to_title(rep(gsub("Sim","",methods[i]),nrow(tmp)))
+    meth <- rep(gsub("Sim","",methods[i]),nrow(tmp))
+    meth <- gsub("bayes","BayesSpace", meth)
+    meth <- gsub("sedr","SEDR", meth)
+    meth <- gsub("spagcn","SpaGCN", meth)
+    meth <- gsub("stagate","STAGATE", meth)
+    meth <- gsub("giotto","Giotto", meth)
+    meth <- gsub("seurat","Seurat", meth)
     df <- data.frame("method" = meth,
                      "regime" = str_to_title(tag),
                      "ARI" = tmp$V2,
@@ -288,6 +294,25 @@ performance$regime <- as.factor(performance$regime)
 #------------------------------------------------------------------------------#
 library(ggplot2)
 library(ggpubr)
+library(tidyverse)
+
+## shows that data does not have equal variance (p < 2.2e-16)
+res <- bartlett.test(ARI ~ method, data = performance)
+resV <- bartlett.test(VI ~ method, data = performance)
+## test for normality
+## Normaly distributed 
+norms <- rep(0,length(levels(performance$method)))
+for(i in levels(performance$method)){
+    tmp <- filter(performance, method == i)$VI
+    norms[i] <- shapiro.test(tmp)$p.value
+}
+## normally distributed 
+normsV <- rep(0,length(levels(performance$method)))
+for(i in levels(performance$method)){
+    tmp <- filter(performance, method == i)$ARI
+    normsV[i] <- shapiro.test(tmp)$p.value
+}
+
 
 cols <- c("#999999", "#E69F00", "#56B4E9", "#009E73",
           "#F0E442", "#0072B2", "#D55E00", "#CC79A7")[c(2,3,4,5,6,7,8)]
@@ -298,17 +323,17 @@ ari <- ggplot(performance, aes(method,ARI,fill = method)) +
        scale_fill_manual(values=cols)+
        theme_bw()+
        facet_wrap(~regime)+
-       stat_compare_means(method = "anova", label.y = 1.15,label.x ="Seurat")+      # Add global p-value
-       stat_compare_means(label = "p.signif", method = "t.test",
-                     ref.group = "Vesalius",hide.ns = TRUE,label.y=1)+
+       stat_compare_means( label.y = 1.15,label.x ="Giotto")+      # Add global p-value
+       stat_compare_means(label = "p.signif", method = "wilcox.test",
+                     ref.group = "vesalius",hide.ns = TRUE,label.y=1)+
        theme(legend.text = element_text(size = 12),
                            axis.text = element_text(size = 10),
-                           axis.title = element_text(size = 10),
+                           axis.title = element_text(size = 15),
                            plot.tag = element_text(size=15),
                            plot.title = element_text(size=15),
                            legend.title = element_text(size=15),
                            strip.text.x = element_text(size = 15),
-                          axis.text.x=element_text(angle=45,hjust=1)) +
+                          axis.text.x=element_text(angle=75,hjust=1)) +
        guides(colour = guide_legend(override.aes = list(size=5)))+
        labs(fill = " ",y = "Adjusted Rand Index",x="")
 
@@ -318,17 +343,17 @@ vi <- ggplot(performance, aes(method,VI,fill = method)) +
       scale_fill_manual(values=cols)+
       theme_bw()+
       facet_wrap(~regime)+
-      stat_compare_means(method = "anova", label.y = 7.5,label.x ="Seurat")+      # Add global p-value
-      stat_compare_means(label = "p.signif", method = "t.test",
-                    ref.group = "Vesalius",hide.ns = TRUE,label.y = 6.7)+
+      stat_compare_means( label.y = 7.5,label.x ="Giotto")+      # Add global p-value
+      stat_compare_means(label = "p.signif", method = "wilcox.test",
+                    ref.group = "vesalius",hide.ns = TRUE,label.y = 6.7)+
       theme(legend.text = element_text(size = 15),
             axis.text = element_text(size = 10),
-            axis.title = element_text(size = 10),
+            axis.title = element_text(size = 15),
             plot.tag = element_text(size=15),
             plot.title = element_text(size=15),
             legend.title = element_text(size=15),
             strip.text.x = element_text(size = 15),
-          axis.text.x=element_text(angle=45,hjust=1)) +
+          axis.text.x=element_text(angle=75,hjust=1)) +
       guides(colour = guide_legend(override.aes = list(size=5)))+
       labs(fill = " ",y = "Variation of Information",x="")
 
@@ -369,7 +394,13 @@ for(i in seq_along(time)){
         tmp$time <- tmp$time/60
         tmp$unit <- "minutes"
     }
-    meth <- str_to_title(rep(gsub("Sim","",methods[i]),nrow(tmp)))
+    meth <- rep(gsub("Sim","",methods[i]),nrow(tmp))
+    meth <- gsub("bayes","BayesSpace", meth)
+    meth <- gsub("sedr","SEDR", meth)
+    meth <- gsub("spagcn","SpaGCN", meth)
+    meth <- gsub("stagate","STAGATE", meth)
+    meth <- gsub("giotto","Giotto", meth)
+    meth <- gsub("seurat","Seurat", meth)
     df <- data.frame("method" = meth,
                      tmp)
     runTime <- rbind(runTime,df)
@@ -384,14 +415,16 @@ library(ggpubr)
 cols <- c("#999999", "#E69F00", "#56B4E9", "#009E73",
           "#F0E442", "#0072B2", "#D55E00", "#CC79A7")[c(2,3,4,5,6,7,8)]
 runTime$time <- log(runTime$time)
+tim <- bartlett.test(time ~ method, data = runTime)
 ti <- ggplot(runTime, aes(method,time,fill = method)) +
+       ylim(-0.2,8.4)+
        geom_boxplot()+
        scale_fill_manual(values=cols)+
        theme_bw()+
        #facet_wrap(~regime)+
-       #stat_compare_means(method = "anova", label.y = 1.15)+      # Add global p-value
-       #stat_compare_means(label = "p.signif", method = "t.test",
-        #             ref.group = "Vesalius",hide.ns = TRUE,label.y=1)+
+       stat_compare_means( label.y = 8,label.x = "SpaGCN")+      # Add global p-value
+       stat_compare_means(label = "p.signif", method = "wilcox.test",
+                     ref.group = "vesalius",hide.ns = TRUE,label.y=7)+
        theme(legend.text = element_text(size = 12),
               legend.position = "bottom",
                            axis.text = element_text(size = 15),
@@ -400,7 +433,7 @@ ti <- ggplot(runTime, aes(method,time,fill = method)) +
                            plot.title = element_text(size=15),
                            legend.title = element_text(size=15),
                            strip.text.x = element_text(size = 15),
-                          axis.text.x=element_text(angle=45,hjust=1)) +
+                          axis.text.x=element_text(angle=70,hjust=1)) +
        guides(colour = guide_legend(override.aes = list(size=5)))+
        labs(fill = " ",y = "Log(Time in minutes)",x="")
 
