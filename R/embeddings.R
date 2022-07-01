@@ -106,6 +106,7 @@ buildVesaliusEmbeddings <- function(vesalius,
         #----------------------------------------------------------------------#
         .raster(verbose)
         tiles <- .rasterise(filtered, cores)
+        
 
         vesalius <- .updateVesalius(vesalius=vesalius,
                                     data=tiles,
@@ -442,43 +443,7 @@ buildVesaliusEmbeddings <- function(vesalius,
   return(list("SO" = counts, "norm" = normCounts))
 }
 
-#------------------------/ Normalising Embeds /--------------------------------#
-.normPix <- function(embeds,type = c("minmax","quantileNorm")){
-    #--------------------------------------------------------------------------#
-    # Normalise pixels values
 
-    #--------------------------------------------------------------------------#
-    embeds <- switch(type[1L],
-                     "mixmax" = .minMax(embeds),
-                     "quantileNorm" = midFix(embeds))
-}
-
-
-### might move this over to misc
-.minMax <- function(embeds){
-    embeds <- apply(embeds,2,function(embeds){
-        return((embeds - min(embeds)) / (max(embeds) - min(embeds)))
-    })
-    return(embeds)
-}
-.quantileNorm <- function(embeds){
-
-    embeds_rank <- apply(embeds,2,rank,ties.method="min")
-    embeds <- data.frame(apply(embeds, 2, sort))
-    embeds_mean <- apply(embeds, 1, mean)
-
-    index_to_mean <- function(my_index, my_mean){
-      return(my_mean[my_index])
-    }
-
-    embeds_final <- apply(embeds_rank, 2, function(idx,m){
-        return(m[idx])
-    },embeds_mean)
-    rownames(embeds_final) <- rownames(embeds)
-    return(embeds_final)
-
-
-}
 
 #------------------------/ Color Embeddings /----------------------------------#
 .embedPCA <- function(counts,pcs,loadings = TRUE,cores = 1,verbose = TRUE){

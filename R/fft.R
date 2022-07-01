@@ -30,16 +30,16 @@ runTransform <- function(vesalius,
     #--------------------------------------------------------------------------#
     # Smoothing the image prior to transform
     #--------------------------------------------------------------------------#
-    # images <- lapply(images,.internalSmooth,
-    #                              method = method,
-    #                              iter = iter,
-    #                              sigma = sigma,
-    #                              box = box,
-    #                              threshold=threshold,
-    #                              neuman=neuman,
-    #                              gaussian=gaussian,
-    #                              na.rm=na.rm,
-    #                              acrossLevels = acrossLevels)
+    images <- lapply(images,.internalSmooth,
+                                 method = method,
+                                 iter = iter,
+                                 sigma = sigma,
+                                 box = box,
+                                 threshold=threshold,
+                                 neuman=neuman,
+                                 gaussian=gaussian,
+                                 na.rm=na.rm,
+                                 acrossLevels = acrossLevels)
     #--------------------------------------------------------------------------#
     # balence histo
     # might need to switch this around with smoothing
@@ -121,6 +121,16 @@ runTransform <- function(vesalius,
 
 }
 
+#------------------------------------------------------------------------------#
+# Using a line sampling approach 
+#------------------------------------------------------------------------------#
+
+runLineTransform <- function(vesalius,){
+    
+}
+#------------------------------------------------------------------------------#
+# General functions 
+#------------------------------------------------------------------------------#
 .fft <- function(image){
     #--------------------------------------------------------------------------#
     # For now I will create a way of plotting both the FFT imag and the original

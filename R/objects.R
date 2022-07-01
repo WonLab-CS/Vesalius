@@ -108,12 +108,13 @@ setClass("vesaliusObject",
 #------------------------------------------------------------------------------#
 
 
-buildVesaliusObject <- function(coordinates,counts,assay = "ST"){
+buildVesaliusObject <- function(coordinates,counts,assay = "ST",
+    adjustCoordinates = c("origin","norm")){
     #--------------------------------------------------------------------------#
     # First we will create tiles
     # Definitely need some check here
     #--------------------------------------------------------------------------#
-    coordinates <- .checkCoordinates(coordinates)
+    coordinates <- .checkCoordinates(coordinates,adjustCoordinates)
     counts <- list(.checkCounts(counts))
     names(counts) <- "raw"
     assay <- list(assay)
@@ -143,7 +144,7 @@ buildVesaliusObject <- function(coordinates,counts,assay = "ST"){
 }
 
 
-.checkCoordinates <- function(coordinates){
+.checkCoordinates <- function(coordinates,adjustCoordinates=c("origin","norm")){
     #--------------------------------------------------------------------------#
     # Check coordinate input type
     # for now let's put slide seq
@@ -168,6 +169,20 @@ buildVesaliusObject <- function(coordinates,counts,assay = "ST"){
     coordinates$barcodes <- as.character(coordinates$barcodes)
     coordinates$x <- as.numeric(coordinates$x)
     coordinates$y <- as.numeric(coordinates$y)
+    if(adjustCoordinates[1L] == "origin"){
+        coordinates$x_orig <- coordinates$x 
+        coordinates$y_orig <- coordinates$y
+        coordinates$x <- (coordinates$x - min(coordinates$x)) + 1
+        coordinates$y <- (coordinates$y - min(coordinates$y)) + 1
+    }else if(adjustCoordinates[1L] == "norm"){
+        coordinates$x_orig <- coordinates$x 
+        coordinates$y_orig <- coordinates$y
+        coordinates$x <- .minMax((coordinates$x))
+        coordinates$y <- .minMax((coordinates$y))
+    }else{
+        stop("Woops - not sure how you want me to adjust coordinates")
+    }
+    
 
     return(coordinates)
 }

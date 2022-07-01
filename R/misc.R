@@ -205,3 +205,44 @@ getSeuratCoordinates <- function(seurat){
   image[n[,1],n[,2],n[,3],n[,4]] <- 1
   return(image)
 }
+
+
+#------------------------/ Normalising Embeds /--------------------------------#
+.normPix <- function(embeds,type = c("minmax","quantileNorm")){
+    #--------------------------------------------------------------------------#
+    # Normalise pixels values
+
+    #--------------------------------------------------------------------------#
+    embeds <- switch(type[1L],
+                     "mixmax" = .minMax(embeds),
+                     "quantileNorm" = midFix(embeds))
+}
+
+
+### might move this over to misc
+.minMaxEmbeds <- function(embeds){
+    embeds <- apply(embeds,2,.minMax)
+    return(embeds)
+}
+
+.minMax <- function(x){
+    return((x - min(x)) / (max(x) - min(x)))
+}
+.quantileNorm <- function(embeds){
+
+    embeds_rank <- apply(embeds,2,rank,ties.method="min")
+    embeds <- data.frame(apply(embeds, 2, sort))
+    embeds_mean <- apply(embeds, 1, mean)
+
+    index_to_mean <- function(my_index, my_mean){
+      return(my_mean[my_index])
+    }
+
+    embeds_final <- apply(embeds_rank, 2, function(idx,m){
+        return(m[idx])
+    },embeds_mean)
+    rownames(embeds_final) <- rownames(embeds)
+    return(embeds_final)
+
+
+}
