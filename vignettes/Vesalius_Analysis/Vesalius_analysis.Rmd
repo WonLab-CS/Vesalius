@@ -380,10 +380,19 @@ pdf("reg_brain.pdf")
 imagePlot(imageBrain,as.cimg =F)
 dev.off()
 
+imageBrain <- smoothArray(imageBrain,
+                          iter = 20 ,
+                          method = c("iso","box"),
+                          sigma = 1,
+                          box = 15)
+pdf("smooth_brain.pdf")
+imagePlot(imageBrain,as.cimg=F)
+dev.off()
+
 imageBrain <- iterativeSegmentation.array(imageBrain, colDepth =11,
-                                          smoothIter = 20,
-                                          method = c("iso","box"),
-                                          sigma=1,box = 15,
+                                          smoothIter = 1,
+                                          method = "box",
+                                          box = 1,
                                           useCenter = T)
 pdf("seg_brain.pdf")
 imagePlot(imageBrain,as.cimg =F)
@@ -628,12 +637,19 @@ pdf("reg_embryo.pdf")
 imagePlot(imageEmbryo,as.cimg =F)
 dev.off()
 
+imageEmbryo <- smoothArray(imageEmbryo,
+                           iter = 20,
+                           method = c("iso","box"),
+                           sigma =1,
+                           box = 10)
+pdf("smooth_embryo.pdf")
+imagePlot(imageEmbryo,as.cimg =F)
+dev.off()
 imageEmbryo <- iterativeSegmentation.array(imageEmbryo,
                                            colDepth = 12,
-                                           smoothIter = 20,
-                                           method = c("iso","box"),
-                                           sigma = 1,
-                                           box = 10,
+                                           smoothIter = 1,
+                                           method = "box",
+                                           box = 1,
                                            useCenter=T)
 pdf("seg_embryo.pdf")
 imagePlot(imageEmbryo,as.cimg =F)
