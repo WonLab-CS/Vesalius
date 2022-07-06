@@ -268,7 +268,7 @@ extractMarkers <- function(vesalius,
                                 slot="DEG",
                                 commit = as.list(match.call()),
                                 defaults = as.list(args(extractMarkers)),
-                                append=FALSE)
+                                append=TRUE)
 
 
     #--------------------------------------------------------------------------#

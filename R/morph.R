@@ -51,7 +51,7 @@
 territoryMorphing <- function(vesalius,
                               territory = NULL,
                               trial = "last",
-                              morphologyFactor = 1,
+                              morphologyFactor = 0,
                               verbose=TRUE){
       .simpleBar(verbose)
       #------------------------------------------------------------------------#
@@ -69,19 +69,23 @@ territoryMorphing <- function(vesalius,
         ter <- vesalius@territories[,c("barcodes","x","y",trial)]
         colnames(ter) <- c("barcodes","x","y","trial")
         buffer <- ter
-        ter <- right_join(ter,vesalius@tiles, by = c("barcodes","x","y")) %>%
-               filter(trial %in% territory) %>%
-               mutate(value = 1)
+        ter <- filter(ter,trial %in% territory) %>%
+               left_join(vesalius@tiles, by = "barcodes") %>%
+               mutate(value = 1) %>%
+               select(c("barcodes","x.y","y.y","trial","origin","value"))
+        colnames(ter) <- c("barcodes","x","y","trial","origin","value")
       } else if(!is.null(vesalius@territories) & trial != "last") {
-        if(!grepl(x = colnames(vesalius@territories),pattern = trial)){
+        if(sum(grepl(x = colnames(vesalius@territories),pattern = trial))==0){
             stop(paste(deparse(substitute(trial)),"is not in territory data frame"))
         }
         ter <- vesalius@territories[,c("barcodes","x","y",trial)]
         colnames(ter) <- c("barcodes","x","y","trial")
         buffer <- ter
         ter <- filter(ter,trial %in% territory) %>%
-               right_join(vesalius@tiles, by = "barcodes") %>%
-               mutate(value = 1)
+               left_join(vesalius@tiles, by = "barcodes") %>%
+               mutate(value = 1) %>%
+               select(c("barcodes","x.y","y.y","trial","origin","value"))
+        colnames(ter) <- c("barcodes","x","y","trial","origin","value")
       } else {
         stop("No territories have been computed!")
       }
@@ -122,7 +126,7 @@ territoryMorphing <- function(vesalius,
       # Now we convert add buffer boundaries, covert to grey scale a
       #------------------------------------------------------------------------#
       ter <- ter %>% select(c("x","y","value")) %>%
-              rbind(.,c(xmin,ymin,1,0),c(xmax,ymax,1,0)) %>%
+              rbind(.,c(xmin,ymin,1),c(xmax,ymax,1)) %>%
               as.cimg()
       #------------------------------------------------------------------------#
       # Now we can do the morphing - grow, erode, clean and fill
@@ -130,6 +134,7 @@ territoryMorphing <- function(vesalius,
       # maybe due to the fact that the grow/shrink function
       # is parsing weird stuff to imager/C++ ?
       #------------------------------------------------------------------------#
+      
       for(i in seq_along(morphologyFactor)){
           mf <- abs(morphologyFactor[i])
           if(morphologyFactor[i] >=0){
@@ -138,15 +143,18 @@ territoryMorphing <- function(vesalius,
               ter <- shrink(ter, mf)
           }
       }
+      
+      
       #------------------------------------------------------------------------#
       # Next we rebuild the image data frame with dilated
       #------------------------------------------------------------------------#
-      ter <- ter %>% as.data.frame()
+      ter <- ter %>% as.data.frame() 
       ter <- inner_join(ter,vesalius@tiles,by = c("x","y")) %>%
-             filter(origin ==1)
+             filter(origin ==1) 
+      
       buffer$trial[buffer$barcodes %in% ter$barcodes] <- adjustedTerritoryValues
       colnames(buffer) <- c(colnames(buffer)[seq(1,ncol(buffer)-1)],newTrial)
-
+      
       vesalius <- .updateVesalius(vesalius=vesalius,
                                   data=buffer,
                                   slot="territories",
@@ -213,7 +221,7 @@ layerTerritory <- function(vesalius,
     # If we run this then we always take the last trial run
     # this will update the morphology only if it is run
     #--------------------------------------------------------------------------#
-    if(sum(morphologyFactor)!=0){
+    if(any(morphologyFactor !=0)){
        .morph(verbose)
         vesalius <- territoryMorphing(vesalius,
                                       territory,
@@ -221,6 +229,7 @@ layerTerritory <- function(vesalius,
                                       morphologyFactor,
                                       verbose =FALSE)
         trial <- "last"
+        territory <- min(territory)
     }
 
     if(!is.null(vesalius@territories) & trial == "last"){
