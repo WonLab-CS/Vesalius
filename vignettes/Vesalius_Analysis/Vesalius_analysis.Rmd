@@ -1709,8 +1709,9 @@ slideCounts <- c("~/group/slide_seqV2/Puck_200115_08.digital_expression.txt.gz",
 ## number of variable features
 nfeatures <- 2000
 
-## Output directory
-IP <- "~/group/slide_seqV2/IP/"
+
+
+PCtag <- c("PC1 - PC3", "PC4 - PC6","PC7 - PC9","PC10 - PC12","PC13 - PC15")
 
 #------------------------------------------------------------------------------#
 # We will convert to UMAP and PCA Images
@@ -1762,40 +1763,85 @@ for(i in seq_along(slideTag)){
   umaps <- buildImageArray(umaps,
                           filterThreshold = 0.995,
                           resolution = 40,
-                          cores=5)
-  plots[[1]] <- imagePlot(umaps, as.cimg =F, cex = 12) + theme_void()
+                          cores=10)
+  plots[[1]] <- imagePlot(umaps, as.cimg =F, cex = 12) + 
+      theme_void()+
+      labs(title = "UMAP - Image")
+  lambda <- ifelse(i==2,10,5)
+  umaps <- regulariseImage(umaps,
+                              lambda = lambda,
+                              niter = 50,
+                              normalise=T)
+  umaps <- iterativeSegmentation.array(umaps, colDepth =11,
+                                       smoothIter = 20,
+                                       method = c("iso","box"),
+                                       sigma=1,box = 15,
+                                       useCenter = T)
+  umaps <- isolateTerritories.array(umaps,captureRadius = 0.008,
+                                        minBar = 50)
+  
+  plots[[2]] <- territoryPlot(umaps, randomise = TRUE,cex =12 , cex.pt=0.25) +
+                  theme_void()+
+                  theme(legend.text = element_text(size = 12),
+                  legend.title = element_text(size=12),
+                  plot.title = element_text(size =12),
+                  legend.position = "none")+
+                  labs(title = "UMAP - Territory")
   #----------------------------------------------------------------------------#
   # Embed PCA loadings into the RGB colour space and building image
   # Here we are going through multiple slices as only 3 pcs are represented
   # at a time. We will also increase contrast to help with visualisation
   #----------------------------------------------------------------------------#
   pcs <- rgbPCA(count, slices = 5 ,conserveSparse = FALSE)
-  counter <- 2
+  counter <- 3
   for(j in seq_along(unique(pcs$slice))){
     tmp <- buildImageArray(pcs,
                            sliceID = j,
                            resolution=40,
                            filterThreshold=0.995,
-                           cores=5)
+                           cores=10)
+   
     tmp <- equalizeHistogram(tmp,sleft=3, sright=3)
-    plots[[counter]] <- imagePlot(tmp,as.cimg =F, cex=12) + theme_void()
+    plots[[counter]] <- imagePlot(tmp,as.cimg =F, cex=12) + 
+      theme_void()+
+      labs(title = paste(PCtag[j], "- Image"))
+    counter <- counter + 1
+    
+    tmp <- regulariseImage(tmp,
+                              lambda = lambda,
+                              niter = 50,
+                              normalise=T)
+    tmp <- iterativeSegmentation.array(tmp, colDepth =11,
+                                       smoothIter = 20,
+                                       method = c("iso","box"),
+                                       sigma=1,box = 15,
+                                       useCenter = T)
+    tmp <- isolateTerritories.array(tmp)
+   
+    plots[[counter]] <- territoryPlot(tmp, randomise = TRUE,cex =15 , cex.pt=0.25) +
+                  theme_void()+
+                  theme(legend.text = element_text(size = 12),
+                  legend.title = element_text(size=12),
+                  plot.title = element_text(size =12),
+                  legend.position = "none")+
+                  labs(title = paste(PCtag[j], "- Territories"))
     counter <- counter + 1
   }
   #----------------------------------------------------------------------------#
   # Plot the outputs
   #----------------------------------------------------------------------------#
   fileOut <- paste0(slideTag[i],"_UMAP_vs_PCA_Vesalius.pdf")
-  pdf(fileOut, width = 15, height = 10)
+  pdf(fileOut, width = 10, height = 7.5)
 
   grid.newpage()
-  pushViewport(viewport(layout = grid.layout(2, 3)))
+  pushViewport(viewport(layout = grid.layout(3, 4)))
   vplayout <- function(x, y)
       viewport(layout.pos.row = x, layout.pos.col = y)
 
 
   for (j in seq_along(plots)) {
-      curRow <- ceiling(j/3)
-      curCol <- (j-1) %% 3 + 1
+      curRow <- ceiling(j/4)
+      curCol <- (j-1) %% 4 + 1
       print(plots[[j]], vp = vplayout(curRow, curCol ))
 
   }
