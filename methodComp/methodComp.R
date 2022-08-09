@@ -454,16 +454,25 @@ library(dplyr)
 library(grid)
 library(RColorBrewer)
 
-input <- "~/group/slide_seqV2"
+#input <- "~/group/slide_seqV2"
+input <- "/Users/rwk115/Documents/backup/"
 methods <- c("vesaliusSim","bayesSim","giottoSim","seuratSim","stagateSim","spagcnSim","sedrSim")
 
-sim <- list.files("~/Vesalius/Simulation", pattern = ".csv",full.names=T)
+#sim <- list.files("~/Vesalius/Simulation", pattern = ".csv",full.names=T)
+sim <- list.files("/Users/rwk115/Documents/backup/Vesalius/Simulation",
+  pattern = ".csv",full.names=T)
 
 predictions <- paste0(input,"/",methods)
 predictions <- lapply(predictions,function(x){return(list.files(x,pattern=".csv",full.names=T))})
 names(predictions) <- str_to_title(gsub("Sim","",methods))
 
-
+globaliseTerritories <- function(img){
+    ter <- img$ter
+    allTer <- unique(ter)
+    ter <- seq_along(allTer)[match(ter,allTer)]
+    img$ter <- ter
+    return(img)
+}
 
 generateSimPlots <- function(sim,predictions){
     n_plots <- length(sim) + sum(sapply(predictions, length))
@@ -476,6 +485,10 @@ generateSimPlots <- function(sim,predictions){
         tag <- sapply(strsplit(tag,"_"),"[",2:5)
         tag <- apply(tag,2, paste0, sep =" ", collapse ="")
         ter_col <- length(unique(simTmp$ter))
+        if(length(ter_col)<6 & grepl("dot",tag)){
+            tag <- gsub("6","5",tag)
+            simTmp <- globaliseTerritories(simTmp)
+        }
         if(ter_col <= 8){
           ter_pal <- colorRampPalette(brewer.pal(ter_col, "Accent"))
         } else {
@@ -693,7 +706,8 @@ simSub <- sim[c(10,12,27,39,41,55,62,74)]
 simSub <-simSub[c(1,4,5,6)]
 plotSub <- generateSimPlots(simSub, predictions)
 count <- 1
-pdf(paste0("~/Vesalius/Simulation_summary.pdf"),width = 20, height=12)
+#pdf(paste0("~/Vesalius/Simulation_summary.pdf"),width = 20, height=12)
+pdf(paste0("~/Documents/WonGroupe/ST/Paper/Vesalius/Figure_templates/Simulation_summary_adj.pdf"),width = 20, height=12)
 plotCols <- 8
 plotRows <- 4
 
