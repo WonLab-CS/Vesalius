@@ -45,4 +45,4 @@ accordingly.
 The Vesalius package is in its early stage of development. We would ask you to
 share with us any bugs, concerns, or features you wish to see implemented.
 
-Please open a GitHub issue or send an email to Patrick Martin (patrick.martin@bric.ku.dk)
+Please open a GitHub issue or send an email to Patrick Martin (pcnmartin@gmail.com)
