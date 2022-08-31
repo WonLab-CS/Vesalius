@@ -8,7 +8,7 @@ viewGeneExpression(
   image,
   counts,
   ter = NULL,
-  genes = NULL,
+  gene = NULL,
   normalise = TRUE,
   cex = 10
 )
@@ -23,7 +23,7 @@ This matrix should contain genes as rownames and cells/barcodes as colnames}
 \item{ter}{integer - Territory ID in which gene expression will be viewed. If
 NULL, all territories will be selected.}
 
-\item{genes}{character - gene of interest (only on gene at a time)}
+\item{gene}{character - gene of interest (only on gene at a time)}
 
 \item{normalise}{logical - If TRUE, gene expression values will be min/max
 normalised.}

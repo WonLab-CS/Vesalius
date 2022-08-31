@@ -16,6 +16,20 @@
 #' @return Seurat object only containing the desired barcodes.
 #' @examples
 #' \dontrun{
+#' data(vesalius)
+#' # Seurat pre-processing
+#' image <- NormalizeData(vesalius)
+#' image <- FindVariableFeatures(image, nfeatures = 2000)
+#' image <- ScaleData(image)
+#' # converting to rgb
+#' image <- rgbPCA(image,slices = 1)
+#' image <- buildImageArray(image, sliceID=1)
+#' # One segmentation round
+#' image <- iterativeSegmentation.array(image)
+#' image <- isolateTerritories.array(image, minBar = 5)
+#' # subset 
+#' sub <- subSetTerritories(image$barcodes[image$territory ==1],vesalius)
+#' 
 
 #' }
 
@@ -90,7 +104,7 @@ getSeuratCoordinates <- function(seurat){
       ## Will need to change this for more felxibility
       # Set to default assay or reduction based
       #------------------------------------------------------------------------#
-      newCount <- lapply(object, function(x){
+      newCount <- lapply(counts, function(x){
                   return(GetAssayData(x,slot ="data"))
       })
     } else if(by == "territory"){

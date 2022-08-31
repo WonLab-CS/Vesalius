@@ -100,7 +100,7 @@ image <- buildImageArray(image, sliceID=1)
 image <- smoothArray(image)
 # across multiple levels
 image <- smoothArray(image,method = c("iso"),
-acrossLevels = "mean",sigma = seq(0.5,1.5,l = 10))
+acrossLevels = "mean",sigma = seq(0.5,1.5,l = 10)))
 imagePlot(image)
 }
 }

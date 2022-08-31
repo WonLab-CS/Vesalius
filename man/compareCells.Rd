@@ -107,6 +107,6 @@ image <- isolateTerritories.array(image, minBar = 5)
 # For the example we will take a random selection of barcodes
 cells <- GetAssayData(vesalius, slot = "data")
 cells <- sample(colnames(cells), 100, replace =F)
-markers <- compareCells(image, vesalius,cells, seed = 1, query = 2)
+markers <- compareCells(image, vesalius,cells seed = 1, query = 2)
 }
 }

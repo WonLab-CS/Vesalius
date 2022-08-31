@@ -24,6 +24,8 @@ This matrix should contain genes as rownames and cells/barcodes as colnames}
 
 \item{cells}{- character vector containing cells of interest.}
 
+\item{gene}{character - gene of interest (only on gene at a time)}
+
 \item{ter1}{vector/integer - Territory ID in which gene expression will be viewed.
 See details.}
 
@@ -34,8 +36,6 @@ See details.}
 normalised.}
 
 \item{cex}{numeric - font size modulator}
-
-\item{genes}{character - gene of interest (only on gene at a time)}
 }
 \value{
 a ggplot object

@@ -4,7 +4,7 @@
 \alias{viewLayerExpression}
 \title{viewLayerExpression - plot gene expression in layered Vesalius territories}
 \usage{
-viewLayerExpression(image, counts, genes = NULL, normalise = TRUE, cex = 10)
+viewLayerExpression(image, counts, gene = NULL, normalise = TRUE, cex = 10)
 }
 \arguments{
 \item{image}{a Vesalius data frame containing barcodes, x, y, cc, value,
@@ -13,7 +13,7 @@ cluster, and territory.}
 \item{counts}{count matrix - either matrix, sparse matrix or seurat object
 This matrix should contain genes as rownames and cells/barcodes as colnames}
 
-\item{genes}{character - gene of interest (only on gene at a time)}
+\item{gene}{character - gene of interest (only on gene at a time)}
 
 \item{normalise}{logical - If TRUE, gene expression values will be min/max
 normalised.}
@@ -59,6 +59,6 @@ image <- buildImageArray(image, sliceID=1)
 image <- iterativeSegmentation.array(image)
 image <- isolateTerritories.array(image, minBar = 5)
 layer <- layerTerritory.edge(image, seedTerritory = 1)
-g <- viewLayerExpression(layer, vesalius, genes = "Cst3")
+g <- viewLayerExpression(layer, vesalius, gene = "Cst3")
 }
 }

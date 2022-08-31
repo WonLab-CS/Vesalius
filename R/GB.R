@@ -3,7 +3,7 @@
 ################################################################################
 
 #----------------------------/Global bindings/---------------------------------#
-utils::globalVariables(c(".","barcodes" ,"cc",
+utils::globalVariables(c(".", "barcodes", "cc",
   "cc.y", "cluster", "p.value", "seurat_clusters",
-  "territories","territorries" ,"territory",
-   "tile", "tmpImg", "value", "x", "y","img"))
+  "territories", "territorries", "territory",
+  "tile", "tmpImg", "value", "x", "y", "img", "ind1", "ind2"))

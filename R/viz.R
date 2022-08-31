@@ -189,7 +189,7 @@ territoryPlot <- function(territories,
 #' This matrix should contain genes as rownames and cells/barcodes as colnames
 #' @param ter integer - Territory ID in which gene expression will be viewed. If
 #' NULL, all territories will be selected.
-#' @param genes character - gene of interest (only on gene at a time)
+#' @param gene character - gene of interest (only on gene at a time)
 #' @param normalise logical - If TRUE, gene expression values will be min/max
 #' normalised.
 #' @param cex numeric - font size modulator
@@ -231,7 +231,7 @@ territoryPlot <- function(territories,
 viewGeneExpression <- function(image,
                                counts,
                                ter = NULL,
-                               genes = NULL,
+                               gene = NULL,
                                normalise = TRUE,
                                cex =10){
     #--------------------------------------------------------------------------#
@@ -271,19 +271,19 @@ viewGeneExpression <- function(image,
     # I could add multiple gene viz and what not
     # And yes I know it would be better to be consitent between tidyr and base
     #--------------------------------------------------------------------------#
-    if(is.null(genes)){
+    if(is.null(gene)){
         stop("Please specifiy which gene you would like to visualize")
     } else {
         #----------------------------------------------------------------------#
         # will need some regex here probs
         #----------------------------------------------------------------------#
-        inCount <- rownames(counts) == genes
+        inCount <- rownames(counts) == gene
         #----------------------------------------------------------------------#
         # Just in case the gene is not present
         # this should probably be cleaned up
         #----------------------------------------------------------------------#
         if(sum(inCount) == 0){
-            warning(paste(genes," is not present in count matrix.
+            warning(paste(gene," is not present in count matrix.
                           Returning NULL"),immediate.=T)
             return(NULL)
         }
@@ -313,7 +313,7 @@ viewGeneExpression <- function(image,
                 legend.title = element_text(size = cex),
                 legend.text = element_text(size = cex),
                 plot.title = element_text(size=cex)) +
-          labs(title = genes,fill = type,
+          labs(title = gene,fill = type,
                x = "X coordinates", y = "Y coordinates")
     return(ge)
 }
@@ -324,7 +324,7 @@ viewGeneExpression <- function(image,
 #' cluster, and territory.
 #' @param counts count matrix - either matrix, sparse matrix or seurat object
 #' This matrix should contain genes as rownames and cells/barcodes as colnames
-#' @param genes character - gene of interest (only on gene at a time)
+#' @param gene character - gene of interest (only on gene at a time)
 #' @param normalise logical - If TRUE, gene expression values will be min/max
 #' normalised.
 #' @param cex numeric - font size modulator
@@ -361,13 +361,13 @@ viewGeneExpression <- function(image,
 #' image <- iterativeSegmentation.array(image)
 #' image <- isolateTerritories.array(image, minBar = 5)
 #' layer <- layerTerritory.edge(image, seedTerritory = 1)
-#' g <- viewLayerExpression(layer, vesalius, genes = "Cst3")
+#' g <- viewLayerExpression(layer, vesalius, gene = "Cst3")
 #' }
 
 
 viewLayerExpression <- function(image,
                                 counts,
-                                genes = NULL,
+                                gene = NULL,
                                 normalise =TRUE,
                                 cex =10){
 
@@ -393,19 +393,19 @@ viewLayerExpression <- function(image,
     # I could add multiple gene viz and what not
     # And yes I know it would be better to be consitent between tidyr and base
     #--------------------------------------------------------------------------#
-    if(is.null(genes)){
+    if(is.null(gene)){
         stop("Please specifiy which gene you would like to visualize")
     } else {
         #----------------------------------------------------------------------#
         # will need some regex here probs
         #----------------------------------------------------------------------#
-        inCount <- rownames(counts) == genes
+        inCount <- rownames(counts) == gene
         #----------------------------------------------------------------------#
         # Just in case the gene is not present
         # this should probably be cleaned up
         #----------------------------------------------------------------------#
         if(sum(inCount) == 0){
-            warning(paste(genes," is not present in count matrix.
+            warning(paste(gene," is not present in count matrix.
                           Returning NULL"),immediate.=T)
             return(NULL)
         }
@@ -442,7 +442,7 @@ viewLayerExpression <- function(image,
                 legend.title = element_text(size = cex),
                 legend.text = element_text(size = cex),
                 plot.title = element_text(size=cex)) +
-          labs(title = genes,fill = "Mean Expression",
+          labs(title = gene,fill = "Mean Expression",
                x = "X coordinates", y = "Y coordinates")
     return(ge)
 }
@@ -456,7 +456,7 @@ viewLayerExpression <- function(image,
 #' @param counts count matrix - either matrix, sparse matrix or seurat object
 #' This matrix should contain genes as rownames and cells/barcodes as colnames
 #' @param cells - character vector containing cells of interest.
-#' @param genes character - gene of interest (only on gene at a time)
+#' @param gene character - gene of interest (only on gene at a time)
 #' @param ter1  vector/integer - Territory ID in which gene expression will be viewed.
 #' See details.
 #' @param ter2 vector/integer - Territory ID in which gene expression will be viewed.
@@ -515,19 +515,19 @@ viewCellExpression <- function(image,
     if(is.null(gene)){
         stop("Please supply the gene you would like to visualise!")
     }
-    if(is.null(ter1) & is.null(ter2)){
+    if(is.null(ter1) && is.null(ter2)){
       CellCoord <- image %>%
                    filter(barcodes %in% cells & tile ==1)%>%
                    droplevels()
       CellCoord$territory <- "Territory 1"
-    } else if(!is.null(ter1) & is.null(ter2)){
+    } else if(!is.null(ter1) && is.null(ter2)){
       CellCoord <- image %>%
                    filter(barcodes %in% cells & tile ==1 &
                           territory %in% ter1) %>%
                    droplevels()
       CellCoord[CellCoord$territory %in% ter1,"territory"] <- "Territory 1"
 
-    } else if(is.null(ter1) & !is.null(ter2)){
+    } else if(is.null(ter1) && !is.null(ter2)){
       CellCoord <- image %>%
                    filter(barcodes %in% cells & tile ==1 &
                           territory %in% ter2) %>%
