@@ -830,20 +830,14 @@ compareLayers <- function(layers,counts,l1 = NULL, l2 = NULL, method = "wilcox",
 #' @param morphologyFactorQuery Integer or vector of integers describing growth
 #' or shrink rate of query territories
 #' @param verbose logical - progress message output
-#' @details extractMarkers compares a set of selected territories to another set
-#' of selected territories. If one of territory sets does not contain enough
-#' barcodes, \code{extractMarkers} will return NULL.
-#'
-#' A seed territory (or territories) should always be
-#' provided. Query territories can be left as the default NULL. In this case,
-#' the seed territory will be compared to all remaining barcodes that are NOT
-#' present in the seed. Otherwise, seed territories will be compared to query
-#' territories after any morphological operations
-#' (see \code{territoryMorphology}.
-#'
-#' compareCells provides a way to manipulate each set of territories
-#' independtly as described in \code{morphologyFactorSeed} and
-#' \code{morphologyFactorQuery.}
+#' @details compareCells provides a way to compare the expression of cells
+#' between different territories. If you have a cell type annotations associated
+#' to each of the barcodes present in your data, you can select your cell 
+#' type of interest and parse the barcodes to the compareCell function. 
+#' 
+#' Vesalius will internally subset your data and only compare
+#' barcodes present in your territories of interest for differential 
+#' gene expressioon. 
 #'
 #' The cells argument should be supplied as a vector of barcodes containing
 #' all barcodes of the cell type of interest. Theoretically, you can supply
