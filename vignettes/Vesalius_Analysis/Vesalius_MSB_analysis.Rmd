@@ -1,5 +1,5 @@
 ---
-title: "Vesalius Manuscript Analysis"
+title: "Vesalius: MSB Manuscript Analysis"
 author: Patrick C.N. Martin
 output:
   word_document: default

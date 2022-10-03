@@ -5,7 +5,11 @@
 #---------------------/Format conversion Functions/----------------------------#
 
 
-.vesToC <- function(object,dims,embed = "last",correctBackground =TRUE,verbose =TRUE){
+.vesToC <- function(object,
+  dims,
+  embed = "last",
+  correctBackground = TRUE,
+  verbose = TRUE) {
     #--------------------------------------------------------------------------#
     # For this function we will not create a "method". There are too many
     # other options that we need to account for.
@@ -13,25 +17,25 @@
     # to the one that is being requested.
     #--------------------------------------------------------------------------#
     tiles <- object@tiles
-
-    if(embed == "last"){
-        embeddings <- object@activeEmbeddings[[1L]]
-    }else{
-       inCol <- grep(pattern = embed,x = names(object@embeddings))
-       if(length(inCol)==0){
+    if (embed == "last") {
+      embeddings <- object@activeEmbeddings[[1L]]
+    } else {
+       inCol <- grep(pattern = embed, x = names(object@embeddings))
+       if (length(inCol) == 0) {
           stop(paste(deparse(substitute(embed)),":Unknown embedding selected!"))
-       } else if(length(inCol)>1){
-          warning(paste("More than 1",deparse(substitute(embed)),"embedding.
+       } else if (length(inCol) > 1) {
+          warning(paste("More than 1", deparse(substitute(embed)), "embedding.
           Vesalius will use the latest entry - See Vesalius Log"))
           embeddings <- object@embeddings[[inCol[length(inCol)]]]
        } else {
          embeddings <- object@embeddings[[inCol]]
        }
     }
-    if(length(dims)> ncol(embeddings)){
-        stop(paste0("To many dimesnions supplied! Only",ncol(embeddings)," present"))
+    if (length(dims)> ncol(embeddings)) {
+      stop(paste0("To many dimesnions supplied! Only",
+        ncol(embeddings),
+        " present"))
     }
-
     #--------------------------------------------------------------------------#
     # generate a list of images based on the number of dims
     # Remember that any time you do anything to an image
@@ -40,39 +44,38 @@
     #--------------------------------------------------------------------------#
     imageList <- list()
     .vtc(verbose)
-    for(i in seq_along(dims)){
-      embeds <- embeddings[,dims[i]]
-      embeds <- data.frame(names(embeds),embeds)
-      colnames(embeds) <- c("barcodes",as.character(dims[i]))
-      cimg <- right_join(tiles,embeds, by= "barcodes")
-      colnames(cimg) <- c("barcodes","x","y","origin","value")
+    for (i in seq_along(dims)) {
+      embeds <- embeddings[, dims[i]]
+      embeds <- data.frame(names(embeds), embeds)
+      colnames(embeds) <- c("barcodes", as.character(dims[i]))
+      cimg <- right_join(tiles,embeds, by = "barcodes")
+      colnames(cimg) <- c("barcodes", "x", "y", "origin", "value")
       cimg <- na.exclude(cimg)
-      if(correctBackground){
-          cimgTmp <- cimg %>%
-             select(c("x","y","value")) %>%
-             suppressWarnings() %>%
-             as.cimg() %>%
-             as.data.frame()
-          nonImg <- paste0(cimg$x,"_",cimg$y)
-          inImg <- paste0(cimgTmp$x,"_",cimgTmp$y)
-          cimgTmp[!inImg %in% nonImg,"value"] <- median(cimg$value)
-
-          imageList[[i]] <- suppressWarnings(as.cimg(cimgTmp[,c("x","y","value")]))
+      if (correctBackground) {
+        cimgTmp <- cimg %>%
+          select(c("x", "y", "value")) %>%
+          suppressWarnings() %>%
+          as.cimg() %>%
+          as.data.frame()
+        nonImg <- paste0(cimg$x, "_", cimg$y)
+        inImg <- paste0(cimgTmp$x, "_", cimgTmp$y)
+        cimgTmp[!inImg %in% nonImg, "value"] <- median(cimg$value)
+        imageList[[i]] <- suppressWarnings(as.cimg(
+          cimgTmp[, c("x" , "y", "value")]))
       } else {
-         imageList[[i]] <- suppressWarnings(as.cimg(cimg[,c("x","y","value")]))
+        imageList[[i]] <- suppressWarnings(as.cimg(
+          cimg[, c("x", "y", "value")]))
       }
-
-
-    }
-    return(imageList)
+  }
+  return(imageList)
 }
 
 
 
-.cToVes <- function(cimg,object,dims,embed = "last"){
-    #--------------------------------------------------------------------------#
-    # Get stuff out
-    #--------------------------------------------------------------------------#
+.cToVes <- function(cimg,object,dims,embed = "last") {
+  #--------------------------------------------------------------------------#
+  # Get stuff out
+  #--------------------------------------------------------------------------#
     tiles <- object@tiles
     if(embed == "last"){
         embeddings <- object@activeEmbeddings[[1L]]

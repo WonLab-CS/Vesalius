@@ -1,0 +1,9 @@
+---
+title: "Vesalius: Spatial Cut & Tag"
+author: Patrick C.N. Martin
+output:
+  word_document: default
+  html_document: default
+---
+
+

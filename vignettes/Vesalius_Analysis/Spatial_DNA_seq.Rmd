@@ -1,0 +1,8 @@
+---
+title: "Vesalius: Spatial Slide-DNA-seq"
+author: Patrick C.N. Martin
+output:
+  word_document: default
+  html_document: default
+---
+
