@@ -71,20 +71,14 @@ compareCells compute differential gene expression between selected
 territories for single cell type.
 }
 \details{
-extractMarkers compares a set of selected territories to another set
-of selected territories. If one of territory sets does not contain enough
-barcodes, \code{extractMarkers} will return NULL.
+compareCells provides a way to compare the expression of cells
+between different territories. If you have a cell type annotations associated
+to each of the barcodes present in your data, you can select your cell 
+type of interest and parse the barcodes to the compareCell function. 
 
-A seed territory (or territories) should always be
-provided. Query territories can be left as the default NULL. In this case,
-the seed territory will be compared to all remaining barcodes that are NOT
-present in the seed. Otherwise, seed territories will be compared to query
-territories after any morphological operations
-(see \code{territoryMorphology}.
-
-compareCells provides a way to manipulate each set of territories
-independtly as described in \code{morphologyFactorSeed} and
-\code{morphologyFactorQuery.}
+Vesalius will internally subset your data and only compare
+barcodes present in your territories of interest for differential 
+gene expressioon. 
 
 The cells argument should be supplied as a vector of barcodes containing
 all barcodes of the cell type of interest. Theoretically, you can supply
