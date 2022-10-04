@@ -309,7 +309,7 @@ layerTerritory <- function(vesalius,
     while(nrow(terForLoop)>0){
 
       grad <- ter  %>%
-              .detectEdges() %>%
+              .detect_edges() %>%
               grow(1) %>%
               as.cimg() %>%
               as.data.frame() %>%

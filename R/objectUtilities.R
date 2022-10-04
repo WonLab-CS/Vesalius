@@ -29,7 +29,7 @@
 
 
 }
-.updateVesalius <- function(vesalius,data,slot,commit,defaults,append = TRUE){
+.update_vesalius <- function(vesalius,data,slot,commit,defaults,append = TRUE){
     #--------------------------------------------------------------------------#
     # You take a vesalius object, the data you want add to it and which slot
     # it should be added to.
@@ -126,7 +126,7 @@
 
 }
 
-.getLastCommit <- function(log){
+.get_last_commit <- function(log){
     log <-.slotApply(log@log,names)
     log <- sapply(lapply(log,as.numeric),max)
     log <- max(log) + 1
@@ -134,7 +134,7 @@
 }
 
 
-.slotApply <- function(x,FUN,...){
+.slot_apply <- function(x,FUN,...){
     cl <- class(x)
     result <- list()
     for(i in slotNames(cl)){
@@ -145,7 +145,7 @@
 
 
 
-.assignLogSlot <- function(log,commit,logdf){
+.assign_log_slot <- function(log,commit,logdf){
     log <- switch(commit,
                   "buildVesaliusEmbeddings" =.slotAssign(log,
                     c("tiles","embeddings","activeEmbeddings"),
@@ -153,7 +153,7 @@
     return(log)
 }
 
-.slotAssign <- function(object,sl,input){
+.slot_assign <- function(object,sl,input){
 
     for(i in sl){
       if(length(slot(object,i))!=0){
@@ -165,7 +165,7 @@
     return(object)
 }
 
-getLastLog <- function(vesalius){
+get_last_log <- function(vesalius){
   cl <- class(vesalius@log)
   log <- list()
   for(i in slotNames(cl)){
@@ -181,7 +181,14 @@ getLastLog <- function(vesalius){
   return(log)
 }
 
-getCounts <- function(vesalius, type = "raw"){
+get_last_entry <- function(ter){
+    m <- gregexpr('[0-9]+', colnames(ter))
+    # Convert to function
+    last <- max(as.numeric(unlist(regmatches(colnames(ter), m))))
+    return(last)
+}
+
+get_counts <- function(vesalius, type = "raw"){
     counts <- vesalius@counts[[type]]
     if(is.null(counts)){
         stop("No count matrix has been added to Vesalius")
@@ -190,11 +197,11 @@ getCounts <- function(vesalius, type = "raw"){
 
 }
 
-viewLogTree <- function(vesalius){
+view_log_tree <- function(vesalius){
     return(vesalius@log)
 }
 
-viewTrialSummary <- function(vesalius){
+view_trial_summary <- function(vesalius){
     trials <- lapply(c("Segment","Territory","Morphology","Layer"),
                         function(id,vesalius){
                         return(grep(x=colnames(vesalius@territories),

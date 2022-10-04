@@ -19,15 +19,15 @@
 
 #' }
 
-subSetTerritories <- function(territories,seurat){
-    #--------------------------------------------------------------------------#
-    # Simplified version for now
-    # It might be worth while getting away from seurat later
-    # essentially this is a template function
-    #--------------------------------------------------------------------------#
-
-    seurat <- subset(seurat, cells = territories)
-    return(seurat)
+subSetTerritories <- function(territories, seurat){
+  #--------------------------------------------------------------------------#
+  # Simplified version for now
+  # It might be worth while getting away from seurat later
+  # essentially this is a template function
+  # LEGACY - might drop after refactoring
+  #--------------------------------------------------------------------------#
+  seurat <- subset(seurat, cells = territories)
+  return(seurat)
 }
 
 
@@ -42,6 +42,7 @@ subSetTerritories <- function(territories,seurat){
 #' data(Vesalius)
 #' }
 getSeuratCoordinates <- function(seurat){
+  # Legacy Code - might drop after refactoring!
   ret <-GetTissueCoordinates(seurat)
   if(sum(colnames(ret) %in% c("imagerow","imagecol"))==2){
       colnames(ret) <- c("y","x")
@@ -51,103 +52,21 @@ getSeuratCoordinates <- function(seurat){
 
 
 
-
-
-# Extracting count values for each cell in a cluster/territory
-# not in use
-.getGeneCounts <- function(object,by){
-    #--------------------------------------------------------------------------#
-    # This is just some cleaning and data extraction
-    # Note that this code relies on Seurat code
-    # This will need to be changed when refactoring
-    #--------------------------------------------------------------------------#
-    if(by == "cluster"){
-      clusters <- FetchData(object,"seurat_clusters")
-      #------------------------------------------------------------------------#
-      # Get all barcodes associated with each cluster
-      #------------------------------------------------------------------------#
-      barcodes <- lapply(unique(clusters$seurat_clusters),function(idx,obj){
-                return(WhichCells(obj,idx))
-      }, object)
-      #------------------------------------------------------------------------#
-      # Get counts associated to each clusters
-      #------------------------------------------------------------------------#
-      counts <- lapply(barcodes, function(bar,obj){
-                return(subset(obj, cells = bar))
-      })
-      #------------------------------------------------------------------------#
-      # Rebuild subsetted count matrix
-      ## Will need to change this for more felxibility
-      # Set to default assay or reduction based
-      #------------------------------------------------------------------------#
-      newCount <- lapply(object, function(x){
-                  return(GetAssayData(x,slot ="data"))
-      })
-    } else if(by == "territory"){
-      #------------------------------------------------------------------------#
-      # Just return all cells for that territory
-      # Normalised counts ! This is important and will need to change the code
-      # accordingly
-      # This just considers normalised data
-      #------------------------------------------------------------------------#
-      newCount <- GetAssayData(object, slot ="data")
-    } else {
-      #------------------------------------------------------------------------#
-      # Placeholder for now
-      #------------------------------------------------------------------------#
-      newCount <- NULL
-    }
-
-
-    return(newCount)
-
-}
-
-
-### might be dropped in final version
-### Not in use
-.addTerritories <- function(dat,coordinates = NULL, global = TRUE){
-
-    ters <- names(dat)
-
-    dat <- lapply(seq_along(ters), function(idx,ters,dat){
-                  dat[[idx]]$territory <- ters[idx]
-                  return(dat[[idx]])
-    },ters,dat)
-
-    if(!is.null(coordinates)){
-        dat <- mapply(function(dat,coordinates){
-                      tmp <- cbind(dat,coordinates[,c("x","y")])
-                      return(tmp)
-        },dat,coordinates, SIMPLIFY = FALSE)
-    }
-
-
-    dat <- do.call("rbind",dat)
-    if(global){
-      dat <- .globaliseTerritories(dat, seurat = TRUE)
-    }
-
-    return(dat)
-}
-
-
-
-
-
 # Used to convert territories per cluster to territories across the whole
 # ST array
-.globaliseTerritories <- function(img){
-      imgTmp <- img %>% filter(trial != "isolated")
-      ter <- paste0(imgTmp$segment,"_", imgTmp$trial)
-      allTer <- unique(ter)
-      ter <- seq_along(allTer)[match(ter,allTer)]
-      img$trial[img$trial != "isolated"] <- ter
-      return(img)
+.globalise_territories <- function(img){
+  img_tmp <- img %>% filter(trial != "isolated")
+  ter <- paste0(img_tmp$segment ,"_", img_tmp$trial)
+  all_ter <- unique(ter)
+  ter <- seq_along(all_ter)[match(ter, all_ter)]
+  img$trial[img$trial != "isolated"] <- ter
+  return(img)
 }
 
-
-.selectSimilar <- function(img,cols,segment,threshold = "auto"){
+#---------------------------/Edge Functions/-----------------------------#
+# This might need to be moved somewhere else
+# Also these functions will need to be cleaned and updated 
+.select_similar <- function(img, cols, segment, threshold = "auto"){
   img <- img %>% { . - imfill(dim=dim(img),val=cols[segment,2:4]) } %>%
          imsplit("c") %>%
          enorm()
@@ -155,7 +74,7 @@ getSeuratCoordinates <- function(seurat){
   img <- as.cimg(img)
   return(img)
 }
-.detectEdges <- function(img){
+.detect_edges <- function(img){
   img <- img %>% imgradient("xy") %>%
          enorm() %>%
          add() %>%
@@ -170,79 +89,30 @@ getSeuratCoordinates <- function(seurat){
     return(pmap)
 }
 
-.watershed <- function(img,pmap){
-  #----------------------------------------------------------------------------#
-  # First create empty image to fill
-  #----------------------------------------------------------------------------#
-  seed <- imfill(dim=dim(pmap))
-  #----------------------------------------------------------------------------#
-  # Next we can get back ground and foreground pixels
-  # basing this on the pixSet object describing similar "colours"
-  # Fill in seed
-  #----------------------------------------------------------------------------#
-  back <- which(img == 0, arr.ind = TRUE)
-  back <- back[sample(seq_len(nrow(back)),1),]
-  seed[back[1],back[2],back[3],back[4]]<- 0
-  fore <- which(img == 1, arr.ind = TRUE)
-  fore <- fore[sample(seq_len(nrow(fore)),1),]
-  seed[fore[1],fore[2],fore[3],fore[4]]<- 1
-  #----------------------------------------------------------------------------#
-  # watershed using seed image and priority map built using the pixset
-  # describing similar colours
-  #----------------------------------------------------------------------------#
-  wt <- as.cimg(watershed(seed, pmap))
-  return(wt)
-}
-
-.removeWaterPool <- function(water, image){
-  #----------------------------------------------------------------------------#
-  # Now that we have one territory, we want to remove from the original pool
-  # and start again with the next water pool
-  #----------------------------------------------------------------------------#
-  w <- which(water == 2,arr.ind = TRUE)
-  n <- which(water == 1,arr.ind = TRUE)
-  image[w[,1],w[,2],w[,3],w[,4]] <- 2
-  image[n[,1],n[,2],n[,3],n[,4]] <- 1
-  return(image)
-}
-
 
 #------------------------/ Normalising Embeds /--------------------------------#
-.normPix <- function(embeds,type = c("minmax","quantileNorm")){
+.norm_pixel <- function(embeds, type = c("minmax", "quantileNorm")) {
     #--------------------------------------------------------------------------#
     # Normalise pixels values
-
     #--------------------------------------------------------------------------#
     embeds <- switch(type[1L],
-                     "mixmax" = .minMax(embeds),
-                     "quantileNorm" = midFix(embeds))
+                     "mixmax" = .min_max(embeds),
+                     "quantileNorm" = .quantile_norm(embeds))
 }
 
 
-### might move this over to misc
-.minMaxEmbeds <- function(embeds){
-    embeds <- apply(embeds,2,.minMax)
-    return(embeds)
-}
-
-.minMax <- function(x){
+.min_max <- function(x){
     return((x - min(x)) / (max(x) - min(x)))
 }
-.quantileNorm <- function(embeds){
-
-    embeds_rank <- apply(embeds,2,rank,ties.method="min")
-    embeds <- data.frame(apply(embeds, 2, sort))
-    embeds_mean <- apply(embeds, 1, mean)
-
-    index_to_mean <- function(my_index, my_mean){
-      return(my_mean[my_index])
-    }
-
-    embeds_final <- apply(embeds_rank, 2, function(idx,m){
-        return(m[idx])
-    },embeds_mean)
-    rownames(embeds_final) <- rownames(embeds)
-    return(embeds_final)
 
 
+.quantile_norm <- function(embeds){
+  embeds_rank <- apply(embeds, 2, rank, ties.method = "min")
+  embeds <- data.frame(apply(embeds, 2, sort))
+  embeds_mean <- apply(embeds, 1, mean)
+  embeds_final <- apply(embeds_rank, 2, function(idx, m) {
+    return(m[idx])
+  }, embeds_mean)
+  rownames(embeds_final) <- rownames(embeds)
+  return(embeds_final)
 }

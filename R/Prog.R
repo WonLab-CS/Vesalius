@@ -8,238 +8,182 @@
 # I really don't want to include this in the main functions
 # That is just messy
 
-.consSparse <- function(verbose =TRUE){
-    if(!verbose) return(NULL)
+#---------------------------/Embedding Messages/-------------------------------#
+
+.conserve_sparse <- function(verbose = TRUE) {
+    if (!verbose) return(NULL)
     t <- Sys.time()
-    cat( paste(t," Converting Sparse Matrix to Matrix \n"))
+    cat(paste(t, " Converting Sparse Matrix to Matrix \n"))
 }
-.pca <- function(verbose =TRUE,slices =1){
+.pca_tensor <- function(verbose =TRUE){
+    if (!verbose) return(NULL)
+    t <- Sys.time()
+    cat(paste(t, " Running Principle Component Analysis \n"))
+}
+.pca_rgb_tensor <- function(verbose = TRUE){
     if(!verbose) return(NULL)
     t <- Sys.time()
-    cat( paste(t," Running Principle Component Analysis in",slices,"slices", "\n"))
+    cat(paste(t, " Converting PCA Embediing Values to RGB", "\n"))
+}
+.pcal_rgb_tensor <- function(verbose = TRUE, pc) {
+    if ( !verbose) return(NULL)
+    t <- Sys.time()
+    cat(paste(t, " Converting Loading Values to RGB in PC", pc, "\n"))
 }
 
-.pcaTensor<- function(verbose =TRUE){
-    if(!verbose) return(NULL)
+.svd_tensor <- function(verbose = TRUE) {
+    if (!verbose) return(NULL)
     t <- Sys.time()
-    cat( paste(t," Running Principle Component Analysis \n"))
+    cat(paste(t, " Running Single Value Decomposition \n"))
 }
-.rgb <- function(verbose =TRUE,slice){
+.svd_rgb_tensor <- function(verbose = TRUE){ 
     if(!verbose) return(NULL)
     t <- Sys.time()
-    cat( paste(t," Converting Loading Values to RGB in slice",slice, "\n"))
-}
-
-.pcaRGBTensor <- function(verbose =TRUE,pc){
-    if(!verbose) return(NULL)
-    t <- Sys.time()
-    cat( paste(t," Converting Loading Values to RGB in PC",pc, "\n"))
+    cat( paste(t, " Converting Embeddings to RGB \n"))
 }
 
-.embedRGBTensor <-function(verbose =TRUE){
-    if(!verbose) return(NULL)
-    t <- Sys.time()
-    cat( paste(t," Converting Embeddings to RGB \n"))
-}
-
-.umapRGBTensor <- function(verbose){
+.umap_rgb_tensor <- function(verbose) {
   if(!verbose) return(NULL)
   t <- Sys.time()
-  cat( paste(t," Converting UMAP Embeddings to RGB \n"))
+  cat( paste(t, " Converting UMAP Embeddings to RGB \n"))
 }
-.adj <- function(verbose =TRUE){
+
+#---------------------/Image Creation Messages/---------------------------#
+.distance_beads <- function(verbose = TRUE) {
+    if (!verbose) return(NULL)
+    t <- Sys.time()
+    cat(paste(t, " Filtering outlier beads \n"))
+}
+
+.tess <- function(verbose = TRUE) {
+    if (!verbose) return(NULL)
+    t <- Sys.time()
+    cat(paste(t, " Generating Voronoi Tesselation \n"))
+}
+.raster <- function(verbose = TRUE) {
+    if (!verbose) return(NULL)
+    t <- Sys.time()
+    cat( paste(t, " Rasterising Tiles \n"))
+}
+.filter <- function(verbose = TRUE) {
+    if (!verbose) return(NULL)
+    t <- Sys.time()
+    cat(paste(t, " Filtering Triangles that exceed area threshold\n"))
+}
+.tensor_res <- function(verbose = TRUE) {
+    if (!verbose) return(NULL)
+    t <- Sys.time()
+    cat(paste(t, " Reducing tensor resolution\n"))
+}
+.f_tiles <- function(verbose = TRUE) {
+    if (!verbose) return(NULL)
+    t <- Sys.time()
+    cat(paste(t, " Filtering Tiles\n"))
+}
+
+.build_so <- function(verbose = TRUE) {
+    if (!verbose) return(NULL)
+    t <- Sys.time()
+    cat(paste(t, " Pre-processing Count Data\n"))
+}
+.adj_counts <- function(verbose = TRUE) {
+    if (!verbose) return(NULL)
+    t <- Sys.time()
+    cat(paste(t, " Adjusting count matrix\n"))
+}
+
+#-------------------/Image processing Messages/----------------------------#
+.reg <- function(verbose = TRUE) {
+    if (!verbose) return(NULL)
+    t <- Sys.time()
+    cat(paste(t, " Regularising Image \n"))
+}
+.seg <- function(seg,verbose = TRUE) {
     if(!verbose) return(NULL)
     t <- Sys.time()
-    cat( paste(t," Adjusting RGB values \n"))
+    cat(paste(t," Segmentation Iteration ", seg,"\r"))
 }
-
-.norm <- function(verbose =TRUE){
+.smooth <- function(verbose = TRUE) {
     if(!verbose) return(NULL)
     t <- Sys.time()
-    cat( paste(t," Normalising RGB values \n"))
+    cat(paste(t," Smoothing Image Arrays \n"))
 }
-.pcadj <- function(verbose =TRUE,slice){
+
+.ter_pool <- function(ter,verbose =TRUE) {
     if(!verbose) return(NULL)
     t <- Sys.time()
-    cat( paste(t," Adujsting RGB values using total variance in each PC - slice",slice,"\n"))
+    cat(paste(t, " Pooling territory ", ter, "\r"))
 }
-
-.assignCoordinates <- function(verbose =TRUE){
-    if(!verbose) return(NULL)
+.eq <- function(verbose =TRUE){
+    if (!verbose) return(NULL)
     t <- Sys.time()
-    cat( paste(t," Assigning Colours to Coordinates \n"))
+    cat(paste(t, " Equalizing Histogram \n"))
 }
-
-.typeChange <- function(verbose =TRUE){
-    if(!verbose) return(NULL)
+.morph <- function(verbose = TRUE) {
+    if (!verbose) return(NULL)
     t <- Sys.time()
-    cat( paste(t," Class coersion to numeric \n"))
+    cat(paste(t, " Converting to pixset and morphing territory \n"))
 }
-
-.invertCols <- function(verbose =TRUE){
-    if(!verbose) return(NULL)
+.layer_ter <- function(verbose = TRUE) {
+    if (!verbose) return(NULL)
     t <- Sys.time()
-    cat( paste(t," Inverting Colours \n"))
+    cat(paste(t, " Generating layers\n"))
 }
 
-.res <- function(verbose =TRUE){
+
+#-----------------------------/Prettify/-----------------------------------#
+.simple_bar <- function(verbose = TRUE) {
     if(!verbose) return(NULL)
+    widthDisplay <- round(options()$width)
+    bar <- paste0("#",
+        paste0(rep("-", widthDisplay * 0.9), collapse = ""),
+        "#")
+    cat(bar, "\n")
+
+}
+
+
+#----------------------------/DEG messages/-------------------------------#
+.deg_prog <- function(verbose = TRUE) {
+    if (!verbose) return(NULL)
     t <- Sys.time()
-    cat( paste(t," Resizing Image \n"))
+    cat(paste(t, " Computing Differentially Expressed Genes\n"))
 }
 
-.reg <- function(verbose =TRUE){
+.deg_each_prog <- function(seed, query, verbose = TRUE) {
     if(!verbose) return(NULL)
+    cat(paste("===>", seed, "VS", query, "<===", "\r"))
+}
+
+#------------------------/Object Sanity messages/---------------------------#
+
+.check_coord <- function(verbose = TRUE){
+    if (!verbose) return(NULL)
     t <- Sys.time()
-    cat( paste(t," Regularising Image \n"))
+    cat(paste(t, " Checking Coordinates \n"))
 }
-
-
-.distanceBeads <- function(verbose =TRUE){
-    if(!verbose) return(NULL)
-    t <- Sys.time()
-    cat( paste(t," Filtering outlier beads \n"))
-}
-
-.tess <- function(verbose =TRUE){
-    if(!verbose) return(NULL)
-    t <- Sys.time()
-    cat( paste(t," Generating Voronoi Tesselation \n"))
-}
-
-.raster <- function(verbose =TRUE){
-    if(!verbose) return(NULL)
-    t <- Sys.time()
-    cat( paste(t," Rasterising Tiles \n"))
-}
-
-.filter <- function(verbose =TRUE){
-    if(!verbose) return(NULL)
-    t <- Sys.time()
-    cat( paste(t," Filtering Triangles that exceed area threshold\n"))
-}
-.findCenter <- function(verbose =TRUE){
-    if(!verbose) return(NULL)
-    t <- Sys.time()
-    cat( paste(t," Finding Tile centers in image\n"))
-}
-
-
-.simpleBar <- function(verbose =TRUE){
-    if(!verbose) return(NULL)
-    widthDisplay<-round(options()$width)
-    bar <- paste0("#", paste0(rep("-",widthDisplay*0.9),collapse=""),"#")
-    cat(bar,"\n")
-
-}
-
-.degProg <- function(verbose =TRUE){
-    if(!verbose) return(NULL)
-    t <- Sys.time()
-    cat( paste(t,"Computing Differentially Expressed Genes\n"))
-}
-
-.degEachProg <- function(seed,query,verbose =TRUE){
-    if(!verbose) return(NULL)
-    cat( paste("===>",seed,"VS",query,"<===","\r"))
-}
-
-
-.extractTerProg <- function(seed,verbose =TRUE){
-    if(!verbose) return(NULL)
-    t <- Sys.time()
-    cat( paste(t," Extracting territory",seed,"\n"))
-}
-
-.seg <- function(seg,verbose =TRUE){
-    if(!verbose) return(NULL)
-    t <- Sys.time()
-    cat( paste(t," Segmentation Iteration ", seg,"\r"))
-}
-
-.smooth <- function(verbose =TRUE){
-    if(!verbose) return(NULL)
-    t <- Sys.time()
-    cat( paste(t," Smoothing Image Arrays \n"))
-}
-
-.terPool <- function(ter,verbose =TRUE){
-    if(!verbose) return(NULL)
-    t <- Sys.time()
-    cat( paste(t," Pooling territory ", ter,"\r"))
-}
-
-
-
-.checkCoord <- function(verbose =TRUE){
-    if(!verbose) return(NULL)
-    t <- Sys.time()
-    cat( paste(t," Checking Coordinates \n"))
-}
-
-#.checkVesalius <- function(verbose =TRUE){
-#    if(!verbose) return(NULL)
-#    t <- Sys.time()
-#    cat( paste(t," Checking and Converting Vesalius Object \n"))
-#}
-.seedSelect <- function(verbose =TRUE){
+.seed_select <- function(verbose = TRUE) {
     if(!verbose) return(NULL)
     t <- Sys.time()
     cat( paste(t," Extracting Seed territories \n"))
 }
-
-.querySelect <- function(verbose =TRUE){
-    if(!verbose) return(NULL)
+.query_select <- function(verbose = TRUE) {
+    if (!verbose) return(NULL)
     t <- Sys.time()
-    cat( paste(t," Extracting Query territories \n"))
+    cat(paste(t, " Extracting Query territories \n"))
 }
-.eq <- function(verbose =TRUE){
-    if(!verbose) return(NULL)
+.extract_ter_prog <- function(seed, verbose = TRUE) {
+    if (!verbose) return(NULL)
     t <- Sys.time()
-    cat( paste(t," Equalizing Histogram \n"))
+    cat(paste(t, " Extracting territory", seed, "\n"))
 }
-.rebuildDF <- function(verbose =TRUE){
+.rebuild_df <- function(verbose = TRUE) {
     if(!verbose) return(NULL)
     t <- Sys.time()
-    cat( paste(t," Rebuilding Data Frame from image \n"))
-}
-
-.morph <- function(verbose =TRUE){
-    if(!verbose) return(NULL)
-    t <- Sys.time()
-    cat( paste(t," Converting to pixset and morphing territory \n"))
+    cat(paste(t, " Rebuilding Data Frame from image \n"))
 }
 
-.layerTer <- function(verbose =TRUE){
-    if(!verbose) return(NULL)
-    t <- Sys.time()
-    cat( paste(t," Generating layers\n"))
-}
-
-
-
-.tensorRes <- function(verbose =TRUE){
-    if(!verbose) return(NULL)
-    t <- Sys.time()
-    cat( paste(t," Reducing tensor resolution\n"))
-}
-.fTiles <- function(verbose =TRUE){
-    if(!verbose) return(NULL)
-    t <- Sys.time()
-    cat( paste(t," Filtering Tiles\n"))
-}
-
-.buildSO <- function(verbose =TRUE){
-    if(!verbose) return(NULL)
-    t <- Sys.time()
-    cat( paste(t," Pre-processing Count Data\n"))
-}
-.adjCounts <- function(verbose=TRUE){
-    if(!verbose) return(NULL)
-    t <- Sys.time()
-    cat( paste(t," Adjusting count matrix\n"))
-}
-
+#----------------------/Format Conversion messages/------------------------#
 .vtc <- function(verbose=TRUE){
   if(!verbose) return(NULL)
   t <- Sys.time()
@@ -251,6 +195,9 @@
   cat( paste(t," Converting Vesalius to Data frame\n"))
 }
 
+
+
+#------------------------------------/TBD/---------------------------------#
 .msk <- function(em,verbose =TRUE){
     if(!verbose) return(NULL)
     t <- Sys.time()

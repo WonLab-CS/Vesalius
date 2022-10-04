@@ -72,24 +72,26 @@ extractMarkers <- function(vesalius,
                            seed = NULL,
                            query = NULL,
                            cells = NULL,
-                           method = c("wilcox","t.test","chisq"),
+                           method = c("wilcox", "t.test", "chisq"),
                            logFC = 0.25,
                            pval = 0.05,
                            minPct = 0.05,
                            minBar = 10,
-                           verbose=TRUE){
+                           verbose = TRUE) {
     .simpleBar(verbose)
     .consSparse(verbose)
 
     #--------------------------------------------------------------------------#
     # First lets get the norm method out and the associated counts
     #--------------------------------------------------------------------------#
-    if(normMethod == "last"){
+    if (normMethod == "last") {
         counts <- as.matrix(vesalius@counts[[length(vesalius@counts)]])
 
-    }else{
-        if(length(grep(x=names(vesalius@counts), pattern = normMethod))==0){
-            stop(paste0(deparse(substitute(normMethod)),"is not in count list!"))
+    } else {
+        if (length(grep(x = names(vesalius@counts),
+                pattern = normMethod)) == 0) {
+            stop(paste0(deparse(substitute(normMethod)),
+                "is not in count list!"))
         }
         counts <- as.matrix(vesalius@counts[[normMethod]])
     }
@@ -97,18 +99,19 @@ extractMarkers <- function(vesalius,
     # Next let's get the territory data
     #--------------------------------------------------------------------------#
 
-    if(!is.null(vesalius@territories) & trial == "last"){
+    if (!is.null(vesalius@territories) && trial == "last") {
       trial <- colnames(vesalius@territories)[ncol(vesalius@territories)]
-      DEG_trial <- paste0("DEG_",trial)
-      ter <- vesalius@territories[,c("barcodes","x","y",trial)]
-      colnames(ter) <- c("barcodes","x","y","trial")
-    } else if(!is.null(vesalius@territories) & trial != "last"){
-      if(!any(grepl(x = colnames(vesalius@territories),pattern = trial))){
-          stop(paste(deparse(substitute(trial)),"is not in territory data frame"))
+      DEG_trial <- paste0("DEG_", trial)
+      ter <- vesalius@territories[, c("barcodes", "x", "y", trial)]
+      colnames(ter) <- c("barcodes", "x", "y", "trial")
+    } else if (!is.null(vesalius@territories) && trial != "last") {
+      if (!any(grepl(x = colnames(vesalius@territories), pattern = trial))) {
+          stop(paste(deparse(substitute(trial)),
+            "is not in territory data frame"))
       }
       DEG_trial <- paste0("DEG_",trial)
-      ter <- vesalius@territories[,c("barcodes","x","y",trial)]
-      colnames(ter) <- c("barcodes","x","y","trial")
+      ter <- vesalius@territories[, c("barcodes", "x", "y", trial)]
+      colnames(ter) <- c("barcodes", "x", "y", "trial")
     } else {
       stop("No territories have been computed! Cannot perform DEG.")
     }
@@ -116,97 +119,106 @@ extractMarkers <- function(vesalius,
     #------------------------------------------------------------------------#
     # Getting and setting territory categories
     #------------------------------------------------------------------------#
-    if(is.null(seed) & is.null(query)){
+    if (is.null(seed) && is.null(query)) {
         #----------------------------------------------------------------------#
         # if no seed nor query is specified - assume that we want everything
         #----------------------------------------------------------------------#
-
         seed <- split(ter$barcodes, ter$trial)
-        query <- lapply(seed, function(bar, ter){
+        query <- lapply(seed, function(bar, ter) {
             return(ter$barcodes[!ter$barcodes %in% bar])
-        },ter=ter)
-        names(query) <- rep("remaining",length(query))
-        if(!is.null(cells)){
-            seed <- lapply(seed,function(s,c){
-              return(s[s %in% c])},c=cells)
-            if(length(seed)==0){
-              stop("No cells of interest are present in seed territory")}
+        }, ter = ter)
+        names(query) <- rep("remaining", length(query))
+        if (!is.null(cells)) {
+            seed <- lapply(seed,function(s, c) {
+              return(s[s %in% c])
+              }, c = cells)
+            if (length(seed) == 0) {
+              stop("No cells of interest are present in seed territory") 
+            }
             query <- lapply(query,function(s,c){
-                return(s[s %in% c])},c=cells)
-            if(length(query)==0){
-              stop("No cells of interest are present in query territory")}
+                return(s[s %in% c])
+                },c = cells)
+            if (length(query) == 0) {
+              stop("No cells of interest are present in query territory")
+            }
         }
 
-    }else if(!is.null(seed) & is.null(query)){
+    } else if (!is.null(seed) && is.null(query)) {
         #----------------------------------------------------------------------#
         # if only seed we compare seed to everything else
         # Get initial seed territory
         #----------------------------------------------------------------------#
-        seedID <- paste0(seed,collapse=" ")
-        seed <- ter[ter$trial %in% seed,"barcodes"]
+        seedID <- paste0(seed, collapse=" ")
+        seed <- ter[ter$trial %in% seed, "barcodes"]
         #----------------------------------------------------------------------#
         # Filter query based on seed
         #----------------------------------------------------------------------#
         queryID <- "remaining"
-        query <- ter[!ter$barcodes %in% seed,"barcodes"]
+        query <- ter[!ter$barcodes %in% seed, "barcodes"]
         #----------------------------------------------------------------------#
         # If cell barcodes are present we filter based on cells as well
         #----------------------------------------------------------------------#
-        if(!is.null(cells)){
+        if (!is.null(cells)) {
             seed <- seed[seed %in% cells]
-            if(length(seed)==0){
-              stop("No cells of interest are present in seed territory")}
+            if (length(seed) == 0) {
+              stop("No cells of interest are present in seed territory")
+            }
             query <- query[query %in% cells]
-            if(length(query)==0){
-              stop("No cells of interest are present in query territory")}
+            if (length(query) == 0) {
+              stop("No cells of interest are present in query territory")
+            }
         }
 
 
-    }else if(is.null(seed) & !is.null(query)){
+    } else if (is.null(seed) && !is.null(query)) {
         #----------------------------------------------------------------------#
         # if only query we compare query to everything else
         # Get initial query territory
         #----------------------------------------------------------------------#
-        queryID <- paste0(query,collapse=" ")
-        query <- ter[ter$trial %in% query,"barcodes"]
+        queryID <- paste0(query, collapse = " ")
+        query <- ter[ter$trial %in% query, "barcodes"]
         #----------------------------------------------------------------------#
         # Filter seed based on query
         #----------------------------------------------------------------------#
         seed <- "remaning"
-        seed <- ter[!ter$barcodes %in% query,"barcodes"]
+        seed <- ter[!ter$barcodes %in% query, "barcodes"]
         #----------------------------------------------------------------------#
         # If cell barcodes are present we filter based on cells as well
         #----------------------------------------------------------------------#
-        if(!is.null(cells)){
+        if (!is.null(cells)) {
             seed <- seed[seed %in% cells]
-            if(length(seed)==0){
-              stop("No cells of interest are present in seed territory")}
+            if (length(seed) == 0) {
+              stop("No cells of interest are present in seed territory")
+            }
             query <- query[query %in% cells]
-            if(length(query)==0){
-              stop("No cells of interest are present in query territory")}
+            if (length(query) == 0) {
+              stop("No cells of interest are present in query territory")
+            }
         }
 
-    }else {
+    } else {
         #----------------------------------------------------------------------#
         # if get both filter based on both
         #----------------------------------------------------------------------#
-        seedID <- paste0(seed,collapse=" ")
-        seed <- ter[ter$trial %in% seed,"barcodes"]
+        seedID <- paste0(seed, collapse = " ")
+        seed <- ter[ter$trial %in% seed, "barcodes"]
         #----------------------------------------------------------------------#
         # Filter query based on seed
         #----------------------------------------------------------------------#
-        queryID <- paste0(query,collapse=" ")
-        query <- ter[ter$trial %in% query,"barcodes"]
+        queryID <- paste0(query, collapse = " ")
+        query <- ter[ter$trial %in% query, "barcodes"]
         #----------------------------------------------------------------------#
         # If cell barcodes are present we filter based on cells as well
         #----------------------------------------------------------------------#
-        if(!is.null(cells)){
+        if (!is.null(cells)) {
             seed <- seed[seed %in% cells]
-            if(length(seed)==0){
-              stop("No cells of interest are present in seed territory")}
+            if (length(seed) == 0) {
+              stop("No cells of interest are present in seed territory")
+            }
             query <- query[query %in% cells]
-            if(length(query)==0){
-              stop("No cells of interest are present in query territory")}
+            if (length(query) == 0) {
+              stop("No cells of interest are present in query territory")
+            }
         }
     }
     #--------------------------------------------------------------------------#
@@ -215,19 +227,19 @@ extractMarkers <- function(vesalius,
     # if list then loop between all territories - this includes layers
     # Else we can just parse the counts
     #--------------------------------------------------------------------------#
-    if(any(is(seed)=="list") & any(is(query)=="list")){
+    if (any(is(seed) == "list") && any(is(query) == "list")) {
         #----------------------------------------------------------------------#
         # Now we can compared each territory to the rest
         # we won't will skip same territory comparison
         #----------------------------------------------------------------------#
         deg <- vector("list", length(seed))
         .degProg(verbose)
-        for(i in seq_along(seed)){
+        for (i in seq_along(seed)) {
 
-            seedTmp <- counts[,colnames(counts) %in% seed[[i]]]
+            seedTmp <- counts[, colnames(counts) %in% seed[[i]]]
             seedID <- names(seed)[i]
 
-            queryTmp <- counts[,colnames(counts) %in% query[[i]]]
+            queryTmp <- counts[, colnames(counts) %in% query[[i]]]
             queryID <- names(query)[i]
 
 
@@ -242,13 +254,13 @@ extractMarkers <- function(vesalius,
                                 minBar,
                                 verbose)
         }
-        deg <- do.call("rbind",deg)
-    }else{
+        deg <- do.call("rbind", deg)
+    } else {
         #----------------------------------------------------------------------#
         # Getting count out of matrix and parsing to Internal
         #----------------------------------------------------------------------#
-        seed <- counts[,colnames(counts) %in% seed]
-        query <- counts[,colnames(counts) %in% query]
+        seed <- counts[, colnames(counts) %in% seed]
+        query <- counts[, colnames(counts) %in% query]
         .degProg(verbose)
         deg <- .VesaliusDEG(seed,
                             query,
@@ -263,12 +275,12 @@ extractMarkers <- function(vesalius,
     }
     deg <- list(deg)
     names(deg) <- DEG_trial
-    vesalius <- .updateVesalius(vesalius=vesalius,
-                                data=deg,
-                                slot="DEG",
+    vesalius <- .updateVesalius(vesalius = vesalius,
+                                data = deg,
+                                slot = "DEG",
                                 commit = as.list(match.call()),
                                 defaults = as.list(args(extractMarkers)),
-                                append=TRUE)
+                                append = TRUE)
 
 
     #--------------------------------------------------------------------------#

@@ -5,7 +5,7 @@
 #---------------------/Format conversion Functions/----------------------------#
 
 
-.vesToC <- function(object,
+.ves_to_c <- function(object,
   dims,
   embed = "last",
   correctBackground = TRUE,
@@ -72,7 +72,7 @@
 
 
 
-.cToVes <- function(cimg,object,dims,embed = "last") {
+.c_to_ves <- function(cimg,object,dims,embed = "last") {
   #--------------------------------------------------------------------------#
   # Get stuff out
   #--------------------------------------------------------------------------#
@@ -120,7 +120,7 @@
 
 
 
-.vesToSIS <- function(object,dims,embed = "last",correctBackground =TRUE,verbose =TRUE){
+.ves_to_sis <- function(object,dims,embed = "last",correctBackground =TRUE,verbose =TRUE){
     #--------------------------------------------------------------------------#
     # First getting the right embedding and stuff out
     #--------------------------------------------------------------------------#
@@ -186,7 +186,7 @@
     return(imageList)
 }
 
-.SISToVes <- function(image,object,dims,embed = "last"){
+.sis_to_ves <- function(image,object,dims,embed = "last"){
   #--------------------------------------------------------------------------#
   # Get stuff out
   #--------------------------------------------------------------------------#
@@ -229,7 +229,7 @@
   return(object)
 }
 
-.SISToDF <- function(image, is.cimg = TRUE){
+.sis_to_df <- function(image, is.cimg = TRUE){
     image <- image$AP_image_data
     y <- rep(seq(1,ncol(image)), each = nrow(image))
     x <- rep(seq(1,nrow(image)), times = ncol(image))
