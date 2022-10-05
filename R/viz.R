@@ -32,62 +32,51 @@
 #' g <- imagePlot(image,as.cimg = F)
 #' }
 
-imagePlot <- function(vesalius,
-                      dims = seq(1,3),
-                      embedding = "last",
-                      cex=10){
+image_plot <- function(vesalius,
+  dims = seq(1,3),
+  embedding = "last",
+  cex = 10) {
     #--------------------------------------------------------------------------#
     # Checking dims - only gray scale or 3 coloured images for now
+    # What approach could we take here to use different number of dims?
     #--------------------------------------------------------------------------#
     if(length(dims) > 3){
        stop("To many dims selected")
-    } else if(length(dims) !=3 & length(dims)!=1 ){
+    } else if(length(dims) != 3 & length(dims) != 1) {
        stop("Non RGB /gray scale images not supported")
     }
-    #----------------------------------------------------------------------------#
+    #--------------------------------------------------------------------------#
     # First get image data from vesalius object
-    #----------------------------------------------------------------------------#
-    coordinates <- vesalius@tiles
+    #--------------------------------------------------------------------------#
+    coordinates <- check_tiles(vesalius)
     # need to check this -
-    tileColour <- vesalius@activeEmbeddings[[1L]][,dims]
+    tile_colour <- check_embedding(vesalius, embedding, dims)[, dims]
     #### format needs to be reworked here
-    tileColour <- as.data.frame(tileColour)
-    tileColour$barcodes <- rownames(tileColour)
-    coordinates <- right_join(coordinates, tileColour, by = "barcodes")
-    coordinates <- coordinates %>% na.exclude()
-
-
-    if(length(dims)==3){
-
-        cols <- rgb(coordinates[,5],coordinates[,6],coordinates[,7])
-        image <- ggplot(coordinates,aes(x,y))+
-                     geom_raster(aes(fill=cols))+
-                     scale_fill_identity()+
-                     theme_classic()+
-                     theme(axis.text = element_text(size = cex *1.2),
-                           axis.title = element_text(size = cex *1.2),
-                           plot.tag = element_text(size=cex * 2),
-                           plot.title = element_text(size=cex * 1.5)) +
-                    labs(title = paste0("Vesalius - Dims = ",paste0(dims,collapse = "-")),
-                           x = "X coordinates", y = "Y coordinates")
-
-         return(image)
+    tile_colour <- as.data.frame(tile_colour)
+    tile_colour$barcodes <- rownames(tile_colour)
+    coordinates <- right_join(coordinates, tile_colour, by = "barcodes") %>%
+      na.exclude()
+    #--------------------------------------------------------------------------#
+    # Generate plots
+    # Ceck to see how you can avoid the hard coding of the dimensions 
+    #--------------------------------------------------------------------------#
+    if (length(dims) == 3) {
+      cols <- rgb(coordinates[, 5], coordinates[, 6], coordinates[, 7])
+      title <- paste0("Vesalius - Dims = ", paste0(dims, collapse = "-"))
     } else {
       # to do
-      cols <- gray(coordinates[,"tileColour"])
-      image <- ggplot(coordinates,aes(x,y))+
-                   geom_raster(aes(fill=cols))+
-                   scale_fill_identity()+
-                   theme_classic()+
-                   theme(axis.text = element_text(size = cex *1.2),
-                         axis.title = element_text(size = cex *1.2),
-                         plot.tag = element_text(size=cex * 2),
-                         plot.title = element_text(size=cex * 1.5)) +
-                  labs(title = paste0("Vesalius - Dim = ",dims),
-                         x = "X coordinates", y = "Y coordinates")
-
-       return(image)
+      cols <- gray(coordinates[, 5])
+      title <- paste0("Vesalius - Dim = ", paste0(dims, collapse = "-"))
     }
+    image <- ggplot(coordinates, aes(x, y)) +
+        geom_raster(aes(fill = cols)) +
+        scale_fill_identity() +
+        theme_classic() +
+        theme(axis.text = element_text(size = cex * 1.2),
+          axis.title = element_text(size = cex * 1.2),
+          plot.title = element_text(size = cex * 1.5)) +
+        labs(title = title, x = "X coordinates", y = "Y coordinates")
+    return(image)
 }
 
 
@@ -120,90 +109,74 @@ imagePlot <- function(vesalius,
 #' g <- territoryPlot(image,cex = 12, cex.pt = 1)
 #' }
 
-territoryPlot <- function(vesalius,
-                          trial = "last",
-                          split = FALSE,
-                          randomise = TRUE,
-                          cex=10,
-                          cex.pt=0.25){
+territory_plot <- function(vesalius,
+  trial = "last",
+  split = FALSE,
+  randomise = TRUE,
+  cex = 10,
+  cex_pt = 0.25) {
     #--------------------------------------------------------------------------#
     # Dirty ggplot - this is just a quick and dirty plot to show what it look
     # like
     # At the moment - I thinking the user should make their own
     # Not a prority for custom plotting functions
+    # SANITY check here and format 
     #--------------------------------------------------------------------------#
-
-    if(!is.null(vesalius@territories) & trial == "last"){
-      trial <- colnames(vesalius@territories)[ncol(vesalius@territories)]
-      ter <- vesalius@territories[,c("x","y",trial)]
-      colnames(ter) <- c("x","y","territory")
-      ter$territory <- as.factor(ter$territory)
-      legend <- sapply(strsplit(trial,"_"),"[[",1)
-    } else if(!is.null(vesalius@territories) & trial != "last") {
-      if(length(grep(x = colnames(vesalius@territories),pattern = trial))==0){
-          stop(paste(deparse(substitute(trial)),"is not in territory data frame"))
-      }
-      ter <- vesalius@territories[,c("x","y",trial)]
-      colnames(ter) <- c("x","y","territory")
-      ter$territory <- as.factor(ter$territory)
-      legend <- sapply(strsplit(trial,"_"),"[[",1)
-
-    } else {
-      stop("No territories have been computed!")
-    }
-
+    territories <- check_territories(vesalius, trial)
+    legend <- sapply(strsplit(trial, "_"), "[[", 1)
     #--------------------------------------------------------------------------#
     # Changing label order because factor can suck ass sometimes
     #--------------------------------------------------------------------------#
+    sorted_labels <- order(levels(as.factor(territories$territory)))
+    if (any(grepl("isolated", territories$territory))) {
+      sorted_labels[length(sorted_labels)] <- "isolated"
+    }
 
-    #sorted_labels <- order(levels(ter$territory))
-    #ter$territory <- factor(ter$territory) %>% fct_reorder(sorted_labels)
-
-
+    territories$territory <- factor(territories$territory,
+      levels = sorted_labels)
     #--------------------------------------------------------------------------#
     # My pure hatred for the standard ggplot rainbow colours has forced me
     # to use this palette instead - Sorry Hadely
     #--------------------------------------------------------------------------#
-    ter_col <- length(levels(ter$territory))
+    ter_col <- length(levels(territories$territory))
     ter_pal <- colorRampPalette(brewer.pal(8, "Accent"))
 
-    if(randomise){
-        ter_col <- sample(ter_pal(ter_col),ter_col)
+    if (randomise) {
+        ter_col <- sample(ter_pal(ter_col), ter_col)
     } else {
         ter_col <- ter_pal(ter_col)
     }
-    if(split){
-        terPlot <- ggplot(ter, aes(x,y,col = territory)) +
-               geom_point(size= cex.pt, alpha = 0.65)+
-               facet_wrap(~territory)+
-               theme_classic() +
-               scale_color_manual(values = ter_col)+
-               theme(legend.text = element_text(size = cex *1.2),
-                     axis.text = element_text(size = cex *1.2),
-                     axis.title = element_text(size = cex *1.2),
-                     plot.tag = element_text(size=cex * 2),
-                     plot.title = element_text(size=cex * 1.5),
-                     legend.title = element_text(size=cex * 1.2)) +
-               guides(colour = guide_legend(override.aes = list(size=cex * 0.3)))+
-               labs(colour = legend, title = paste("Vesalius",trial),
-                     x = "X coordinates", y = "Y coordinates")
+    if (split) {
+      ter_plot <- ggplot(territories, aes(x,y,col = territory)) +
+          geom_point(size = cex.pt, alpha = 0.65) +
+          facet_wrap(~territory) +
+          theme_classic() +
+          scale_color_manual(values = ter_col) +
+          theme(legend.text = element_text(size = cex * 1.2),
+            axis.text = element_text(size = cex * 1.2),
+            axis.title = element_text(size = cex * 1.2),
+            plot.title = element_text(size = cex * 1.5),
+            legend.title = element_text(size = cex * 1.2)) +
+          guides(colour = guide_legend(
+            override.aes = list(size = cex * 0.3))) +
+          labs(colour = legend, title = paste("Vesalius", trial),
+            x = "X coordinates", y = "Y coordinates")
     } else {
-      terPlot <- ggplot(ter, aes(x,y,col = territory)) +
-                 geom_point(size= cex.pt, alpha = 0.65)+
-                 theme_classic() +
-                 scale_color_manual(values = ter_col)+
-                 theme(legend.text = element_text(size = cex *1.2),
-                       axis.text = element_text(size = cex *1.2),
-                       axis.title = element_text(size = cex *1.2),
-                       plot.tag = element_text(size=cex * 2),
-                       plot.title = element_text(size=cex * 1.5),
-                       legend.title = element_text(size=cex * 1.2)) +
-                 guides(colour = guide_legend(override.aes = list(size=cex * 0.3)))+
-                 labs(colour = legend, title = paste("Vesalius",trial),
-                                        x = "X coordinates", y = "Y coordinates")
+      ter_plot <- ggplot(territories, aes(x,y,col = territory)) +
+          geom_point(size = cex.pt, alpha = 0.65) +
+          theme_classic() +
+          scale_color_manual(values = ter_col) +
+          theme(legend.text = element_text(size = cex * 1.2),
+            axis.text = element_text(size = cex * 1.2),
+            axis.title = element_text(size = cex * 1.2),
+            plot.title = element_text(size = cex * 1.5),
+            legend.title = element_text(size = cex * 1.2)) +
+          guides(colour = guide_legend(
+            override.aes = list(size = cex * 0.3))) +
+          labs(colour = legend, title = paste("Vesalius", trial),
+            x = "X coordinates", y = "Y coordinates")
     }
-
-    return(terPlot)
+    return(ter_plot)
 }
 
 
@@ -255,16 +228,16 @@ territoryPlot <- function(vesalius,
 #' }
 
 
-viewGeneExpression <- function(vesalius,
-                               genes = NULL,
-                               normMethod = "last",
-                               trial = "last",
-                               territory1 = NULL,
-                               territory2 = NULL,
-                               cells = NULL,
-                               norm = TRUE,
-                               as.layer = FALSE,
-                               cex =10){
+view_gene_expression <- function(vesalius,
+  genes = NULL,
+  norm_method = "last",
+  trial = "last",
+  territory_1 = NULL,
+  territory_2 = NULL,
+  cells = NULL,
+  norm = TRUE,
+  as_layer = FALSE,
+  cex = 10) {
     #--------------------------------------------------------------------------#
     # First lets get the norm method out and the associated counts
     #--------------------------------------------------------------------------#
@@ -471,12 +444,13 @@ viewGeneExpression <- function(vesalius,
 
 
 ## assuming a list after chunking images
-viewTransform <- function(ves){
-    for(i in seq_along(ves)){
-        for(j in seq_along(ves[[i]])){
-            plot(ves[[i]][[j]]$img,main="Image")
-            plot(ves[[i]][[j]]$fft,main="Imaginary")
-            sqrt(ves[[i]][[j]]$real^2+ves[[i]][[j]]$fft^2) %>% plot(main="Power spectrum")
+view_transform <- function(ves) {
+    for (i in seq_along(ves)) {
+        for (j in seq_along(ves[[i]])) {
+            plot(ves[[i]][[j]]$img, main = "Image")
+            plot(ves[[i]][[j]]$fft, main = "Imaginary")
+            sqrt(ves[[i]][[j]]$real^2 + ves[[i]][[j]]$fft^2) %>% 
+              plot(main="Power spectrum")
         }
     }
 }

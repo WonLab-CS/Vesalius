@@ -5,221 +5,183 @@
 #---------------------/Format conversion Functions/----------------------------#
 
 
-.ves_to_c <- function(object,
+.ves_to_c <- function(vesalius,
   dims,
   embed = "last",
-  correctBackground = TRUE,
+  correct_background = TRUE,
   verbose = TRUE) {
     #--------------------------------------------------------------------------#
     # For this function we will not create a "method". There are too many
     # other options that we need to account for.
-    # TODO if embed is not last then you have to switch the last active embed
-    # to the one that is being requested.
+    # Might update this with medici later
     #--------------------------------------------------------------------------#
-    tiles <- object@tiles
-    if (embed == "last") {
-      embeddings <- object@activeEmbeddings[[1L]]
-    } else {
-       inCol <- grep(pattern = embed, x = names(object@embeddings))
-       if (length(inCol) == 0) {
-          stop(paste(deparse(substitute(embed)),":Unknown embedding selected!"))
-       } else if (length(inCol) > 1) {
-          warning(paste("More than 1", deparse(substitute(embed)), "embedding.
-          Vesalius will use the latest entry - See Vesalius Log"))
-          embeddings <- object@embeddings[[inCol[length(inCol)]]]
-       } else {
-         embeddings <- object@embeddings[[inCol]]
-       }
-    }
-    if (length(dims)> ncol(embeddings)) {
-      stop(paste0("To many dimesnions supplied! Only",
-        ncol(embeddings),
-        " present"))
-    }
+    embeddings <- check_embedding(vesalius, embed, dims)
+    tiles <- check_tiles(vesalius)
     #--------------------------------------------------------------------------#
     # generate a list of images based on the number of dims
     # Remember that any time you do anything to an image
     # it is always applied to each "channel" separately - it will be so
     # much easier to just consider everything as gray scale for this
     #--------------------------------------------------------------------------#
-    imageList <- list()
-    .vtc(verbose)
+    image_list <- list()
+    message_switch("vtc", verbose)
     for (i in seq_along(dims)) {
+      #------------------------------------------------------------------------#
+      # First we create a cimg data frame template from embedding values
+      #------------------------------------------------------------------------#
       embeds <- embeddings[, dims[i]]
       embeds <- data.frame(names(embeds), embeds)
       colnames(embeds) <- c("barcodes", as.character(dims[i]))
-      cimg <- right_join(tiles,embeds, by = "barcodes")
+      cimg <- right_join(tiles, embeds, by = "barcodes")
       colnames(cimg) <- c("barcodes", "x", "y", "origin", "value")
       cimg <- na.exclude(cimg)
-      if (correctBackground) {
-        cimgTmp <- cimg %>%
+      x <- max(cimg$x)
+      y <- max(cimg$y)
+      #------------------------------------------------------------------------#
+      # now we can convert that data frame to a cimg and correct background if
+      # required. Note that we are going back and forth between formats
+      # This is done so we can fill in the borders and empty space in the array
+      #------------------------------------------------------------------------#
+      if (correct_background) {
+        cimg_tmp <- cimg %>%
           select(c("x", "y", "value")) %>%
           suppressWarnings() %>%
           as.cimg() %>%
           as.data.frame()
-        nonImg <- paste0(cimg$x, "_", cimg$y)
-        inImg <- paste0(cimgTmp$x, "_", cimgTmp$y)
-        cimgTmp[!inImg %in% nonImg, "value"] <- median(cimg$value)
-        imageList[[i]] <- suppressWarnings(as.cimg(
-          cimgTmp[, c("x" , "y", "value")]))
+        non_img <- paste0(cimg$x, "_", cimg$y)
+        in_img <- paste0(cimg_tmp$x, "_", cimg_tmp$y)
+        # Median value for background - Other metrics??
+        cimg_tmp[!in_img %in% non_img, "value"] <- median(cimg$value)
+        image_list[[i]] <- suppressWarnings(
+          as.cimg(cimg_tmp[, c("x", "y", "value")], x = x, y = y))
       } else {
-        imageList[[i]] <- suppressWarnings(as.cimg(
-          cimg[, c("x", "y", "value")]))
+        image_list[[i]] <- suppressWarnings(
+          as.cimg(cimg_tmp[, c("x", "y", "value")], x = x, y = y))
       }
   }
-  return(imageList)
+  return(image_list)
 }
 
 
 
-.c_to_ves <- function(cimg,object,dims,embed = "last") {
+.c_to_ves <- function(cimg,
+  vesalius,
+  dims,
+  embed = "last",
+  verbose = TRUE) {
   #--------------------------------------------------------------------------#
   # Get stuff out
   #--------------------------------------------------------------------------#
-    tiles <- object@tiles
-    if(embed == "last"){
-        embeddings <- object@activeEmbeddings[[1L]]
-        embed <- names(object@activeEmbeddings[[1L]])
-    }else{
-      inCol <- grep(pattern = embed,x = names(object@embeddings))
-      if(length(inCol)==0){
-         stop(paste(deparse(substitute(embed)),":Unknown embedding selected!"))
-      } else if(length(inCol)>1){
-         warning(paste("More than 1",deparse(substitute(embed)),"embedding.
-         Vesalius will use the latest entry - See Vesalius Log"))
-         embeddings <- object@embeddings[[inCol[length(inCol)]]]
-      } else {
-        embeddings <- object@embeddings[[inCol]]
-      }
-    }
-    if(length(dims)> ncol(embeddings)){
-        stop(paste0("To many dimesnions supplied! Only",ncol(embeddings)," present"))
-    }
-
+    tiles <- check_tiles(vesalius)
+    embeddings <- check_embedding(vesalius, embed, dims)
+    embed <- ifelse(embed == "last",
+      yes = names(embeddings),
+      no = embed)
     #--------------------------------------------------------------------------#
     # Always going to be a gray scale image.
     # Colour are only used when during viz
     # This allows any arbitrary number of embeds
     #--------------------------------------------------------------------------#
-    for(i in seq_along(dims)){
+    message_switch("ctv", verbose)
+    for (i in seq_along(dims)) {
       img <- as.data.frame(cimg[[i]])
-      barcodes <- left_join(tiles,img, by = c("x","y")) %>%
-                  filter(origin == 1) %>% na.exclude()
-
-      locs <- match(rownames(embed),barcodes$barcodes)
-      embeddings[locs,dims[i]] <- barcodes$value
+      barcodes <- left_join(tiles, img, by = c("x", "y")) %>%
+                  filter(origin == 1) %>%
+                  na.exclude()
+      locs <- match(rownames(embed), barcodes$barcodes)
+      embeddings[locs, dims[i]] <- barcodes$value
 
     }
 
     embeddings <- list(embeddings)
     names(embeddings) <- embed
-    object@activeEmbeddings <- embeddings
+    vesalius@activeEmbeddings <- embeddings
 
-    return(object)
+    return(vesalius)
 }
 
 
 
-.ves_to_sis <- function(object,dims,embed = "last",correctBackground =TRUE,verbose =TRUE){
+.ves_to_sis <- function(vesalius,
+  dims,
+  embed = "last",
+  correct_background = TRUE,
+  verbose = TRUE) {
     #--------------------------------------------------------------------------#
     # First getting the right embedding and stuff out
     #--------------------------------------------------------------------------#
-    tiles <- object@tiles
-    if(embed == "last"){
-        embeddings <- object@activeEmbeddings[[1L]]
-    }else{
-        inCol <- grep(pattern = embed,x = names(object@embeddings))
-        if(length(inCol)==0){
-          stop(paste(deparse(substitute(embed)),":Unknown embedding selected!"))
-        } else if(length(inCol)>1){
-          warning(paste("More than 1",deparse(substitute(embed)),"embedding.
-          Vesalius will use the latest entry - See Vesalius Log"))
-          embeddings <- object@embeddings[[inCol[length(inCol)]]]
-        } else {
-          embeddings <- object@embeddings[[inCol]]
-        }
-    }
-    if(length(dims)> ncol(embeddings)){
-        stop(paste0("To many dimesnions supplied! Only",ncol(embeddings)," present"))
-    }
-
+    tiles <- check_tiles(vesalius)
+    embeddings <- check_embedding(vesalius, embed, dims)
     #--------------------------------------------------------------------------#
     # Now we can create the image list
     #--------------------------------------------------------------------------#
-    imageList <- list()
-    for(i in seq_along(dims)){
-      embeds <- object@embeddings[,dims[i]]
-      embeds <- data.frame(names(embeds),embeds)
-      colnames(embeds) <- c("barcodes",as.character(dims[i]))
-      sis <- right_join(tiles,embeds, by= "barcodes") %>% na.exclude()
-      colnames(cimg) <- c("barcodes","x","y","origin","value")
+    image_list <- list()
+    for (i in seq_along(dims)) {
+      embeds <- embeddings[, dims[i]]
+      embeds <- data.frame(names(embeds), embeds)
+      colnames(embeds) <- c("barcodes", as.character(dims[i]))
+      cimg <- right_join(tiles, embeds, by = "barcodes")
+      colnames(cimg) <- c("barcodes", "x", "y", "origin", "value")
+      cimg <- na.exclude(cimg)
+      x <- max(cimg$x)
+      y <- max(cimg$y)
       #------------------------------------------------------------------------#
-      # Coreecting backgound with median value
+      # now we can convert that data frame to a cimg and correct background if
+      # required. Note that we are going back and forth between formats
+      # This is done so we can fill in the borders and empty space in the array
       #------------------------------------------------------------------------#
-      # Using the cimg format just because they have optimised format conversion
-      #------------------------------------------------------------------------#
-      if(correctBackground){
-          cimgTmp <- cimg %>%
-             select(c("x","y","value")) %>%
-             suppressWarnings %>%
-             as.cimg %>%
-             as.data.frame
-          nonImg <- paste0(cimg$x,"_",cimg$y)
-          inImg <- paste0(cimgTmp$x,"_",cimgTmp$y)
-          cimgTmp[!inImg %in% nonImg,"value"] <- median(cimg$value)
-
-          sis <- suppressWarnings(as.cimg(sis[,c("x","y","value")]))
-          sis <- as.matrix(sis)
+      if (correct_background) {
+          cimg_tmp <- cimg %>%
+            select(c("x", "y", "value")) %>%
+            suppressWarnings() %>%
+            as.cimg() %>%
+            as.data.frame()
+          non_img <- paste0(cimg$x, "_", cimg$y)
+          in_img <- paste0(cimg_tmp$x, "_", cimg_tmp$y)
+          # Median value for background - Other metrics??
+          cimg_tmp[!in_img %in% non_img, "value"] <- median(cimg$value)
+          sis <- as.matrix(suppressWarnings(
+          as.cimg(cimg_tmp[, c("x", "y", "value")], x = x, y = y)))
       } else {
-        sis <- suppressWarnings(as.cimg(sis[,c("x","y","value")]))
-        sis <- as.matrix(sis)
+          sis <- as.matrix(suppressWarnings(
+          as.cimg(cimg_tmp[, c("x", "y", "value")], x = x, y = y)))
       }
 
       #------------------------------------------------------------------------#
       # hopefully this will do the trick - OpenImage require 3d Arrays
       # so we will create 3 instances of the same gray scale array
       #------------------------------------------------------------------------#
-      img <- replicate(sis,3)
-      dim(img) <- c(nrow(sis),ncol(sis),3)
-      imageList[[i]] <- img
+      img <- replicate(sis, 3)
+      dim(img) <- c(nrow(sis), ncol(sis), 3)
+      image_list[[i]] <- img
     }
-    return(imageList)
+    return(image_list)
 }
 
-.sis_to_ves <- function(image,object,dims,embed = "last"){
+.sis_to_ves <- function(image,
+  object,
+  dims,
+  embed = "last") {
   #--------------------------------------------------------------------------#
   # Get stuff out
   #--------------------------------------------------------------------------#
-  tiles <- object@tiles
-  if(embed == "last"){
-      embeddings <- object@activeEmbeddings[[1L]]
-      embed <- names(object@activeEmbeddings[[1L]])
-  }else{
-    inCol <- grep(pattern = embed,x = names(object@embeddings))
-    if(length(inCol)==0){
-       stop(paste(deparse(substitute(embed)),":Unknown embedding selected!"))
-    } else if(length(inCol)>1){
-       warning(paste("More than 1",deparse(substitute(embed)),"embedding.
-       Vesalius will use the latest entry - See Vesalius Log"))
-       embeddings <- object@embeddings[[inCol[length(inCol)]]]
-    } else {
-      embeddings <- object@embeddings[[inCol]]
-    }
-  }
-  if(length(dims)> ncol(embeddings)){
-      stop(paste0("To many dimesnions supplied! Only",ncol(embeddings)," present"))
-  }
+  tiles <- check_tiles(vesalius)
+  embeddings <- check_embedding(vesalius, embed, dims)
+  embed <- ifelse(embed == "last",
+    yes = names(embeddings),
+    no = embed)
   #--------------------------------------------------------------------------#
   # Always going to be a gray scale image.
   # Colour are only used when during viz
   # This allows any arbitrary number of embeds
   #--------------------------------------------------------------------------#
-  for(i in seq_along(dims)){
-    img <- .SISToDF(image[[i]])
-    barcodes <- left_join(tiles,img, by = c("x","y")) %>%
-                 filter(origin == 1) %>% na.exclude()
-    locs <- match(barcodes$barcodes,rownames(embeds))
-    embeddings[locs,dims[i]] <- barcodes$value
+  for (i in seq_along(dims)){
+    img <- .sis_to_df(image[[i]])
+    barcodes <- left_join(tiles, img, by = c("x", "y")) %>%
+                 filter(origin == 1) %>%
+                 na.exclude()
+    locs <- match(barcodes$barcodes, rownames(embed))
+    embeddings[locs, dims[i]] <- barcodes$value
 
   }
   embeddings <- list(embeddings)
@@ -229,12 +191,11 @@
   return(object)
 }
 
-.sis_to_df <- function(image, is.cimg = TRUE){
-    image <- image$AP_image_data
-    y <- rep(seq(1,ncol(image)), each = nrow(image))
-    x <- rep(seq(1,nrow(image)), times = ncol(image))
-    value <- as.vector(image[seq_len(nrow(image)),seq_len(ncol(image)),1])
-
-    df <- data.frame("x" = x,"y" = y, "value" = value)
-    return(df)
+.sis_to_df <- function(image, is_cimg = TRUE) {
+  image <- image$AP_image_data
+  y <- rep(seq(1, ncol(image)), each = nrow(image))
+  x <- rep(seq(1, nrow(image)), times = ncol(image))
+  value <- as.vector(image[seq_len(nrow(image)), seq_len(ncol(image)), 1])
+  df <- data.frame("x" = x, "y" = y, "value" = value)
+  return(df)
 }

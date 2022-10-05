@@ -89,13 +89,14 @@ smooth_array <- function(vesalius,
     # shifting format
     # ves_to_c => format.R
     #--------------------------------------------------------------------------#
-    .simple_bar(verbose)
+    simple_bar(verbose)
     if (is(vesalius)[1L] == "vesaliusObject") {
-        images <- .ves_to_c(object = vesalius,
+        images <- ves_to_c(object = vesalius,
           embed = embedding,
-          dims = dimensions)
+          dims = dimensions,
+          verbose = verbose)
     } else {
-      stop("Unsupported format to smoothArray function")
+      stop("Unsupported format to smooth_array function")
     }
 
     #--------------------------------------------------------------------------#
@@ -105,8 +106,8 @@ smooth_array <- function(vesalius,
     # core allocation. Don't want to waste time assigning threads if not
     # required.
     #--------------------------------------------------------------------------#
-    .smooth(verbose)
-    images <- parallel::mclapply(images, .internal_smooth,
+    message_switch("smooth", verbose)
+    images <- parallel::mclapply(images, internal_smooth,
       method = method,
       iter = iter,
       sigma = sigma,
@@ -121,20 +122,24 @@ smooth_array <- function(vesalius,
     # shifting format
     # c_to_ves => format.R
     #--------------------------------------------------------------------------#
-    vesalius <- .c_to_ves(images, vesalius, dimensions, embed = embedding)
-    vesalius <- .update_vesalius(vesalius = vesalius,
+    vesalius <- c_to_ves(images,
+      vesalius,
+      dimensions,
+      embed = embedding,
+      verbose = verbose)
+    vesalius <- update_vesalius(vesalius = vesalius,
       data = vesalius@activeEmbeddings,
       slot = "activeEmbeddings",
       commit = as.list(match.call()),
       defaults = as.list(args(smooth_array)),
       append = FALSE)
 
-    .simple_bar(verbose)
+    simple_bar(verbose)
     return(vesalius)
 
 }
 
-.internal_smooth <- function(image,
+internal_smooth <- function(image,
   method = c("median", "iso", "box"),
   iter = 1,
   sigma = 1,
@@ -245,13 +250,14 @@ equalize_histogram <- function(vesalius,
     # ves_to_c => format.R
     #--------------------------------------------------------------------------#
     if (is(vesalius)[1L] == "vesaliusObject") {
-        images <- .ves_to_c(object = vesalius,
+        images <- ves_to_c(object = vesalius,
           embed = embedding,
-          dims = dimensions)
+          dims = dimensions,
+          verbose = verbose)
     } else {
-      stop("Unsupported format to equalizeHistogram function")
+      stop("Unsupported format to equalize_histogram function")
     }
-    .eq(verbose)
+    message_switch("eq", verbose)
     #--------------------------------------------------------------------------#
     # Equalizing histogram - depending on the image different methods will
     # work differently. It worth keeping in mind that these are made and
@@ -269,26 +275,30 @@ equalize_histogram <- function(vesalius,
              down, up, mc.cores = cores),
            "EqualizeADP" = parallel::mclapply(images, EqualizeADP,
              mc.cores = cores),
-           "ECDF" = parallel::mclapply(images, .ecdf_eq,
+           "ECDF" = parallel::mclapply(images, ecdf_eq,
              mc.cores = cores))
     #--------------------------------------------------------------------------#
     # shifting format
     # c_to_ves => format.R
     #--------------------------------------------------------------------------#
-    vesalius <- .c_to_ves(images, vesalius, dimensions, embed = embedding)
-    vesalius <- .update_vesalius(vesalius = vesalius,
+    vesalius <- c_to_ves(images,
+      vesalius,
+      dimensions,
+      embed = embedding,
+      verbose = verbose)
+    vesalius <- update_vesalius(vesalius = vesalius,
       data = vesalius@activeEmbeddings,
       slot = "activeEmbeddings",
       commit = as.list(match.call()),
       defaults = as.list(args(equalize_histogram)),
       append = FALSE)
-    .simple_bar(verbose)
+    simple_bar(verbose)
     return(vesalius)
 }
 
 # Internal function related to ECDF historgram eq.
 # It is just for formatting really
-.ecdf_eq <- function(im){
+ecdf_eq <- function(im){
    return(as.cimg(ecdf(im)(im), dim = dim(im)))
 }
 
@@ -345,47 +355,52 @@ regularise_image <- function(vesalius,
   na.rm = TRUE,
   cores = 1,
   verbose = TRUE) {
-    .simpleBar(verbose)
+    simple_bar(verbose)
     #--------------------------------------------------------------------------#
     # shifting format
     # ves_to_c => format.R
     #--------------------------------------------------------------------------#
     if (is(vesalius)[1L] == "vesaliusObject") {
-        images <- .ves_to_c(object = vesalius,
+        images <- ves_to_c(object = vesalius,
           embed = embedding,
-          dims = dimensions)
+          dims = dimensions,
+          verbose = verbose)
     } else {
-      stop("Unsupported format to regulariseImage function")
+      stop("Unsupported format to regularise_image function")
     }
-    .reg(verbose)
+    message_switch("reg", verbose)
     #--------------------------------------------------------------------------#
     # now we can do some var reg!
     # Will add the imager denoising function as well
     # regularisation is essentially denoising anyway
     #--------------------------------------------------------------------------#
-    images <- parallel::mclapply(images, .regularise,
+    images <- parallel::mclapply(images, regularise,
       lambda,
       niter,
       method,
       normalise,
       mc.cores = cores)
 
-    vesalius <- .c_to_ves(images,vesalius, dimensions, embed = embedding)
-    vesalius <- .update_vesalius(vesalius = vesalius,
+    vesalius <- c_to_ves(images,
+      vesalius,
+      dimensions,
+      embed = embedding,
+      verbose = verbose)
+    vesalius <- update_vesalius(vesalius = vesalius,
       data = vesalius@activeEmbeddings,
       slot = "activeEmbeddings",
       commit = as.list(match.call()),
       defaults = as.list(args(regularise_image)),
       append = FALSE)
-    .simple_bar(verbose)
+    simple_bar(verbose)
     return(vesalius)
 }
 
 # Internal regularise function.
 
-.regularise <- function(img,
+regularise <- function(img,
   lambda = 1,
-  niter=100,
+  niter = 100,
   method = "TVL2.FiniteDifference",
   normalise = TRUE) {
     #--------------------------------------------------------------------------#
@@ -395,7 +410,7 @@ regularise_image <- function(vesalius,
     #--------------------------------------------------------------------------#
     img <- denoise2(as.matrix(img), lambda = lambda, niter = niter,
            method = method, normalize = FALSE)
-    if(normalise){
+    if (normalise) {
         img <- (img - min(img)) / (max(img) - min(img))
     }
     return(as.cimg(img))
@@ -471,7 +486,7 @@ regularise_image <- function(vesalius,
 #' }
 
 image_segmentation <- function(vesalius,
-  method = c("kmeans", "iterativeKmeans", "SISKmeans", "SIS"),
+  method = c("kmeans", "SISKmeans", "SIS"),
   embedding = "last",
   col_depth = 10,
   dimensions = seq(1, 3),
@@ -487,12 +502,13 @@ image_segmentation <- function(vesalius,
   use_center = TRUE,
   cores = 1,
   verbose = TRUE) {
+  simple_bar(verbose)
   #----------------------------------------------------------------------------#
   # Parsing vesalius object so we can recontruct it internally and not need to
   # rebuild intermediates and shift between formats...
   #----------------------------------------------------------------------------#
   image <- switch(method[1L],
-    "kmeans" = .vesalius_kmeans(vesalius,
+    "kmeans" = vesalius_kmeans(vesalius,
       col_depth = col_depth,
       dims = dimensions,
       embedding = embedding,
@@ -510,23 +526,23 @@ image_segmentation <- function(vesalius,
     "SISKmeans" = .sis_kmeans(vesalius, dimensions, cores, verbose),
     "SIS" = .sis(vesalius, dimensions, cores, verbose))
 
-  vesalius <- .update_vesalius(vesalius = vesalius,
+  vesalius <- update_vesalius(vesalius = vesalius,
     data = image$vesalius@activeEmbeddings,
     slot = "activeEmbeddings",
     commit = as.list(match.call()),
     defaults = as.list(args(image_segmentation)),
     append = FALSE)
-  vesalius <- .updateVesalius(vesalius = vesalius,
+  vesalius <- updateVesalius(vesalius = vesalius,
     data = image$clusters,
     slot = "territories",
     commit = as.list(match.call()),
     defaults = as.list(args(image_segmentation)),
     append = TRUE)
-  .simple_bar(verbose)
+  simple_bar(verbose)
   return(vesalius)
 }
 
-.vesalius_kmeans <- function(vesalius,
+vesalius_kmeans <- function(vesalius,
   dims = seq(1, 3),
   col_depth = 10,
   embedding = "last",
@@ -542,12 +558,15 @@ image_segmentation <- function(vesalius,
   use_center = TRUE,
   cores = 1,
   verbose = TRUE) {
-  .simple_bar(verbose)
+  
 
   if (is(vesalius)[1L] == "vesaliusObject") {
-      images <- .ves_to_c(object = vesalius, embed = embedding, dims = dims)
+      images <- ves_to_c(object = vesalius,
+        embed = embedding,
+        dims = dims,
+        verbose = verbose)
   } else {
-    stop("Unsupported format to imageSegmentation function")
+    stop("Unsupported format to image_segmentation function")
   }
   #----------------------------------------------------------------------------#
   # Segmenting image by iteratively decreasing colour depth and smoothing
@@ -559,7 +578,7 @@ image_segmentation <- function(vesalius,
     # Lets smooooooth this image
     # insert https://www.youtube.com/watch?v=4TYv2PhG89A&ab_channel=SadeVEVO
     #--------------------------------------------------------------------------#
-    images <- parallel::mclapply(images, .internal_smooth,
+    images <- parallel::mclapply(images, internal_smooth,
       method = method,
       iter = smooth_iter,
       sigma = sigma,
@@ -576,7 +595,7 @@ image_segmentation <- function(vesalius,
     colours <- lapply(images,function(img) {
         return(as.data.frame(img)$value)
     })
-    colours <- as.matrix(do.call("cbind" ,colours))
+    colours <- as.matrix(do.call("cbind", colours))
     if (use_center) {
         colours <- cbind(as.data.frame(images[[1L]])[, c("x", "y")],
                          as.data.frame(colours)) %>%
@@ -586,7 +605,7 @@ image_segmentation <- function(vesalius,
         colours <- colours[, !colnames(colours) %in%
           c("x", "y", "barcodes", "origin")] %>% as.matrix()
     }
-    .seg(j,verbose)
+    message_switch("seg", verbose, seg = j)
     cat("\n")
     #--------------------------------------------------------------------------#
     # Now lets cluster colours
@@ -612,8 +631,8 @@ image_segmentation <- function(vesalius,
     # this is mostly relevant when using useCentre =F and multiple colDepth
     # values.
     #------------------------------------------------------------------------#
-    if (useCenter) {
-      clusters <- data.frame(coord,colours, cluster) %>%
+    if (use_center) {
+      clusters <- data.frame(coord, colours, cluster) %>%
         right_join(vesalius@tiles, by = c("x", "y"))
       embeds <- colnames(clusters)[!colnames(clusters) %in%
         c("x", "y", "cluster", "barcodes", "origin")]
@@ -628,7 +647,7 @@ image_segmentation <- function(vesalius,
       clusters <- right_join(clusters, vesalius@tiles, by = c("x", "y")) %>%
              group_by(barcodes) %>%
              mutate(across(all_of(embeds),mean),
-              cluster = .top_cluster(cluster)) %>%
+              cluster = top_cluster(cluster)) %>%
              ungroup
     }
 
@@ -643,32 +662,36 @@ image_segmentation <- function(vesalius,
     # Let's rebuild everything
     #--------------------------------------------------------------------------#
 
-    vesalius <- .c_to_ves(images, vesalius, dims, embed = embedding)
+    vesalius <- c_to_ves(images,
+      vesalius,
+      dims,
+      mbed = embedding,
+      verbose = verbose)
     clusters <- clusters %>% 
       filter(origin == 1) %>%
-      select(c("barcodes","x","y","cluster")) %>%
+      select(c("barcodes", "x", "y", "cluster")) %>%
       as.data.frame()
 
     if (!is.null(vesalius@territories)) {
-      last <- .get_last_entry(vesalius@territories)
-      colnames(clusters) <- c(colnames(clusters)[seq_len(ncol(clusters)-1)],
+      last <- get_last_entry(vesalius@territories)
+      colnames(clusters) <- c(colnames(clusters)[seq_len(ncol(clusters) - 1)],
         paste0("Segment_Trial_", last + 1))
     } else {
-      colnames(clusters) <- c(colnames(clusters)[seq_len(ncol(clusters)-1)],
+      colnames(clusters) <- c(colnames(clusters)[seq_len(ncol(clusters) - 1)],
         "Segment_Trial_1")
     }
-
+  
   return(list("vesalius" = vesalius, "clusters" = clusters))
 }
 
-.top_cluster <- function(cluster) {
+top_cluster <- function(cluster) {
     top <- table(cluster)
     top <- names(top)[order(top, decreasing = TRUE)]
     return(as.numeric(top[1]))
 }
 
 ## NOTE this might become redundant if I implement the other segmentation method
-.sis_kmeans <- function(image, col_depth, box) {
+sis_kmeans <- function(image, col_depth, box) {
   #----------------------------------------------------------------------------#
   # First we need to convert cimg array to simple array
   #----------------------------------------------------------------------------#
@@ -695,7 +718,7 @@ image_segmentation <- function(vesalius,
   return(spx_km)
 }
 
-.sis <- function(image) {
+sis <- function(image) {
   #----------------------------------------------------------------------------#
   # First we need to convert cimg array to simple array
   #----------------------------------------------------------------------------#
@@ -780,7 +803,7 @@ isolate_territories <- function(vesalius,
   minBar = 10,
   verbose = TRUE){
 
-    .simple_bar(verbose)
+    simple_bar(verbose)
     #--------------------------------------------------------------------------#
     # Get stuff out as usual
     # Not super happy with this check

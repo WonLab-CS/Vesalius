@@ -59,16 +59,16 @@ build_vesalius_embeddings <- function(vesalius,
   filter_threshold = 0.995,
   nfeatures = 2000,
   min_cutoff = "q5",
-  remove_LSI1 = TRUE,
+  remove_lsi_1 = TRUE,
   cores = 1,
   verbose = TRUE) {
-    .simple_bar(verbose)
+    simple_bar(verbose)
     #--------------------------------------------------------------------------#
     # Check Status of object
     # Leaving space for changes and updates
     # .check_vesalius function => sanity.R
     #--------------------------------------------------------------------------#
-    status <- .check_vesalius(vesalius, init = TRUE)
+    status <- check_vesalius(vesalius, init = TRUE)
     if (status) {
         #----------------------------------------------------------------------#
         # Get raw counts
@@ -80,9 +80,8 @@ build_vesalius_embeddings <- function(vesalius,
         # Filter outlier beads
         #----------------------------------------------------------------------#
         if (filter_grid != 0 && filter_grid != 1) {
-          # Progress message distance_beads => Prog.R
-          .distance_beads(verbose)
-          coordinates <- .filter_grid(coordinates = coordinates,
+          message_switch("distance_beads", verbose)
+          coordinates <- filter_grid(coordinates = coordinates,
             filter_grid = filter_grid)
         }
         #----------------------------------------------------------------------#
@@ -90,39 +89,34 @@ build_vesalius_embeddings <- function(vesalius,
         # could be updated to use KNN
         #----------------------------------------------------------------------#
         if (tensor_resolution < 1) {
-          # Progress message tensor_res() => Prog.R
-          .tensor_res(verbose)
-          coordinates <- .reduce_tensor_resolution(coordinates = coordinates,
+          message_switch("tensor_res", verbose)
+          coordinates <- reduce_tensor_resolution(coordinates = coordinates,
           tensor_resolution = tensor_resolution)
-          # Progress message adj_counts() => Prog.R
-          .adj_counts(verbose)
-          counts <- .adjust_counts(coordinates, counts, cores)
+          message_switch("adj_counts", verbose)
+          counts <- adjust_counts(coordinates, counts, cores)
         }
         #----------------------------------------------------------------------#
         # TESSELATION TIME!
-        # Progress message tess() => Prog.R
         #----------------------------------------------------------------------#
-        .tess(verbose)
+        message_switch("tess", verbose)
         tesselation <- deldir::deldir(x = as.numeric(coordinates$x),
           y = as.numeric(coordinates$y))
         #----------------------------------------------------------------------#
         # Filtering tiles
-        # Progress message f_tiles() => Prog.R
         #----------------------------------------------------------------------#
-        .f_tiles(verbose)
-        filtered <- .filter_tiles(tesselation, coordinates, filter_threshold)
+        message_switch("filter_tiles", verbose)
+        filtered <- filter_tiles(tesselation, coordinates, filter_threshold)
 
         #----------------------------------------------------------------------#
         # Resterise tiles
-        # Progress message  raster() => Prog.R
         #----------------------------------------------------------------------#
-        .raster(verbose)
-        tiles <- .rasterise(filtered, cores)
+        message_switch("raster", verbose)
+        tiles <- rasterise(filtered, cores)
         #----------------------------------------------------------------------#
         # Update objects and add log
         # update_vesalius => objectUtilies.R
         #----------------------------------------------------------------------#
-        vesalius <- .update_vesalius(vesalius = vesalius,
+        vesalius <- update_vesalius(vesalius = vesalius,
           data = tiles,
           slot = "tiles",
           commit = as.list(match.call()),
@@ -142,8 +136,8 @@ build_vesalius_embeddings <- function(vesalius,
     # for now we dont want to have multiple "tiles" options
     # NOTE: we might want to get away from Seurat as dependancy!!!
     #--------------------------------------------------------------------------#
-    .build_so(verbose)
-    counts <- .process_counts(counts,
+    message_switch("pre_process", verbose)
+    counts <- process_counts(counts,
       vesalius = vesalius,
       commit = as.list(match.call()),
       method = normalisation,
@@ -153,7 +147,7 @@ build_vesalius_embeddings <- function(vesalius,
     # Update objects and add log
     # update_vesalius => objectUtilies.R
     #----------------------------------------------------------------------#
-    vesalius <- .update_vesalius(vesalius = vesalius,
+    vesalius <- update_vesalius(vesalius = vesalius,
       data = counts$norm,
       slot = "counts",
       commit = as.list(match.call()),
@@ -168,21 +162,21 @@ build_vesalius_embeddings <- function(vesalius,
         method <- "none"
     }
     embeds <- switch(method[1L],
-      "PCA" = .embed_pca(counts$SO,
+      "PCA" = embed_pca(counts$SO,
         dimensions = dimensions,
         cores = cores,
         verbose = verbose),
-      "PCA_L" = .embed_pcal(counts$SO,
+      "PCA_L" = embed_pcal(counts$SO,
         dimensions = dimensions,
         cores = cores,
         verbose = verbose),
-      "UMAP" = .embed_umap(counts$SO,
+      "UMAP" = embed_umap(counts$SO,
         dimensions = dimensions,
         verbose),
-      "LSI" = .embed_lsi(counts$SO,
+      "LSI" = embed_lsi(counts$SO,
         dimensions = dimensions,
         remove_LSI1),
-      "LSI_UMAP" = .embed_lsi_umap(counts$SO,
+      "LSI_UMAP" = embed_lsi_umap(counts$SO,
         dimensions = dimensions,
         remove_LSI1),
       "none" = stop("Unsupported embedding type!"))
@@ -191,21 +185,21 @@ build_vesalius_embeddings <- function(vesalius,
     # update_vesalius => objectUtilies.R
     # Update both the full embedding list and the active embedding list
     #----------------------------------------------------------------------#
-    vesalius <- .update_vesalius(vesalius = vesalius,
+    vesalius <- update_vesalius(vesalius = vesalius,
       data = embeds,
       slot = "embeddings",
       commit = as.list(match.call()),
       defaults = as.list(args(build_vesalius_embeddings)),
       append = TRUE)
 
-    vesalius <- .update_vesalius(vesalius = vesalius,
+    vesalius <- update_vesalius(vesalius = vesalius,
       data = embeds,
       slot = "activeEmbeddings",
       commit = as.list(match.call()),
       defaults = as.list(args(build_vesalius_embeddings)),
       append = FALSE)
     # Progress message simpleBar => Prog.R
-    .simple_bar(verbose)
+    simple_bar(verbose)
     return(vesalius)
 }
 
@@ -213,7 +207,7 @@ build_vesalius_embeddings <- function(vesalius,
 
 
 #------------------------/ Filtering  Beads /----------------------------------#
-.filter_grid <- function(coordinates, filter_grid) {
+filter_grid <- function(coordinates, filter_grid) {
   #----------------------------------------------------------------------------#
   # Essentially create a grid where each barcode is pooled into a grid space
   # If there are too little barcodes in that grid section then remove
@@ -232,7 +226,7 @@ build_vesalius_embeddings <- function(vesalius,
 #------------------------/ Reducing Resolution /-------------------------------#
 ### might want to adjust this and use knn instead?
 ### maybe that would be better -> aggregate points together so it's "fair"
-.reduce_tensor_resolution <- function(coordinates, tensor_resolution = 1) {
+reduce_tensor_resolution <- function(coordinates, tensor_resolution = 1) {
   #----------------------------------------------------------------------------#
   # we will reduce number of points this way
   # this should keep all barcodes - with overlapping coordinates
@@ -270,13 +264,13 @@ build_vesalius_embeddings <- function(vesalius,
 }
 
 
-.adjust_counts <- function(coordinates, counts, cores = 1) {
+adjust_counts <- function(coordinates, counts, cores = 1) {
     #--------------------------------------------------------------------------#
     # First get all barcode names and compare which ones are missing
     #--------------------------------------------------------------------------#
     coord_bar <- unique(coordinates$barcodes)
     coord_bar <- coord_bar[sapply(strsplit(coord_bar, "_et_"), length) > 1]
-    if (length(coordBar) == 0) {
+    if (length(coord_bar) == 0) {
        return(counts)
     }
 
@@ -304,7 +298,7 @@ build_vesalius_embeddings <- function(vesalius,
 }
 
 #------------------------/ Creating pixel tiles /------------------------------#
-.filter_tiles <- function(tesselation, coordinates, filter_threshold) {
+filter_tiles <- function(tesselation, coordinates, filter_threshold) {
   max_area <- quantile(tesselation$summary$dir.area, filter_threshold)
   idx <- which(tesselation$summary$dir.area >= max_area)
   tess_v <- tesselation$dirsgs
@@ -315,7 +309,7 @@ build_vesalius_embeddings <- function(vesalius,
   return(list("tess_v" = tess_v, "coordinates" = coordinates))
 }
 
-.rasterise <- function(filtered, cores = 1) {
+rasterise <- function(filtered, cores = 1) {
     idx <- seq_len(nrow(filtered$coordinates))
     tiles <- parallel::mclapply(idx, function(idx, filtered) {
 
@@ -326,7 +320,7 @@ build_vesalius_embeddings <- function(vesalius,
         indx <- filtered$coordinates$x[idx]
         indy <- filtered$coordinates$y[idx]
         tess_v <- filtered$tess_v %>% filter(ind1 == ind | ind2 == ind)
-        if (nrow(tessV) == 0) {
+        if (nrow(tess_v) == 0) {
             return(NULL)
         }
         #----------------------------------------------------------------------#
@@ -343,7 +337,7 @@ build_vesalius_embeddings <- function(vesalius,
         # Convert coordinates into a convex shape for cleaner
         # rasterising.
         #----------------------------------------------------------------------#
-        convex <- .convexify(x, y, indx, indy)
+        convex <- convexify(x, y, indx, indy)
         x <- convex$x
         y <- convex$y
         #----------------------------------------------------------------------#
@@ -367,7 +361,7 @@ build_vesalius_embeddings <- function(vesalius,
         centers <- rep(0, length(max_x))
         centers[cent] <- 1
         tile <- data.frame("barcodes" = rep(filtered$coordinates$barcodes[idx],
-            times = length(maxX)),
+            times = length(max_x)),
           "x" = max_x,
           "y" = max_y,
           "origin" = centers)
@@ -378,7 +372,7 @@ build_vesalius_embeddings <- function(vesalius,
     return(tiles)
 }
 
-.convexify <- function(xside, yside, indx, indy) {
+convexify <- function(xside, yside, indx, indy) {
   #----------------------------------------------------------------------------#
   # Converting everything to an angle - from there we can just go clock wise
   # and order the point based on angle
@@ -401,7 +395,7 @@ build_vesalius_embeddings <- function(vesalius,
 #------------------------/ Preprocessing counts /------------------------------#
 # NOTE: this might change if we decide do move away from Seurat as dependancy.
 
-.process_counts <- function(counts,
+process_counts <- function(counts,
   vesalius,
   commit,
   method = "log",
@@ -414,15 +408,15 @@ build_vesalius_embeddings <- function(vesalius,
     #--------------------------------------------------------------------------#
     counts <- CreateSeuratObject(counts, assay = "Spatial")
     counts <- switch(method[1L],
-                    "log" = .log_norm(counts, nfeatures),
-                    "SCT" = .int_sctransform(counts, assay = "Spatial",
+                    "log" = log_norm(counts, nfeatures),
+                    "SCT" = int_sctransform(counts, assay = "Spatial",
                       nfeatures = nfeatures),
-                    "TFIDF" = .TFIDF_norm(counts, min_cutoff = min_cutoff),
-                    "raw" = .raw_norm(counts))
+                    "TFIDF" = tfidf_norm(counts, min_cutoff = min_cutoff),
+                    "raw" = raw_norm(counts))
   return(counts)
 }
 
-.raw_norm <- function(counts) {
+raw_norm <- function(counts) {
     #--------------------------------------------------------------------------#
     # Essentially we want people to be able to parse their matrix
     # If they want to use a different type of norm method that is not present
@@ -435,7 +429,7 @@ build_vesalius_embeddings <- function(vesalius,
     return(list("SO" = counts, "norm" = norm_counts))
 }
 
-.log_norm <- function(counts, nfeatures) {
+log_norm <- function(counts, nfeatures) {
   counts <- Seurat::NormalizeData(counts, verbose = FALSE)
   counts <- Seurat::ScaleData(counts, verbose = FALSE)
   counts <- Seurat::FindVariableFeatures(counts,
@@ -446,7 +440,7 @@ build_vesalius_embeddings <- function(vesalius,
   return(list("SO" = counts, "norm" = norm_counts))
 }
 
-.int_sctransform <- function(counts, assay = "Spatial", nfeatures) {
+int_sctransform <- function(counts, assay = "Spatial", nfeatures) {
     counts <- Searat::SCTransform(counts, assay = "Spatial",
       variable.features.n = nfeatures, verbose = FALSE)
     norm_counts <- list(GetAssayData(counts, slot = "data"))
@@ -454,7 +448,7 @@ build_vesalius_embeddings <- function(vesalius,
     return(list("SO" = counts, "norm" = norm_counts))
 }
 
-.TFIDF_norm <- function(counts, min_cutoff) {
+tfidf_norm <- function(counts, min_cutoff) {
   counts <- Signac::RunTFIDF(counts)
   counts <- Signac::FindTopFeatures(counts, min.cutoff = min_cutoff)
   norm_counts <- list(Seurat::GetAssayData(counts, slot = "data"))
@@ -465,7 +459,7 @@ build_vesalius_embeddings <- function(vesalius,
 
 
 #------------------------/ Color Embeddings /----------------------------------#
-.embed_pca <- function(counts,
+embed_pca <- function(counts,
   dimensions,
   loadings = TRUE,
   cores = 1,
@@ -474,11 +468,11 @@ build_vesalius_embeddings <- function(vesalius,
     # First run PCA
     # Progress message pca_tensor() => Prog.R
     #--------------------------------------------------------------------------#
-    .pca_tensor(verbose)
+    message_switch("pca_tensor", verbose)
     counts <- RunPCA(counts, npcs = dimensions, verbose = FALSE)
 
-     # Progress message embed_rgb_tensor() => Prog.R
-    .pca_rgb_tensor(verbose)
+    # Progress message embed_rgb_tensor() => Prog.R
+    message_switch("pca_rgb_tensor", verbose)
     #--------------------------------------------------------------------------#
     # Here we can just sum and normalise
     # this is going to be much faster
@@ -486,13 +480,13 @@ build_vesalius_embeddings <- function(vesalius,
     # ATM only min max norm - could look into using quantile norm as well
     #--------------------------------------------------------------------------#
     pca <- Embeddings(counts, reduction = "pca")
-    pca <- .norm_pixel(pca, "minmax")
+    pca <- norm_pixel(pca, "minmax")
     colour_matrix <- list(as.matrix(pca))
     names(colour_matrix) <- "PCA"
     return(colour_matrix)
 }
 
-.embed_pcal <- function(counts,
+embed_pcal <- function(counts,
   dimensions,
   cores = 1,
   verbose = TRUE) {
@@ -500,7 +494,7 @@ build_vesalius_embeddings <- function(vesalius,
     # First run PCA
     # Progress message pca_tensor() => Prog.R
     #--------------------------------------------------------------------------#
-    .pca_tensor(verbose)
+    message_switch("pca_tensor", verbose)
     counts <- RunPCA(counts, npcs = dimensions, verbose = FALSE)
 
     #--------------------------------------------------------------------------#
@@ -516,7 +510,7 @@ build_vesalius_embeddings <- function(vesalius,
     # Looping over each PC to get laodings sum and normalising
     #--------------------------------------------------------------------------#
     for (p in seq_len(ncol(pca))) {
-      .pcal_rgb_tensor(verbose, p)
+      message_switch("pcal_rgb_tensor", verbose, pc = p)
       bars <- parallel::mclapply(seq_len(ncol(mat)), function(idx, mat, pca) {
         c_vec <- as.numeric(mat[names(pca), idx])
         colour <- sum(pca * c_vec)
@@ -524,7 +518,7 @@ build_vesalius_embeddings <- function(vesalius,
       }, mat = mat, pca = pca[, p], mc.cores = cores)
       bars <- unlist(bars)
 
-      colour_matrix[, p] <- .min_max(bars)
+      colour_matrix[, p] <- norm_pixel(bars,"minmax")
     }
     colour_matrix <- list(as.matrix(colour_matrix))
     names(colour_matrix) <- "PCA_L"
@@ -533,14 +527,14 @@ build_vesalius_embeddings <- function(vesalius,
 
 
 
-.embed_umap <- function(counts, dimensions, verbose) {
+embed_umap <- function(counts, dimensions, verbose) {
   #----------------------------------------------------------------------------#
   # First run PCA and then UMAP
   # Progress message pca_tensor() => Prog.R
   #----------------------------------------------------------------------------#
-  .pca_tensor(verbose)
+  message_switch("pca_tensor", verbose)
   counts <- RunPCA(counts, npcs = dimensions, verbose = FALSE)
-  .umap_rgb_tensor(verbose)
+  message_switch("umap_rgb_tensor", verbose)
   counts <- RunUMAP(counts,
     dims = seq_len(dimensions),
     n.components = 3L,
@@ -549,34 +543,34 @@ build_vesalius_embeddings <- function(vesalius,
   # Normalise
   #----------------------------------------------------------------------------#
   counts <- FetchData(counts, c("UMAP_1", "UMAP_2", "UMAP_3"))
-  counts <- apply(counts, 2, .min_max)
+  counts <- apply(counts, 2, norm_pixel, "minmax")
   counts <- list(as.matrix(counts))
   names(counts) <- "UMAP"
   return(counts)
 }
 
 
-.embed_lsi <- function(counts,
+embed_lsi <- function(counts,
   dimensions = dimensions,
-  remove_LSI1,
+  remove_lsi_1,
   verbose = TRUE) {
   #--------------------------------------------------------------------------#
   # Run partial singular value decomposition(SVD) on TF-IDF normalized matrix
   #--------------------------------------------------------------------------#
-  .svd_tensor(verbose)
+  message_switch("svd_tensor", verbose)
   svd <- Signac::RunSVD(counts, n = dimensions + 1, verbose = FALSE)
 
   #--------------------------------------------------------------------------#
   # Getting embedding values and normalize
   #--------------------------------------------------------------------------#
-  .svd_rgb_tensor(verbose)
-  if (remove_LSI1) {
+  message_switch("svd_rgb_tensor", verbose)
+  if (remove_lsi_1) {
     colour_matrix <- Embeddings(svd[["lsi"]])[, -1]
   } else {
     colour_matrix <- Embeddings(svd[["lsi"]])[, seq(1, dimensions + 1)]
   }
 
-  colour_matrix <- apply(colour_matrix, 2, .min_max)
+  colour_matrix <- apply(colour_matrix, 2, norm_pixel, "minmax")
   colour_matrix <- list(as.matrix(colour_matrix))
   names(colour_matrix) <- "LSI"
   return(colour_matrix)
@@ -585,18 +579,18 @@ build_vesalius_embeddings <- function(vesalius,
 
 
 
-.embed_lsi_umap <- function(counts,
+embed_lsi_umap <- function(counts,
   dimensions,
-  remove_LSI1,
+  remove_lsi_1,
   verbose = TRUE) {
   #--------------------------------------------------------------------------#
   # Run partial singular value decomposition(SVD) on TF-IDF normalized matrix
   #--------------------------------------------------------------------------#
-  .svd_tensor(verbose)
+  message_switch("svd_tensor", verbose)
   svd <- Signa::RunSVD(counts, n = dimensions + 1, verbose = FALSE)
 
-  .umap_rgb_tensor(verbose)
-  if (remove_LSI1) {
+  message_switch("umap_rgb_tensor", verbose)
+  if (remove_lsi_1) {
     reduc <-  RunUMAP(svd,
       reduction = "lsi",
       dims = seq(2, dimensions + 1),
@@ -615,7 +609,7 @@ build_vesalius_embeddings <- function(vesalius,
   #--------------------------------------------------------------------------#
   colour_matrix <- FetchData(reduc, c("UMAP_1", "UMAP_2", "UMAP_3"))
 
-  colour_matrix <- apply(colour_matrix, 2, .min_max)
+  colour_matrix <- apply(colour_matrix, 2, norm_pixel, "minmax")
 
   colour_matrix <- list(as.matrix(colour_matrix))
   names(colour_matrix) <- "LSI_UMAP"
