@@ -154,12 +154,20 @@ get_last_log <- function(vesalius) {
   return(log)
 }
 
-get_last_entry <- function(ter) {
-    m <- gregexpr("[0-9]+", colnames(ter))
-    # Convert to function
-    last <- max(as.numeric(unlist(regmatches(colnames(ter), m))))
-    return(last)
+
+
+create_trial_tag <- function(trials, tag) {
+    if (any(grepl(x = trials, pattern = tag))) {
+      previous <- grep(x = trials, pattern = tag, value = TRUE)
+      m <- gregexpr("[0-9]+", previous)
+      last <- max(as.numeric(unlist(regmatches(previous, m))))
+      new_trial <- paste0(tag, "_Trial_", last + 1)
+    } else {
+      new_trial <-  paste0(tag, "_Trial_1")
+    }
+    return("new_trial" = new_trial)
 }
+
 
 get_counts <- function(vesalius, type = "raw") {
     counts <- vesalius@counts[[type]]

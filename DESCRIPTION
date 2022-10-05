@@ -24,6 +24,7 @@ Collate: IsolatingTerritories.R
     format.R
     objectUtilities.R
     PCA_to_RGB.R
+    sanity.R
 Depends: R (>= 4.0.0),
     Seurat,
     imager,

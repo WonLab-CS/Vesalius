@@ -90,7 +90,7 @@ smooth_array <- function(vesalius,
     # ves_to_c => format.R
     #--------------------------------------------------------------------------#
     simple_bar(verbose)
-    if (is(vesalius)[1L] == "vesaliusObject") {
+    if (is(vesalius, "vesaliusObject")) {
         images <- ves_to_c(object = vesalius,
           embed = embedding,
           dims = dimensions,
@@ -249,7 +249,7 @@ equalize_histogram <- function(vesalius,
     # shifting format
     # ves_to_c => format.R
     #--------------------------------------------------------------------------#
-    if (is(vesalius)[1L] == "vesaliusObject") {
+    if (is(vesalius, "vesaliusObject")) {
         images <- ves_to_c(object = vesalius,
           embed = embedding,
           dims = dimensions,
@@ -360,7 +360,7 @@ regularise_image <- function(vesalius,
     # shifting format
     # ves_to_c => format.R
     #--------------------------------------------------------------------------#
-    if (is(vesalius)[1L] == "vesaliusObject") {
+    if (is(vesalius, "vesaliusObject")) {
         images <- ves_to_c(object = vesalius,
           embed = embedding,
           dims = dimensions,
@@ -558,9 +558,7 @@ vesalius_kmeans <- function(vesalius,
   use_center = TRUE,
   cores = 1,
   verbose = TRUE) {
-  
-
-  if (is(vesalius)[1L] == "vesaliusObject") {
+  if (is(vesalius, "vesaliusObject")) {
       images <- ves_to_c(object = vesalius,
         embed = embedding,
         dims = dims,
@@ -672,16 +670,10 @@ vesalius_kmeans <- function(vesalius,
       select(c("barcodes", "x", "y", "cluster")) %>%
       as.data.frame()
 
-    if (!is.null(vesalius@territories)) {
-      last <- get_last_entry(vesalius@territories)
-      colnames(clusters) <- c(colnames(clusters)[seq_len(ncol(clusters) - 1)],
-        paste0("Segment_Trial_", last + 1))
-    } else {
-      colnames(clusters) <- c(colnames(clusters)[seq_len(ncol(clusters) - 1)],
-        "Segment_Trial_1")
-    }
-  
-  return(list("vesalius" = vesalius, "clusters" = clusters))
+    new_trial <- create_trial_tag(colnames(vesalius@territories), "Segment")
+    colnames(clusters) <- c(colnames(clusters)[seq_len(ncol(clusters) - 1)],
+        new_trial)
+    return(list("vesalius" = vesalius, "clusters" = clusters))
 }
 
 top_cluster <- function(cluster) {
@@ -800,7 +792,7 @@ isolate_territories <- function(vesalius,
   trial = "last",
   capture_radius = 0.025,
   global = TRUE,
-  minBar = 10,
+  min_spatial_index = 10,
   verbose = TRUE){
 
     simple_bar(verbose)
@@ -810,78 +802,30 @@ isolate_territories <- function(vesalius,
     # it's a bit messy - we might need to consider to do a whole sanity check
     # of inout data and see if that makes sense - this will include checking log
     #--------------------------------------------------------------------------#
-    if (is(vesalius)[1L] == "vesaliusObject" && 
-      !is.null(vesalius@territories)) {
-      if (any(grepl(x= colnames(vesalius@territories),pattern = "Segment")) &&
-        trial == "last") {
-        #----------------------------------------------------------------------#
-        # Making sure you get the last colour segment computed
-        # not to be confused with territories
-        #----------------------------------------------------------------------#
-        trial <- grep(x = colnames(vesalius@territories),
-          pattern = "Segment", value = TRUE)
-
-        ter <- vesalius@territories[,c("barcodes","x","y",trial[length(trial)])]
-        colnames(ter) <- c("barcodes","x","y","segment")
-
-      } else if(any(grepl(x= colnames(vesalius@territories),pattern = "Segment")) &
-                trial != "last") {
-        if(length(grep(x = colnames(vesalius@territories),pattern = trial))==0){
-            stop(paste(deparse(substitute(trial)),"is not in territory data frame"))
-        }
-        ter <- vesalius@territories[,c("barcodes","x","y",trial)]
-        colnames(ter) <- c("barcodes","x","y","segment")
-
-      } else {
-        stop("No image segments have been computed!")
-      }
-
-    } else if(is(vesalius)[1L] == "vesaliusObject" & is.null(vesalius@territories)) {
-        stop("No image segments have been computed!")
-    } else {
-        stop("Unsupported format to isolateTerritories function")
-    }
-
-
+    ter <- check_segments(vesalius, trial)
     #--------------------------------------------------------------------------#
     # Compute real capture Radius
     #--------------------------------------------------------------------------#
 
-    if(method[1L] == "distance"){
-      captureRadius <- sqrt((max(ter$x)-min(ter$x))^2 +
-                            (max(ter$y)-min(ter$y))^2) *
-                            captureRadius
+    if (method[1L] == "distance") {
+      capture_radius <- sqrt((max(ter$x) - min(ter$x))^2 +
+        (max(ter$y) - min(ter$y))^2) * capture_radius
     }
-
-
     #--------------------------------------------------------------------------#
     # Creating new trial column name and adding it to input data
     # The input data here is a subset of the full territory df
     # we at least make sure that we are using the right input
     #--------------------------------------------------------------------------#
-    if(any(grepl(x = colnames(vesalius@territories),pattern = "Territory"))){
-      previous <- grep(x=colnames(vesalius@territories),
-                                    pattern = "Territory",
-                                    value = TRUE)
-      m <- gregexpr('[0-9]+', previous)
-      last <- max(as.numeric(unlist(regmatches(previous,m))))
-      ter$trial <- 0
-      newTrial <- paste0("Territory_Trial_",last+1)
-      #colnames(ter) <- c("barcodes","x","y","segment",paste0("Territory_Trial_",last+1))
-
-    } else {
-      ter$trial <- 0
-      newTrial <- "Territory_Trial_1"
-      #colnames(ter) <- c("barcodes","x","y","segment","Territory_Trial_1")
-    }
+    new_trial <- create_trial_tag(colnames(vesalius@territoires), "Territory")
+    ter$trial <- 0
     #--------------------------------------------------------------------------#
     # Now we can dispatch the necessary information
     # and run the pooling algorithm
     #--------------------------------------------------------------------------#
     segment <- unique(ter$segment)
 
-    for(i in seq_along(segment)){
-      .terPool(i,verbose)
+    for (i in seq_along(segment)) {
+      message_switch("ter_pool", verbose, ter = i)
       #------------------------------------------------------------------------#
       # We don't need all data in this case only clusters and locations
       # We can just rebuild everything afterwards
@@ -893,19 +837,16 @@ isolate_territories <- function(vesalius,
 
       tmp <- ter[ter$segment == segment[i],]
       tmp <- switch(method[1L],
-                    "distance" = .distancePooling.array(tmp,captureRadius,
-                                                        minBar))
-                  #  "neighbor" = .neighborPooling.array(tmp,captureRadius),
-                  #  "watershed" = .watershedPooling.array(tmpImg))
+        "distance" = distance_pooling(tmp, capture_radius,
+          min_spatial_index))
       #------------------------------------------------------------------------#
       # Skipping if does not meet min cell requirements
       # filtering can be done later
       #------------------------------------------------------------------------#
-      if(is.null(tmp))next()
+      if (is.null(tmp)) next()
       #------------------------------------------------------------------------#
       # adding territories
       #------------------------------------------------------------------------#
-
       ter$trial[ter$segment == segment[i]] <- tmp
 
     }
@@ -915,67 +856,67 @@ isolate_territories <- function(vesalius,
     # If set to false territories only describe territories for any given colour
     # cluster
     #--------------------------------------------------------------------------#
-    if(global){
-        ter <- .globalise_territories(ter)
+    if (global) {
+        ter <- globalise_territories(ter)
     }
     #--------------------------------------------------------------------------#
     #Now we can add it to the full territory df and update vesalius
     #--------------------------------------------------------------------------#
 
-    colnames(ter) <- c(colnames(ter)[seq(1,length(colnames(ter))-1)], newTrial)
-    vesalius <- .updateVesalius(vesalius=vesalius,
-                                data=ter,
-                                slot="territories",
-                                commit = as.list(match.call()),
-                                defaults = as.list(args(isolateTerritories)),
-                                append=TRUE)
+    colnames(ter) <- c(colnames(ter)[seq(1, length(colnames(ter)) - 1)],
+      new_trial)
+    vesalius <- update_vesalius(vesalius = vesalius,
+      data = ter,
+      slot = "territories",
+      commit = as.list(match.call()),
+      defaults = as.list(args(isolate_territories)),
+      append = TRUE)
     cat("\n")
-    .simpleBar(verbose)
+    simple_bar(verbose)
     return(vesalius)
 }
 
 
 
 
-.distancePooling.array <- function(img,captureRadius,minBar){
+distance_pooling <- function(img, capture_radius, min_spatial_index) {
     #--------------------------------------------------------------------------#
     # Select center point of each tile for only one channel
     # Dont need to run it for all channels
     #--------------------------------------------------------------------------#
 
-    imgCopy <- img  %>% distinct(barcodes,.keep_all = TRUE)
-    if(nrow(imgCopy)<1){return(NULL)}
+    img_copy <- img  %>% distinct(barcodes, .keep_all = TRUE)
+    if (nrow(img_copy) < 1) {return(NULL)}
 
 
     #--------------------------------------------------------------------------#
     # Compute distances
     #--------------------------------------------------------------------------#
-    idx <- seq_len(nrow(imgCopy))
-    distanceMatrix <- lapply(idx, function(idx,mat){
-                            xo <- mat$x[idx]
-                            yo <- mat$y[idx]
-                            xp <- mat$x
-                            yp <- mat$y
-                            distance <- sqrt(((abs(xp-xo))^2 + (abs(yp-yo))^2))
-                            return(distance)
-    }, imgCopy)
+    idx <- seq_len(nrow(img_copy))
+    distance_matrix <- lapply(idx, function(idx, mat) {
+      xo <- mat$x[idx]
+      yo <- mat$y[idx]
+      xp <- mat$x
+      yp <- mat$y
+      distance <- sqrt(((abs(xp - xo))^2 + (abs(yp - yo))^2))
+      return(distance)
+    }, img_copy)
 
 
     #--------------------------------------------------------------------------#
     # Buildan actual matrix
     #--------------------------------------------------------------------------#
 
-    distanceMatrix <- do.call("rbind",distanceMatrix)
-    colnames(distanceMatrix) <- imgCopy$barcodes
-    rownames(distanceMatrix) <- imgCopy$barcodes
+    distance_matrix <- do.call("rbind", distance_matrix)
+    colnames(distance_matrix) <- img_copy$barcodes
+    rownames(distance_matrix) <- img_copy$barcodes
 
     #--------------------------------------------------------------------------#
     # If there is only one point
     # In this case you only have one territory as well
     # Don't need to any pooling
     #--------------------------------------------------------------------------#
-
-    if(sum(dim(distanceMatrix))==2){
+    if (sum(dim(distance_matrix)) == 2) {
         return(1)
     }
 
@@ -983,92 +924,117 @@ isolate_territories <- function(vesalius,
     #--------------------------------------------------------------------------#
     # Pooling points together
     #--------------------------------------------------------------------------#
-    barcodes <- imgCopy$barcodes
+    barcodes <- img_copy$barcodes
     territories <- list()
     count <- 1
 
-    while(length(barcodes) >0){
+    while(length(barcodes) > 0) {
          #---------------------------------------------------------------------#
          # First lets select a random barcode in the colour segment
          # And create a pool of barcodes to select based on capture radius
          # This first while loop checks if there are still barcodes
          # left in the colour segment
          #---------------------------------------------------------------------#
-          tmp <- distanceMatrix[,sample(barcodes,1)]
-          pool <- names(tmp)[tmp <= captureRadius]
+          tmp <- distance_matrix[, sample(barcodes,1)]
+          pool <- names(tmp)[tmp <= capture_radius]
           inter <- pool
           converge <- FALSE
 
-          while(!converge){
+          while (!converge) {
             #------------------------------------------------------------------#
             # This while loop checks if all possible barcodes have been pooled
             # into the current territory
             #------------------------------------------------------------------#
-              if(length(inter)==1){
-                  #------------------------------------------------------------#
-                  # when there is only one barcodes
-                  # remove barcode from pool and move on
-                  #------------------------------------------------------------#
-                  territories[[count]] <- pool
-                  barcodes <- barcodes[!barcodes %in% pool]
-                  count <- count + 1
-                  converge <- TRUE
-              } else {
-                  #------------------------------------------------------------#
-                  # Get a new pool from the distance matrix
-                  # and check which ones are within capture radius
-                  #------------------------------------------------------------#
-                  newPool <- distanceMatrix[,inter]
-
-                  newPool <- unique(unlist(lapply(seq_len(ncol(newPool)),
-                                           function(idx,np,captureRadius){
-
-                                            res <- rownames(np)[np[,idx] <=
-                                                                captureRadius]
-                                            return(res)
-                                          },newPool,captureRadius)))
-                  #------------------------------------------------------------#
-                  # check which barcodes in the new pool overlap with
-                  # the ones in the full pool
-                  # If there is a perfect overlap then there are no new bacodes
-                  # to pool into a territory
-                  #------------------------------------------------------------#
-                  overlap <- newPool %in% pool
-
-                  if(sum(overlap) != length(newPool)){
-                        #------------------------------------------------------#
-                        # There are still some new barcodes to pool
-                        # lets do some more looping then
-                        #------------------------------------------------------#
-                        pool <- unique(c(pool,newPool[!overlap]))
-                        inter <- unique(newPool[!overlap])
-                  } else {
-                        #------------------------------------------------------#
-                        # it is done ! no more barcodes for this territory
-                        #------------------------------------------------------#
-                        territories[[count]] <- pool
-                        count <- count +1
-                        barcodes <- barcodes[!barcodes %in% pool]
-
-                        converge <- TRUE
-
-                  }
-              }
+            buffer <- pooling_beads(tmp,
+              inter,
+              pool,
+              barcodes,
+              territories,
+              count,
+              distance_matrix,
+              capture_radius)
+              inter <- buffer$inter
+              pool <- buffer$pool
+              converge <- buffer$converge
+              territories <- buffer$check_territories
+              count <- buffer$count
           }
       }
     #--------------------------------------------------------------------------#
     # Clean up drop outs
     #--------------------------------------------------------------------------#
 
-    allTers <- img$trial
+    all_ters <- img$trial
 
-    for(ter in seq_along(territories)){
+    for (ter in seq_along(territories)) {
         loc <- img$barcodes %in% territories[[ter]]
-        if(length(territories[[ter]]) <= minBar){
-            allTers[loc] <- "isolated"
+        if (length(territories[[ter]]) <= min_spatial_index) {
+            all_ters[loc] <- "isolated"
         } else {
-            allTers[loc] <- ter
+            all_ters[loc] <- ter
         }
     }
-      return(allTers)
+      return(all_ters)
 }
+
+pooling_beads <- function(tmp,
+  inter,
+  pool,
+  barcodes,
+  territories,
+  count,
+  distance_matrix,
+  capture_radius) {
+  if (length(inter) == 1) {
+    #------------------------------------------------------------#
+    # when there is only one barcodes
+    # remove barcode from pool and move on
+    #------------------------------------------------------------#
+    territories[[count]] <- pool
+    barcodes <- barcodes[!barcodes %in% pool]
+    count <- count + 1
+    converge <- TRUE
+  } else {
+    #------------------------------------------------------------#
+    # Get a new pool from the distance matrix
+    # and check which ones are within capture radius
+    #------------------------------------------------------------#
+    new_pool <- distance_matrix[, inter]
+    new_pool <- unique(unlist(lapply(seq_len(ncol(new_pool)),
+      function(idx, np, capture_radius){
+        res <- rownames(np)[np[, idx] <= capture_radius]
+        return(res)
+      }, new_pool, capture_radius)))
+    #------------------------------------------------------------#
+    # check which barcodes in the new pool overlap with
+    # the ones in the full pool
+    # If there is a perfect overlap then there are no new bacodes
+    # to pool into a territory
+    #------------------------------------------------------------#
+    overlap <- new_pool %in% pool
+    if (sum(overlap) != length(new_pool)) {
+      #------------------------------------------------------#
+      # There are still some new barcodes to pool
+      # lets do some more looping then
+      #------------------------------------------------------#
+      pool <- unique(c(pool,new_pool[!overlap]))
+      inter <- unique(new_pool[!overlap])
+    } else {
+      #------------------------------------------------------#
+      # it is done ! no more barcodes for this territory
+      #------------------------------------------------------#
+      territories[[count]] <- pool
+      count <- count + 1
+      barcodes <- barcodes[!barcodes %in% pool]
+      converge <- TRUE
+
+    }
+  }
+  return(list("inter" = inter,
+    "pool" = pool,
+    "converge" = converge,
+    "barcodes" = barcodes,
+    "territories" = territories,
+    "count" = count))
+}
+

@@ -33,16 +33,16 @@
 #' }
 
 image_plot <- function(vesalius,
-  dims = seq(1,3),
+  dims = seq(1, 3),
   embedding = "last",
   cex = 10) {
     #--------------------------------------------------------------------------#
     # Checking dims - only gray scale or 3 coloured images for now
     # What approach could we take here to use different number of dims?
     #--------------------------------------------------------------------------#
-    if(length(dims) > 3){
+    if (length(dims) > 3) {
        stop("To many dims selected")
-    } else if(length(dims) != 3 & length(dims) != 1) {
+    } else if (length(dims) != 3 && length(dims) != 1) {
        stop("Non RGB /gray scale images not supported")
     }
     #--------------------------------------------------------------------------#
@@ -58,7 +58,7 @@ image_plot <- function(vesalius,
       na.exclude()
     #--------------------------------------------------------------------------#
     # Generate plots
-    # Ceck to see how you can avoid the hard coding of the dimensions 
+    # Ceck to see how you can avoid the hard coding of the dimensions
     #--------------------------------------------------------------------------#
     if (length(dims) == 3) {
       cols <- rgb(coordinates[, 5], coordinates[, 6], coordinates[, 7])
@@ -120,25 +120,25 @@ territory_plot <- function(vesalius,
     # like
     # At the moment - I thinking the user should make their own
     # Not a prority for custom plotting functions
-    # SANITY check here and format 
+    # SANITY check here and format
     #--------------------------------------------------------------------------#
     territories <- check_territories(vesalius, trial)
     legend <- sapply(strsplit(trial, "_"), "[[", 1)
     #--------------------------------------------------------------------------#
     # Changing label order because factor can suck ass sometimes
     #--------------------------------------------------------------------------#
-    sorted_labels <- order(levels(as.factor(territories$territory)))
-    if (any(grepl("isolated", territories$territory))) {
+    sorted_labels <- order(levels(as.factor(territories$trial)))
+    if (any(grepl("isolated", territories$trial))) {
       sorted_labels[length(sorted_labels)] <- "isolated"
     }
 
-    territories$territory <- factor(territories$territory,
+    territories$trial <- factor(territories$trial,
       levels = sorted_labels)
     #--------------------------------------------------------------------------#
     # My pure hatred for the standard ggplot rainbow colours has forced me
     # to use this palette instead - Sorry Hadely
     #--------------------------------------------------------------------------#
-    ter_col <- length(levels(territories$territory))
+    ter_col <- length(levels(territories$trial))
     ter_pal <- colorRampPalette(brewer.pal(8, "Accent"))
 
     if (randomise) {
@@ -147,9 +147,9 @@ territory_plot <- function(vesalius,
         ter_col <- ter_pal(ter_col)
     }
     if (split) {
-      ter_plot <- ggplot(territories, aes(x,y,col = territory)) +
-          geom_point(size = cex.pt, alpha = 0.65) +
-          facet_wrap(~territory) +
+      ter_plot <- ggplot(territories, aes(x, y, col = trial)) +
+          geom_point(size = cex_pt, alpha = 0.65) +
+          facet_wrap(~trial) +
           theme_classic() +
           scale_color_manual(values = ter_col) +
           theme(legend.text = element_text(size = cex * 1.2),
@@ -162,8 +162,8 @@ territory_plot <- function(vesalius,
           labs(colour = legend, title = paste("Vesalius", trial),
             x = "X coordinates", y = "Y coordinates")
     } else {
-      ter_plot <- ggplot(territories, aes(x,y,col = territory)) +
-          geom_point(size = cex.pt, alpha = 0.65) +
+      ter_plot <- ggplot(territories, aes(x, y, col = trial)) +
+          geom_point(size = cex_pt, alpha = 0.65) +
           theme_classic() +
           scale_color_manual(values = ter_col) +
           theme(legend.text = element_text(size = cex * 1.2),
@@ -241,200 +241,105 @@ view_gene_expression <- function(vesalius,
     #--------------------------------------------------------------------------#
     # First lets get the norm method out and the associated counts
     #--------------------------------------------------------------------------#
-    if(normMethod == "last"){
-        counts <- as.matrix(vesalius@counts[[length(vesalius@counts)]])
-
-    }else{
-        if(length(grep(x=names(vesalius@counts), pattern = normMethod))==0){
-            stop(paste0(deparse(substitute(normMethod)),"is not in count list!"))
-        }
-        counts <- as.matrix(vesalius@counts[[normMethod]])
-    }
-    #--------------------------------------------------------------------------#
-    # Next let's get the territory data
-    # it occurs to me that If done propely I could remove the view layer
-    # expression function
-    #--------------------------------------------------------------------------#
-    if(!is.null(vesalius@territories) & trial == "last"){
-      trial <- colnames(vesalius@territories)[ncol(vesalius@territories)]
-      ter <- vesalius@territories[,c("barcodes","x","y",trial)]
-      colnames(ter) <- c("barcodes","x","y","trial")
-      #------------------------------------------------------------------------#
-      # Getting and setting territory categories
-      #------------------------------------------------------------------------#
-      if(is.null(territory1) & is.null(territory2)){
-        ter <- select(ter, c("barcodes","x","y","trial"))
-      }else if(!is.null(territory1) & is.null(territory2)){
-        ter$trial[!ter$trial %in% territory1 ] <- "other"
-        if(!is.null(cells)){
-            ter$trial[ter$trial != "other" & ter$barcodes %in% cells] <-
-            paste0(territory1, collapse=" ")
-        }
-
-      }else if(is.null(territory1) & !is.null(territory2)){
-        ter$trial[!ter$trial %in% territory2 ] <- "other"
-        if(!is.null(cells)){
-            ter$trial[ter$trial != "other" & ter$barcodes %in% cells] <-
-            paste0(territory2, collapse=" ")
-        }
-      }else {
-        ter$trial[!ter$trial %in% c(territory1,territory2) ] <- "other"
-        if(!is.null(cells)){
-            ter$trial[ter$trial %in% territory1 & ter$barcodes %in% cells] <-
-            paste0(territory1, collapse=" ")
-            ter$trial[ter$trial %in% territory2 & ter$barcodes %in% cells] <-
-            paste0(territory2, collapse=" ")
-        }
-      }
-
-
-
-    } else if(!is.null(vesalius@territories) & trial != "last"){
-      if(!any(grepl(x = colnames(vesalius@territories),pattern = trial))){
-          stop(paste(deparse(substitute(trial)),"is not in territory data frame"))
-      }
-      ter <- vesalius@territories[,c("barcodes","x","y",trial)]
-      colnames(ter) <- c("barcodes","x","y","trial")
-      #------------------------------------------------------------------------#
-      # Getting and setting territory categories
-      #------------------------------------------------------------------------#
-      if(is.null(territory1) & is.null(territory2)){
-        ter <- select(ter, c("barcodes","x","y","trial"))
-      }else if(!is.null(territory1) & is.null(territory2)){
-        ter$trial[!ter$trial %in% territory1 ] <- "other"
-
-      }else if(is.null(territory1) & !is.null(territory2)){
-        ter$trial[!ter$trial %in% territory1 ] <- "other"
-      }else {
-        ter$trial[!ter$trial %in% c(territory1,territory2) ] <- "other"
-      }
-
-    }else{
-      ter <- vesalius@tiles %>% filter(origin == 1)
-    }
-
+    counts <- check_norm(vesalius, norm_method)
+    territories <- check_territories(vesalius, trial) %>%
+      territory_dispatch(territory_1, territory_2, cells)
     #--------------------------------------------------------------------------#
     # Getting genes
     # We will facet wrap if there is more than one.
     #--------------------------------------------------------------------------#
-    if(is.null(genes)){
-        stop("Please specifiy which gene you would like to visualize")
-    } else {
-        #----------------------------------------------------------------------#
-        # First lets make a list to store our counts and then plots
-        #----------------------------------------------------------------------#
-        geneList <- vector("list",length(genes))
-        names(geneList) <- genes
-        #----------------------------------------------------------------------#
-        # Next we loop,extract, combine
-        #----------------------------------------------------------------------#
-        for(i in seq_along(genes)){
-            gene <- rownames(counts) == genes[i]
-            if(sum(gene) == 0){
-                warning(paste(genes[i]," is not present in count matrix.
-                              Returning NULL"),immediate.=T)
-                geneList[[i]] <- NULL
-                next()
-            }
-
-            gene <- counts[gene,]
-            gene <- data.frame(names(gene),gene)
-            colnames(gene) <- c("barcodes","gene")
-
-            gene <- left_join(gene,ter, by = c("barcodes")) %>% na.exclude()
-            if(norm){
-                gene$gene <- (gene$gene - min(gene$gene)) /
-                                 (max(gene$gene) - min(gene$gene))
-                type <- "Norm. Expression"
-            }else{
-                type <- "Expression"
-            }
-            geneList[[i]] <- gene
-        }
+    genes <- genes %||%
+      stop("Please specifiy which gene(s) you would like to visualize")
+    #----------------------------------------------------------------------#
+    # First lets make a list to store our counts and then plots
+    #----------------------------------------------------------------------#
+    gene_list <- vector("list", length(genes))
+    names(gene_list) <- genes
+    #----------------------------------------------------------------------#
+    # Next we loop,extract, combine
+    #----------------------------------------------------------------------#
+    for (i in seq_along(genes)) {
+      gene <- rownames(counts) == genes[i]
+      if (sum(gene) == 0) {
+        warning(paste(genes[i], "is not present in count matrix.
+          Returning NULL"), immediate. = TRUE)
+        gene_list[[i]] <- NULL
+        next()
+      }
+      gene <- counts[gene, ]
+      gene <- data.frame(names(gene), gene)
+      colnames(gene) <- c("barcodes", "gene")
+      gene <- left_join(gene, territories, by = c("barcodes")) %>%
+        na.exclude()
+      if (norm) {
+        gene$gene <- min_max(gene$gene)
+        type <- "Norm. Expression"
+      } else {
+        type <- "Expression"
+      }
+      gene_list[[i]] <- gene
     }
-
-
     #--------------------------------------------------------------------------#
     # Now we can loop of gene list
     #--------------------------------------------------------------------------#
-    for(i in seq_along(geneList)){
-        #----------------------------------------------------------------------#
-        # Okay let's check if there are territories to prioritise
-        #----------------------------------------------------------------------#
+    for (i in seq_along(gene_list)) {
+      #------------------------------------------------------------------------#
+      # Extract data and convert count to mean count if as_layer=T
+      #------------------------------------------------------------------------#
+      other <- filter(gene_list[[i]], trial == "other") %>% droplevels()
+      territory <- filter(gene_list[[i]], trial != "other") %>% droplevels()
 
-        if(any(grepl("trial",colnames(ter)))){
-          #--------------------------------------------------------------------#
-          # Extract data and convert count to mean count if as.layer=T
-          #--------------------------------------------------------------------#
-          other <- filter(geneList[[i]],trial == "other") %>% droplevels()
-          territory <- filter(geneList[[i]],trial != "other") %>% droplevels()
+      if (as_layer) {
+          territory <- territory %>%
+            group_by(trial) %>%
+            mutate(gene = mean(gene))
+      }
+      #------------------------------------------------------------------------#
+      # Create background
+      #------------------------------------------------------------------------#
+      if (nrow(other) > 0) {
+        ge <- ggplot() +
+          geom_point(data = other, aes(x, y),
+            alpha = 0.75,
+            fill = "#2e2e2e",
+            size = cex * 0.01,
+            show.legend = TRUE)
+      } else {
+        ge <- ggplot()
+      }
+      #------------------------------------------------------------------------#
+      # Create ggplot with foreground
+      #------------------------------------------------------------------------#
+      if (is.null(cells)) {
+        ge <- ge + geom_point(data = territory,
+          aes(x = x, y = y, col = gene), size = cex * 0.1)
+      } else {
+        ge <- ge + geom_point(data = territory,
+          aes(x = x, y = y, shape = trial, col = gene), size = cex * 0.1)
+      }
 
-          if(as.layer){
-            territory <- territory %>% group_by(trial) %>% mutate(gene = mean(gene))
-          }
-          #--------------------------------------------------------------------#
-          # Create background
-          #--------------------------------------------------------------------#
-          if(nrow(other)>0){
-            ge <- ggplot() + geom_point(data = other ,
-                       aes(x,y),
-                       alpha =0.75,
-                       fill="#2e2e2e",size =cex* 0.01,show.legend=T)
-          } else{
-            ge <- ggplot()
-          }
-          #--------------------------------------------------------------------#
-          # Create ggplot with foreground
-          #--------------------------------------------------------------------#
-          if(is.null(cells)){
-            ge <- ge + geom_point(data = territory,
-                             aes(x=x,y=y,col =gene),
-                             size = cex *0.1)
-          } else {
-            ge <- ge + geom_point(data = territory,
-                             aes(x=x,y=y,shape = trial,col =gene),
-                             size = cex *0.1)
-          }
+      ge <- ge +
+        scale_color_gradientn(colors = rev(brewer.pal(11, "Spectral"))) +
+        theme_classic() +
+        theme(#panel.background = element_rect(fill = "#474747"),
+          legend.title = element_text(size = cex),
+          legend.text = element_text(size = cex),
+          plot.margin = margin(1, 1, 1, 1, "cm")) +
+        labs(col = type, title = names(gene_list)[i]) +
+        guides(shape = guide_legend(override.aes = list(size = cex * 0.5)))
 
-          ge <- ge +
-                scale_color_gradientn(colors = rev(brewer.pal(11,"Spectral")))+
-                theme_classic()+
-                theme(#panel.background = element_rect(fill = "#474747"),
-                      legend.title = element_text(size = cex),
-                      legend.text = element_text(size = cex),
-                      plot.margin = margin(1, 1, 1, 1, "cm")) +
-                labs(col = type,title = names(geneList)[i])+
-                guides(shape = guide_legend(override.aes = list(size=cex * 0.5)))
-
-            geneList[[i]] <- ge
-        }else{
-          #--------------------------------------------------------------------#
-          # Create simple ggplot as there is not background here
-          #--------------------------------------------------------------------#
-          ge <- ggplot()+
-                geom_point(data = geneList[[i]],
-                           aes(x=x,y=y,col =gene),
-                           size = cex *0.1)+
-                scale_color_gradientn(colors = rev(brewer.pal(11,"Spectral")))+
-                theme_classic()+
-                theme(#panel.background = element_rect(fill = "#474747"),
-                      legend.title = element_text(size = cex),
-                      legend.text = element_text(size = cex),
-                      plot.margin = margin(1, 1, 1, 1, "cm")) +
-                labs(col = type,title = names(geneList)[i])+
-                guides(shape = guide_legend(override.aes = list(size=cex * 0.5)))
-            geneList[[i]] <- ge
-        }
+      gene_list[[i]] <- ge
     }
     #--------------------------------------------------------------------------#
     # returning ggplot or ggplot list with ggarrange
     #--------------------------------------------------------------------------#
-    if(length(geneList)==1){
-        geneList <- geneList[[1L]]
-    }else{
-        geneList <- ggarrange(plotlist = geneList,ncol = floor(sqrt(length(geneList))))
+    if (length(gene_list) == 1) {
+      gene_list <- gene_list[[1L]]
+    } else {
+      gene_list <- ggarrange(plotlist = gene_list,
+        ncol = floor(sqrt(length(gene_list))))
     }
-    return(geneList)
+    return(gene_list)
 }
 
 
@@ -449,8 +354,8 @@ view_transform <- function(ves) {
         for (j in seq_along(ves[[i]])) {
             plot(ves[[i]][[j]]$img, main = "Image")
             plot(ves[[i]][[j]]$fft, main = "Imaginary")
-            sqrt(ves[[i]][[j]]$real^2 + ves[[i]][[j]]$fft^2) %>% 
-              plot(main="Power spectrum")
+            sqrt(ves[[i]][[j]]$real^2 + ves[[i]][[j]]$fft^2) %>%
+              plot(main = "Power spectrum")
         }
     }
 }
