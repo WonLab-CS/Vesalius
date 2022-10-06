@@ -119,7 +119,7 @@ territory_morphing <- function(vesalius,
 extend_boundary <- function(territories, morphology_factor) {
   ymin <- ifelse((min(territories$y) - max(abs(morphology_factor)) * 2) <= 0, 1,
          min(territories$y) - morphology_factor * 2)
-  xmin <- ifelse((min(territories$x) - max(abs(morphology_factor)) * ) <= 0, 1,
+  xmin <- ifelse((min(territories$x) - max(abs(morphology_factor)) * 2) <= 0, 1,
          min(territories$x) - max(abs(morphology_factor)) * 2)
   ymax <- max(territories$y) + max(abs(morphology_factor)) * 2
   xmax <- max(territories$x) + max(abs(morphology_factor)) * 2

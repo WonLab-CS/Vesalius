@@ -22,18 +22,18 @@ setClass("log",
 setMethod("show",
     signature = "log",
         definition = function(object) {
-            .simpleBar(TRUE)
+            simple_bar(TRUE)
             #------------------------------------------------------------------#
             # General log information
             #------------------------------------------------------------------#
-            if (sum(unlist(.slotApply(object, length))) == 0) {
+            if (sum(unlist(slot_ppply(object, length))) == 0) {
                cat("No commits to log tree\n")
             } else {
                 #--------------------------------------------------------------#
                 # Last update
                 #--------------------------------------------------------------#
                 cat("Log tree\n")
-                last <- .slotApply(object, length)
+                last <- slot_apply(object, length)
                 for (i in seq_along(last)) {
                     if (last[[i]] == 0) {
                         shape <- "/"
@@ -43,7 +43,7 @@ setMethod("show",
                     cat("|", shape, names(last)[i], "\n")
                 }
             }
-            .simpleBar(TRUE)
+            simple_bar(TRUE)
         }
 )
 
@@ -72,26 +72,25 @@ setClass("vesaliusObject",
     prototype = c(tiles = data.frame(),
                      embeddings = list()),
     validity = function(object) {
-        if (is(object@tiles)[1L] != "data.frame") {
+        if (is(object@tiles, "data.rame")) {
             stop("Unsupported Tile Format")
         }
-        if (is(object@embeddings)[1L] != "list") {
+        if (is(object@embeddings ,"list")) {
             stop("Unsupported Embeddings Format")
         }
-        if (is(object@activeEmbeddings)[1L] != "list") {
+        if (is(object@activeEmbeddings, "list")) {
             stop("Unsupported Active Embeddings Format")
         }
-        if (is(object@territories)[1L] != "data.frame" &
-            is(object@territories)[1L] != "NULL") {
+        if (is(object@territories, "ter")) {
             stop("Unsupported territories Format")
         }
-        if (is(object@DEG)[1L] != "list") {
+        if (is(object@DEG, "list")) {
             stop("Unsupported DEG Format")
         }
-        if (is(object@counts)[1L] != "list") {
+        if (is(object@counts, "list")) {
             stop("Unsupported Count Format")
         }
-        if (is(object@log)[1L] != "log") {
+        if (is(object@log, "log")) {
             stop("Unsupported log Format")
         }
         return(TRUE)
@@ -105,16 +104,16 @@ setClass("vesaliusObject",
 #------------------------------------------------------------------------------#
 
 
-buildVesaliusObject <- function(coordinates,
+build_vesalius_object <- function(coordinates,
     counts,
     assay = "ST",
-    adjustCoordinates = c("origin", "norm")) {
+    adjust_coordinates = c("origin", "norm")) {
     #--------------------------------------------------------------------------#
     # First we will create tiles
     # Definitely need some check here
     #--------------------------------------------------------------------------#
-    coordinates <- .checkCoordinates(coordinates, adjustCoordinates)
-    counts <- list(.checkCounts(counts))
+    coordinates <- check_coordinates(coordinates, adjust_coordinates)
+    counts <- list(check_counts(counts))
     names(counts) <- "raw"
     assay <- list(assay)
     names(assay) <- "1"
@@ -128,62 +127,6 @@ buildVesaliusObject <- function(coordinates,
 }
 
 
-.checkCounts <- function(counts) {
-    if (any(is(counts) == "data.frame")) {
-      counts <- as(as.matrix(counts), "dgCMatrix")
-    } else if (any(is(counts) == "matrix")) {
-      counts <- as(counts, "dgCMatrix")
-    } else if (any(is(counts) == "dgCMatrix")) {
-      counts <- counts
-    } else {
-      stop("Unsupported count format!")
-    }
-    return(counts)
-}
-
-
-.checkCoordinates <- function(coordinates,
-    adjustCoordinates = c("origin", "norm")) {
-    #--------------------------------------------------------------------------#
-    # Check coordinate input type
-    # for now let's put slide seq
-    #--------------------------------------------------------------------------#
-    if (all(c("barcodes", "xcoord", "ycoord") %in% colnames(coordinates))) {
-        coordinates <- coordinates[, c("barcodes", "xcoord", "ycoord")]
-        colnames(coordinates) <- c("barcodes",  "x", "y")
-    } else if (all(c("barcodes", "x", "y") %in% colnames(coordinates))) {
-        coordinates <- coordinates[, c("barcodes", "x", "y")]
-    } else {
-        stop("Unknown column names")
-    }
-    #--------------------------------------------------------------------------#
-    # making sure that we have a data frame
-    #--------------------------------------------------------------------------#
-    if (any(is(coordinates) == "matrix")) {
-        coordinates <- as.data.frame(coordinates)
-    }
-    #--------------------------------------------------------------------------#
-    # ensuring that we have the right type in each column
-    #--------------------------------------------------------------------------#
-    coordinates$barcodes <- as.character(coordinates$barcodes)
-    coordinates$x <- as.numeric(coordinates$x)
-    coordinates$y <- as.numeric(coordinates$y)
-    if (adjustCoordinates[1L] == "origin") {
-        coordinates$x_orig <- coordinates$x
-        coordinates$y_orig <- coordinates$y
-        coordinates$x <- (coordinates$x - min(coordinates$x)) + 1
-        coordinates$y <- (coordinates$y - min(coordinates$y)) + 1
-    } else if (adjustCoordinates[1L] == "norm") {
-        coordinates$x_orig <- coordinates$x
-        coordinates$y_orig <- coordinates$y
-        coordinates$x <- .minMax((coordinates$x))
-        coordinates$y <- .minMax((coordinates$y))
-    } else {
-        stop("Woops - not sure how you want me to adjust coordinates")
-    }
-    return(coordinates)
-}
-
 
 #------------------------------------------------------------------------------#
 # vesalius objecy show method
@@ -192,7 +135,7 @@ buildVesaliusObject <- function(coordinates,
 setMethod("show",
     signature = "vesaliusObject",
     definition = function(object) {
-        .simpleBar(TRUE)
+        simple_bar(TRUE)
         #----------------------------------------------------------------------#
         ### To be modified later
         #----------------------------------------------------------------------#
@@ -257,7 +200,7 @@ setMethod("show",
             ters,
             "territories\n")
         }
-        .simpleBar(TRUE)
+        simple_bar(TRUE)
     }
 
 )

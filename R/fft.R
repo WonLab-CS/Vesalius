@@ -125,8 +125,8 @@ runTransform <- function(vesalius,
 # Using a line sampling approach 
 #------------------------------------------------------------------------------#
 
-runLineTransform <- function(vesalius,){
-    
+runLineTransform <- function(vesalius){
+    return(NULL)
 }
 #------------------------------------------------------------------------------#
 # General functions 

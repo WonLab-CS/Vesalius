@@ -4,6 +4,67 @@
 
 #------------------------------/Sanity Checks /--------------------------------#
 
+
+check_counts <- function(counts) {
+    if (is(counts, "data.frame")) {
+      counts <- as(as.matrix(counts), "dgCMatrix")
+    } else if (is(counts, "matrix")) {
+      counts <- as(counts, "dgCMatrix")
+    } else if (is(counts, "dgCMatrix")) {
+      counts <- counts
+    } else {
+      stop("Unsupported count format!")
+    }
+    return(counts)
+}
+
+
+check_coordinates <- function(coordinates,
+    adjust_coordinates = c("origin", "norm")) {
+    if (is(coordinates, "matrix")) {
+        coordinates <- as.data.frame(coordinates)
+    } else if (is(coordinates, "data.frame")) {
+        coordinates <- coordinates
+    } else {
+        stop("Unsupported coordinates file type! matrix or data.frame")
+    }
+    #--------------------------------------------------------------------------#
+    # Check coordinate input type
+    # for now let's put slide seq
+    # THIS will need to be update if we use VISIUM and images!!!!
+    #--------------------------------------------------------------------------#
+    if (all(c("barcodes", "xcoord", "ycoord") %in% colnames(coordinates))) {
+        coordinates <- coordinates[, c("barcodes", "xcoord", "ycoord")]
+        colnames(coordinates) <- c("barcodes",  "x", "y")
+    } else if (all(c("barcodes", "x", "y") %in% colnames(coordinates))) {
+        coordinates <- coordinates[, c("barcodes", "x", "y")]
+    } else {
+        stop("Unknown column names")
+    }
+    #--------------------------------------------------------------------------#
+    # ensuring that we have the right type in each column
+    #--------------------------------------------------------------------------#
+    coordinates$barcodes <- as.character(coordinates$barcodes)
+    coordinates$x <- as.numeric(coordinates$x)
+    coordinates$y <- as.numeric(coordinates$y)
+    if (adjust_coordinates[1L] == "origin") {
+        coordinates$x_orig <- coordinates$x
+        coordinates$y_orig <- coordinates$y
+        coordinates$x <- (coordinates$x - min(coordinates$x)) + 1
+        coordinates$y <- (coordinates$y - min(coordinates$y)) + 1
+    } else if (adjust_coordinates[1L] == "norm") {
+        coordinates$x_orig <- coordinates$x
+        coordinates$y_orig <- coordinates$y
+        coordinates$x <- min_max((coordinates$x))
+        coordinates$y <- min_max((coordinates$y))
+    } else {
+        stop("Woops - not sure how you want me to adjust coordinates")
+    }
+    return(coordinates)
+}
+
+
+
 check_vesalius <- function(vesalius, init = FALSE) {
     if (!is(vesalius, "vesaliusObject")) {
         stop("Unsupported format to isolate_territories function")
@@ -94,7 +155,7 @@ check_segments <- function(vesalius, trial = "last") {
     }
     territories <- vesalius@territories %||%
         stop("No image segments have been computed yet!")
-    if (!any(grepl(x = colnames(territories), attern = "Segment"))) {
+    if (!any(grepl(x = colnames(territories), pattern = "Segment"))) {
         stop("No image segments have been computed yet!")
     }
     if (trial == "last") {
@@ -132,7 +193,7 @@ territory_dispatch <- function(territories, ter_1, ter_2, cells) {
         territories <- select(territories, c("barcodes", "x", "y", "trial"))
     }else if (!is.null(ter_1) && is.null(ter_2)) {
         territories$trial[!territories$trial %in% ter_1] <- "other"
-    }else if (is.null(ter_1) & !is.null(ter_2)) {
+    }else if (is.null(ter_1) && !is.null(ter_2)) {
         territories$trial[!territories$trial %in% ter_2] <- "other"
     }else {
         territories$trial[!territories$trial %in% c(ter_1, ter_2)] <- "other"
