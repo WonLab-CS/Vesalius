@@ -244,7 +244,7 @@ equalize_histogram <- function(vesalius,
   down = 10,
   cores = 1,
   verbose = TRUE) {
-    .simple_bar(verbose)
+    simple_bar(verbose)
     #--------------------------------------------------------------------------#
     # shifting format
     # ves_to_c => format.R
