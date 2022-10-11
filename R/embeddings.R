@@ -617,7 +617,7 @@ embed_lsi_umap <- function(counts,
   # Run partial singular value decomposition(SVD) on TF-IDF normalized matrix
   #--------------------------------------------------------------------------#
   message_switch("svd_tensor", verbose)
-  svd <- Signa::RunSVD(counts, n = dimensions + 1, verbose = FALSE)
+  svd <- Signac::RunSVD(counts, n = dimensions + 1, verbose = FALSE)
 
   message_switch("umap_rgb_tensor", verbose)
   if (remove_lsi_1) {

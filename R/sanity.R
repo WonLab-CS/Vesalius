@@ -160,10 +160,10 @@ check_norm_methods <- function(norm, n_counts) {
 }
 
 check_embed_methods <- function(embed, n_counts) {
-    if (all(embed %in% c("PCA", "PCA_L", "UMAP", "SVD", "SVD_UMAP"))) {
+    if (all(embed %in% c("PCA", "PCA_L", "UMAP", "LSI", "LSI_UMAP"))) {
         stop("Embedding method provided do not match available options \n
             Select from: \n
-            PCA, PCA_L, UMAP, SVD, SVD_UMAP")
+            PCA, PCA_L, UMAP, LSI, LSI_UMAP")
     }
     if(!identical(length(embed),1) && !identical(length(embed), n_counts)) {
         stop("Number of embedding methods provided do not match 
