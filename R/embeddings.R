@@ -86,6 +86,7 @@ build_vesalius_embeddings <- function(vesalius,
         cores = cores)
       #------------------------------------------------------------------------#
       # adjusted counts if necessary
+      # essentially merging counts when barcodes overlap
       #------------------------------------------------------------------------#
       if (tensor_resolution < 1) {
         message_switch("adj_counts", verbose)
@@ -96,8 +97,8 @@ build_vesalius_embeddings <- function(vesalius,
           SIMPLIFY = FALSE)
       }
       #------------------------------------------------------------------------#
-      # we can update vesalius tiles here as we won't need them later on 
-      # We keep counts as they will be required for pre-processing and 
+      # we can update vesalius tiles here as we won't need them later on
+      # We keep counts as they will be required for pre-processing and
       # embeddings
       #------------------------------------------------------------------------#
       vesalius <- update_vesalius(vesalius = vesalius,

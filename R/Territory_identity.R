@@ -182,8 +182,6 @@ vesalius_deg <- function(seed,
     
     #--------------------------------------------------------------------------#
     # testing diff gene expression
-    # Rebuilding a matrix just in case you only have one gene to test
-    # Not going to rewrite the sapply for that
     #--------------------------------------------------------------------------#
     params <- list("log_fc" = log_fc, "pval" = pval, "min_pct" = min_pct)
     deg <- switch(EXPR = method,
@@ -276,8 +274,8 @@ vesalius_deg_fisher <- function(seed, seed_id, query, query_id, params) {
 }
 
 vesalius_deg_deseq2 <- function(seed, seed_id, query, query_id, params) {
-  if (!PackageCheck('DESeq2', error = FALSE)) {
-    stop("DESeq2 not installed! ")
+  if (!require("DESeq2")) {
+    stop("DESeq2 not installed!")
   }
   buffer <- get_deg_metrics(seed, query, params)
   seed <- buffer$seed
@@ -315,8 +313,8 @@ vesalius_deg_deseq2 <- function(seed, seed_id, query, query_id, params) {
 }
 
 vesalius_deg_edger <- function(seed, seed_id, query, query_id, params) {
-  if (!PackageCheck('edgeR', error = FALSE)) {
-    stop("edgeR not installed! ")
+  if (!require("edgeR") {
+    stop("edgeR not installed!")
   }
   buffer <- get_deg_metrics(seed, query, params)
   seed <- buffer$seed
