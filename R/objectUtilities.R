@@ -5,6 +5,7 @@
 #----------------------------/Object Utilities/--------------------------------#
 
 
+
 update_vesalius <- function(vesalius,
     data,
     slot,
@@ -120,12 +121,7 @@ slot_apply <- function(x, func, ...) {
 }
 
 
-assign_log_slot <- function(log, commit, logdf) {
-    log <- switch(commit,
-        "buildVesaliusEmbeddings" = slot_assign(log,
-            c("tiles", "embeddings", "activeEmbeddings"), logdf))
-    return(log)
-}
+
 
 slot_assign <- function(object, sl, input) {
     for (i in sl) {
@@ -167,15 +163,38 @@ create_trial_tag <- function(trials, tag) {
     }
     return("new_trial" = new_trial)
 }
+create_assay_tag <- function(assay) {
+    assay_counts <- table(assay)
+    for (i in seq_along(assay_counts)) {
+        assay[assay == names(assay_counts)[i]] <-
+            paste0(names(assay_counts)[1], seq(1, assay_counts[i]))
+    }
+    return(assay)
+}
 
 
-get_counts <- function(vesalius, type = "raw") {
+get_counts <- function(vesalius, type = "raw", assay = "all") {
     counts <- vesalius@counts[[type]]
     if (is.null(counts)) {
         stop("No count matrix has been added to Vesalius")
     }
+    if (assay != "all") {
+        if (!any(assay %in% names(counts))) {
+            stop(paste0("Selected assay not in assay list \n",
+            names(counts)))
+        } else {
+            counts <- counts[assay]
+        }
+    }
     return(counts)
 
+}
+
+get_list_subelement <- function(list, element) {
+    sub <- lapply(list,function(l,e)) {
+        return(l[e])
+    }
+    return(sub)
 }
 
 view_log_tree <- function(vesalius) {

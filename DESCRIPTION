@@ -3,7 +3,7 @@ Type: Package
 Title: Vesalius: Dissecting Tissue Anatomy from Spatial Transcriptomic Data
 Version: 2.0.0
 Author: Patrick C.N. Martin
-Maintainer: Patrick C.N. Martin <patrick.martin@bric.ku.dk>
+Maintainer: Patrick C.N. Martin <patrick.martin@cshs.org>
 Description: We present Vesalius to decipher tissue anatomy by embracing various
    image analysis techniques for high-resolution ST data. Vesalius identifies
    spatially expressed genes linked to the morphology of tissue structures.
@@ -44,12 +44,16 @@ Imports:
     imagerExtra,
     methods,
     Signac,
-    ggpubr
+    ggpubr,
+    lmtest,
+    infix
 Suggests:
     knitr,
     RUnit,
     rmarkdown,
-    testthat (>= 3.0.0)
+    testthat (>= 3.0.0),
+    DESeq2,
+    edgeR   
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 7.1.2

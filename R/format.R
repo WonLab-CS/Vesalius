@@ -191,11 +191,45 @@
   return(object)
 }
 
-.sis_to_df <- function(image, is_cimg = TRUE) {
+sis_to_df <- function(image, is_cimg = TRUE) {
   image <- image$AP_image_data
   y <- rep(seq(1, ncol(image)), each = nrow(image))
   x <- rep(seq(1, nrow(image)), times = ncol(image))
   value <- as.vector(image[seq_len(nrow(image)), seq_len(ncol(image)), 1])
   df <- data.frame("x" = x, "y" = y, "value" = value)
   return(df)
+}
+
+format_counts_for_deseq2 <- function(seed, query) {
+  seed_tag <- colnames(seed)
+  query_tag <- colnames(query)
+  merged <- rbind(seed, query)
+  seed_query_info <- data.frame(row.names = c(seed_tag, query_tag))
+  seed_query_info[seed_tag, "group"] <- "seed"
+  seed_query_info[query_tag, "group"] <- "query"
+  seed_query_info[, "group"] <- factor(x = seed_query_info[, "group"])
+  deseq <- DESeq2::DESeqDataSetFromMatrix(
+    countData = merged,
+    colData = seed_query_info,
+    design = ~ group
+  )
+  return(deseq)
+}
+
+format_counts_for_edger <- function(seed, query) {
+  merged <- cbind(seed, query)
+  group <- c(rep("seed", ncol(seed)), rep("query", ncol(query)))
+  merged <- edgeR::DGEList(counts = merged, group = group)
+  return(merged)
+}
+
+format_counts_for_logit <- function(idx, seed, query) {
+  seed_tag <- colnames(seed)
+  query_tag <- colnames(query)
+  merged <- rbind(seed, query)
+  seed_query_info <- data.frame(row.names = c(seed_tag, query_tag))
+  seed_query_info[seed_tag, "group"] <- "seed"
+  seed_query_info[query_tag, "group"] <- "query"
+  seed_query_info[, "group"] <- factor(x = seed_query_info[, "group"])
+  return(list("merged" = merged, "seed_query_info" = seed_query_info))
 }

@@ -78,14 +78,16 @@ extract_markers <- function(vesalius,
     "fisher.exact",
     "DEseq2",
     "edgeR",
-    "ArchR"),
+    "logit"),
   log_fc = 0.25,
   pval = 0.05,
   min_pct = 0.05,
   min_spatial_index = 10,
-  verbose = TRUE) {
+  verbose = TRUE,
+  cores = 1,
+  ...) {
     simple_bar(verbose)
-
+    args <- list(...)
     #--------------------------------------------------------------------------#
     # First lets get the norm method out and the associated counts
     #--------------------------------------------------------------------------#
@@ -121,7 +123,8 @@ extract_markers <- function(vesalius,
         pval,
         min_pct,
         min_spatial_index,
-        verbose)
+        verbose,
+        args)
     }
     deg <- do.call("rbind", deg)
     deg <- list(deg)
@@ -139,8 +142,8 @@ extract_markers <- function(vesalius,
     #--------------------------------------------------------------------------#
 
   cat("\n")
-   simple_bar(verbose)
-   return(vesalius)
+  simple_bar(verbose)
+  return(vesalius)
 }
 
 # Internal differantial gene expression function. Essentially all other DEG
@@ -165,7 +168,8 @@ vesalius_deg <- function(seed,
   pval,
   min_pct,
   min_spatial_index,
-  verbose = TRUE) {
+  verbose = TRUE,
+  args) {
     message_switch("deg_prog_each", verbose, seed = seed_id, query = query_id)
     #--------------------------------------------------------------------------#
     # We assume here that we are parsing cleaned up version of each object
@@ -183,26 +187,13 @@ vesalius_deg <- function(seed,
     #--------------------------------------------------------------------------#
     params <- list("log_fc" = log_fc, "pval" = pval, "min_pct" = min_pct)
     deg <- switch(EXPR = method,
-      "wilcox" = vesalius_deg_wilcox(seed, query, params),
-      "t.test" = vesalius_deg_ttest(seed, query, params),
-      "chisq" = vesalius_deg_chisq(seed, query, params),
-      "fisher.exact" = vesalius_deg_fisher(seed, query, params),
-      "DESeq2" = vesalius_deg_deseq2(seed, query, params),
-      "edgeR" = vesalius_deg_edger(seed,query, params),
-      "ArchR" = vesalius_deg_archr(seed, query, params))
-
-
-    #--------------------------------------------------------------------------#
-    # rebuilding data.frame and filtering p values
-    # filtering on pval or pvaladjusted?
-    #--------------------------------------------------------------------------#
-    deg <- tibble("genes" = genes,"p.value" = deg,"p.value.adj" = p.adjust(deg),
-                  "seedPct" = seedPct,
-                  "queryPct" = queryPct,"logFC" = FC,
-                  "seedTerritory" = rep(seedID,length(deg)),
-                  "queryTerritory" = rep(queryID,length(deg)))
-
-    deg <- deg %>% filter(p.value.adj <= pval)
+      "wilcox" = vesalius_deg_wilcox(seed, seed_id, query, query_id, params),
+      "t.test" = vesalius_deg_ttest(seed, seed_id, query, query_id, params),
+      "chisq" = vesalius_deg_chisq(seed, seed_id, query, query_id, params),
+      "fisher.exact" = vesalius_deg_fisher(seed, seed_id, query, query_id, params),
+      "DESeq2" = vesalius_deg_deseq2(seed, seed_id, query, query_id, params),
+      "edgeR" = vesalius_deg_edger(seed, seed_id, query, query_id, params),
+      "logit" = vesalius_deg_logit(seed, seed_id, query, query_id, params))
     return(deg)
 }
 
@@ -284,6 +275,110 @@ vesalius_deg_fisher <- function(seed, seed_id, query, query_id, params) {
   return(deg)
 }
 
+vesalius_deg_deseq2 <- function(seed, seed_id, query, query_id, params) {
+  if (!PackageCheck('DESeq2', error = FALSE)) {
+    stop("DESeq2 not installed! ")
+  }
+  buffer <- get_deg_metrics(seed, query, params)
+  seed <- buffer$seed
+  query <- buffer$query
+  #--------------------------------------------------------------------------#
+  # we might need to add some more flexibility here by parsing DEseq specific 
+  # paramters... 
+  # maybe using the glmGamPoi option to increase speed ? 
+  #--------------------------------------------------------------------------#
+  deg <- format_counts_for_deseq2(seed, query)
+  #--------------------------------------------------------------------------#
+  # run deseq with recommended params for single cell data
+  #--------------------------------------------------------------------------#
+  deg <- DESeq2::DEseq(deg,
+    test = "LRT",
+    useT = TRUE,
+    minmu = 1e-6,
+    minReplicatesForReplace = Inf)
+  deg <- DESeq2::results(
+    object = deg,
+    contrast = c("group", "seed", "query"),
+    alpha = params$pval
+  )
+  deg <- tibble("genes" = rownames(deg),
+    "p_value" = deg$pvalue,
+    "p_value_adj" = deg$padj,
+    "seed_pct" = buffer$seed_pct,
+    "query_pct" = buffer$query_pct,
+    "fold_change" = deg$log2FoldChange,
+    "seed" = rep(seed_id, nrow(deg)),
+    "query" = rep(query_id, nrow(deg)))
+  deg <- filter(deg, p_value_adj <= params$pval)
+  return(deg)
+  
+}
+
+vesalius_deg_edger <- function(seed, seed_id, query, query_id, params) {
+  if (!PackageCheck('edgeR', error = FALSE)) {
+    stop("edgeR not installed! ")
+  }
+  buffer <- get_deg_metrics(seed, query, params)
+  seed <- buffer$seed
+  query <- buffer$query
+  #--------------------------------------------------------------------------#
+  # Formatting to edgeR specifications 
+  #--------------------------------------------------------------------------#
+  deg <- format_counts_for_edger(seed, query)
+  #--------------------------------------------------------------------------#
+  # run edgeR - not sure if I could optimise these paramters
+  # recommaned default - not much is said about single cell
+  # TODO look into best paramters for edgeR for single cell data 
+  #--------------------------------------------------------------------------#
+  deg <- calcNormFactors(deg)
+  design <- model.matrix(~group)
+  deg <- estimateDisp(deg, design)
+  fit <- glmFit(deg, design)
+  lrt <- glmLRT(fit, coef = 2)
+  deg <- topTags(lrt)
+  deg <- tibble("genes" = deg$Symbol,
+    "p_value" = deg$PValue,
+    "p_value_adj" = deg$FDR,
+    "seed_pct" = buffer$seed_pct,
+    "query_pct" = buffer$query_pct,
+    "fold_change" = deg$logFC,
+    "seed" = rep(seed_id, nrow(deg)),
+    "query" = rep(query_id, nrow(deg)))
+  deg <- filter(deg, p_value_adj <= params$pval)
+  return(deg)
+}
+
+vesalius_deg_logit <- function(seed, seed_id, query, query_id, params) {
+  #--------------------------------------------------------------------------#
+  # Setting up data for loigt regression as suggested by the signac package 
+  # I don't want to rebuild a seurat object as they do in their vignette
+  #--------------------------------------------------------------------------#
+  buffer <- get_deg_metrics(seed, query, params)
+  merged <- format_counts_for_logit(buffer$seed, buffer$query) 
+  pvals <- sapply(seq_len(nrow(merged)), function(idx, merged) {
+    model_data <- cbind("gene" = merged$merged[idx, ], merged$seed_query_info)
+    gene_model <- as.formula("group ~ gene")
+    gene_model <- glm(formula = gene_model,
+      data = model_data,
+      family = "binomial")
+    null_model <- as.formula("group ~ 1")
+    null_model <- glm(formula = null_model,
+      data = model_data,
+      family = "binomial")
+    return(lrtest(gene_model, null_model)$Pr[2])
+  }, merged = merged)
+   deg <- tibble("genes" = buffer$genes,
+    "p_value" = pvals,
+    "p_value_adj" = p.adjust(pvals),
+    "seed_pct" = buffer$seed_pct,
+    "query_pct" = buffer$query_pct,
+    "fold_change" = buffer$fc,
+    "seed" = rep(seed_id, length(pvals)),
+    "query" = rep(query_id, length(pvals)))
+  deg <- filter(deg, p_value_adj <= params$pval)
+  return(deg)
+}
+
 get_deg_metrics <- function(seed, query, params) {
   #--------------------------------------------------------------------------#
   # this asumes that we receive normalised counts
@@ -294,6 +389,10 @@ get_deg_metrics <- function(seed, query, params) {
   fc <- rowMeans(seed) - rowMeans(query)
   #--------------------------------------------------------------------------#
   # Dropping genes that don't fit the logFC and pct criteria
+  # this can be handle by edgeR as well but let's stay consistent here 
+  # and keep this approach. 
+  # Maybe it would be a good idea to look into what is the best method 
+  # to select genes for DEG - with spatial componnent 
   #--------------------------------------------------------------------------#
   keep <- (seed_pct >= params$min_pct ||
     query_pct >= params$min_pct) &&

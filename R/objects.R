@@ -16,7 +16,8 @@ setClass("log",
         activeEmbeddings = "list",
         territories = "list",
         DEG = "list",
-        counts  = "list")
+        counts  = "list",
+        meta_info = "list")
 )
 
 setMethod("show",
@@ -62,7 +63,7 @@ setClassUnion("ter", c("data.frame", "NULL"))
 # Main vesalius object
 #------------------------------------------------------------------------------#
 setClass("vesaliusObject",
-    slots = list(tiles = "data.frame",
+    slots = list(tiles = "list",
         embeddings = "list",
         activeEmbeddings = "list",
         territories = "ter",
@@ -72,10 +73,10 @@ setClass("vesaliusObject",
     prototype = c(tiles = data.frame(),
                      embeddings = list()),
     validity = function(object) {
-        if (is(object@tiles, "data.rame")) {
+        if (is(object@tiles, "list")) {
             stop("Unsupported Tile Format")
         }
-        if (is(object@embeddings ,"list")) {
+        if (is(object@embeddings, "list")) {
             stop("Unsupported Embeddings Format")
         }
         if (is(object@activeEmbeddings, "list")) {
@@ -100,29 +101,49 @@ setClass("vesaliusObject",
 
 #------------------------------------------------------------------------------#
 # Create new object function
-# This one is on hold atm
+# you care parse multiple assays at a time
+# I hope this will work...
 #------------------------------------------------------------------------------#
 
 
 build_vesalius_object <- function(coordinates,
     counts,
     assay = "ST",
-    adjust_coordinates = c("origin", "norm")) {
+    assay_names = NULL,
+    adjust_coordinates = c("origin", "norm"),
+    verbose = TRUE) {
     #--------------------------------------------------------------------------#
     # First we will create tiles
     # Definitely need some check here
+    # checking if a list of multiple assays or simple count/coord
     #--------------------------------------------------------------------------#
-    coordinates <- check_coordinates(coordinates, adjust_coordinates)
-    counts <- list(check_counts(counts))
-    names(counts) <- "raw"
-    assay <- list(assay)
-    names(assay) <- "1"
-    log <- new("log",
-               assay = assay)
+    message_switch("check_coord", verbose)
+    if (is(coordinates, "list")) {
+        coordinates <- lapply(coordinates, check_coordinates)
+    } else {
+        coordinates <- list(check_coordinates(coordinates))
+    }
+    message_switch("check_counts", verbose)
+    if (is(counts, "list")) {
+        counts <- lapply(counts, check_counts)
+    } else {
+        counts <- list(check_counts(counts))
+    }
+    message_switch("check_assay", verbose)
+    assay <- sapply(assay, check_assay)
+    #--------------------------------------------------------------------------#
+    # Once we have checked that each individual input is in the correct format
+    # we can check to see how each element compares to each other
+    # this ensure that data will line up nicely later on
+    # here we assume that we loading a new list of counts that have not
+    # been nornalised hence the raw tag in the list below
+    #--------------------------------------------------------------------------#
+    input <- compare_inputs(counts, coordinates, assay, assay_names)
+    log <- new("log", assay = input$assays)
     ves <- new("vesaliusObject",
-               tiles = coordinates,
-               counts = counts,
-               log = log)
+        tiles = input$coordinates,
+        counts = list("raw" = input$counts),
+        log = log)
     return(ves)
 }
 

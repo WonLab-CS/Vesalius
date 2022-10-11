@@ -4,6 +4,58 @@
 
 #------------------------------/Sanity Checks /--------------------------------#
 
+check_assay <- function(assay) {
+    if (!any(assay %in% c("ST", "SG", "SA", "SE", "SP", "SM"))) {
+        stop("Provided assay not in availbale types! \n
+        Select from:\n
+        ST (spatial transcriptome) \n
+        SG (spatial genome) \n
+        SA (spatial accessibility) \n
+        SE (sptail epigenome) \n
+        SP (spatial proteome) \n
+        SM (spatial_multiome) \n")
+    }
+    return(assay)
+}
+
+compare_inputs <- function(counts, coordinates, assays, assay_names, verbose) {
+    if (!identical(length(counts), length(coordinates))) {
+        stop("Number of count matrices and coordinates do not match")
+    }
+    #--------------------------------------------------------------------------#
+    # since we already know that there are the same number of counts and
+    # coordinates we can use only one length value here
+    #--------------------------------------------------------------------------#
+    if (length(assays) == 1) {
+        assays <- rep(assays, times = length(counts))
+    } else if (!identical(length(assays), length(counts))) {
+            stop("Number of assay types provided do not match \n
+                with number counts/coordinates provided!")
+    }
+    #--------------------------------------------------------------------------#
+    # could compare barcodes and what not low priority for now
+    #--------------------------------------------------------------------------#
+
+    #--------------------------------------------------------------------------#
+    # Finally we can add names to each element
+    #--------------------------------------------------------------------------#
+    if (!is.null(assay_names)){
+        if (!identical(length(assays), length(assay_names))) {
+            stop("Number of assay names do not matrch the number of assays!")
+        }
+    } else {
+        message_switch("assay_name", verbose)
+        assay_names <- create_assay_tag(assays)
+    }
+    names(assays) <- assay_names
+    names(counts) <- assay_names
+    names(coordinates) <- assay_names
+    return(list("counts" = counts,
+        "coordinates" = coordinates,
+        "assays" = assays))
+}
+
+
 
 check_counts <- function(counts) {
     if (is(counts, "data.frame")) {
@@ -65,7 +117,7 @@ check_coordinates <- function(coordinates,
 
 
 
-check_vesalius <- function(vesalius, init = FALSE) {
+check_precomputed_tiles <- function(vesalius, init = FALSE) {
     if (!is(vesalius, "vesaliusObject")) {
         stop("Unsupported format to isolate_territories function")
     }
@@ -91,6 +143,34 @@ check_vesalius <- function(vesalius, init = FALSE) {
     }
 
 
+}
+
+check_norm_methods <- function(norm, n_counts) {
+    if (all(norm %in% c("log", "SCTransform", "TFIDF", "raw"))) {
+        stop("Normalisation method provided do not match available options \n
+            Select from: \n
+            log, SCTransform, TFIDF, or raw")
+    }
+    if(!identical(length(norm),1) && !identical(length(norm), n_counts)) {
+        stop("Number of normalisation methods provided do not match 
+            number of count matrices present.")
+    }
+    norm <- rep(norm, times = n_counts)
+    return(norm)
+}
+
+check_embed_methods <- function(embed, n_counts) {
+    if (all(embed %in% c("PCA", "PCA_L", "UMAP", "SVD", "SVD_UMAP"))) {
+        stop("Embedding method provided do not match available options \n
+            Select from: \n
+            PCA, PCA_L, UMAP, SVD, SVD_UMAP")
+    }
+    if(!identical(length(embed),1) && !identical(length(embed), n_counts)) {
+        stop("Number of embedding methods provided do not match 
+            number of count matrices present.")
+    }
+    embed <- rep(embed, times = n_counts)
+    return(embed)
 }
 
 check_embedding <- function(vesalius, embed, dims) {
@@ -186,7 +266,7 @@ check_norm <- function(vesalius, norm_method, method = NULL, verbose = TRUE) {
             paste0(deparse(substitute(norm_method)), "is not in count list!")
         )
     }
-    if (!is.null(method) && method %in% c("DEseq2", "edgeR", "ArchR")) {
+    if (!is.null(method) && method %in% c("DEseq2", "edgeR")) {
         message_switch("norm_check", verbose, method = method)
         counts <- as.matrix(counts[["raw"]])
     } else {
@@ -291,3 +371,4 @@ check_min_spatial_index <- function(group, min_spatial_index, id) {
         return(group)
     }
 }
+

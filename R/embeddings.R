@@ -51,8 +51,9 @@
 #' }
 
 build_vesalius_embeddings <- function(vesalius,
-  dim_reduction = c("PCA", "PCA_L", "UMAP", "LSI", "LSI_UMAP"),
-  normalisation = c("log", "SCT", "TFIDF", "raw"),
+  dim_reduction = "PCA",
+  normalisation = "log",
+  assay = "all",
   dimensions = 30,
   tensor_resolution = 1,
   filter_grid = 0.01,
@@ -66,69 +67,51 @@ build_vesalius_embeddings <- function(vesalius,
     #--------------------------------------------------------------------------#
     # Check Status of object
     # Leaving space for changes and updates
-    # .check_vesalius function => sanity.R
     #--------------------------------------------------------------------------#
-    status <- check_vesalius(vesalius, init = TRUE)
+    status <- check_precomputed_tiles(vesalius, init = TRUE)
     if (status) {
-        #----------------------------------------------------------------------#
-        # Get raw counts
-        # get_counts function => objectUtilities.R
-        #----------------------------------------------------------------------#
-        coordinates <- vesalius@tiles
-        counts <- get_counts(vesalius, "raw")
-        #----------------------------------------------------------------------#
-        # Filter outlier beads
-        #----------------------------------------------------------------------#
-        if (filter_grid != 0 && filter_grid != 1) {
-          message_switch("distance_beads", verbose)
-          coordinates <- filter_grid(coordinates = coordinates,
-            filter_grid = filter_grid)
-        }
-        #----------------------------------------------------------------------#
-        # Reduce resolution
-        # could be updated to use KNN
-        #----------------------------------------------------------------------#
-        if (tensor_resolution < 1) {
-          message_switch("tensor_res", verbose)
-          coordinates <- reduce_tensor_resolution(coordinates = coordinates,
-          tensor_resolution = tensor_resolution)
-          message_switch("adj_counts", verbose)
-          counts <- adjust_counts(coordinates, counts, cores)
-        }
-        #----------------------------------------------------------------------#
-        # TESSELATION TIME!
-        #----------------------------------------------------------------------#
-        message_switch("tess", verbose)
-        tesselation <- deldir::deldir(x = as.numeric(coordinates$x),
-          y = as.numeric(coordinates$y))
-        #----------------------------------------------------------------------#
-        # Filtering tiles
-        #----------------------------------------------------------------------#
-        message_switch("filter_tiles", verbose)
-        filtered <- filter_tiles(tesselation, coordinates, filter_threshold)
-
-        #----------------------------------------------------------------------#
-        # Resterise tiles
-        #----------------------------------------------------------------------#
-        message_switch("raster", verbose)
-        tiles <- rasterise(filtered, cores)
-        #----------------------------------------------------------------------#
-        # Update objects and add log
-        # update_vesalius => objectUtilies.R
-        #----------------------------------------------------------------------#
-        vesalius <- update_vesalius(vesalius = vesalius,
-          data = tiles,
-          slot = "tiles",
-          commit = as.list(match.call()),
-          defaults = as.list(args(build_vesalius_embeddings)),
-          append = FALSE)
+      #------------------------------------------------------------------------#
+      # Extract coordinates and tiles 
+      #------------------------------------------------------------------------#
+      coordinates <- get_tiles(vesalius, assay)
+      counts <- get_counts(vesalius, type = "raw", assay)
+      #------------------------------------------------------------------------#
+      # generate tiles, reduce resoluation and filter out tiles and beads
+      #------------------------------------------------------------------------#
+      tiles <- lapply(coordinates, generate_tiles,
+        tensor_resolution = tensor_resolution,
+        filter_grid = filter_grid,
+        filter_threshold = filter_threshold,
+        verbose = verbose,
+        cores = cores)
+      #------------------------------------------------------------------------#
+      # adjusted counts if necessary
+      #------------------------------------------------------------------------#
+      if (tensor_resolution < 1) {
+        message_switch("adj_counts", verbose)
+        counts <- mapply(adjust_counts,
+          tiles,
+          counts,
+          MoreArgs = list(cores = cores),
+          SIMPLIFY = FALSE)
+      }
+      #------------------------------------------------------------------------#
+      # we can update vesalius tiles here as we won't need them later on 
+      # We keep counts as they will be required for pre-processing and 
+      # embeddings
+      #------------------------------------------------------------------------#
+      vesalius <- update_vesalius(vesalius = vesalius,
+        data = tiles$tiles,
+        slot = "tiles",
+        commit = as.list(match.call()),
+        defaults = as.list(args(build_vesalius_embeddings)),
+        append = FALSE)
     } else {
       #----------------------------------------------------------------------#
       # Get raw counts if tiles have already been computed
       # get_counts function => objectUtilities.R
       #----------------------------------------------------------------------#
-      coordinates <- vesalius@tiles
-      counts <- get_counts(vesalius, "raw")
+      counts <- get_counts(vesalius, type = "raw")
     }
     #--------------------------------------------------------------------------#
     # Now we can start creating colour embeddings
@@ -137,18 +120,19 @@ build_vesalius_embeddings <- function(vesalius,
     # NOTE: we might want to get away from Seurat as dependancy!!!
     #--------------------------------------------------------------------------#
     message_switch("pre_process", verbose)
-    counts <- process_counts(counts,
-      vesalius = vesalius,
+    normalisation <- check_norm_methods(normalisation, length(counts))
+    counts <- lapply(counts, process_counts
       commit = as.list(match.call()),
       method = normalisation,
       nfeatures = nfeatures,
       min_cutoff = min_cutoff)
+    
     #----------------------------------------------------------------------#
     # Update objects and add log
     # update_vesalius => objectUtilies.R
     #----------------------------------------------------------------------#
     vesalius <- update_vesalius(vesalius = vesalius,
-      data = counts$norm,
+      data = get_list_subelement(counts, "norm")
       slot = "counts",
       commit = as.list(match.call()),
       defaults = as.list(args(build_vesalius_embeddings)),
@@ -201,6 +185,53 @@ build_vesalius_embeddings <- function(vesalius,
     # Progress message simpleBar => Prog.R
     simple_bar(verbose)
     return(vesalius)
+}
+
+generate_tiles <- function(coordinates,
+  counts,
+  tensor_resolution = 1,
+  filter_grid = 0.01,
+  filter_threshold = 0.995,
+  verbose = TRUE,
+  cores = 1) {
+  #----------------------------------------------------------------------#
+  # Filter outlier beads
+  #----------------------------------------------------------------------#
+  if (filter_grid != 0 && filter_grid != 1) {
+    message_switch("distance_beads", verbose)
+    coordinates <- filter_grid(coordinates = coordinates,
+    filter_grid = filter_grid)
+  }
+  #----------------------------------------------------------------------#
+  # Reduce resolution
+  # could be updated to use KNN
+  #----------------------------------------------------------------------#
+  if (tensor_resolution < 1) {
+    message_switch("tensor_res", verbose)
+    coordinates <- reduce_tensor_resolution(coordinates = coordinates,
+      tensor_resolution = tensor_resolution)
+  }
+  #----------------------------------------------------------------------#
+  # TESSELATION TIME!
+  #----------------------------------------------------------------------#
+  message_switch("tess", verbose)
+  tesselation <- deldir::deldir(x = as.numeric(coordinates$x),
+    y = as.numeric(coordinates$y))
+  #----------------------------------------------------------------------#
+  # Filtering tiles
+  #----------------------------------------------------------------------#
+  message_switch("filter_tiles", verbose)
+  filtered <- filter_tiles(tesselation, coordinates, filter_threshold)
+
+  #----------------------------------------------------------------------#
+  # Resterise tiles
+  #----------------------------------------------------------------------#
+  message_switch("raster", verbose)
+  tiles <- rasterise(filtered, cores)
+  #----------------------------------------------------------------------#
+  # return tiles and adjusted counts
+  #----------------------------------------------------------------------#
+  return(tiles)
 }
 
 
@@ -396,7 +427,6 @@ convexify <- function(xside, yside, indx, indy) {
 # NOTE: this might change if we decide do move away from Seurat as dependancy.
 
 process_counts <- function(counts,
-  vesalius,
   commit,
   method = "log",
   nfeatures = 2000,
