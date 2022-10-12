@@ -69,7 +69,7 @@ build_vesalius_embeddings <- function(vesalius,
     # getting out coordinates and counts from vesalius objects
     # In this case - we always get raw counts even if other are present
     # there is a normalisation step in this function
-    # we will extract the assay based on name.
+    # we will extract the assay based on name (should have been filtered)
     #--------------------------------------------------------------------------#
     coordinates <- get_tiles(vesalius, assay)
     counts <- get_counts(vesalius, type = "raw", assay)
@@ -104,13 +104,20 @@ build_vesalius_embeddings <- function(vesalius,
           MoreArgs = list(cores = cores),
           SIMPLIFY = FALSE)
       }
+      vesalius <- update_vesalius(vesalius = vesalius,
+        data = tiles,
+        slot = "tiles",
+        append = FALSE)
     } 
     #--------------------------------------------------------------------------#
     # Now we can start creating colour embeddings
     # This section can be run multiple times
     # for now we dont want to have multiple "tiles" options
     # Once you compute your tiles for an assay you stuck with that 
-    # NOTE: we might want to get away from Seurat as dependancy!!!
+    # First we pre-process count data -> selecting variable features
+    # and normalisation. 
+    # NOTE: counts returns a lit for each assay with normalised count and 
+    # a seurat object to be parsed to dim reduction. 
     #--------------------------------------------------------------------------#
     normalisation <- check_norm_methods(normalisation, length(counts))
     counts <- mapply(process_counts,
@@ -122,6 +129,10 @@ build_vesalius_embeddings <- function(vesalius,
         min_cutoff = min_cutoff,
         verbose = verbose),
       SIMPLIFY = FALSE)
+    vesalius <- update_vesalius(vesalius = vesalius,
+      data = lapply(counts, "[[", 2),
+      slot = "counts",
+      append = TRUE)
     #--------------------------------------------------------------------------#
     # Embeddings - get embedding method and convert latent space
     # to color space.
@@ -133,37 +144,31 @@ build_vesalius_embeddings <- function(vesalius,
       dim_reduction,
       MoreArgs = list(
         dimensions = dimensions,
+        remove_lsi_1 = remove_lsi_1,
         cores = cores,
         verbose = verbose),
       SIMPLIFY = FALSE)
-    #----------------------------------------------------------------------#
-    # Update objects and add log
-    # update_vesalius => objectUtilies.R
-    # Updating all slots that have been modified
-    # we also create a commit list => clean argument list when more than
-    # 1 argument is supplied. will be commited to individual assasys
-    #----------------------------------------------------------------------#
-    commit <- create_commit_log(vesalius = vesalius,
-      match = as.list(match.call()),
-      default = as.list(args(build_vesalius_embeddings)),
-      assay = assay,
-      normalisation = normalisation,
-      dim_reduction = dim_reduction)
-    vesalius <- update_vesalius(vesalius = vesalius,
-      data = tiles,
-      slot = "tiles",
-      commit = commit,
-      append = FALSE)
-    vesalius <- update_vesalius(vesalius = vesalius,
-      data = lapply(counts, "[[", 2),
-      slot = "counts",
-      commit = commit,
-      append = TRUE)
     vesalius <- update_vesalius(vesalius = vesalius,
       data = embeds,
       slot = "embeddings",
       commit = commit,
       append = TRUE)
+    #----------------------------------------------------------------------#
+    # Update objects and add log
+    # update_vesalius => objectUtilies.R
+    # Updating all slots that have been modified
+    # we also create a commit log => clean argument list when more than
+    # 1 argument is supplied. will be commited to individual assasys
+    #----------------------------------------------------------------------#
+    commit <- create_commit_log(vesalius = vesalius,
+      match = as.list(match.call()),
+      default = formals(build_vesalius_embeddings),
+      assay = assays)
+    vesalius <- commit_log_to_vesalius_assay(vesalius,
+      commit,
+      assays)
+    
+    
     # Progress message simpleBar => Prog.R
     simple_bar(verbose)
     return(vesalius)
@@ -470,7 +475,8 @@ int_sctransform <- function(counts, assay = "Spatial", nfeatures) {
 }
 
 tfidf_norm <- function(counts, min_cutoff) {
-  counts <- Signac::RunTFIDF(counts)
+  counts <- Signac::RunTFIDF(counts,verbose = FALSE)
+  counts <- Seurat::ScaleData(counts, verbose = FALSE)
   counts <- Signac::FindTopFeatures(counts, min.cutoff = min_cutoff)
   norm_counts <- list(Seurat::GetAssayData(counts, slot = "data"))
   names(norm_counts) <- "TFIDF"
@@ -484,6 +490,7 @@ embed_latent_space <- function(counts,
   assays,
   dim_reduction,
   dimensions,
+  remove_lsi_1,
   cores,
   verbose) {
     message_switch("in_assay",
@@ -503,10 +510,10 @@ embed_latent_space <- function(counts,
         verbose),
       "LSI" = embed_lsi(counts,
         dimensions = dimensions,
-        remove_LSI1),
+        remove_lsi_1),
       "LSI_UMAP" = embed_lsi_umap(counts,
         dimensions = dimensions,
-        remove_LSI1))
+        remove_lsi_1))
     return(embeds)
 }
 embed_pca <- function(counts,
@@ -529,6 +536,7 @@ embed_pca <- function(counts,
     #--------------------------------------------------------------------------#
     pca <- Embeddings(counts, reduction = "pca")
     pca <- norm_pixel(pca, "minmax")
+    
     colour_matrix <- list(as.matrix(pca))
     names(colour_matrix) <- "PCA"
     return(colour_matrix)
@@ -615,7 +623,7 @@ embed_lsi <- function(counts,
   if (remove_lsi_1) {
     colour_matrix <- Embeddings(svd[["lsi"]])[, -1]
   } else {
-    colour_matrix <- Embeddings(svd[["lsi"]])[, seq(1, dimensions + 1)]
+    colour_matrix <- Embeddings(svd[["lsi"]])[, seq(1, dimensions)]
   }
 
   colour_matrix <- apply(colour_matrix, 2, norm_pixel, "minmax")
@@ -639,13 +647,13 @@ embed_lsi_umap <- function(counts,
 
   message_switch("umap_rgb_tensor", verbose)
   if (remove_lsi_1) {
-    reduc <-  RunUMAP(svd,
+    reduc <-  Seurat::RunUMAP(svd,
       reduction = "lsi",
       dims = seq(2, dimensions + 1),
       n.components = 3L,
       verbose = FALSE)
   } else {
-    reduc <- RunUMAP(svd,
+    reduc <- Seurat::RunUMAP(svd,
         reduction = "lsi",
         dims = seq(1, dimensions),
         n.components = 3L,

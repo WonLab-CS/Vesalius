@@ -97,15 +97,28 @@ pmap <- function(edges, method = c("inverse", "none")) {
 norm_pixel <- function(embeds, type = c("minmax", "quantileNorm")) {
     #--------------------------------------------------------------------------#
     # Normalise pixels values
+    # at the moment i am only using min max but just in case
+    # context: Dr Hong suggest imnvestigating the influence of dat normalisation
     #--------------------------------------------------------------------------#
+    
     embeds <- switch(type[1L],
-                     "mixmax" = min_max(embeds),
+                     "minmax" = min_max(embeds),
                      "quantileNorm" = quantile_norm(embeds))
+    return(embeds)
 }
 
 
 min_max <- function(x){
-    return((x - min(x)) / (max(x) - min(x)))
+    mm <- function(x){
+      return((x - min(x)) / (max(x) - min(x)))
+    }
+    
+    if (is(x, "matrix") || is(x, "data.frame")) {
+      return(apply(x,2,mm))
+    } else {
+      return(mm(x))
+    }
+    
 }
 
 

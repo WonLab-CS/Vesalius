@@ -144,9 +144,12 @@ check_norm_methods <- function(norm, n_counts) {
     if (length(norm) != 1 && length(norm) != n_counts) {
         stop("Number of normalisation methods provided do not match 
             number of count matrices present.")
+    } else if (length(norm) == 1 && n_counts > 1) {
+         norm <- rep(norm, times = n_counts)
+         return(norm)
+    } else {
+        return(norm)
     }
-    norm <- rep(norm, times = n_counts)
-    return(norm)
 }
 check_embed_methods <- function(embed, n_counts) {
     if (any(!embed %in% c("PCA", "PCA_L", "UMAP", "LSI", "LSI_UMAP"))) {
@@ -154,12 +157,16 @@ check_embed_methods <- function(embed, n_counts) {
             Select from: \n
             PCA, PCA_L, UMAP, LSI, LSI_UMAP")
     }
+   
     if (length(embed) != 1 && length(embed) != n_counts) {
         stop("Number of embedding methods provided do not match 
             number of count matrices present.")
+    } else if (length(embed) == 1 &&  n_counts > 1) {
+        embed <- rep(embed, times = n_counts)
+        return(embed)
+    } else {
+        return(embed)
     }
-    embed <- rep(embed, times = n_counts)
-    return(embed)
 }
 
 check_embedding <- function(vesalius_assay, embed, dims) {
@@ -203,18 +210,22 @@ check_tiles <- function(vesalius) {
     return(tiles)
 }
 
-check_tile_log <- function(tile_log) {
-    l_tile_log <- length(tile_log)
-    s_tile_log <- sapply(tile_log, length)
-    if (all(s_tile_log == 0)) {
-        return(0)
-    } else if (sum(s_tile_log) < l_tile_log) {
-        stop("No all tiles have been computed in vesalius object \n
-            Please make sure you are adding processed vesalius objects")
+
+check_log <- function(vesalius_assay, func) {
+    function_log <- unlist(slot_get(vesalius_assay, "log"))
+    function_log <- length(grep(pattern = func, x = function_log))
+    if(function_log >= length(vesalius_assay)) {
+        return(TRUE)
+    } else if(function_log == 0) {
+        return(FALSE)
     } else {
-        return(NULL)
+        stop(paste(func,"has not yet been computed for all assays!\n
+        Please make sure you run", func, "for all assays."))
     }
 }
+
+
+
 
 check_territories <- function(vesalius, trial) {
     if (!is(vesalius, "vesaliusObject")) {
@@ -277,83 +288,7 @@ check_norm <- function(vesalius, norm_method, method = NULL, verbose = TRUE) {
     return(counts)
 }
 
-territory_dispatch <- function(territories, ter_1, ter_2, cells) {
-    if (is.null(ter_1) && is.null(ter_2)) {
-        territories <- select(territories, c("barcodes", "x", "y", "trial"))
-    }else if (!is.null(ter_1) && is.null(ter_2)) {
-        territories$trial[!territories$trial %in% ter_1] <- "other"
-    }else if (is.null(ter_1) && !is.null(ter_2)) {
-        territories$trial[!territories$trial %in% ter_2] <- "other"
-    }else {
-        territories$trial[!territories$trial %in% c(ter_1, ter_2)] <- "other"
-    }
-    if (!is.null(cells)) {
-        territories$trial[territories$trial %in% ter_1 &&
-            territories$barcodes %in% cells] <- paste0(ter_1, collapse = " ")
-        territories$trial[territories$trial %in% ter_2 &&
-            territories$barcodes %in% cells] <- paste0(ter_2, collapse = " ")
-    }
-    return(territories)
-}
 
-deg_group_dispatch <- function(ter, seed, query, cells, verbose) {
-    if (is.null(seed) && is.null(query)) {
-        #----------------------------------------------------------------------#
-        # If no territories are provided - then we assume that the user
-        # want to look at all territories.
-        # This compares each territory to everything else
-        #----------------------------------------------------------------------#
-        message_switch("deg_dispatch_all_null", verbose)
-        seed <- split(ter$barcodes, ter$trial)
-        seed_id <- names(seed)
-
-        query <- lapply(seed, function(bar, ter) {
-            return(ter$barcodes[!ter$barcodes %in% bar])
-        }, ter = ter)
-        query_id <- rep("remaining", length(query))
-    } else if (!is.null(seed) && is.null(query)) {
-        #----------------------------------------------------------------------#
-        # if only seed we compare seed to everything else
-        # Get initial seed territory
-        #----------------------------------------------------------------------#
-        seed_id <- paste0(seed, collapse = " ")
-        seed <- list(ter[ter$trial %in% seed, "barcodes"])
-        #----------------------------------------------------------------------#
-        # Filter query based on seed
-        #----------------------------------------------------------------------#
-        query_id <- "remaining"
-        query <- list(ter[!ter$barcodes %in% seed, "barcodes"])
-    } else if (is.null(seed) && !is.null(query)) {
-        #----------------------------------------------------------------------#
-        # if only query we compare query to everything else
-        # Get initial query territory
-        #----------------------------------------------------------------------#
-        query_id <- paste0(query, collapse = " ")
-        query <- list(ter[ter$trial %in% query, "barcodes"])
-        #----------------------------------------------------------------------#
-        # Filter seed based on query
-        #----------------------------------------------------------------------#
-        seed_id <- "remaning"
-        seed <- list(ter[!ter$barcodes %in% query, "barcodes"])
-    } else {
-        #----------------------------------------------------------------------#
-        # if get both filter based on both
-        #----------------------------------------------------------------------#
-        seed_id <- paste0(seed, collapse = " ")
-        seed <- list(ter[ter$trial %in% seed, "barcodes"])
-        #----------------------------------------------------------------------#
-        # Filter query based on seed
-        #----------------------------------------------------------------------#
-        query_id <- paste0(query, collapse = " ")
-        query <- list(ter[ter$trial %in% query, "barcodes"])
-    }
-    seed <- mapply(check_cells, territory_barcodes = seed,
-        ter = seed_id, MoreArgs = list(cells, verbose), IMPLIFY = FALSE)
-    query <- mapply(check_cells, territory_barcodes = query,
-        ter = query_id, MoreArgs = list(cells, verbose), SIMPLIFY = FALSE)
-    return(list("seed" = seed, "seed_id" = seed_id,
-        "query" = query, "query_id" = query_id))
-}
 
 check_cells <- function(territory_barcodes, ter, cell_barcodes, verbose) {
     common <- intersect(territory_barcodes, cell_barcodes)

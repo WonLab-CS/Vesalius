@@ -5,34 +5,6 @@
 #----------------------------/Vesalius Objects/--------------------------------#
 
 #------------------------------------------------------------------------------#
-# Vesalius assay log - keepstrack of what is done to each individual assay
-# Specific view method should be developped.
-#------------------------------------------------------------------------------#
-
-setClass("assay_log",
-    slots = list(assay = "character",
-        tiles = "list",
-        embeddings = "list",
-        active = "list",
-        territories = "list",
-        DEG = "list",
-        counts  = "list",
-        meta_info = "list")
-)
-## TO DO add show method 
-
-#------------------------------------------------------------------------------#
-# vesalius log keeps track of what is done overall
-# this can also include meta information taken from summaries over each assay
-#------------------------------------------------------------------------------#
-setClass("log",
-    slots = list(assays = "list",
-        meta_info = "list",
-        log = "assay_log")
-)
-
-## TO DO add show method 
-#------------------------------------------------------------------------------#
 # Main vesalius object
 # This object is the high level object that contain each assay
 # We are exclusively working with spatial omics for now
@@ -41,16 +13,12 @@ setClass("log",
 
 setClass("vesaliusObject",
     slots = list(assays = "list",
-        meta_info = "list",
-        history = "log"),
+        history = "list"),
     validity = function(object) {
         if (!is(object@assays, "list")) {
             stop("Unsupported assay Format")
         }
-        if (!is(object@meta_info, "list")) {
-            stop("Unsupported meta info Format")
-        }
-        if (!is(object@history, "log")) {
+        if (!is(object@history, "list")) {
             stop("Unsupported log Format")
         }
         return(TRUE)
@@ -62,7 +30,7 @@ setClass("vesaliusObject",
 build_vesalius_object <- function(coordinates,
     counts,
     assay = "spatial_omics",
-    adjust_coordinates = c("origin", "norm"),
+    adjust_coordinates = "origin",
     verbose = TRUE) {
     simple_bar(verbose)
     #--------------------------------------------------------------------------#
@@ -73,12 +41,20 @@ build_vesalius_object <- function(coordinates,
         assay,
         adjust_coordinates,
         verbose)
-    log <- new("log", assays = as.list(names(input)))
-    ves <- new("vesaliusObject",
-        assays = input,
-        history = log)
+   
+    vesalius <- new("vesaliusObject",
+        assays = input)
+    commit <- create_commit_log(vesalius = vesalius,
+      match = as.list(match.call()),
+      default = formals(build_vesalius_object),
+      assay = names(input))
+    vesalius <- commit_log_to_vesalius_assay(vesalius,
+      commit,
+      names(input))
+    log_summary <- get_log_summary(vesalius)
+    vesalius@history <- log_summary
     simple_bar(verbose)
-    return(ves)
+    return(vesalius)
 }
 
 ## TO DO add show method
@@ -95,23 +71,23 @@ setClassUnion("embeddings", c("list", NULL))
 setClassUnion("DEG", c("list", NULL))
 setClass("vesalius_assay",
     slots = list(tiles = "data.frame",
-        embeddings = "list",
+        embeddings = "embeddings",
         territories = "territory",
-        DEG = "list",
+        DEG = "DEG",
         counts  = "list",
         image = "list",
-        log = "assay_log"),
+        log = "list"),
     validity = function(object) {
         if (!is(object@tiles, "data.frame")) {
             stop("Unsupported Tile Format")
         }
-        if (!is(object@embeddings, "list")) {
+        if (!is(object@embeddings, "embeddings")) {
             stop("Unsupported Embeddings Format")
         }
         if (!is(object@territories, "territory")) {
             stop("Unsupported territories Format")
         }
-        if (!is(object@DEG, "list")) {
+        if (!is(object@DEG, "DEG")) {
             stop("Unsupported DEG Format")
         }
         if (!is(object@counts, "list")) {
@@ -120,7 +96,7 @@ setClass("vesalius_assay",
         if (!is(object@image, "list")) {
             stop("Unsupported image Format")
         }
-        if (!is(object@log, "assay_log")) {
+        if (!is(object@log, "list")) {
             stop("Unsupported log Format")
         }
         return(TRUE)
@@ -147,13 +123,12 @@ build_vesalius_assay <- function(counts,
     names(counts) <- "raw"
     comment(counts) <- "raw"
     #--------------------------------------------------------------------------#
-    # add assay log
+    # add assay log TODO
     #--------------------------------------------------------------------------#
-    log <- new("assay_log", assay = assay)
+    
     return(new("vesalius_assay",
         counts = counts,
-        tiles = coordinates,
-        log = log
+        tiles = coordinates
         ))
 }
 

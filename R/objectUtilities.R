@@ -11,24 +11,16 @@ update_vesalius_assay <- function(vesalius_assay,
     slot,
     commit,
     defaults,
+    assay,
     append = TRUE) {
     #--------------------------------------------------------------------------#
-    # You take a vesalius object, the data you want add to it and which slot
-    # it should be added to.
-    # First step is to check if the slot we want to update is empty
-    # This is not the same as log commit
-    # Lets keep those seperate
-    # Will need some sanitu checks here at one point
+    # Here we get everything in a list format that we can then just append 
+    # we can add some checks here to make sure we are formating everything 
+    # correctly
     #--------------------------------------------------------------------------#
-
+   
     if (append && slot != "territories") {
         slot(vesalius_assay, slot) <- c(slot(vesalius_assay, slot), data)
-        vesalius_assay <- commit_assay_log(vesalius_assay,
-            commit,
-            defaults,
-            slot)
-
-
     }else if (append && slot == "territories") {
         if (!is.null(slot(vesalius_assay, slot))) {
             df <- data.frame(slot(vesalius_assay, slot), data[, ncol(data)])
@@ -38,84 +30,38 @@ update_vesalius_assay <- function(vesalius_assay,
         } else {
             slot(vesalius_assay, slot) <- data
         }
-        vesalius_assay <- commit_assay_log(vesalius_assay,
-            commit,
-            defaults,
-            slot)
     } else {
         slot(vesalius_assay, slot) <- data
-        vesalius_assay <- commit_assay_log(vesalius_assay,
-            commit,
-            defaults,
-            slot)
     }
     return(vesalius_assay)
 }
 
-
-
-commit_assay_log <- function(vesalius_assay,
-    commit,
-    defaults,
-    slot,
-    append = TRUE) {
-    #--------------------------------------------------------------------------#
-    # First let's get all the non symbol arguments
-    # symbol argument are argument that require an input i.e no default
-    # Trim the last entry as it is always NULL... or is it????
-    #--------------------------------------------------------------------------#
-
-    defaults <- defaults[-length(defaults)]
-    non_sym <- sapply(defaults, function(x) {
-                  return(!any(is(x) == "refObject"))
-    })
-    defaults <- defaults[non_sym]
-    #--------------------------------------------------------------------------#
-    # Initialise log
-    #--------------------------------------------------------------------------#
-    defs <- sapply(defaults, function(x) {
-        if (class(x) == "call") {
-            x <- as.character(x)[2L]
-        } else if (is.null(x)) {
-            x <- "NULL"
-        }
-        return(unlist(x))
-    })
-
-    logdf <- data.frame("Argument" = c("Function", names(defs)),
-        "Value" = c(as.character(commit[[1]]), unname(defs)))
-
-    #--------------------------------------------------------------------------#
-    # Update the default df based on mathc call output
-    #--------------------------------------------------------------------------#
-    if (length(commit) > 1) {
-      for (i in seq(2, length(commit))) {
-          if (length(as.character(commit[[i]])) > 1) {
-              com <- paste0(as.character(commit[[i]]), collapse = "_")
-          } else {
-              com <- as.character(commit[[i]])
-          }
-          logdf$Value[logdf$Argument == names(commit)[i]] <- com
-      }
+commit_log_to_vesalius_assay <- function(vesalius, commit, assays) {
+    for (ass in assays) {
+        vesalius@assays[[ass]] <- update_vesalius_assay_log(
+            vesalius@assays[[ass]],
+            commit = commit[[ass]],
+            assay = ass)
     }
-    #--------------------------------------------------------------------------#
-    # Check for prior logs
-    #--------------------------------------------------------------------------#
+    return(vesalius)
+}
 
-    last <- get_last_commit(vesalius_assay)
-    logdf <- list(logdf)
-    names(logdf) <- last
-    #--------------------------------------------------------------------------#
-    # why did i set this? looking back wouldn't we want to always apped log?
-    #--------------------------------------------------------------------------#
-    if (append) {
-        slot(vesalius_assay@log, slot) <-
-            c(slot(vesalius_assay@log, slot), logdf)
+update_vesalius_assay_log <- function(vesalius_assay, commit, assay) {
+    log <- vesalius_assay@log
+    if(length(log) == 0) {
+        tag <- paste0(assay,"_object_build")
+        log <- list(commit)
+        names(log) <- tag
     } else {
-        slot(vesalius_assay@log, slot) <- logdf
+        tag <- paste0(assay,"_trial_", length(log) - 1)
+        log <- c(log, list(commit))
+        names(log) <- c(names(log)[-1],tag)
     }
+    
+    vesalius_assay@log <- log
     return(vesalius_assay)
 }
+
 
 
 
@@ -127,36 +73,50 @@ update_vesalius <- function(vesalius,
     append = TRUE) {
     #--------------------------------------------------------------------------#
     # First we know that we will always update the assay slot
-    # the other slots are meta_info and history
-    # both of these slots cointain higher level meta info and a summary of
-    # low level logs
-    # we also assume that we receive named lists for the data input
-    # names are the assays that have been updated
+    # We have already created lists for each assay 
     #--------------------------------------------------------------------------#
     assays <- names(data)
     for (ass in assays) {
-        vesalius@assay[[ass]] <- update_vesalius_assay(vesalius@assay[[ass]],
+        
+        vesalius@assays[[ass]] <- update_vesalius_assay(vesalius@assays[[ass]],
             data = data[[ass]],
             slot = slot,
             commit = commit[[ass]],
             defaults = defaults,
-            append = TRUE)
+            assay = ass,
+            append = append)
     }
-
+    return(vesalius)
 
 }
 
 
-create_commit_list <- function(vesalius, commit, default, assay, ...) {
-    modified_args <- list(...)
+create_commit_log <- function(vesalius, match, default, assay) {
+    #--------------------------------------------------------------------------#
+    # First lets get the argument that could have more than one value
+    # This can be a bit more limited - might need to extend 
+    #--------------------------------------------------------------------------#
+    match <- format_call(match, assay)
+    #--------------------------------------------------------------------------#
+    # create list for each assay present - create a seperate "log" for each
+    # in many case they will be identical but we want to account for the edge
+    # isn't that the guy from U2? 
+    #--------------------------------------------------------------------------#
+    commit_list <- vector("list", length(assay))
+    names(commit_list) <- assay
+
+    for (arg in seq_along(commit_list)) {
+        template <-  default
+        for (m in seq_along(match)) {
+            template[[names(match)[m]]] <- match[[m]][arg]
+        }
+        commit_list[[arg]] <- template
+    }
+    return(commit_list)
+
 }
 
-get_last_commit <- function(log) {
-    log <- slot_apply(log@log, names)
-    log <- sapply(lapply(log, as.numeric), max)
-    log <- max(log) + 1
-    return(log)
-}
+
 
 
 slot_apply <- function(x, func, ...) {
@@ -257,10 +217,10 @@ get_tiles <- function(vesalius, assay = "all") {
         tiles <- vesalius@assays
         assay <- get_assay_names(vesalius)
     }
-    tile_log <- slot_get(slot_get(tiles, "log"), "tiles")
-    tile_log <- check_tile_log(tile_log)
-    if (is.null(tile_log)) {
-        return(tile_log)
+    
+    tile_log <- check_log(tiles,"build_vesalius_embeddings")
+    if (tile_log) {
+        return(NULL)
     } else {
         tiles <- slot_get(tiles, "tiles")
         names(tiles) <- assay
@@ -269,8 +229,8 @@ get_tiles <- function(vesalius, assay = "all") {
 }
 
 
-view_log_tree <- function(vesalius) {
-    return(vesalius@log)
+get_log_summary <- function(vesalius) {
+    
 }
 
 view_trial_summary <- function(vesalius) {

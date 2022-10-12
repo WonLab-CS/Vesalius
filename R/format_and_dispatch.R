@@ -5,7 +5,7 @@
 #---------------------/Format conversion Functions/----------------------------#
 
 
-.ves_to_c <- function(vesalius,
+format_ves_to_c <- function(vesalius,
   dims,
   embed = "last",
   correct_background = TRUE,
@@ -64,7 +64,7 @@
 
 
 
-.c_to_ves <- function(cimg,
+format_c_to_ves <- function(cimg,
   vesalius,
   dims,
   embed = "last",
@@ -102,7 +102,7 @@
 
 
 
-.ves_to_sis <- function(vesalius,
+format_ves_to_sis <- function(vesalius,
   dims,
   embed = "last",
   correct_background = TRUE,
@@ -158,7 +158,7 @@
     return(image_list)
 }
 
-.sis_to_ves <- function(image,
+format_sis_to_ves <- function(image,
   object,
   dims,
   embed = "last") {
@@ -191,7 +191,7 @@
   return(object)
 }
 
-sis_to_df <- function(image, is_cimg = TRUE) {
+format_sis_to_df <- function(image, is_cimg = TRUE) {
   image <- image$AP_image_data
   y <- rep(seq(1, ncol(image)), each = nrow(image))
   x <- rep(seq(1, nrow(image)), times = ncol(image))
@@ -232,4 +232,102 @@ format_counts_for_logit <- function(idx, seed, query) {
   seed_query_info[query_tag, "group"] <- "query"
   seed_query_info[, "group"] <- factor(x = seed_query_info[, "group"])
   return(list("merged" = merged, "seed_query_info" = seed_query_info))
+}
+
+format_call <- function(call, assay) {
+  #---------------------------------------------------------------------------#
+  # NOTE: if the user put their arguments in "external variable"
+  # Only the name of that variable will be parsed not the values themselves
+  # could be overcome by writing some function that unwrap and check
+  #---------------------------------------------------------------------------#
+  for (el in seq_along(call)) {
+    tmp <- as.character(call[[el]])
+    if (length(tmp) == 1 && !is(call[[el]], "call")) {
+      call[[el]] <- rep(tmp, length(assay))
+    } else if(is(call[[el]], "call")) {
+      call[[el]] <- tmp[seq(2,length(tmp))]
+    } else {
+      call[[el]] <- tmp
+    }
+  }
+  names(call) <- c("fun", names(call)[seq(2,length(call))])
+  return(call)
+}
+
+dispatch_territory <- function(territories, ter_1, ter_2, cells) {
+    if (is.null(ter_1) && is.null(ter_2)) {
+        territories <- select(territories, c("barcodes", "x", "y", "trial"))
+    }else if (!is.null(ter_1) && is.null(ter_2)) {
+        territories$trial[!territories$trial %in% ter_1] <- "other"
+    }else if (is.null(ter_1) && !is.null(ter_2)) {
+        territories$trial[!territories$trial %in% ter_2] <- "other"
+    }else {
+        territories$trial[!territories$trial %in% c(ter_1, ter_2)] <- "other"
+    }
+    if (!is.null(cells)) {
+        territories$trial[territories$trial %in% ter_1 &&
+            territories$barcodes %in% cells] <- paste0(ter_1, collapse = " ")
+        territories$trial[territories$trial %in% ter_2 &&
+            territories$barcodes %in% cells] <- paste0(ter_2, collapse = " ")
+    }
+    return(territories)
+}
+
+dispatch_deg_group <- function(ter, seed, query, cells, verbose) {
+    if (is.null(seed) && is.null(query)) {
+        #----------------------------------------------------------------------#
+        # If no territories are provided - then we assume that the user
+        # want to look at all territories.
+        # This compares each territory to everything else
+        #----------------------------------------------------------------------#
+        message_switch("deg_dispatch_all_null", verbose)
+        seed <- split(ter$barcodes, ter$trial)
+        seed_id <- names(seed)
+
+        query <- lapply(seed, function(bar, ter) {
+            return(ter$barcodes[!ter$barcodes %in% bar])
+        }, ter = ter)
+        query_id <- rep("remaining", length(query))
+    } else if (!is.null(seed) && is.null(query)) {
+        #----------------------------------------------------------------------#
+        # if only seed we compare seed to everything else
+        # Get initial seed territory
+        #----------------------------------------------------------------------#
+        seed_id <- paste0(seed, collapse = " ")
+        seed <- list(ter[ter$trial %in% seed, "barcodes"])
+        #----------------------------------------------------------------------#
+        # Filter query based on seed
+        #----------------------------------------------------------------------#
+        query_id <- "remaining"
+        query <- list(ter[!ter$barcodes %in% seed, "barcodes"])
+    } else if (is.null(seed) && !is.null(query)) {
+        #----------------------------------------------------------------------#
+        # if only query we compare query to everything else
+        # Get initial query territory
+        #----------------------------------------------------------------------#
+        query_id <- paste0(query, collapse = " ")
+        query <- list(ter[ter$trial %in% query, "barcodes"])
+        #----------------------------------------------------------------------#
+        # Filter seed based on query
+        #----------------------------------------------------------------------#
+        seed_id <- "remaning"
+        seed <- list(ter[!ter$barcodes %in% query, "barcodes"])
+    } else {
+        #----------------------------------------------------------------------#
+        # if get both filter based on both
+        #----------------------------------------------------------------------#
+        seed_id <- paste0(seed, collapse = " ")
+        seed <- list(ter[ter$trial %in% seed, "barcodes"])
+        #----------------------------------------------------------------------#
+        # Filter query based on seed
+        #----------------------------------------------------------------------#
+        query_id <- paste0(query, collapse = " ")
+        query <- list(ter[ter$trial %in% query, "barcodes"])
+    }
+    seed <- mapply(check_cells, territory_barcodes = seed,
+        ter = seed_id, MoreArgs = list(cells, verbose), IMPLIFY = FALSE)
+    query <- mapply(check_cells, territory_barcodes = query,
+        ter = query_id, MoreArgs = list(cells, verbose), SIMPLIFY = FALSE)
+    return(list("seed" = seed, "seed_id" = seed_id,
+        "query" = query, "query_id" = query_id))
 }
