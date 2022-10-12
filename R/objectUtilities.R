@@ -6,7 +6,7 @@
 
 
 
-update_vesalius <- function(vesalius,
+update_vesalius_assay <- function(vesalius_assay,
     data,
     slot,
     commit,
@@ -22,30 +22,43 @@ update_vesalius <- function(vesalius,
     #--------------------------------------------------------------------------#
 
     if (append && slot != "territories") {
-        slot(vesalius, slot) <- c(slot(vesalius, slot), data)
-        vesalius <- commit_log(vesalius, commit, defaults, slot)
+        slot(vesalius_assay, slot) <- c(slot(vesalius_assay, slot), data)
+        vesalius_assay <- commit_assay_log(vesalius_assay,
+            commit,
+            defaults,
+            slot)
 
 
     }else if (append && slot == "territories") {
-        if (!is.null(slot(vesalius, slot))) {
-            df <- data.frame(slot(vesalius, slot), data[, ncol(data)])
-            colnames(df)  <- c(colnames(slot(vesalius, slot)),
+        if (!is.null(slot(vesalius_assay, slot))) {
+            df <- data.frame(slot(vesalius_assay, slot), data[, ncol(data)])
+            colnames(df)  <- c(colnames(slot(vesalius_assay, slot)),
                 colnames(data)[ncol(data)])
-            slot(vesalius, slot) <- df
+            slot(vesalius_assay, slot) <- df
         } else {
-            slot(vesalius, slot) <- data
+            slot(vesalius_assay, slot) <- data
         }
-        vesalius <- commit_log(vesalius, commit, defaults, slot)
+        vesalius_assay <- commit_assay_log(vesalius_assay,
+            commit,
+            defaults,
+            slot)
     } else {
-        slot(vesalius, slot) <- data
-        vesalius <- commit_log(vesalius, commit, defaults, slot)
+        slot(vesalius_assay, slot) <- data
+        vesalius_assay <- commit_assay_log(vesalius_assay,
+            commit,
+            defaults,
+            slot)
     }
-    return(vesalius)
+    return(vesalius_assay)
 }
 
 
 
-commit_log <- function(vesalius, commit, defaults, slot, append = TRUE) {
+commit_assay_log <- function(vesalius_assay,
+    commit,
+    defaults,
+    slot,
+    append = TRUE) {
     #--------------------------------------------------------------------------#
     # First let's get all the non symbol arguments
     # symbol argument are argument that require an input i.e no default
@@ -89,18 +102,53 @@ commit_log <- function(vesalius, commit, defaults, slot, append = TRUE) {
     # Check for prior logs
     #--------------------------------------------------------------------------#
 
-    last <- get_last_commit(vesalius)
+    last <- get_last_commit(vesalius_assay)
     logdf <- list(logdf)
     names(logdf) <- last
     #--------------------------------------------------------------------------#
     # why did i set this? looking back wouldn't we want to always apped log?
     #--------------------------------------------------------------------------#
     if (append) {
-        slot(vesalius@log, slot) <- c(slot(vesalius@log, slot), logdf)
+        slot(vesalius_assay@log, slot) <-
+            c(slot(vesalius_assay@log, slot), logdf)
     } else {
-        slot(vesalius@log, slot) <- logdf
+        slot(vesalius_assay@log, slot) <- logdf
     }
-    return(vesalius)
+    return(vesalius_assay)
+}
+
+
+
+update_vesalius <- function(vesalius,
+    data,
+    slot,
+    commit,
+    defaults,
+    append = TRUE) {
+    #--------------------------------------------------------------------------#
+    # First we know that we will always update the assay slot
+    # the other slots are meta_info and history
+    # both of these slots cointain higher level meta info and a summary of
+    # low level logs
+    # we also assume that we receive named lists for the data input
+    # names are the assays that have been updated
+    #--------------------------------------------------------------------------#
+    assays <- names(data)
+    for (ass in assays) {
+        vesalius@assay[[ass]] <- update_vesalius_assay(vesalius@assay[[ass]],
+            data = data[[ass]],
+            slot = slot,
+            commit = commit[[ass]],
+            defaults = defaults,
+            append = TRUE)
+    }
+
+
+}
+
+
+create_commit_list <- function(vesalius, commit, default, assay, ...) {
+    modified_args <- list(...)
 }
 
 get_last_commit <- function(log) {
@@ -118,6 +166,14 @@ slot_apply <- function(x, func, ...) {
         result[[i]] <- func(slot(x, i), ...)
     }
     return(result)
+}
+
+slot_get <- function(object, slot_name) {
+    out <- list()
+    for (i in seq_along(object)) {
+        out[[i]] <- slot(object[[i]], slot_name)
+    }
+    return(out)
 }
 
 
@@ -161,41 +217,57 @@ create_trial_tag <- function(trials, tag) {
     } else {
       new_trial <-  paste0(tag, "_Trial_1")
     }
-    return("new_trial" = new_trial)
+    return(new_trial)
 }
-create_assay_tag <- function(assay) {
-    assay_counts <- table(assay)
-    for (i in seq_along(assay_counts)) {
-        assay[assay == names(assay_counts)[i]] <-
-            paste0(names(assay_counts)[1], seq(1, assay_counts[i]))
-    }
-    return(assay)
+
+get_assay_names <- function(vesalius) {
+    return(names(vesalius@assays))
 }
+
 
 
 get_counts <- function(vesalius, type = "raw", assay = "all") {
-    counts <- vesalius@counts[[type]]
-    if (is.null(counts)) {
-        stop("No count matrix has been added to Vesalius")
-    }
     if (assay != "all") {
-        if (!any(assay %in% names(counts))) {
-            stop(paste0("Selected assay not in assay list \n",
-            names(counts)))
+        if (!any(assay %in% get_assay_names(vesalius))) {
+            stop("Selected assay not in assay list \n")
         } else {
-            counts <- counts[assay]
+            counts <- vesalius@assays[assay]
         }
+    } else {
+        counts <- vesalius@assays
+        assay <- get_assay_names(vesalius)
     }
+    counts <- slot_get(counts, "counts")
+    names(counts) <- assay
     return(counts)
-
 }
 
-get_list_subelement <- function(list, element) {
-    sub <- lapply(list,function(l,e)) {
-        return(l[e])
+get_tiles <- function(vesalius, assay = "all") {
+    #--------------------------------------------------------------------------#
+    # first we check if tiles have been computed 
+    # normnally we should have barcode coodinates here but not tiles
+    #--------------------------------------------------------------------------#
+    if (assay != "all") {
+        if (!any(assay %in% get_assay_names(vesalius))) {
+            stop("Selected assay not in assay list \n")
+        } else {
+            tiles <- vesalius@assays[assay]
+        }
+    } else {
+        tiles <- vesalius@assays
+        assay <- get_assay_names(vesalius)
     }
-    return(sub)
+    tile_log <- slot_get(slot_get(tiles, "log"), "tiles")
+    tile_log <- check_tile_log(tile_log)
+    if (is.null(tile_log)) {
+        return(tile_log)
+    } else {
+        tiles <- slot_get(tiles, "tiles")
+        names(tiles) <- assay
+        return(tiles)
+    }
 }
+
 
 view_log_tree <- function(vesalius) {
     return(vesalius@log)

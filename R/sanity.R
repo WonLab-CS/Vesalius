@@ -4,60 +4,77 @@
 
 #------------------------------/Sanity Checks /--------------------------------#
 
-check_assay <- function(assay) {
-    if (!any(assay %in% c("ST", "SG", "SA", "SE", "SP", "SM"))) {
-        stop("Provided assay not in availbale types! \n
-        Select from:\n
-        ST (spatial transcriptome) \n
-        SG (spatial genome) \n
-        SA (spatial accessibility) \n
-        SE (sptail epigenome) \n
-        SP (spatial proteome) \n
-        SM (spatial_multiome) \n")
+check_assays <- function(assays, n_assays, verbose) {
+    #--------------------------------------------------------------------------#
+    # we want to make sure that they are not unique names
+    #--------------------------------------------------------------------------#
+    if (length(assays) != length(unique(assays))) {
+        message_switch("assay_non_unique_name",verbose)
+        assays <- paste0("spatial_omics_", seq(1,n_assays))
+    } else if (length(assays) == 1 && assays[1L] == "spatial_omics") {
+        message_switch("assay_name", verbose)
+        assays <- paste0("spatial_omics_", seq(1,n_assays))
+    } else if (!identical(length(assays),n_assays)) {
+        stop("Number assays provided do not match number of the number \n
+        of counts and coordinates provided")
     }
-    return(assay)
+    return(assays)
 }
 
-compare_inputs <- function(counts, coordinates, assays, assay_names, verbose) {
-    if (!identical(length(counts), length(coordinates))) {
+check_inputs <- function(counts,
+    coordinates,
+    assays,
+    adjust_coordinates,
+    verbose) {
+    #--------------------------------------------------------------------------#
+    # first we check if we have the same length lists 
+    # if we only have a single object parsed  we put this into a list
+    # in this case it should be equal to 1 anyway
+    # We also check if assays have the same length 
+    #--------------------------------------------------------------------------#
+    if (!is(coordinates, "list")) {
+        coordinates <- list(coordinates)
+    }
+    if (!is(counts, "list")) {
+        counts <- list(counts)
+    }
+    if (length(counts) != length(coordinates)) {
         stop("Number of count matrices and coordinates do not match")
     }
     #--------------------------------------------------------------------------#
     # since we already know that there are the same number of counts and
     # coordinates we can use only one length value here
     #--------------------------------------------------------------------------#
-    if (length(assays) == 1) {
-        assays <- rep(assays, times = length(counts))
-    } else if (!identical(length(assays), length(counts))) {
-            stop("Number of assay types provided do not match \n
-                with number counts/coordinates provided!")
-    }
+    assays <- check_assays(assays, length(counts), verbose)
     #--------------------------------------------------------------------------#
-    # could compare barcodes and what not low priority for now
+    # now we can check the validity of each
     #--------------------------------------------------------------------------#
-
+    counts <- mapply(check_counts,
+        counts, assays,
+        MoreArgs = list(verbose),
+        SIMPLIFY = FALSE)
+    coordinates <- mapply(check_coordinates,
+        coordinates, assays,
+        MoreArgs = list(adjust_coordinates,
+            verbose),
+        SIMPLIFY = FALSE)
     #--------------------------------------------------------------------------#
-    # Finally we can add names to each element
+    # Finally we can rebuild an assay list filled with vesalius_assay objects 
     #--------------------------------------------------------------------------#
-    if (!is.null(assay_names)){
-        if (!identical(length(assays), length(assay_names))) {
-            stop("Number of assay names do not matrch the number of assays!")
-        }
-    } else {
-        message_switch("assay_name", verbose)
-        assay_names <- create_assay_tag(assays)
-    }
-    names(assays) <- assay_names
-    names(counts) <- assay_names
-    names(coordinates) <- assay_names
-    return(list("counts" = counts,
-        "coordinates" = coordinates,
-        "assays" = assays))
+    vesalius <- mapply(build_vesalius_assay,
+        counts = counts,
+        coordinates = coordinates,
+        assay = assays,
+        MoreArgs = list(verbose = FALSE),
+        SIMPLIFY = FALSE)
+    names(vesalius) <- assays
+    return(vesalius)
 }
 
 
 
-check_counts <- function(counts) {
+check_counts <- function(counts, assay, verbose) {
+    message_switch("check_counts",verbose, assay = assay)
     if (is(counts, "data.frame")) {
       counts <- as(as.matrix(counts), "dgCMatrix")
     } else if (is(counts, "matrix")) {
@@ -65,20 +82,23 @@ check_counts <- function(counts) {
     } else if (is(counts, "dgCMatrix")) {
       counts <- counts
     } else {
-      stop("Unsupported count format!")
+      stop(paste("Unsupported count format in", assay))
     }
     return(counts)
 }
 
 
 check_coordinates <- function(coordinates,
-    adjust_coordinates = c("origin", "norm")) {
+    assay,
+    adjust_coordinates = c("origin", "norm"),
+    verbose) {
+    message_switch("check_coord",verbose, assay = assay)
     if (is(coordinates, "matrix")) {
         coordinates <- as.data.frame(coordinates)
     } else if (is(coordinates, "data.frame")) {
         coordinates <- coordinates
     } else {
-        stop("Unsupported coordinates file type! matrix or data.frame")
+       stop(paste("Unsupported coordinate format in", assay))
     }
     #--------------------------------------------------------------------------#
     # Check coordinate input type
@@ -115,57 +135,26 @@ check_coordinates <- function(coordinates,
     return(coordinates)
 }
 
-
-
-check_precomputed_tiles <- function(vesalius, init = FALSE) {
-    if (!is(vesalius, "vesaliusObject")) {
-        stop("Unsupported format to isolate_territories function")
-    }
-    #--------------------------------------------------------------------------#
-    # Essentially we want to check what there is in this object
-    # to avoid any unnecessary computations
-    # Might need to be extended
-    #--------------------------------------------------------------------------#
-    if (init) {
-      #------------------------------------------------------------------------#
-      # Check to see if there is only a single log entry
-      # if so then that means we have a fresh object
-      # if not that means we can skip some of the processing
-      #------------------------------------------------------------------------#
-      log <- get_last_log(vesalius)
-      if (length(log) == 1 && names(log)[1L] == "assay") {
-          return(TRUE)
-      }else {
-          return(FALSE)
-      }
-    } else {
-        return(FALSE)
-    }
-
-
-}
-
 check_norm_methods <- function(norm, n_counts) {
-    if (all(norm %in% c("log", "SCTransform", "TFIDF", "raw"))) {
+    if (any(!norm %in% c("log_norm", "SCTransform", "TFIDF", "raw"))) {
         stop("Normalisation method provided do not match available options \n
             Select from: \n
-            log, SCTransform, TFIDF, or raw")
+            log_norm, SCTransform, TFIDF, or raw")
     }
-    if(!identical(length(norm),1) && !identical(length(norm), n_counts)) {
+    if (length(norm) != 1 && length(norm) != n_counts) {
         stop("Number of normalisation methods provided do not match 
             number of count matrices present.")
     }
     norm <- rep(norm, times = n_counts)
     return(norm)
 }
-
 check_embed_methods <- function(embed, n_counts) {
-    if (all(embed %in% c("PCA", "PCA_L", "UMAP", "LSI", "LSI_UMAP"))) {
+    if (any(!embed %in% c("PCA", "PCA_L", "UMAP", "LSI", "LSI_UMAP"))) {
         stop("Embedding method provided do not match available options \n
             Select from: \n
             PCA, PCA_L, UMAP, LSI, LSI_UMAP")
     }
-    if(!identical(length(embed),1) && !identical(length(embed), n_counts)) {
+    if (length(embed) != 1 && length(embed) != n_counts) {
         stop("Number of embedding methods provided do not match 
             number of count matrices present.")
     }
@@ -173,15 +162,15 @@ check_embed_methods <- function(embed, n_counts) {
     return(embed)
 }
 
-check_embedding <- function(vesalius, embed, dims) {
+check_embedding <- function(vesalius_assay, embed, dims) {
     #--------------------------------------------------------------------------#
     # Lets check if we have all the right embeddings
     #--------------------------------------------------------------------------#
-    if (!is(vesalius, "vesaliusObject")) {
+    if (!is(vesalius_assay, "vesaliusObject")) {
         stop("Unsupported format! Make sure you are parsing a vesalius object")
     }
     if (embed == "last") {
-      embeddings <- vesalius@activeEmbeddings[[1L]]
+      embeddings <- vesalius_assay@activeEmbeddings[[1L]]
     } else {
         in_col <- grep(pattern = embed, x = names(vesalius@embeddings))
         if (length(in_col) == 0) {
@@ -212,6 +201,19 @@ check_tiles <- function(vesalius) {
     }
     tiles <- vesalius@tiles
     return(tiles)
+}
+
+check_tile_log <- function(tile_log) {
+    l_tile_log <- length(tile_log)
+    s_tile_log <- sapply(tile_log, length)
+    if (all(s_tile_log == 0)) {
+        return(0)
+    } else if (sum(s_tile_log) < l_tile_log) {
+        stop("No all tiles have been computed in vesalius object \n
+            Please make sure you are adding processed vesalius objects")
+    } else {
+        return(NULL)
+    }
 }
 
 check_territories <- function(vesalius, trial) {

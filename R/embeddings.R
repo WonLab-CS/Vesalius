@@ -52,7 +52,7 @@
 
 build_vesalius_embeddings <- function(vesalius,
   dim_reduction = "PCA",
-  normalisation = "log",
+  normalisation = "log_norm",
   assay = "all",
   dimensions = 30,
   tensor_resolution = 1,
@@ -66,24 +66,32 @@ build_vesalius_embeddings <- function(vesalius,
     simple_bar(verbose)
     #--------------------------------------------------------------------------#
     # Check Status of object
-    # Leaving space for changes and updates
+    # getting out coordinates and counts from vesalius objects
+    # In this case - we always get raw counts even if other are present
+    # there is a normalisation step in this function
+    # we will extract the assay based on name.
     #--------------------------------------------------------------------------#
-    status <- check_precomputed_tiles(vesalius, init = TRUE)
-    if (status) {
-      #------------------------------------------------------------------------#
-      # Extract coordinates and tiles 
-      #------------------------------------------------------------------------#
-      coordinates <- get_tiles(vesalius, assay)
-      counts <- get_counts(vesalius, type = "raw", assay)
+    coordinates <- get_tiles(vesalius, assay)
+    counts <- get_counts(vesalius, type = "raw", assay)
+    assays <- names(counts)
+    #--------------------------------------------------------------------------#
+    # if there are no tiles present we compute them 
+    # otherwise we skip this step - no need to recompute tiles if they are
+    # already there
+    #--------------------------------------------------------------------------#
+    if (!is.null(coordinates)) {
       #------------------------------------------------------------------------#
       # generate tiles, reduce resoluation and filter out tiles and beads
       #------------------------------------------------------------------------#
-      tiles <- lapply(coordinates, generate_tiles,
-        tensor_resolution = tensor_resolution,
-        filter_grid = filter_grid,
-        filter_threshold = filter_threshold,
-        verbose = verbose,
-        cores = cores)
+      tiles <- mapply(generate_tiles,
+        coordinates,
+        assays = assays,
+        MoreArgs = list(
+          tensor_resolution = tensor_resolution,
+          filter_grid = filter_grid,
+          filter_threshold = filter_threshold,
+          verbose = verbose,
+          cores = cores))
       #------------------------------------------------------------------------#
       # adjusted counts if necessary
       # essentially merging counts when barcodes overlap
@@ -96,105 +104,82 @@ build_vesalius_embeddings <- function(vesalius,
           MoreArgs = list(cores = cores),
           SIMPLIFY = FALSE)
       }
-      #------------------------------------------------------------------------#
-      # we can update vesalius tiles here as we won't need them later on
-      # We keep counts as they will be required for pre-processing and
-      # embeddings
-      #------------------------------------------------------------------------#
-      vesalius <- update_vesalius(vesalius = vesalius,
-        data = tiles$tiles,
-        slot = "tiles",
-        commit = as.list(match.call()),
-        defaults = as.list(args(build_vesalius_embeddings)),
-        append = FALSE)
-    } else {
-      #----------------------------------------------------------------------#
-      # Get raw counts if tiles have already been computed
-      # get_counts function => objectUtilities.R
-      #----------------------------------------------------------------------#
-      counts <- get_counts(vesalius, type = "raw")
-    }
+    } 
     #--------------------------------------------------------------------------#
     # Now we can start creating colour embeddings
     # This section can be run multiple times
     # for now we dont want to have multiple "tiles" options
+    # Once you compute your tiles for an assay you stuck with that 
     # NOTE: we might want to get away from Seurat as dependancy!!!
     #--------------------------------------------------------------------------#
-    message_switch("pre_process", verbose)
     normalisation <- check_norm_methods(normalisation, length(counts))
-    counts <- lapply(counts, process_counts
-      commit = as.list(match.call()),
+    counts <- mapply(process_counts,
+      counts,
+      assays = assays,
       method = normalisation,
-      nfeatures = nfeatures,
-      min_cutoff = min_cutoff)
-    
-    #----------------------------------------------------------------------#
-    # Update objects and add log
-    # update_vesalius => objectUtilies.R
-    #----------------------------------------------------------------------#
-    vesalius <- update_vesalius(vesalius = vesalius,
-      data = get_list_subelement(counts, "norm")
-      slot = "counts",
-      commit = as.list(match.call()),
-      defaults = as.list(args(build_vesalius_embeddings)),
-      append = TRUE)
-
+      MoreArgs = list(
+        nfeatures = nfeatures,
+        min_cutoff = min_cutoff,
+        verbose = verbose),
+      SIMPLIFY = FALSE)
     #--------------------------------------------------------------------------#
     # Embeddings - get embedding method and convert latent space
     # to color space.
     #--------------------------------------------------------------------------#
-    if (!method[1L] %in% c("PCA", "PCA_L", "UMAP", "LSI", "LSI_UMAP")) {
-        method <- "none"
-    }
-    embeds <- switch(method[1L],
-      "PCA" = embed_pca(counts$SO,
+    dim_reduction <- check_embed_methods(dim_reduction, length(counts))
+    embeds <- mapply(embed_latent_space,
+      lapply(counts, "[[", 1),
+      assays = assays,
+      dim_reduction,
+      MoreArgs = list(
         dimensions = dimensions,
         cores = cores,
         verbose = verbose),
-      "PCA_L" = embed_pcal(counts$SO,
-        dimensions = dimensions,
-        cores = cores,
-        verbose = verbose),
-      "UMAP" = embed_umap(counts$SO,
-        dimensions = dimensions,
-        verbose),
-      "LSI" = embed_lsi(counts$SO,
-        dimensions = dimensions,
-        remove_LSI1),
-      "LSI_UMAP" = embed_lsi_umap(counts$SO,
-        dimensions = dimensions,
-        remove_LSI1),
-      "none" = stop("Unsupported embedding type!"))
+      SIMPLIFY = FALSE)
     #----------------------------------------------------------------------#
     # Update objects and add log
     # update_vesalius => objectUtilies.R
-    # Update both the full embedding list and the active embedding list
+    # Updating all slots that have been modified
+    # we also create a commit list => clean argument list when more than
+    # 1 argument is supplied. will be commited to individual assasys
     #----------------------------------------------------------------------#
+    commit <- create_commit_log(vesalius = vesalius,
+      match = as.list(match.call()),
+      default = as.list(args(build_vesalius_embeddings)),
+      assay = assay,
+      normalisation = normalisation,
+      dim_reduction = dim_reduction)
+    vesalius <- update_vesalius(vesalius = vesalius,
+      data = tiles,
+      slot = "tiles",
+      commit = commit,
+      append = FALSE)
+    vesalius <- update_vesalius(vesalius = vesalius,
+      data = lapply(counts, "[[", 2),
+      slot = "counts",
+      commit = commit,
+      append = TRUE)
     vesalius <- update_vesalius(vesalius = vesalius,
       data = embeds,
       slot = "embeddings",
-      commit = as.list(match.call()),
-      defaults = as.list(args(build_vesalius_embeddings)),
+      commit = commit,
       append = TRUE)
-
-    vesalius <- update_vesalius(vesalius = vesalius,
-      data = embeds,
-      slot = "activeEmbeddings",
-      commit = as.list(match.call()),
-      defaults = as.list(args(build_vesalius_embeddings)),
-      append = FALSE)
     # Progress message simpleBar => Prog.R
     simple_bar(verbose)
     return(vesalius)
 }
 
 generate_tiles <- function(coordinates,
-  counts,
+  assays,
   tensor_resolution = 1,
   filter_grid = 0.01,
   filter_threshold = 0.995,
   verbose = TRUE,
   cores = 1) {
+  message_switch("in_assay",
+    verbose = verbose,
+    assay = assays,
+    comp_type = "Generating Tiles")
   #----------------------------------------------------------------------#
   # Filter outlier beads
   #----------------------------------------------------------------------#
@@ -428,23 +413,28 @@ convexify <- function(xside, yside, indx, indy) {
 # NOTE: this might change if we decide do move away from Seurat as dependancy.
 
 process_counts <- function(counts,
-  commit,
+  assays,
   method = "log",
   nfeatures = 2000,
-  min_cutoff = "q5") {
+  min_cutoff = "q5",
+  verbose = TRUE) {
+     message_switch("in_assay",
+      verbose,
+      comp_type = "Pre-processing counts",
+      assay = assays)
     #--------------------------------------------------------------------------#
     # We are still going to use Seurat for now
     # rememmber that if we do decide to change things
     # we have to change things in the embbeddings as well
-    #--------------------------------------------------------------------------#
-    counts <- CreateSeuratObject(counts, assay = "Spatial")
+    #--------------------------------------------------------------------------
+    counts <- CreateSeuratObject(counts[["raw"]], assay = "Spatial")
     counts <- switch(method[1L],
-                    "log" = log_norm(counts, nfeatures),
-                    "SCT" = int_sctransform(counts, assay = "Spatial",
+                    "log_norm" = log_norm(counts, nfeatures),
+                    "SCTransform" = int_sctransform(counts, assay = "Spatial",
                       nfeatures = nfeatures),
                     "TFIDF" = tfidf_norm(counts, min_cutoff = min_cutoff),
                     "raw" = raw_norm(counts))
-  return(counts)
+    return(counts)
 }
 
 raw_norm <- function(counts) {
@@ -467,7 +457,7 @@ log_norm <- function(counts, nfeatures) {
     nfeatures = nfeatures,
     verbose = FALSE)
   norm_counts <- list(Seurat::GetAssayData(counts, slot = "data"))
-  names(norm_counts) <- "log"
+  names(norm_counts) <- "log_norm"
   return(list("SO" = counts, "norm" = norm_counts))
 }
 
@@ -490,10 +480,37 @@ tfidf_norm <- function(counts, min_cutoff) {
 
 
 #------------------------/ Color Embeddings /----------------------------------#
+embed_latent_space <- function(counts,
+  assays,
+  dim_reduction,
+  dimensions,
+  cores,
+  verbose) {
+    message_switch("in_assay",
+      verbose,
+      comp_type = "Compute Latent Space",
+      assay = assays)
+    embeds <- switch(dim_reduction,
+      "PCA" = embed_pca(counts,
+        dimensions = dimensions,
+        verbose = verbose),
+      "PCA_L" = embed_pcal(counts,
+        dimensions = dimensions,
+        cores = cores,
+        verbose = verbose),
+      "UMAP" = embed_umap(counts,
+        dimensions = dimensions,
+        verbose),
+      "LSI" = embed_lsi(counts,
+        dimensions = dimensions,
+        remove_LSI1),
+      "LSI_UMAP" = embed_lsi_umap(counts,
+        dimensions = dimensions,
+        remove_LSI1))
+    return(embeds)
+}
 embed_pca <- function(counts,
   dimensions,
-  loadings = TRUE,
-  cores = 1,
   verbose = TRUE) {
     #--------------------------------------------------------------------------#
     # First run PCA

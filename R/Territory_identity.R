@@ -233,7 +233,7 @@ vesalius_deg_chisq <- function(seed, seed_id, query, query_id, params) {
   buffer <- get_deg_metrics(seed, query, params)
   pvals <- sapply(seq_len(nrow(buffer$seed)), function(idx, seed, query) {
     dat <- cbind(table(seed[idx, ]), table(query[, idx]))
-    if (!identical(dim(dat),c(2,2)) {
+    if (!identical(dim(dat),c(2,2))){
       warning("Count data is not binary! 
         Contingency table for Chi-squared test not in 2 x 2 format")
     }
@@ -255,7 +255,7 @@ vesalius_deg_fisher <- function(seed, seed_id, query, query_id, params) {
   buffer <- get_deg_metrics(seed, query, params)
   pvals <- sapply(seq_len(nrow(buffer$seed)), function(idx, seed, query) {
     dat <- cbind(table(seed[idx, ]), table(query[, idx]))
-    if (!identical(dim(dat),c(2,2)) {
+    if (!identical(dim(dat),c(2,2))) {
       stop("Count data is not binary! 
         Cannot create 2 x 2 contingency table for fisher's exact test")
     }
@@ -313,7 +313,7 @@ vesalius_deg_deseq2 <- function(seed, seed_id, query, query_id, params) {
 }
 
 vesalius_deg_edger <- function(seed, seed_id, query, query_id, params) {
-  if (!require("edgeR") {
+  if (!require("edgeR")) {
     stop("edgeR not installed!")
   }
   buffer <- get_deg_metrics(seed, query, params)
