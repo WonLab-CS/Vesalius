@@ -21,54 +21,36 @@ check_assays <- function(assays, n_assays, verbose) {
     return(assays)
 }
 
+
+
 check_inputs <- function(counts,
     coordinates,
-    assays,
+    assay,
     adjust_coordinates,
     verbose) {
+    
     #--------------------------------------------------------------------------#
-    # first we check if we have the same length lists 
-    # if we only have a single object parsed  we put this into a list
-    # in this case it should be equal to 1 anyway
-    # We also check if assays have the same length 
+    # next let's check counts
+    # create a list that we name and comment.
+    # the comment tells us which count matrix is the default one 
     #--------------------------------------------------------------------------#
-    if (!is(coordinates, "list")) {
-        coordinates <- list(coordinates)
-    }
-    if (!is(counts, "list")) {
-        counts <- list(counts)
-    }
-    if (length(counts) != length(coordinates)) {
-        stop("Number of count matrices and coordinates do not match")
-    }
+    counts <- list(check_counts(counts, assay, verbose))
+    names(counts) <- "raw"
+    comment(counts) <- "raw"
     #--------------------------------------------------------------------------#
-    # since we already know that there are the same number of counts and
-    # coordinates we can use only one length value here
+    # now we can check the validity of the coordinates
     #--------------------------------------------------------------------------#
-    assays <- check_assays(assays, length(counts), verbose)
-    #--------------------------------------------------------------------------#
-    # now we can check the validity of each
-    #--------------------------------------------------------------------------#
-    counts <- mapply(check_counts,
-        counts, assays,
-        MoreArgs = list(verbose),
-        SIMPLIFY = FALSE)
-    coordinates <- mapply(check_coordinates,
-        coordinates, assays,
-        MoreArgs = list(adjust_coordinates,
-            verbose),
-        SIMPLIFY = FALSE)
+    coordinates <- check_coordinates(coordinates,
+        assay,
+        adjust_coordinates,
+        verbose)
+        
     #--------------------------------------------------------------------------#
     # Finally we can rebuild an assay list filled with vesalius_assay objects 
     #--------------------------------------------------------------------------#
-    vesalius <- mapply(build_vesalius_assay,
-        counts = counts,
-        coordinates = coordinates,
-        assay = assays,
-        MoreArgs = list(verbose = FALSE),
-        SIMPLIFY = FALSE)
-    names(vesalius) <- assays
-    return(vesalius)
+    return(list("counts" = counts,
+        "coordinates" = coordinates,
+        "assay" = assay))
 }
 
 

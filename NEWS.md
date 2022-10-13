@@ -1,4 +1,4 @@
-# vesalius 1.1.0
+# vesalius 2.0.0
 
 
 ## Vesalius Website

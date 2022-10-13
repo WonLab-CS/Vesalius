@@ -4,16 +4,17 @@
 
 #---------------------/Latent space embeddings/--------------------------------#
 
-#' Create Vesalius Image embeddings from ST data.
-#' @param counts count matrix (matrix or sparse matrix) with barcodes as column
-#' names. Rows can represent genes (transcriptomics) or bins (DNA).
-#' @param coordinates data frame containing barcodes, x coordinates and
-#' y coordinates
-#' @param dim_reduction character describing which dimensionality reduction
+#' Build vesalius embeddings.
+#' 
+#' Build image mebdding from spatial omics data. 
+#' @param vesalius a vesaliusObject (recommended) or vesalius_assay object.
+#' @param dim_reduction character string describing which dimensionality reduction
 #' method should be used. One of the following:
 #' "PCA", "PCA_L", "UMAP", "LSI", "LSI_UMAP".
-#' @param normalisation character describing which normalisation method to use.
-#' One of the following "log", "SCT", "TFIDF", "raw".
+#' @param normalisation character string describing which normalisation method to use.
+#' One of the following "log_norm", "SCT", "TFIDF", "raw".
+#' @param assay character string describing which assay the embeddings should be 
+#' performed on.
 #' @param dimensions numeric describing the number of Principle Components or
 #' Latent space dimension to use. Default dimensions = 30
 #' @param tensor_resolution numeric (range 0 - 1) describing the compression
@@ -26,29 +27,58 @@
 #' @param min_cutoff only used when dimensionality reduction method is
 #' LSI or LSI_UMAP
 #' cutoff for feature to be included in the VariableFeatures for the object.
-#' @param remove_LSI1 logical only used when dimensionality reduction
+#' @param remove_lsi_1 logical only used when dimensionality reduction
 #' method is LSI or LSI_UMAP
 #' indicating if the first LSI component should be removed from further analysis
 #' as it usually captures sequencing depth (technical variation)
 #' @param cores numeric number of cores to use. Default = 1
 #' @param verbose logical output progress message or not. Default = TRUE
-#' @details
-#' for more detail please look for Signac
-#' "https://satijalab.org/signac/reference/findtopfeatures"
+#' @details The core principle behind vesalius is to convert spatial omics 
+#' data into an image. \code{build_vesalius_embeddings} allows you to convert
+#' your omics data into a stack of gray scale images. The stack hight will be equal 
+#' to the number of dimenions you selected excluding UMAP type as only 3 are availbale.
+#' 
+#' The algorithm is broadly to many spatial omics assays. As such, you can use the
+#' \code{\link{build_vesalius_object}} function to create a single object that will 
+#' contain all your different assays. You can select a different normalisation method 
+#' and dim_reudction method for each (see examples).
+#' 
+#' This function will first create image arrays by expanding punctual coordinates into
+#' tiles. Then, it will pre-process your data based on the normalisation method you 
+#' selected 
+#' 
+#' Next, it will reduce dimesnionality and convert the latent space into a grey 
+#' scale color palette for each dimension.
+#' 
+#' Every time you use this function on the same object, all previous trials 
+#' will be retained and logged. You can later decide which method combination 
+#' you would like to use. All other functions use the last entry as default. 
+#' 
+#' We recommend using vesaliusObjects instead of vesalius_assay objects. 
 #'
-#' @return Returns a Vesalius data.frame with "barcodes","x","y","cc",
-#' "value","slice"
-#' Slice represents the PC slice represented.
+#' @return vesaliusObject or vesalius_assay (depending on which was used as input)
 #' @examples
 #' \dontrun{
 #' data(Vesalius)
-#' # Seurat pre-processing
-#' image <- NormalizeData(vesalius)
-#' image <- FindVariableFeatures(image, nfeatures = 2000)
-#' image <- ScaleData(image)
-#' # converting to rgb
-#' image <- rgbPCA(image,slices = 1)
+#' # First we build a simple object
+#' ves <- build_vesalius_object(coordinates, counts)
+#' # We can do a simple run 
+#' ves <- build_vesalius_embeddings(ves)
+#' # maybe we want to try a different method 
+#' # both will be stored in the object
+#' ves <- build_vesalius_embeddings(ves, dim_reduction = "UMAP")
+#' 
+#' # We can also work with multiple assays 
+#' # Note that this will overwrite the previous one
+#' ves <- build_vesalius_object(list(coordinates,coordinatea),list(counts,couts))
+#' # we can build embeddings using default for all assays
+#' ves <- build_vesalius_embeddings(ves)
+#' # Or by selecting different methods for each 
+#' ves <- build_vesalius_embeddings(ves,
+#'  dim_reduction = c("PCA","UMAP"),
+#'  normalisation = c("log_norm","SCTransform"))
 #' }
+#' @export 
 
 build_vesalius_embeddings <- function(vesalius,
   dim_reduction = "PCA",
@@ -70,43 +100,45 @@ build_vesalius_embeddings <- function(vesalius,
     # In this case - we always get raw counts even if other are present
     # there is a normalisation step in this function
     # we will extract the assay based on name (should have been filtered)
+    # will always return list even if you parse a single assay
     #--------------------------------------------------------------------------#
     coordinates <- get_tiles(vesalius, assay)
     counts <- get_counts(vesalius, type = "raw", assay)
     assays <- names(counts)
-    #--------------------------------------------------------------------------#
-    # if there are no tiles present we compute them 
-    # otherwise we skip this step - no need to recompute tiles if they are
-    # already there
-    #--------------------------------------------------------------------------#
-    if (!is.null(coordinates)) {
+    normalisation <- check_norm_methods(normalisation, length(counts))
+    dim_reduction <- check_embed_methods(dim_reduction, length(counts))
+    
+    for (i in seq_along(assays)){
+      #------------------------------------------------------------------------#
+      # if there are no tiles present we compute them 
+      # otherwise we skip this step - no need to recompute tiles if they are
+      # already there
+      #------------------------------------------------------------------------#
+      if (!is.null(coordinates)) {
       #------------------------------------------------------------------------#
       # generate tiles, reduce resoluation and filter out tiles and beads
       #------------------------------------------------------------------------#
-      tiles <- mapply(generate_tiles,
-        coordinates,
-        assays = assays,
-        MoreArgs = list(
-          tensor_resolution = tensor_resolution,
-          filter_grid = filter_grid,
-          filter_threshold = filter_threshold,
-          verbose = verbose,
-          cores = cores))
+      tiles <- generate_tiles(coordinates[[i]],
+        assays = assays[i],
+        tensor_resolution = tensor_resolution,
+        filter_grid = filter_grid,
+        filter_threshold = filter_threshold,
+        verbose = verbose,
+        cores = cores)
       #------------------------------------------------------------------------#
       # adjusted counts if necessary
       # essentially merging counts when barcodes overlap
       #------------------------------------------------------------------------#
       if (tensor_resolution < 1) {
         message_switch("adj_counts", verbose)
-        counts <- mapply(adjust_counts,
-          tiles,
-          counts,
-          MoreArgs = list(cores = cores),
-          SIMPLIFY = FALSE)
+        counts[[i]] <- adjust_counts(tiles,
+          counts[[i]],
+          cores = cores)
       }
       vesalius <- update_vesalius(vesalius = vesalius,
         data = tiles,
         slot = "tiles",
+        assay = assays[i],
         append = FALSE)
     } 
     #--------------------------------------------------------------------------#
@@ -116,42 +148,34 @@ build_vesalius_embeddings <- function(vesalius,
     # Once you compute your tiles for an assay you stuck with that 
     # First we pre-process count data -> selecting variable features
     # and normalisation. 
-    # NOTE: counts returns a lit for each assay with normalised count and 
-    # a seurat object to be parsed to dim reduction. 
     #--------------------------------------------------------------------------#
-    normalisation <- check_norm_methods(normalisation, length(counts))
-    counts <- mapply(process_counts,
-      counts,
-      assays = assays,
-      method = normalisation,
-      MoreArgs = list(
-        nfeatures = nfeatures,
-        min_cutoff = min_cutoff,
-        verbose = verbose),
-      SIMPLIFY = FALSE)
+    counts[[i]] <- process_counts(counts[[i]],
+      assays = assays[i],
+      method = normalisation[i],
+      nfeatures = nfeatures,
+      min_cutoff = min_cutoff,
+      verbose = verbose)
     vesalius <- update_vesalius(vesalius = vesalius,
-      data = lapply(counts, "[[", 2),
+      data = lapply(counts[[i]], "[[", 2),
       slot = "counts",
+      assay = assays[i]
       append = TRUE)
     #--------------------------------------------------------------------------#
     # Embeddings - get embedding method and convert latent space
     # to color space.
     #--------------------------------------------------------------------------#
-    dim_reduction <- check_embed_methods(dim_reduction, length(counts))
-    embeds <- mapply(embed_latent_space,
-      lapply(counts, "[[", 1),
-      assays = assays,
-      dim_reduction,
-      MoreArgs = list(
-        dimensions = dimensions,
-        remove_lsi_1 = remove_lsi_1,
-        cores = cores,
-        verbose = verbose),
-      SIMPLIFY = FALSE)
+   
+    embeds <- embed_latent_space(lapply(counts[[i]], "[[", 1),
+      assays = assays[i],
+      dim_reduction[i],
+      dimensions = dimensions,
+      remove_lsi_1 = remove_lsi_1,
+      cores = cores,
+      verbose = verbose)
     vesalius <- update_vesalius(vesalius = vesalius,
       data = embeds,
       slot = "embeddings",
-      commit = commit,
+      assay = assays[i]
       append = TRUE)
     #----------------------------------------------------------------------#
     # Update objects and add log
@@ -160,15 +184,15 @@ build_vesalius_embeddings <- function(vesalius,
     # we also create a commit log => clean argument list when more than
     # 1 argument is supplied. will be commited to individual assasys
     #----------------------------------------------------------------------#
+    }
+    
     commit <- create_commit_log(vesalius = vesalius,
       match = as.list(match.call()),
       default = formals(build_vesalius_embeddings),
       assay = assays)
-    vesalius <- commit_log_to_vesalius_assay(vesalius,
+    vesalius <- commit_log(vesalius,
       commit,
       assays)
-    
-    
     # Progress message simpleBar => Prog.R
     simple_bar(verbose)
     return(vesalius)

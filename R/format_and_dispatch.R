@@ -240,6 +240,7 @@ format_call <- function(call, assay) {
   # Only the name of that variable will be parsed not the values themselves
   # could be overcome by writing some function that unwrap and check
   #---------------------------------------------------------------------------#
+  
   for (el in seq_along(call)) {
     tmp <- as.character(call[[el]])
     if (length(tmp) == 1 && !is(call[[el]], "call")) {
