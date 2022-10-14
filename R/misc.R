@@ -109,16 +109,7 @@ norm_pixel <- function(embeds, type = c("minmax", "quantileNorm")) {
 
 
 min_max <- function(x){
-    mm <- function(x){
-      return((x - min(x)) / (max(x) - min(x)))
-    }
-    
-    if (is(x, "matrix") || is(x, "data.frame")) {
-      return(apply(x,2,mm))
-    } else {
-      return(mm(x))
-    }
-    
+  return((x - min(x)) / (max(x) - min(x)))
 }
 
 

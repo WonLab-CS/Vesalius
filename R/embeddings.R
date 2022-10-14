@@ -198,6 +198,40 @@ build_vesalius_embeddings <- function(vesalius,
     return(vesalius)
 }
 
+#' generate tiles
+#' 
+#' generate pixel tiles from punctual spatial assay coordinates 
+#' @param coordinates coordinates data frame in the form of barcodes
+#' x coord, y coord. 
+#' @param assays character describing the assay in the vesaliusObject or
+#' vesalius_array object that is being processed
+#' @param tensor_resolution numeric (range 0 - 1) describing the compression
+#' ratio to be applied to the final image. Default = 1
+#' @param filter_grid numeric (range 0 - 1) size of the grid used when filtering
+#' outlier beads. Defined as a proportion of total image size. Default = 0.1
+#' @param filter_threshold numeric (range 0 -1) describing the quantile
+#' @param verbose logical describing if progress message should be outputed
+#' @param cores number of cores used to rasteris tiles
+#' @details This function converts punctual coordinates into pixel tiles.
+#' The first step is to filter outlier beads. Essentially removing any bead 
+#' that lies outside of the main assay (seed \code{\link{filter_grid}}). If 
+#' reqested the resolution of the image can be reduced by redudcing the 
+#' relative distance between each coordinate pair 
+#' (see \code{\link{reduce_tensor_resolution}}). Note that if the 
+#' resolution is reduce all spatial indices are retained and counts
+#' will be merged together (see \code{\link{adjust_counts}}). 
+#' 
+#' To create tiles, each coordinates is expanded by using Voronoi 
+#' tesselation and each tile is raterised i.e "filled with pixel" 
+#' (see \code{\link{rasterise}}). Prior to rasterisation, we
+#' remove all tiles that are above an area threshold. These tiles
+#' are artefacts of the tesselation algortihm that creates a "box"
+#' around all points and uses this as a boudary to generate each tile.
+#' They can also be generate by stray beads or holes in the data. 
+#' 
+#' @returns a data.frame containing barcodes, x and you coordinates
+#' of each pixel as well as the original x/y coordinates
+#' @importFrom deldir deldir  
 generate_tiles <- function(coordinates,
   assays,
   tensor_resolution = 1,
@@ -250,9 +284,20 @@ generate_tiles <- function(coordinates,
 }
 
 
-
-
 #------------------------/ Filtering  Beads /----------------------------------#
+#' filter grid
+#' 
+#' filtered stray barcodes/spatial indices.
+#' @param coordinates data frame containing barcodes, / y coordinates of 
+#' each barcode.
+#' @param filter_grid numeric describing size of the grid to use as proporiton 
+#' of array size. 
+#' @details we create a grid over the data an check which grid section contain
+#' a number of barcodes lower than a quantile threshold. Those barcodes will 
+#' be removed. As it stands, I am not satisfied with this function. I think 
+#' it is too restrictive and will most likely not be applicable to highly 
+#' standardised assay. 
+#' @returns a data.frame containing barcodes, x and y coordinates. 
 filter_grid <- function(coordinates, filter_grid) {
   #----------------------------------------------------------------------------#
   # Essentially create a grid where each barcode is pooled into a grid space
@@ -271,7 +316,23 @@ filter_grid <- function(coordinates, filter_grid) {
 
 #------------------------/ Reducing Resolution /-------------------------------#
 ### might want to adjust this and use knn instead?
-### maybe that would be better -> aggregate points together so it's "fair"
+### This is one approach but i guess that we could also use knn or 
+### we could used reduced image size at a different point. The point is we 
+### don't need full resolution images. It slows things down and for territory
+### isolation very finer details are not retained after smoothing anyway. 
+
+#' reduce tensor resoltuon 
+#' 
+#' reduce the size of the image tensor by merging barcodes together after
+#' compressing coordinates values
+#' @param coordinates data frame with barcode coordinates 
+#' @param tensor_resolution numeric (range 0 - 1) describing the compression
+#' ratio to be applied to the final image. Default = 1
+#' @details While we compress the coordinates, we retain all barcodes. 
+#' Each barcode that overlap with each other are marged together. Their 
+#' respective counts will also be merged together. This allows us to 
+#' retain all barcodes for downstream analysis. 
+#' @return a data frame with barcodes, x and coordinates 
 reduce_tensor_resolution <- function(coordinates, tensor_resolution = 1) {
   #----------------------------------------------------------------------------#
   # we will reduce number of points this way
@@ -309,7 +370,20 @@ reduce_tensor_resolution <- function(coordinates, tensor_resolution = 1) {
   return(coordinates)
 }
 
-
+#' adjust count 
+#' 
+#' adjust counts after reducing the resolution of the image tensor.
+#' @param coordinates data frame containing coordinates after reducing 
+#' resolution and compressing cooridnates
+#' @param counts count matrix 
+#' @param cores numeric describing number of cores to be used 
+#' @details This function will check the coordinate file to 
+#' see if any barcodes have been merged together. If so,
+#' the counts will be adjusted by taking the average count value accross 
+#' all barcodes that have been merged together. 
+#' @return a count matrix with adjusted count values 
+#' @importFrom Matrix Matrix
+#' @importFrom parallel mclapply
 adjust_counts <- function(coordinates, counts, cores = 1) {
     #--------------------------------------------------------------------------#
     # First get all barcode names and compare which ones are missing
@@ -331,7 +405,7 @@ adjust_counts <- function(coordinates, counts, cores = 1) {
     }, count = counts, mc.cores = cores)
     empty <- do.call("cbind", empty)
     if (is.null(dim(empty)) && length(empty) != 0) {
-        empty <- Matrix(empty, ncol = 1)
+        empty <- Matrix::Matrix(empty, ncol = 1)
     }
     colnames(empty) <- coord_bar
     merged <- cbind(counts[, !colnames(counts) %in% unlist(unique(tmp_bar))],
@@ -344,6 +418,17 @@ adjust_counts <- function(coordinates, counts, cores = 1) {
 }
 
 #------------------------/ Creating pixel tiles /------------------------------#
+
+#' filter tiles
+#' 
+#' filter tiles based on tile area and if they share an edge with the 
+#' tesselation box 
+#' @param tesselation data.frame output from the deldir function
+#' @param coordinates data frame with original coordinates
+#' @param filter_threshold numeric describing the quantile threshold value
+#' to use for area filtering
+#' @return a list with 2 data frame. 1 with filtered tesselation results 
+#' 2 filtered coordinate file.
 filter_tiles <- function(tesselation, coordinates, filter_threshold) {
   max_area <- quantile(tesselation$summary$dir.area, filter_threshold)
   idx <- which(tesselation$summary$dir.area >= max_area)
@@ -355,6 +440,24 @@ filter_tiles <- function(tesselation, coordinates, filter_threshold) {
   return(list("tess_v" = tess_v, "coordinates" = coordinates))
 }
 
+#' rasterise tiles 
+#' 
+#' fill tiles with pixel - rasterisation 
+#' @param filtered data.frame with voronoi tile coordinates
+#' @param cores numeric with number of cores to be used
+#' @details Here, we take our tile cooridnates and fill them 
+#' with pixels. Essentially, each voronoi tile can be discretised 
+#' into a series of pixels and we achieve this by reconstructing a 
+#' polygon from the tesselation coordinates and finding all discrete 
+#' value that fall within this polygon. 
+#' 
+#' Note that the polygon coordinates need to be "convexified". 
+#' Essentially, the order of the coordinates maters here so we
+#' order the coordinates before recontructing the polygon (see
+#' \code{\link{convexify}})
+#' @return a data frame barcodes and their associated pixels.
+#' @importFrom parallel mclapply
+#' @importFrom sp point.in.polygon
 rasterise <- function(filtered, cores = 1) {
     idx <- seq_len(nrow(filtered$coordinates))
     tiles <- parallel::mclapply(idx, function(idx, filtered) {
@@ -418,6 +521,18 @@ rasterise <- function(filtered, cores = 1) {
     return(tiles)
 }
 
+#' convexify
+#' 
+#' order coordinates based on their angle around a central point
+#' @param xside vector of x coordinates 
+#' @param yside vector of y coordinates
+#' @param indx central point x coordinate 
+#' @param indy central point y coordinate
+#' @detail For rasterisation, the shape of the polygon must be as
+#' convex as possible. To ensure that all points are in some sense 
+#' in a convex form we order them based on their polar coordinate 
+#' angle. 
+#' @return a data frame of ordered x and y coordinates.
 convexify <- function(xside, yside, indx, indy) {
   #----------------------------------------------------------------------------#
   # Converting everything to an angle - from there we can just go clock wise
@@ -441,9 +556,23 @@ convexify <- function(xside, yside, indx, indy) {
 #------------------------/ Preprocessing counts /------------------------------#
 # NOTE: this might change if we decide do move away from Seurat as dependancy.
 
+#' process counts 
+#' 
+#' pre-process count matrices
+#' @param counts count matrix in the form of a sparse matrix 
+#' @param assay character string describing the assay that is being pre-processed
+#' in the vesaliusObject or vesalius_assay
+#' @param method character string describing which normalisation method to use.
+#' One of the following "log_norm", "SCT", "TFIDF", "raw".
+#' @param nfeatures numeric describing the number of variable features to use.
+#' @param min_cutoff only used when dimensionality reduction method is
+#' LSI or LSI_UMAP cutoff for feature to be included in the 
+#' VariableFeatures for the object.
+#' @param verbose logical - progress messages outputed or not
+#' @importFrom Seurat CreateSeuratObject
 process_counts <- function(counts,
   assays,
-  method = "log",
+  method = "log_norm",
   nfeatures = 2000,
   min_cutoff = "q5",
   verbose = TRUE) {
@@ -456,7 +585,7 @@ process_counts <- function(counts,
     # rememmber that if we do decide to change things
     # we have to change things in the embbeddings as well
     #--------------------------------------------------------------------------
-    counts <- CreateSeuratObject(counts[["raw"]], assay = "Spatial")
+    counts <- Seurat::CreateSeuratObject(counts[["raw"]], assay = "Spatial")
     counts <- switch(method[1L],
                     "log_norm" = log_norm(counts, nfeatures),
                     "SCTransform" = int_sctransform(counts, assay = "Spatial",
@@ -466,6 +595,13 @@ process_counts <- function(counts,
     return(counts)
 }
 
+#' raw norm
+#' 
+#' no normalisation applied simply return raw counts 
+#' @param counts seurat object containing counts 
+#' @return list with seurat object used later and raw counts to be stored in
+#' the vesalius objects 
+#' @importFrom Seurat GetAssayData
 raw_norm <- function(counts) {
     #--------------------------------------------------------------------------#
     # Essentially we want people to be able to parse their matrix
@@ -478,7 +614,17 @@ raw_norm <- function(counts) {
     names(norm_counts) <- "raw"
     return(list("SO" = counts, "norm" = norm_counts))
 }
-
+#' log norm
+#' 
+#' log normalisation, scaling and top variable features
+#' @param counts seurat object containing counts 
+#' @return list with seurat object used later and normalised counts to be stored
+#' in a vesalius object
+#' @importFrom Seurat GetAssayData
+#' @importFrom Seurat NormalizeData
+#' @importFrom Seurat ScaleData
+#' @importFrom Seurat FindVariableFeatures
+#' @importFrom Seurat GetAssayData
 log_norm <- function(counts, nfeatures) {
   counts <- Seurat::NormalizeData(counts, verbose = FALSE)
   counts <- Seurat::ScaleData(counts, verbose = FALSE)
@@ -490,6 +636,14 @@ log_norm <- function(counts, nfeatures) {
   return(list("SO" = counts, "norm" = norm_counts))
 }
 
+#' SCTransform
+#' 
+#' SCTransform pre-processing from Seurat
+#' @param counts seurat object containing counts 
+#' @return list with seurat object used later and normalised counts to be stored
+#' in a vesalius object
+#' @importFrom Seurat SCTransform
+#' @importFrom Seurat GetAssayData
 int_sctransform <- function(counts, assay = "Spatial", nfeatures) {
     counts <- Searat::SCTransform(counts, assay = "Spatial",
       variable.features.n = nfeatures, verbose = FALSE)
@@ -548,7 +702,7 @@ embed_pca <- function(counts,
     # Progress message pca_tensor() => Prog.R
     #--------------------------------------------------------------------------#
     message_switch("pca_tensor", verbose)
-    counts <- RunPCA(counts, npcs = dimensions, verbose = FALSE)
+    counts <- Seurat::RunPCA(counts, npcs = dimensions, verbose = FALSE)
 
     # Progress message embed_rgb_tensor() => Prog.R
     message_switch("pca_rgb_tensor", verbose)
@@ -558,8 +712,8 @@ embed_pca <- function(counts,
     # transpose at the end so we keep common format
     # ATM only min max norm - could look into using quantile norm as well
     #--------------------------------------------------------------------------#
-    pca <- Embeddings(counts, reduction = "pca")
-    pca <- norm_pixel(pca, "minmax")
+    pca <- Seurat::Embeddings(counts, reduction = "pca")
+    pca <- apply(pca, 2, norm_pixel, "minmax")
     
     colour_matrix <- list(as.matrix(pca))
     names(colour_matrix) <- "PCA"
@@ -575,12 +729,12 @@ embed_pcal <- function(counts,
     # Progress message pca_tensor() => Prog.R
     #--------------------------------------------------------------------------#
     message_switch("pca_tensor", verbose)
-    counts <- RunPCA(counts, npcs = dimensions, verbose = FALSE)
+    counts <- Seurat::RunPCA(counts, npcs = dimensions, verbose = FALSE)
 
     #--------------------------------------------------------------------------#
     # get laodings and create matrix describing if there are any count values
     #--------------------------------------------------------------------------#
-    pca <- Loadings(counts, reduction = "pca")
+    pca <- Seurat::Loadings(counts, reduction = "pca")
     pca <- apply(pca, 2, function(x) return(abs(x)))
     mat <- as.matrix(GetAssayData(counts, slot = "data") > 0)
     colour_matrix <- matrix(0, nrow = ncol(mat), ncol = ncol(pca))
@@ -613,16 +767,16 @@ embed_umap <- function(counts, dimensions, verbose) {
   # Progress message pca_tensor() => Prog.R
   #----------------------------------------------------------------------------#
   message_switch("pca_tensor", verbose)
-  counts <- RunPCA(counts, npcs = dimensions, verbose = FALSE)
+  counts <- Seurat::RunPCA(counts, npcs = dimensions, verbose = FALSE)
   message_switch("umap_rgb_tensor", verbose)
-  counts <- RunUMAP(counts,
+  counts <- Seurat::RunUMAP(counts,
     dims = seq_len(dimensions),
     n.components = 3L,
     verbose = FALSE)
   #----------------------------------------------------------------------------#
   # Normalise
   #----------------------------------------------------------------------------#
-  counts <- FetchData(counts, c("UMAP_1", "UMAP_2", "UMAP_3"))
+  counts <- Seurat::FetchData(counts, c("UMAP_1", "UMAP_2", "UMAP_3"))
   counts <- apply(counts, 2, norm_pixel, "minmax")
   counts <- list(as.matrix(counts))
   names(counts) <- "UMAP"
@@ -645,9 +799,9 @@ embed_lsi <- function(counts,
   #--------------------------------------------------------------------------#
   message_switch("svd_rgb_tensor", verbose)
   if (remove_lsi_1) {
-    colour_matrix <- Embeddings(svd[["lsi"]])[, -1]
+    colour_matrix <- Seurat::Embeddings(svd[["lsi"]])[, -1]
   } else {
-    colour_matrix <- Embeddings(svd[["lsi"]])[, seq(1, dimensions)]
+    colour_matrix <- Seurat::Embeddings(svd[["lsi"]])[, seq(1, dimensions)]
   }
 
   colour_matrix <- apply(colour_matrix, 2, norm_pixel, "minmax")
@@ -687,7 +841,7 @@ embed_lsi_umap <- function(counts,
   #--------------------------------------------------------------------------#
   # Getting embedding values and normalize
   #--------------------------------------------------------------------------#
-  colour_matrix <- FetchData(reduc, c("UMAP_1", "UMAP_2", "UMAP_3"))
+  colour_matrix <- Seurat::FetchData(reduc, c("UMAP_1", "UMAP_2", "UMAP_3"))
 
   colour_matrix <- apply(colour_matrix, 2, norm_pixel, "minmax")
 
