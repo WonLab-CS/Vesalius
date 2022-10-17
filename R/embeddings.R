@@ -5,14 +5,14 @@
 #---------------------/Latent space embeddings/--------------------------------#
 
 #' Build vesalius embeddings.
-#' 
-#' Build image mebdding from spatial omics data. 
+#'
+#' Build image mebdding from spatial omics data.
 #' @param vesalius a vesaliusObject (recommended) or vesalius_assay object.
-#' @param dim_reduction character string describing which dimensionality reduction
-#' method should be used. One of the following:
+#' @param dim_reduction character string describing which dimensionality
+#' reduction method should be used. One of the following:
 #' "PCA", "PCA_L", "UMAP", "LSI", "LSI_UMAP".
-#' @param normalisation character string describing which normalisation method to use.
-#' One of the following "log_norm", "SCT", "TFIDF", "raw".
+#' @param normalisation character string describing which normalisation 
+#' method to use. One of the following "log_norm", "SCT", "TFIDF", "raw".
 #' @param assay character string describing which assay the embeddings should be 
 #' performed on.
 #' @param dimensions numeric describing the number of Principle Components or
@@ -158,7 +158,7 @@ build_vesalius_embeddings <- function(vesalius,
     vesalius <- update_vesalius(vesalius = vesalius,
       data = lapply(counts[[i]], "[[", 2),
       slot = "counts",
-      assay = assays[i]
+      assay = assays[i],
       append = TRUE)
     #--------------------------------------------------------------------------#
     # Embeddings - get embedding method and convert latent space
@@ -175,8 +175,9 @@ build_vesalius_embeddings <- function(vesalius,
     vesalius <- update_vesalius(vesalius = vesalius,
       data = embeds,
       slot = "embeddings",
-      assay = assays[i]
+      assay = assays[i],
       append = TRUE)
+    }
     #----------------------------------------------------------------------#
     # Update objects and add log
     # update_vesalius => objectUtilies.R
@@ -184,10 +185,7 @@ build_vesalius_embeddings <- function(vesalius,
     # we also create a commit log => clean argument list when more than
     # 1 argument is supplied. will be commited to individual assasys
     #----------------------------------------------------------------------#
-    }
-    
-    commit <- create_commit_log(vesalius = vesalius,
-      match = as.list(match.call()),
+    commit <- create_commit_log(match = as.list(match.call()),
       default = formals(build_vesalius_embeddings),
       assay = assays)
     vesalius <- commit_log(vesalius,
@@ -528,7 +526,7 @@ rasterise <- function(filtered, cores = 1) {
 #' @param yside vector of y coordinates
 #' @param indx central point x coordinate 
 #' @param indy central point y coordinate
-#' @detail For rasterisation, the shape of the polygon must be as
+#' @details For rasterisation, the shape of the polygon must be as
 #' convex as possible. To ensure that all points are in some sense 
 #' in a convex form we order them based on their polar coordinate 
 #' angle. 
@@ -645,15 +643,26 @@ log_norm <- function(counts, nfeatures) {
 #' @importFrom Seurat SCTransform
 #' @importFrom Seurat GetAssayData
 int_sctransform <- function(counts, assay = "Spatial", nfeatures) {
-    counts <- Searat::SCTransform(counts, assay = "Spatial",
+    counts <- Seurat::SCTransform(counts, assay = "Spatial",
       variable.features.n = nfeatures, verbose = FALSE)
     norm_counts <- list(GetAssayData(counts, slot = "data"))
     names(norm_counts) <- "SCT"
     return(list("SO" = counts, "norm" = norm_counts))
 }
 
+#' tf idf normalisation
+#' 
+#' nornalising count using TF IDF
+#' @param counts Seurat object containing counts
+#' @param min_cutoff min cutoff of for top features
+#' list with seurat object used later and normalised counts to be stored
+#' in a vesalius object
+#' @importFrom Signac RunTFIDF
+#' @importFrom Seurat ScaleData
+#' @importFrom Signac FindTopFeatures
+#' @importFrom Seurat GetAssayData
 tfidf_norm <- function(counts, min_cutoff) {
-  counts <- Signac::RunTFIDF(counts,verbose = FALSE)
+  counts <- Signac::RunTFIDF(counts, verbose = FALSE)
   counts <- Seurat::ScaleData(counts, verbose = FALSE)
   counts <- Signac::FindTopFeatures(counts, min.cutoff = min_cutoff)
   norm_counts <- list(Seurat::GetAssayData(counts, slot = "data"))
@@ -664,6 +673,22 @@ tfidf_norm <- function(counts, min_cutoff) {
 
 
 #------------------------/ Color Embeddings /----------------------------------#
+
+#' embed latent space
+#' 
+#' Embed latent space into grey color scale.
+#' @param counts Seurat object containing counts (generally normalised)
+#' @param assays charcter string of the assay being used 
+#' @param dim_reduction dimensionality reduction method that will be used
+#' Select from PCA, PCA_L, UMAP, LSI, LSI_UMAP
+#' @param dimensions numeric for number of dimeniosn top retain after 
+#' dimensionality reduction
+#' @param remove_lsi_1 logical if first dimension of LSI embedding should be 
+#' removed (will soon be depreciated)
+#' @param cores numeric for number of cores to be used 
+#' @param verbose logical if progress messages should be outputed or not
+#' @details General method dispatch function for dim reduction methods 
+#' @return data frame of normalised embedding values.
 embed_latent_space <- function(counts,
   assays,
   dim_reduction,
@@ -694,6 +719,16 @@ embed_latent_space <- function(counts,
         remove_lsi_1))
     return(embeds)
 }
+
+#' embed PCA
+#' 
+#' embed in grey scale using PCA embeddings 
+#' @param counts Seurat object containing normalised counts
+#' @param dimensions number dimension to retain from PCA
+#' @param verbose logical if progress messages should be outputed
+#' @return normalised PCA embedding matrix 
+#' @importFrom Seurat RunPCA
+#' @importFrom Seurat Embeddings
 embed_pca <- function(counts,
   dimensions,
   verbose = TRUE) {
@@ -720,6 +755,23 @@ embed_pca <- function(counts,
     return(colour_matrix)
 }
 
+#' embed PCA loading values
+#' 
+#' embed in grey scale using PCA Loading value 
+#' @param counts Seurat object containing normalised counts
+#' @param dimensions number dimension to retain from PCA
+#' @param cores numeric number of cores to use
+#' @param verbose logical if progress messages should be outputed
+#' @details This approach is a slightly different as it takes 
+#' the loading value associted to each gene in a barcode and sums
+#' the absolute value of each of those values. 
+#' Once all genes in all barcodes have been summed,
+#' we normalise the latent space and return the matrix. 
+#' @return normalised PCA loading matrix 
+#' @importFrom Seurat RunPCA
+#' @importFrom Seurat Loadings
+#' @importFrom Seurat GetAssayData
+#' @importFrom parallel mclapply
 embed_pcal <- function(counts,
   dimensions,
   cores = 1,
@@ -736,7 +788,7 @@ embed_pcal <- function(counts,
     #--------------------------------------------------------------------------#
     pca <- Seurat::Loadings(counts, reduction = "pca")
     pca <- apply(pca, 2, function(x) return(abs(x)))
-    mat <- as.matrix(GetAssayData(counts, slot = "data") > 0)
+    mat <- as.matrix(Seurat::GetAssayData(counts, slot = "data") > 0)
     colour_matrix <- matrix(0, nrow = ncol(mat), ncol = ncol(pca))
     colnames(colour_matrix) <- colnames(pca)
     rownames(colour_matrix) <- colnames(mat)
@@ -759,7 +811,18 @@ embed_pcal <- function(counts,
     return(colour_matrix)
 }
 
-
+#' embed umap
+#' 
+#' embed in gray scale using UMAP projections
+#' @param counts Seurat object containing normalised counts 
+#' @param dimensions number of PCs to use for the UMAP projections 
+#' @param verbose logical if progress messages should be outputed 
+#' @details Note that while you can select any number of dimensions
+#' the number of UMAP dimensions will always be 3. 
+#' @return normalised UMAP projection matrix 
+#' @importFrom Seurat RunPCA
+#' @importFrom Seurat RunUMAP
+#' @importFrom Seurat FetchData
 
 embed_umap <- function(counts, dimensions, verbose) {
   #----------------------------------------------------------------------------#
@@ -783,9 +846,18 @@ embed_umap <- function(counts, dimensions, verbose) {
   return(counts)
 }
 
-
+#' embed lsi
+#' 
+#' embed in grey scale using latent semantic indexing
+#' @param counts Seurat object containing normalised counts
+#' @param dimensions numeric for number of latent space dimensions to use
+#' @param remove_lsi_1 logical if first LSI dimenions should be removed 
+#' @param verbose logical if progress messages should be outputed 
+#' @returns normalised LSI embedding matrix 
+#' @importFrom Signac RunSVD
+#' @importFrom Seurat Embeddings
 embed_lsi <- function(counts,
-  dimensions = dimensions,
+  dimensions,
   remove_lsi_1,
   verbose = TRUE) {
   #--------------------------------------------------------------------------#
@@ -811,7 +883,18 @@ embed_lsi <- function(counts,
 }
 
 
-
+#' embed lsi
+#' 
+#' embed in grey scale using latent semantic indexing 
+#' followed by UMAP
+#' @param counts Seurat object containing normalised counts
+#' @param dimensions numeric for number of latent space dimensions to use
+#' @param remove_lsi_1 logical if first LSI dimenions should be removed 
+#' @param verbose logical if progress messages should be outputed 
+#' @returns normalised LSI embedding matrix 
+#' @importFrom Signac RunSVD
+#' @importFrom Seurat RunUMAP
+#' @importFrom Seurat FetchData
 
 embed_lsi_umap <- function(counts,
   dimensions,

@@ -2,54 +2,6 @@
 ############################   ST package        ###############################
 ################################################################################
 
-# Misc functions function that may or may not be dropped in the future.
-# Who knows? I certainly don't. But you designed and wrote this packages.
-# That means diddly squat!! Since when do programmers know what they are doing?
-
-#' subSetTerritories gets all barcodes associated with a territory from a
-#' Seurat object.
-#' @param territories vector of barcode values (generally character strings)
-#' @param seurat Seurat object containing all barcode values from ST assay
-#' @details Essentially a wrapper function to the Seurat \code{subset} function.
-#' The function serves mainly the purpose of a place holder function for
-#' future iterations of Vesalius.
-#' @return Seurat object only containing the desired barcodes.
-#' @examples
-#' \dontrun{
-
-#' }
-
-subSetTerritories <- function(territories, seurat) {
-  #--------------------------------------------------------------------------#
-  # Simplified version for now
-  # It might be worth while getting away from seurat later
-  # essentially this is a template function
-  # LEGACY - might drop after refactoring
-  #--------------------------------------------------------------------------#
-  seurat <- subset(seurat, cells = territories)
-  return(seurat)
-}
-
-
-#' getSeuratCoordinates get barcode coordinates from a seurat object
-#' @param seurat Seurat object containing all barcode values from ST assay
-#' @details Essentially a wrapper function to the Seurat
-#' \code{GetTissueCoordinates} function.
-#' Mainly serve as a way if generalising output format.
-#' @return Seurat object only containing the desired barcodes.
-#' @examples
-#' \dontrun{
-#' data(Vesalius)
-#' }
-getSeuratCoordinates <- function(seurat) {
-  # Legacy Code - might drop after refactoring!
-  ret <- GetTissueCoordinates(seurat)
-  if(sum(colnames(ret) %in% c("imagerow", "imagecol")) == 2){
-      colnames(ret) <- c("y", "x")
-  }
-  return(ret)
-}
-
 
 
 # Used to convert territories per cluster to territories across the whole

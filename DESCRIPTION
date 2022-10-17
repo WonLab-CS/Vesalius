@@ -9,22 +9,21 @@ Description: We present Vesalius to decipher tissue anatomy by embracing various
    spatially expressed genes linked to the morphology of tissue structures.
    Vesalius is a tool to perform high-resolution in silico anatomization and
    molecular characterization from ST data.
-License: GPL-3
-Collate: IsolatingTerritories.R
-    morph.R
+License: GPL-3 + file LICENSE
+Collate: image_processing.R
+    morphology_operators.R
     misc.R
     composite.R
-    Prog.R
-    Territory_identity.R
-    viz.R
-    GB.R
+    progress_messages.R
+    territory_identity_and_markers.R
+    visualization.R
+    global_bindings.R
     data.R
     objects.R
     embeddings.R
-    format.R
-    objectUtilities.R
-    PCA_to_RGB.R
-    sanity.R
+    format_and_dispatch.R
+    object_utilities_and_methods.R
+    sanity_checks.R
     fft.R
 Depends: R (>= 4.0.0),
     Seurat,
@@ -56,7 +55,7 @@ Suggests:
     edgeR   
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 7.1.2
+RoxygenNote: 7.2.1
 VignetteBuilder: knitr
 URL: https://patrickcnmartin.github.io/Vesalius/,https://github.com/patrickCNMartin/Vesalius
 Config/testthat/edition: 3

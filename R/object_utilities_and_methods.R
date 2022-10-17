@@ -202,7 +202,7 @@ get_counts.vesaliusObject <- function(vesalius, type = "raw", assay = "all") {
     return(counts)
 }
 
-get_counts.vesalius_assay <- function(vesalius, type = "raw"){
+get_counts.vesalius_assay <- function(vesalius, type = "raw") {
     counts <- list(slot(vesalius,"counts")[["raw"]])
     names(counts) <- get_assay_names(vesalius)
     return(counts)
@@ -223,8 +223,7 @@ get_tiles.vesaliusObject <- function(vesalius, assay = "all") {
         tiles <- vesalius@assays
         assay <- get_assay_names(vesalius)
     }
-    
-    tile_log <- check_log(tiles,"build_vesalius_embeddings")
+    tile_log <- check_log(tiles, "build_vesalius_embeddings")
     if (tile_log) {
         return(NULL)
     } else {
@@ -234,12 +233,12 @@ get_tiles.vesaliusObject <- function(vesalius, assay = "all") {
     }
 }
 
-get_tiles.
-
-
-get_log_summary <- function(vesalius) {
-    
+get_tiles.vesalius_array <- function(vesalius_assay) {
+    return(slot(vesalius_assay, "tiles"))
 }
+
+
+
 
 view_trial_summary <- function(vesalius) {
     trials <- lapply(c("Segment", "Territory", "Morphology", "Layer"),
