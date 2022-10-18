@@ -4,22 +4,6 @@
 
 #------------------------------/Sanity Checks /--------------------------------#
 
-check_assays <- function(assays, n_assays, verbose) {
-    #--------------------------------------------------------------------------#
-    # we want to make sure that they are not unique names
-    #--------------------------------------------------------------------------#
-    if (length(assays) != length(unique(assays))) {
-        message_switch("assay_non_unique_name",verbose)
-        assays <- paste0("spatial_omics_", seq(1,n_assays))
-    } else if (length(assays) == 1 && assays[1L] == "spatial_omics") {
-        message_switch("assay_name", verbose)
-        assays <- paste0("spatial_omics_", seq(1,n_assays))
-    } else if (!identical(length(assays),n_assays)) {
-        stop("Number assays provided do not match number of the number \n
-        of counts and coordinates provided")
-    }
-    return(assays)
-}
 
 
 
@@ -28,7 +12,6 @@ check_inputs <- function(counts,
     assay,
     adjust_coordinates,
     verbose) {
-    
     #--------------------------------------------------------------------------#
     # next let's check counts
     # create a list that we name and comment.
@@ -44,7 +27,6 @@ check_inputs <- function(counts,
         assay,
         adjust_coordinates,
         verbose)
-        
     #--------------------------------------------------------------------------#
     # Finally we can rebuild an assay list filled with vesalius_assay objects 
     #--------------------------------------------------------------------------#
@@ -117,18 +99,11 @@ check_coordinates <- function(coordinates,
     return(coordinates)
 }
 
-check_norm_methods <- function(norm, n_counts) {
+check_norm_methods <- function(norm) {
     if (any(!norm %in% c("log_norm", "SCTransform", "TFIDF", "raw"))) {
         stop("Normalisation method provided do not match available options \n
             Select from: \n
             log_norm, SCTransform, TFIDF, or raw")
-    }
-    if (length(norm) != 1 && length(norm) != n_counts) {
-        stop("Number of normalisation methods provided do not match 
-            number of count matrices present.")
-    } else if (length(norm) == 1 && n_counts > 1) {
-         norm <- rep(norm, times = n_counts)
-         return(norm)
     } else {
         return(norm)
     }
@@ -138,39 +113,31 @@ check_embed_methods <- function(embed, n_counts) {
         stop("Embedding method provided do not match available options \n
             Select from: \n
             PCA, PCA_L, UMAP, LSI, LSI_UMAP")
-    }
-   
-    if (length(embed) != 1 && length(embed) != n_counts) {
-        stop("Number of embedding methods provided do not match 
-            number of count matrices present.")
-    } else if (length(embed) == 1 &&  n_counts > 1) {
-        embed <- rep(embed, times = n_counts)
-        return(embed)
     } else {
         return(embed)
     }
 }
 
+
+
+
 check_embedding <- function(vesalius_assay, embed, dims) {
     #--------------------------------------------------------------------------#
     # Lets check if we have all the right embeddings
     #--------------------------------------------------------------------------#
-    if (!is(vesalius_assay, "vesaliusObject")) {
-        stop("Unsupported format! Make sure you are parsing a vesalius object")
-    }
     if (embed == "last") {
-      embeddings <- vesalius_assay@activeEmbeddings[[1L]]
+        embeddings <- vesalius_assay@active[[1L]]
     } else {
-        in_col <- grep(pattern = embed, x = names(vesalius@embeddings))
+        in_col <- grep(pattern = embed, x = names(vesalius_assay@embeddings))
         if (length(in_col) == 0) {
             stop(paste(deparse(substitute(embed)),
                 ": Unknown embedding selected!"))
         } else if (length(in_col) > 1) {
             warning(paste("More than 1", deparse(substitute(embed)), "embedding.
             Vesalius will use the latest entry - See Vesalius Log"))
-            embeddings <- vesalius@embeddings[[in_col[length(in_col)]]]
+            embeddings <- vesalius_assay@embeddings[[in_col[length(in_col)]]]
         } else {
-            embeddings <- vesalius@embeddings[[in_col]]
+            embeddings <- vesalius_assay@embeddings[[in_col]]
         }
     }
     #--------------------------------------------------------------------------#
@@ -184,36 +151,14 @@ check_embedding <- function(vesalius_assay, embed, dims) {
     return(embeddings)
 }
 
-check_tiles <- function(vesalius) {
-    if (!is(vesalius, "vesaliusObject")) {
-        stop("Unsupported format! Make sure you are parsing a vesalius object")
-    }
-    tiles <- vesalius@tiles
+check_tiles <- function(vesalius_asssay) {
+    tiles <- vesalius_asssay@tiles
     return(tiles)
 }
 
 
-check_log <- function(vesalius_assay, func) {
-    function_log <- unlist(slot_get(vesalius_assay, "log"))
-    function_log <- length(grep(pattern = func, x = function_log))
-    if(function_log >= length(vesalius_assay)) {
-        return(TRUE)
-    } else if(function_log == 0) {
-        return(FALSE)
-    } else {
-        stop(paste(func,"has not yet been computed for all assays!\n
-        Please make sure you run", func, "for all assays."))
-    }
-}
-
-
-
-
-check_territories <- function(vesalius, trial) {
-    if (!is(vesalius, "vesaliusObject")) {
-        stop("Unsupported format! Make sure you are parsing a vesalius object")
-    }
-    territories <- vesalius@territories %||%
+check_territories <- function(vesalius_assay, trial) {
+    territories <- vesalius_assay@territories %||%
         stop("No territories have been computed!")
     if (trial == "last") {
       trial <- colnames(territories)[ncol(territories)]
@@ -226,11 +171,8 @@ check_territories <- function(vesalius, trial) {
     return(territories)
 }
 
-check_segments <- function(vesalius, trial = "last") {
-    if (!is(vesalius, "vesaliusObject")) {
-        stop("Unsupported format! Make sure you are parsing a vesalius object")
-    }
-    territories <- vesalius@territories %||%
+check_segments <- function(vesalius_asssay, trial = "last") {
+    territories <- vesalius_asssay@territories %||%
         stop("No image segments have been computed yet!")
     if (!any(grepl(x = colnames(territories), pattern = "Segment"))) {
         stop("No image segments have been computed yet!")
@@ -248,12 +190,9 @@ check_segments <- function(vesalius, trial = "last") {
     return(territories)
 }
 
-check_norm <- function(vesalius, norm_method, method = NULL, verbose = TRUE) {
-    if (!is(vesalius, "vesaliusObject")) {
-        stop("Unsupported format! Make sure you are parsing a vesalius object")
-    }
-    counts <- vesalius@counts %||%
-        stop("Cannot find any counts in vesalius object!")
+check_norm <- function(vesalius_asssay, norm_method, method = NULL, verbose = TRUE) {
+    counts <- vesalius_asssay@counts %||%
+        stop("Cannot find any counts in vesalius assay!")
     if (norm_method == "last") {
         norm_method <- length(counts)
     } else if (length(grep(norm_method, names(counts))) == 0) {

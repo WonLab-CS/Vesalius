@@ -2,8 +2,6 @@
 
 export(build_vesalius_assay)
 export(build_vesalius_embeddings)
-export(build_vesalius_object)
-exportClasses(vesaliusObject)
 exportClasses(vesalius_assay)
 importFrom(Matrix,Matrix)
 importFrom(Seurat,CreateSeuratObject)

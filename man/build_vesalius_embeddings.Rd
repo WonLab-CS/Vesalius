@@ -5,10 +5,9 @@
 \title{Build vesalius embeddings.}
 \usage{
 build_vesalius_embeddings(
-  vesalius,
+  vesalius_assay,
   dim_reduction = "PCA",
   normalisation = "log_norm",
-  assay = "all",
   dimensions = 30,
   tensor_resolution = 1,
   filter_grid = 0.01,
@@ -21,17 +20,12 @@ build_vesalius_embeddings(
 )
 }
 \arguments{
-\item{vesalius}{a vesaliusObject (recommended) or vesalius_assay object.}
-
 \item{dim_reduction}{character string describing which dimensionality
 reduction method should be used. One of the following:
 "PCA", "PCA_L", "UMAP", "LSI", "LSI_UMAP".}
 
 \item{normalisation}{character string describing which normalisation 
 method to use. One of the following "log_norm", "SCT", "TFIDF", "raw".}
-
-\item{assay}{character string describing which assay the embeddings should be 
-performed on.}
 
 \item{dimensions}{numeric describing the number of Principle Components or
 Latent space dimension to use. Default dimensions = 30}
@@ -59,36 +53,42 @@ as it usually captures sequencing depth (technical variation)}
 \item{cores}{numeric number of cores to use. Default = 1}
 
 \item{verbose}{logical output progress message or not. Default = TRUE}
+
+\item{vesalius}{a vesaliusObject (recommended) or vesalius_assay object.}
+
+\item{assay}{character string describing which assay the embeddings 
+should be performed on.}
 }
 \value{
-vesaliusObject or vesalius_assay (depending on which was used as input)
+vesalius_object or vesalius_assay 
+ (depending on which was used as input)
 }
 \description{
 Build image mebdding from spatial omics data.
 }
 \details{
-The core principle behind vesalius is to convert spatial omics 
+The core principle behind vesalius is to convert spatial omics
 data into an image. \code{build_vesalius_embeddings} allows you to convert
-your omics data into a stack of gray scale images. The stack hight will be equal 
-to the number of dimenions you selected excluding UMAP type as only 3 are availbale.
+your omics data into a stack of gray scale images.
+The stack hight will be equal to the number of dimenions you
+selected excluding UMAP type as only 3 are availbale.
 
-The algorithm is broadly to many spatial omics assays. As such, you can use the
-\code{\link{build_vesalius_object}} function to create a single object that will 
-contain all your different assays. You can select a different normalisation method 
+The algorithm is broadly to many spatial omics assays. As such, you can use
+the \code{\link{build_vesalius_object}} function to create a single object
+that will contain all your different assays.
+You can select a different normalisation method
 and dim_reudction method for each (see examples).
 
-This function will first create image arrays by expanding punctual coordinates into
-tiles. Then, it will pre-process your data based on the normalisation method you 
-selected 
+This function will first create image arrays by expanding punctual 
+coordinates into tiles. Then, it will pre-process your data 
+based on the normalisation method you  selected
 
 Next, it will reduce dimesnionality and convert the latent space into a grey 
 scale color palette for each dimension.
 
 Every time you use this function on the same object, all previous trials 
 will be retained and logged. You can later decide which method combination 
-you would like to use. All other functions use the last entry as default. 
-
-We recommend using vesaliusObjects instead of vesalius_assay objects.
+you would like to use. All other functions use the last entry as default.
 }
 \examples{
 \dontrun{
@@ -100,15 +100,5 @@ ves <- build_vesalius_embeddings(ves)
 # maybe we want to try a different method 
 # both will be stored in the object
 ves <- build_vesalius_embeddings(ves, dim_reduction = "UMAP")
-
-# We can also work with multiple assays 
-# Note that this will overwrite the previous one
-ves <- build_vesalius_object(list(coordinates,coordinatea),list(counts,couts))
-# we can build embeddings using default for all assays
-ves <- build_vesalius_embeddings(ves)
-# Or by selecting different methods for each 
-ves <- build_vesalius_embeddings(ves,
- dim_reduction = c("PCA","UMAP"),
- normalisation = c("log_norm","SCTransform"))
 }
 }

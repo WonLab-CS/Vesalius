@@ -12,10 +12,6 @@ tiles, image embeddings, spatial territories, differentially expressed genes
 (DEG), count matrices (raw and normalised), microscopy images (if present) and
 a functional log that lets you see what had been run on this object.
 }
-\details{
-We recommend using vesaliusObjects instead of vesalius_arrays but both will
-work with all exported functions from the vesalius package.
-}
 \section{Slots}{
 
 \describe{

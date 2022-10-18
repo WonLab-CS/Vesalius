@@ -6,7 +6,7 @@
 \usage{
 embed_latent_space(
   counts,
-  assays,
+  assay,
   dim_reduction,
   dimensions,
   remove_lsi_1,
@@ -16,8 +16,6 @@ embed_latent_space(
 }
 \arguments{
 \item{counts}{Seurat object containing counts (generally normalised)}
-
-\item{assays}{charcter string of the assay being used}
 
 \item{dim_reduction}{dimensionality reduction method that will be used
 Select from PCA, PCA_L, UMAP, LSI, LSI_UMAP}
@@ -31,6 +29,8 @@ removed (will soon be depreciated)}
 \item{cores}{numeric for number of cores to be used}
 
 \item{verbose}{logical if progress messages should be outputed or not}
+
+\item{assays}{charcter string of the assay being used}
 }
 \value{
 data frame of normalised embedding values.

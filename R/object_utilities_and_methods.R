@@ -6,40 +6,16 @@
 
 
 
-update_vesalius.vesaliusObject <- function(vesalius,
+update_vesalius_assay <- function(vesalius_assay,
     data,
     slot,
-    assay,
     append = TRUE) {
     #--------------------------------------------------------------------------#
-    # First we know that we will always update the assay slot
-    # We have already created lists for each assay 
+    # First we do some checks 
     #--------------------------------------------------------------------------#
-    for (ass in assay) {
-        
-        vesalius@assays[[ass]] <- update_vesalius(vesalius@assays[[ass]],
-            data = data[[ass]],
-            slot = slot,
-            assay = ass,
-            append = append)
-    }
-    return(vesalius)
-
-}
-
-update_vesalius.vesalius_assay <- function(vesalius_assay,
-    data,
-    slot,
-    assay,
-    append = TRUE) {
-    #--------------------------------------------------------------------------#
-    # Here we get everything in a list format that we can then just append 
-    # we can add some checks here to make sure we are formating everything 
-    # correctly
-    #--------------------------------------------------------------------------#
-   
     if (append && slot != "territories") {
-        slot(vesalius_assay, slot) <- c(slot(vesalius_assay, slot), data)
+        data <- c(slot(vesalius_assay, slot), data)
+        slot(vesalius_assay, slot) <- data
     }else if (append && slot == "territories") {
         if (!is.null(slot(vesalius_assay, slot))) {
             df <- data.frame(slot(vesalius_assay, slot), data[, ncol(data)])
@@ -55,58 +31,48 @@ update_vesalius.vesalius_assay <- function(vesalius_assay,
     return(vesalius_assay)
 }
 
-commit_log.vesaliusObject <- function(vesalius, commit, assays) {
-    for (ass in assays) {
-        vesalius@assays[[ass]] <- commit_log(
-            vesalius@assays[[ass]],
-            commit = commit[[ass]],
-            assay = ass)
-    }
-    return(vesalius)
-}
 
-commit_log.vesalius_assay <- function(vesalius_assay, commit, assay) {
+
+commit_log <- function(vesalius_assay, commit, assay) {
+    fun <- get_func_from_commit(commit)
     log <- vesalius_assay@log
-    if(length(log) == 0) {
-        tag <- paste0(assay,"_object_build")
-        log <- commit
+
+    if (length(log) == 0) {
+        tag <- paste0(assay, "_object_build")
+        log <- list(commit)
         names(log) <- tag
     } else {
-        tag <- paste0(assay,"_trial_", length(log) - 1)
-        log <- c(log, commit)
-        names(log) <- c(names(log)[-1],tag)
+        tag <- grep(names(log), fun, value = TRUE)
+        tag <- paste0(assay,"_", create_trial_tag(tag, fun))
+        log <- c(log, list(commit))
+        names(log) <- c(names(log)[-1], tag)
     }
-    
     vesalius_assay@log <- log
     return(vesalius_assay)
 }
 
 
+get_func_from_commit <- function(commit) {
+    return(commit$fun)
+}
 
 
-
-create_commit_log <- function(arg_match, default, assay) {
+create_commit_log <- function(arg_match, default) {
     #--------------------------------------------------------------------------#
     # First lets get the argument that could have more than one value
     # This can be a bit more limited - might need to extend 
     #--------------------------------------------------------------------------#
-    arg_match <- format_call(arg_match, assay)
+    arg_match <- format_call(arg_match)
     #--------------------------------------------------------------------------#
     # create list for each assay present - create a seperate "log" for each
     # in many case they will be identical but we want to account for the edge
     # isn't that the guy from U2? 
     #--------------------------------------------------------------------------#
-    commit_list <- vector("list", length(assay))
-    names(commit_list) <- assay
-
-    for (arg in seq_along(commit_list)) {
-        template <-  default
-        for (m in seq_along(arg_match)) {
-            template[[names(arg_match)[m]]] <- arg_match[[m]][arg]
-        }
-        commit_list[[arg]] <- template
+    template <-  default
+    for (m in seq_along(arg_match)) {
+        template[[names(arg_match)[m]]] <- arg_match[[m]]
     }
-    return(commit_list)
+    return(template)
 
 }
 
@@ -175,77 +141,34 @@ create_trial_tag <- function(trials, tag) {
     return(new_trial)
 }
 
-get_assay_names.vesaliusObject <- function(vesalius) {
-    return(names(vesalius@assays))
+
+
+get_assay_names <- function(vesalius_assay) {
+    return(vesalius_assay@assay)
 }
 
-get_assay_names.vesalius_assay <- function(vesalius) {
-    return(gsub("_object_build","",names(vesalius@log)[1L]))
-}
 
 
-get_counts.vesaliusObject <- function(vesalius, type = "raw", assay = "all") {
-    
-    if (assay != "all") {
-        if (!any(assay %in% get_assay_names(vesalius))) {
-            stop("Selected assay not in assay list \n")
-        } else {
-            counts <- vesalius@assays[assay]
-        }
-    } else {
-        counts <- vesalius@assays
-        assay <- get_assay_names(vesalius)
-    }
-    counts <- slot_get(counts, "counts")
-    counts <- lapply(counts,"[[", type)
-    names(counts) <- assay
+
+get_counts <- function(vesalius_assay, type = "raw") {
+    counts <- slot(vesalius_assay, "counts")[[type]]
     return(counts)
 }
 
-get_counts.vesalius_assay <- function(vesalius, type = "raw") {
-    counts <- list(slot(vesalius,"counts")[["raw"]])
-    names(counts) <- get_assay_names(vesalius)
-    return(counts)
-}
 
-get_tiles.vesaliusObject <- function(vesalius, assay = "all") {
-    #--------------------------------------------------------------------------#
-    # first we check if tiles have been computed 
-    # normnally we should have barcode coodinates here but not tiles
-    #--------------------------------------------------------------------------#
-    if (assay != "all") {
-        if (!any(assay %in% get_assay_names(vesalius))) {
-            stop("Selected assay not in assay list \n")
-        } else {
-            tiles <- vesalius@assays[assay]
-        }
-    } else {
-        tiles <- vesalius@assays
-        assay <- get_assay_names(vesalius)
-    }
-    tile_log <- check_log(tiles, "build_vesalius_embeddings")
-    if (tile_log) {
-        return(NULL)
-    } else {
-        tiles <- slot_get(tiles, "tiles")
-        names(tiles) <- assay
-        return(tiles)
-    }
-}
 
-get_tiles.vesalius_array <- function(vesalius_assay) {
+get_tiles <- function(vesalius_assay) {
     return(slot(vesalius_assay, "tiles"))
 }
 
 
 
-
-view_trial_summary <- function(vesalius) {
+view_trial_summary <- function(vesalius_assay) {
     trials <- lapply(c("Segment", "Territory", "Morphology", "Layer"),
-        function(id, vesalius) {
-            return(grep(x = colnames(vesalius@territories),
+        function(id, vesalius_assay) {
+            return(grep(x = colnames(vesalius_assay@territories),
                 pattern = id, value = TRUE))
-        }, vesalius)
+        }, vesalius_assay)
     max_trials <- max(sapply(trials, length))
     if (max_trials == 0) {
         stop("No Territory Trials to be found!")

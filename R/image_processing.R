@@ -71,7 +71,7 @@
 #' acrossLevels = "mean",sigma = seq(0.5,1.5,l = 10)))
 #' imagePlot(image)
 #' }
-smooth_array <- function(vesalius,
+smooth_array <- function(vesalius_assay,
   dimensions = seq(1, 3),
   embedding = "last",
   method = c("median", "iso", "box"),
@@ -90,14 +90,10 @@ smooth_array <- function(vesalius,
     # ves_to_c => format.R
     #--------------------------------------------------------------------------#
     simple_bar(verbose)
-    if (is(vesalius, "vesaliusObject")) {
-        images <- ves_to_c(object = vesalius,
-          embed = embedding,
-          dims = dimensions,
-          verbose = verbose)
-    } else {
-      stop("Unsupported format to smooth_array function")
-    }
+    images <- format_ves_to_c(vesalius_assay = vesalius_assay,
+        embed = embedding,
+        dims = dimensions,
+        verbose = verbose)
 
     #--------------------------------------------------------------------------#
     # We can smooth over different arrays in parallel - I hope...
@@ -122,18 +118,20 @@ smooth_array <- function(vesalius,
     # shifting format
     # c_to_ves => format.R
     #--------------------------------------------------------------------------#
-    vesalius <- c_to_ves(images,
-      vesalius,
+    embeddings <- format_c_to_ves(images,
+      vesalius_assay,
       dimensions,
       embed = embedding,
       verbose = verbose)
-    vesalius <- update_vesalius(vesalius = vesalius,
-      data = vesalius@activeEmbeddings,
-      slot = "activeEmbeddings",
-      commit = as.list(match.call()),
-      defaults = as.list(args(smooth_array)),
+    vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
+      data = embeddings,
+      slot = "active",
       append = FALSE)
-
+    commit <- create_commit_log(arg_match = as.list(match.call()),
+      default = formals(smooth_array))
+    vesalius_assay <- commit_log(vesalius_assay,
+      commit = commit,
+      assay = get_assay_names(vesalius_assay))
     simple_bar(verbose)
     return(vesalius)
 

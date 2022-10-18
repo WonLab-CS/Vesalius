@@ -5,7 +5,7 @@
 #---------------------/Format conversion Functions/----------------------------#
 
 
-format_ves_to_c <- function(vesalius,
+format_ves_to_c <- function(vesalius_assay,
   dims,
   embed = "last",
   correct_background = TRUE,
@@ -15,8 +15,8 @@ format_ves_to_c <- function(vesalius,
     # other options that we need to account for.
     # Might update this with medici later
     #--------------------------------------------------------------------------#
-    embeddings <- check_embedding(vesalius, embed, dims)
-    tiles <- check_tiles(vesalius)
+    embeddings <- check_embedding(vesalius_assay, embed, dims)
+    tiles <- check_tiles(vesalius_assay)
     #--------------------------------------------------------------------------#
     # generate a list of images based on the number of dims
     # Remember that any time you do anything to an image
@@ -65,15 +65,15 @@ format_ves_to_c <- function(vesalius,
 
 
 format_c_to_ves <- function(cimg,
-  vesalius,
+  vesalius_assay,
   dims,
   embed = "last",
   verbose = TRUE) {
   #--------------------------------------------------------------------------#
   # Get stuff out
   #--------------------------------------------------------------------------#
-    tiles <- check_tiles(vesalius)
-    embeddings <- check_embedding(vesalius, embed, dims)
+    tiles <- check_tiles(vesalius_assay)
+    embeddings <- check_embedding(vesalius_assay, embed, dims)
     embed <- ifelse(embed == "last",
       yes = names(embeddings),
       no = embed)
@@ -92,17 +92,12 @@ format_c_to_ves <- function(cimg,
       embeddings[locs, dims[i]] <- barcodes$value
 
     }
-
-    embeddings <- list(embeddings)
-    names(embeddings) <- embed
-    vesalius@activeEmbeddings <- embeddings
-
-    return(vesalius)
+    return(embeddings)
 }
 
 
 
-format_ves_to_sis <- function(vesalius,
+format_ves_to_sis <- function(vesalius_assay,
   dims,
   embed = "last",
   correct_background = TRUE,
@@ -110,8 +105,8 @@ format_ves_to_sis <- function(vesalius,
     #--------------------------------------------------------------------------#
     # First getting the right embedding and stuff out
     #--------------------------------------------------------------------------#
-    tiles <- check_tiles(vesalius)
-    embeddings <- check_embedding(vesalius, embed, dims)
+    tiles <- check_tiles(vesalius_assay)
+    embeddings <- check_embedding(vesalius_assay, embed, dims)
     #--------------------------------------------------------------------------#
     # Now we can create the image list
     #--------------------------------------------------------------------------#
@@ -234,25 +229,22 @@ format_counts_for_logit <- function(idx, seed, query) {
   return(list("merged" = merged, "seed_query_info" = seed_query_info))
 }
 
-format_call <- function(call, assay) {
+format_call <- function(call) {
   #---------------------------------------------------------------------------#
   # NOTE: if the user put their arguments in "external variable"
   # Only the name of that variable will be parsed not the values themselves
   # could be overcome by writing some function that unwrap and check
   #---------------------------------------------------------------------------#
-  
   for (el in seq_along(call)) {
     tmp <- as.character(call[[el]])
-    if (length(tmp) == 1 && !is(call[[el]], "call")) {
-      call[[el]] <- rep(tmp, length(assay))
-    } else if(is(call[[el]], "call")) {
+    if(is(call[[el]], "call")) {
       call[[el]] <- tmp[seq(2,length(tmp))]
     } else {
       call[[el]] <- tmp
     }
   }
   names(call) <- c("fun", names(call)[seq(2,length(call))])
-  return(call)
+  return(as.list(call))
 }
 
 dispatch_territory <- function(territories, ter_1, ter_2, cells) {

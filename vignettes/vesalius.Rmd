@@ -25,7 +25,8 @@ data. For an in depth view of Vesalius, please refer to Vesalius_Analysis.Rmd.
 
 For all intents and purposes, this is a dummy data set and should only be used
 to get a feel for the Vesalius package. We strongly advise you to use real and
-complete data sets to fully understand the Vesalius package and its benefits.  
+complete data sets to fully understand the Vesalius package and its benefits.
+
 
 # Introduction
 Vesalius is a tool to perform high-resolution in silico anatomization and

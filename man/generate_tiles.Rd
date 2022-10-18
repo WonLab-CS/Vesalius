@@ -6,7 +6,7 @@
 \usage{
 generate_tiles(
   coordinates,
-  assays,
+  assay,
   tensor_resolution = 1,
   filter_grid = 0.01,
   filter_threshold = 0.995,
@@ -17,9 +17,6 @@ generate_tiles(
 \arguments{
 \item{coordinates}{coordinates data frame in the form of barcodes
 x coord, y coord.}
-
-\item{assays}{character describing the assay in the vesaliusObject or
-vesalius_array object that is being processed}
 
 \item{tensor_resolution}{numeric (range 0 - 1) describing the compression
 ratio to be applied to the final image. Default = 1}
@@ -32,6 +29,9 @@ outlier beads. Defined as a proportion of total image size. Default = 0.1}
 \item{verbose}{logical describing if progress message should be outputed}
 
 \item{cores}{number of cores used to rasteris tiles}
+
+\item{assays}{character describing the assay in the vesaliusObject or
+vesalius_array object that is being processed}
 }
 \value{
 a data.frame containing barcodes, x and you coordinates

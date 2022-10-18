@@ -13,7 +13,6 @@ License: GPL-3 + file LICENSE
 Collate: image_processing.R
     morphology_operators.R
     misc.R
-    composite.R
     progress_messages.R
     territory_identity_and_markers.R
     visualization.R
@@ -24,7 +23,6 @@ Collate: image_processing.R
     format_and_dispatch.R
     object_utilities_and_methods.R
     sanity_checks.R
-    fft.R
 Depends: R (>= 4.0.0),
     Seurat,
     imager,

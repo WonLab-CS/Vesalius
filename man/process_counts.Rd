@@ -6,7 +6,7 @@
 \usage{
 process_counts(
   counts,
-  assays,
+  assay,
   method = "log_norm",
   nfeatures = 2000,
   min_cutoff = "q5",
@@ -15,6 +15,9 @@ process_counts(
 }
 \arguments{
 \item{counts}{count matrix in the form of a sparse matrix}
+
+\item{assay}{character string describing the assay that is being pre-processed
+in the vesaliusObject or vesalius_assay}
 
 \item{method}{character string describing which normalisation method to use.
 One of the following "log_norm", "SCT", "TFIDF", "raw".}
@@ -26,9 +29,6 @@ LSI or LSI_UMAP cutoff for feature to be included in the
 VariableFeatures for the object.}
 
 \item{verbose}{logical - progress messages outputed or not}
-
-\item{assay}{character string describing the assay that is being pre-processed
-in the vesaliusObject or vesalius_assay}
 }
 \description{
 pre-process count matrices
