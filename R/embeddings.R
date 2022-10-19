@@ -120,12 +120,11 @@ build_vesalius_embeddings <- function(vesalius_assay,
     # adjusted counts if necessary
     # essentially merging counts when barcodes overlap
     #------------------------------------------------------------------------#
-    if (tensor_resolution < 1) {
-        message_switch("adj_counts", verbose)
-        counts <- adjust_counts(tiles,
-          counts,
-          cores = cores)
-    }
+    message_switch("adj_counts", verbose)
+    counts <- adjust_counts(tiles,
+        counts,
+        cores = cores)
+    
     vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
         data = tiles,
         slot = "tiles",
@@ -146,14 +145,14 @@ build_vesalius_embeddings <- function(vesalius_assay,
       min_cutoff = min_cutoff,
       verbose = verbose)
     vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
-      data = lapply(counts, "[[", 2),
+      data = counts$counts,
       slot = "counts",
       append = TRUE)
     #--------------------------------------------------------------------------#
     # Embeddings - get embedding method and convert latent space
     # to color space.
     #--------------------------------------------------------------------------#
-    embeds <- embed_latent_space(lapply(counts, "[[", 1),
+    embeds <- embed_latent_space(counts$SO,
       assay = assay,
       dim_reduction,
       dimensions = dimensions,
@@ -165,7 +164,7 @@ build_vesalius_embeddings <- function(vesalius_assay,
       slot = "embeddings",
       append = TRUE)
     vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
-      data = embeds,
+      data = as.data.frame(embeds[[1L]]),
       slot = "active",
       append = FALSE)
     #----------------------------------------------------------------------#
@@ -359,7 +358,8 @@ reduce_tensor_resolution <- function(coordinates, tensor_resolution = 1) {
 
 #' adjust count 
 #' 
-#' adjust counts after reducing the resolution of the image tensor.
+#' adjust counts after reducing the resolution of the image tensor
+#' or after filtering stray beads
 #' @param coordinates data frame containing coordinates after reducing 
 #' resolution and compressing cooridnates
 #' @param counts count matrix 
@@ -375,10 +375,11 @@ adjust_counts <- function(coordinates, counts, cores = 1) {
     #--------------------------------------------------------------------------#
     # First get all barcode names and compare which ones are missing
     #--------------------------------------------------------------------------#
-    coord_bar <- unique(coordinates$barcodes)
-    coord_bar <- coord_bar[sapply(strsplit(coord_bar, "_et_"), length) > 1]
+    coord_bar_uni <- unique(coordinates$barcodes)
+    coord_bar <- coord_bar_uni[
+      sapply(strsplit(coord_bar_uni, "_et_"), length) > 1]
     if (length(coord_bar) == 0) {
-       return(counts)
+       return(counts[, colnames(counts) %in% coord_bar_uni])
     }
 
     #--------------------------------------------------------------------------#
@@ -403,6 +404,8 @@ adjust_counts <- function(coordinates, counts, cores = 1) {
     merged <- merged[, colnames(merged) %in% coordinates$barcodes]
     return(merged)
 }
+
+
 
 #------------------------/ Creating pixel tiles /------------------------------#
 
@@ -572,7 +575,7 @@ process_counts <- function(counts,
     # rememmber that if we do decide to change things
     # we have to change things in the embbeddings as well
     #--------------------------------------------------------------------------
-    counts <- Seurat::CreateSeuratObject(counts[["raw"]], assay = "Spatial")
+    counts <- Seurat::CreateSeuratObject(counts, assay = "Spatial")
     counts <- switch(method[1L],
                     "log_norm" = log_norm(counts, nfeatures),
                     "SCTransform" = int_sctransform(counts, assay = "Spatial",

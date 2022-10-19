@@ -21,7 +21,7 @@ Welcome to the Vesalius quick start!
 
 In this vignette, you will find a **very** short guide on how to work with Vesalius.
 Vesalius provides an internal data set taken from real Spatial transcrtiptomic
-data. For an in depth view of Vesalius, please refer to Vesalius_Analysis.Rmd.
+data. In depth vignettes are provided in (the articles tab)
 
 For all intents and purposes, this is a dummy data set and should only be used
 to get a feel for the Vesalius package. We strongly advise you to use real and
@@ -30,152 +30,114 @@ complete data sets to fully understand the Vesalius package and its benefits.
 
 # Introduction
 Vesalius is a tool to perform high-resolution in silico anatomization and
-molecular characterization from ST data without requiring companion images.
+molecular characterization from Spatial omices data without requiring 
+companion images. The nature of the vesalius algorithm makes it condusive to
+being using on various spatial omics modalities without requiuring substantial 
+changes. 
 
-This is achieved by converting ST data into images: PCA loading values are
-embedded into RGB colour channels by taking the sum of the absolute value of all
-loading values associated to each bead on the ST array.
+Vesalius achieves this by converting reducded dimensionality latent space into
+gray scale images (one of each dimension). These images are processed using 
+various image analysis techniques such as smoothing and segmentation.
 
-Image analysis techniques are applied to the image and anatomical territories
-can subsequently be extracted.
-
-# Loading
+# Loading & building a vesalius assay
+## Loading data 
 
 First, let's load the package and the data. Data originates from slide-seqV2
 data (availble at [Single Cell Portal](https://singlecell.broadinstitute.org/single_cell/study/SCP948/robust-decomposition-of-cell-type-mixtures-in-spatial-transcriptomics#study-download)).
 
-For sake of simplicity, Vesalius takes a small subset of this data set and
-stores it in the form of a Seurat object.
+Here, we show an example using transcriptomic data but the same principles 
+will apply for other modalities. For examples using other modalities, 
+please refer to the other articles.
 
 ```{r loading, eval = TRUE, echo = TRUE}
 suppressMessages(library(vesalius))
-data(vesalius,package = "vesalius")
-# First create a copy of raw data for later use
-# For sake of simplicity we seperate counts from Vesalius images.
-counts <- vesalius
-```
-
-# Pre-processing
-Second, we pre-process the data using Seurat
-
-```{r preprocessing, eval = TRUE, echo = TRUE}
-# Preprocessing Spatial transcriptomic data with Seurat
-vesalius <- NormalizeData(vesalius,verbose =F)
-vesalius <- FindVariableFeatures(vesalius, nfeatures = 2000,verbose =F)
-vesalius <- ScaleData(vesalius,verbose =F)
+library(patchwork)
+data(vesalius, package = "vesalius")
 
 ```
+## What do we have?
+Once loaded we have two new variables: counts and cooridnates. 
 
-# Emedding into RGB colour Space
-Third, we convert a count matrix (stored in a Seurat object) to RGB coded
-coordinates. We will only produce one slice (i.e. PC1 to PC3). Alternatively,
-you can also choose to embed UMAP projections. In this case, there are no
-slices but only a number of Principal Components used for UMAP.
+The counts are the gene counts for all genes. As per convention, columns r
+epresent the spatial indeces (barcodes, spots, beads,...) and rows are 
+the genes that were captured. 
 
-```{r rgbtopca, eval = TRUE, echo = TRUE}
-# PCA
-vesaliusPCA <- rgbPCA(vesalius,slices = 1,verbose =F)
-
-# UMAP
-vesaliusUMAP <- rgbUMAP(vesalius,pcs = 30,verbose =F)
+```{r str_counts, eval = TRUE, echo = TRUE}
+str(counts)
 ```
 
-# Building an Image
-Forth, we create an actual image by using a combination of Voronoi diagrams and
-tile rasterisation.
-
-```{r buildImage,eval = TRUE, echo = TRUE,fig.height = 6, fig.width = 6}
-vesalius <- buildImageArray(vesaliusPCA,
-                            sliceID = 1,
-                            filterGrid=1,
-                            invert =T,
-                            verbose =F)
-
-
-# Let's have a look shall we?
-Vesalius_image <- imagePlot(vesalius,as.cimg =FALSE) + theme_void()
-
-
-print(Vesalius_image)
-
+The coordinates represent the x and y coordinates for each spatial index. 
+```{r str_coordinates, eval = TRUE, echo = TRUE}
+str(coordinates)
 ```
 
-# Applying Image Analysis techniques
-Firth, we can apply image analysis techniques such as histogram equalisation,
-variance regularisation, smoothing and segmentation.
+## Building a Vesalius assay
 
-```{r imageAnalysis, eval = TRUE , echo = TRUE}
-# Histogram EQ
-vesalius <- equalizeHistogram(vesalius,sleft = 2.5, sright=2.5,invert =T,verbose =F)
+We can build a vesalius assay by simply parsing both counts and 
+cooridnates to the (vesalius assay contructor)[link to manual page].
 
-
-# Variance regularisation
-vesalius <- regulariseImage(vesalius, lambda = 10,
-                            niter = 200, normalise=T,verbose =F)
-
-
-# Smoothing
-# !!!Optional!!! -
-vesalius <- smoothArray(vesalius,method = "box", box = 1,verbose =F)
-
-# Segmentation
-# This function provides smoothing internally.
-vesalius <- iterativeSegmentation.array(vesalius,
-                                        colDepth = 6,
-                                        smoothIter = 20,
-                                        method = c("iso","median"),
-                                        sigma=1.5,
-                                        box = 10,
-                                        useCenter = F,
-                                        invert =T,
-                                        verbose =F)
-
-
-# Isolating territories from colour segments
-vesalius <- isolateTerritories.array(vesalius,
-                                     captureRadius = 0.1,
-                                     minBar = 10,
-                                     verbose =F)
-
-
+```{r build_vesalius_arrary, eval = TRUE, echo = TRUE}
+vesalius <- build_vesalius_assay(
+  coordinates = coordinates, # spatial coordinates
+  counts  = counts, # count matrix
+  assay = "spatial_omics", # name you wish to give your assay
+  adjust_coordinates = "origin", # origin snaps coordinates to origin (0,0)
+  verbose = TRUE # Do you want progress messages?
+)
+vesalius
 ```
 
-# Visualisation
-Sixth, we can visualise the territories.
+# Embedding latent space into gray scale images 
+## Embed Latent Space
 
-```{r viz, eval = TRUE, echo = TRUE, fig.width = 6, fig.height = 6}
-# Let's have a look!
-imgTerritory <- territoryPlot(vesalius, randomise = TRUE,cex =15 , cex.pt=3.5)
-print(imgTerritory)
-```  
+We can use this object top embed our latent space into grey scale images. 
+There are few dimensionality reduction methods availble, please refer to 
+(the build_vesalius_embeddings page)[link to page].
 
-# Territory extraction and markers
+```{r build_embeddings, eval = TRUE, echo = TRUE}
+vesalius <- build_vesalius_embeddings(vesalius,
+  dim_reduction = "PCA",
+  nfeatures = 100 # Setting number of features low for low run time
+  )
+vesalius <- build_vesalius_embeddings(vesalius,
+  dim_reduction = "UMAP",
+  nfeatures = 100 # Setting number of features low for low run time
+  )
+```
+Every time you run a new dimensionality reduction approach it will be appended
+to the previous ones. Vesalius does the same thing for different normalisation 
+approaches. This lets you decided which combination you would want to use in 
+later stages. We will show examples of this further down. 
 
-Finally, we can extract territories to run a more in depth analysis. This returns
-a Seurat object with all selected territories. We can also find differential gene
-expression between territories.
+## What do we have?
+We see that we have added a set of embedding with one used one default embedding 
+called the "active" embedding. 
 
-
-```{r extract, eval = TRUE, echo=TRUE}
-# extract terriotry from seurat object
-ter <- extractTerritories(vesalius,counts,seedID= 1,verbose =F)
-
-
-# get all markers related to all territories
-all <- extractAllMarkers(vesalius,counts,verbose =F)
-
-
-# get markers associated with on or more territories
-one <- extractMarkers(vesalius, counts, seed = c(1),verbose =F)
-
-
-# comparing territories
-two <- extractMarkers(vesalius, counts, seed = c(1), query = c(2,3),verbose =F)
-
+```{r embedding_view, eval = TRUE, echo = FALSE}
+vesalius
 ```
 
-# Session Info
+## Visualising Grey scale images
+To visualise embeddings, we can simply plot the vesalius object and specify which 
+dimension we wish to view. See (imagePlot)[link to page] for more information. 
+Since we are leaving the embedding argument as the default "last" value, 
+we can only look at the 3 UMAP dimensions. We can look at them simulaneously by
+creating RGB images with one dimension per color channel. 
+```{r grey_scale_view, eval = TRUE, echo = TRUE}
+p1 <- imagePlot(vesalius, dims = 1) + labs(title = "Grey UMAP dim 1")
+p2 <- imagePlot(vesalius, dims = seq(1, 3)) + labs(title = "RGB UMAP")
+```
+If we wanted to look at "PCA" instead, we can simply specify the embedding. 
+Since we used 30 dimensions for PCA, we can use any dimensions to build RGB
+images. 
 
-```{r sessionInfo, eval = TRUE, echo = TRUE}
-sessionInfo()
+```{r grey_scale_view_PCA, eval = TRUE, echo = TRUE}
+p3 <- imagePlot(vesalius, dims = 1, embedding = "PCA") +
+  labs(title = "Grey PCA dim 1")
+p4 <- imagePlot(vesalius, dims = c(1, 4, 25), embedding = "PCA") +
+  labs(title = "Grey PCA dim 1, 4, and 25")
+```
+
+```{r out_plot_grey, eval = TRUE, echo = TRUE}
+(p1 + p2) / (p3 + p4)
 ```

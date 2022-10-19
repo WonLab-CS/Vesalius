@@ -79,6 +79,27 @@ setClass("vesalius_assay",
 
 )
 
+setMethod("show",
+    signature = "vesalius_assay",
+    definition = function(object) {
+        simple_bar(TRUE)
+        cat(paste(object@assay,"as vesalius assay containing:\n\n"))
+        tiles  <- get_tiles(object)
+        if (any(colnames(tiles) == "origin")){
+            n_indices <- sum(tiles$origin)
+            cat(paste(n_indices,
+            "spatial indices used to form pixel tiles \n"))
+        } else {
+            n_indices <- nrow(tiles)
+            cat(paste(n_indices, "spatial indices\n"))
+        }
+        counts <- get_counts(object)
+        cat(paste(nrow(counts), "observations in the count matrix\n"))
+
+        simple_bar(TRUE)
+    }
+)
+
 #' build vesalius assay object
 #' 
 #' build a simple vesalius assay object from single count matrix and spatial
@@ -116,6 +137,7 @@ build_vesalius_assay <- function(coordinates,
     assay = "spatial_omics",
     adjust_coordinates = "origin",
     verbose = TRUE) {
+    simple_bar(verbose)
     #--------------------------------------------------------------------------#
     # checking inputs
     #--------------------------------------------------------------------------#
@@ -137,6 +159,7 @@ build_vesalius_assay <- function(coordinates,
     vesalius_assay <- commit_log(vesalius_assay,
         commit = commit,
         assay = input$assay)
+    simple_bar(verbose)
     return(vesalius_assay)
 }
 

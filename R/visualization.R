@@ -32,7 +32,7 @@
 #' g <- imagePlot(image,as.cimg = F)
 #' }
 
-image_plot <- function(vesalius,
+image_plot <- function(vesalius_assay,
   dims = seq(1, 3),
   embedding = "last",
   cex = 10) {
