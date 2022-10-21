@@ -463,19 +463,6 @@ regularise <- function(img,
 #' segmentation. Only "kmeans" supported.
 #' @param col_depth integer or vector of positive integers.
 #' Colour depth used for segmentation. (see details)
-#' @param smooth_iter integer - number of smoothing iterations
-#' @param smooth_type character describing smoothing method to use "median" ,
-#' "iso"  or "box"
-#' @param across_levels character - method used to account for multiple 
-#' smoothing levels. Select from: "min","mean", "max"
-#' @param sigma numeric - standard deviation associated with isoblur (Gaussian)
-#' @param box numeric describing box size (centered around a center pixel)
-#' for smoothing
-#' @param threshold numeric - discard pixels that are too low in value (cutoff
-#' threshold only applied in box/median blurs).
-#' @param neuman logical describing If Neumann boundary conditions should be
-#' used, Dirichlet otherwise (default true, Neumann)
-#' @param gaussian logical - use gaussian filter
 #' @param use_center logical - If TRUE, only the center pixel value will be used
 #' during segmentation. If FALSE, all pixels will be used (see details)
 #' @param na.rm logical describing if NA values should be removed
@@ -528,15 +515,6 @@ segment_image <- function(vesalius,
   embedding = "last",
   col_depth = 10,
   dimensions = seq(1, 3),
-  smooth_iter = 1,
-  smooth_type = c("median", "iso", "box"),
-  across_levels = "min",
-  sigma = 1,
-  box = 20,
-  threshold = 0,
-  neuman = TRUE,
-  gaussian = TRUE,
-  na.rm = TRUE,
   use_center = TRUE,
   cores = 1,
   verbose = TRUE) {
@@ -743,59 +721,8 @@ top_cluster <- function(cluster) {
     return(as.numeric(top[1]))
 }
 
-## NOTE this might become redundant if I implement the other segmentation method
-## A pain to make it work with current format. We also want to adapt this for 
-## full stack
-## UNUSED for now!
-sis_kmeans <- function(image, col_depth, box) {
-  #----------------------------------------------------------------------------#
-  # First we need to convert cimg array to simple array
-  #----------------------------------------------------------------------------#
-  img <- as.array(image)
-  dim(img) <- c(nrow(img), ncol(img))
-  img <- replicate(3, img)
-  #----------------------------------------------------------------------------#
-  # Next we can run the super pixel segmentation
-  #----------------------------------------------------------------------------#
-  init <- Image_Segmentation$new()
-  spx_km <- init$spixel_segmentation(input_image = image,
-    superpixel = 600,
-    AP_data = TRUE,
-    use_median = TRUE,
-    sim_wL = 3,
-    sim_wA = 10,
-    sim_wB = 10,
-    sim_color_radius = box,
-    kmeans_method = "kmeans",
-    kmeans_initializer = "kmeans++",
-    kmeans_num_init = col_depth,
-    kmeans_max_iters = 100,
-    verbose = FALSE)
-  return(spx_km)
-}
 
-sis <- function(image) {
-  #----------------------------------------------------------------------------#
-  # First we need to convert cimg array to simple array
-  #----------------------------------------------------------------------------#
-  img <- as.array(image)
-  dim(img) <- c(nrow(img), ncol(img))
-  img <- replicate(3, img)
-  #----------------------------------------------------------------------------#
-  # Next we can run the super pixel segmentation
-  #----------------------------------------------------------------------------#
-  init <- Image_Segmentation$new()
-  spx <- init$spixel_segmentation(input_image = image,
-    superpixel = 600,
-    AP_data = TRUE,
-    use_median = TRUE,
-    sim_wL = 3,
-    sim_wA = 10,
-    sim_wB = 10,
-    sim_color_radius = 10,
-    verbose = FALSE)
-   return(spx)
-}
+
 
 #' isolating territories from segmented Vesalius images
 #' @param image data.frame - Vesalius formatted data.frame (i.e. barcodes,
