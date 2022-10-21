@@ -64,6 +64,7 @@
 #' image <- isolateTerritories.array(image, minBar = 5)
 #' markers <- extractMarkers(image, vesalius, seed = 1, query = 2)
 #' }
+#' @export
 
 
 extract_markers <- function(vesalius,

@@ -11,7 +11,7 @@ build_vesalius_embeddings(
   dimensions = 30,
   tensor_resolution = 1,
   filter_grid = 0.01,
-  filter_threshold = 0.995,
+  filter_threshold = 1,
   nfeatures = 2000,
   min_cutoff = "q5",
   remove_lsi_1 = TRUE,
@@ -20,6 +20,8 @@ build_vesalius_embeddings(
 )
 }
 \arguments{
+\item{vesalius_assay}{vesalius_assay object.}
+
 \item{dim_reduction}{character string describing which dimensionality
 reduction method should be used. One of the following:
 "PCA", "PCA_L", "UMAP", "LSI", "LSI_UMAP".}
@@ -53,8 +55,6 @@ as it usually captures sequencing depth (technical variation)}
 \item{cores}{numeric number of cores to use. Default = 1}
 
 \item{verbose}{logical output progress message or not. Default = TRUE}
-
-\item{vesalius}{a vesaliusObject (recommended) or vesalius_assay object.}
 
 \item{assay}{character string describing which assay the embeddings 
 should be performed on.}

@@ -31,18 +31,28 @@
 #' # as ggplot
 #' g <- imagePlot(image,as.cimg = F)
 #' }
+#' @export
+#' @importFrom ggplot2 ggplot
+#' @importFrom ggplot2 geom_raster
+#' @importFrom ggplot2 scale_fill_identity
+#' @importFrom ggplot2 theme_classic
+#' @importFrom ggplot2 theme
+#' @importFrom ggplot2 labs
+#' @importFrom ggplot2 aes
+#' @importFrom ggplot2 element_text
+#' @importFrom dplyr right_join
 
 image_plot <- function(vesalius_assay,
-  dims = seq(1, 3),
+  dimensions = seq(1, 3),
   embedding = "last",
   cex = 10) {
     #--------------------------------------------------------------------------#
     # Checking dims - only gray scale or 3 coloured images for now
     # What approach could we take here to use different number of dims?
     #--------------------------------------------------------------------------#
-    if (length(dims) > 3) {
+    if (length(dimensions) > 3) {
        stop("To many dims selected")
-    } else if (length(dims) != 3 && length(dims) != 1) {
+    } else if (length(dimensions) != 3 && length(dimensions) != 1) {
        stop("Non RGB /gray scale images not supported")
     }
     #--------------------------------------------------------------------------#
@@ -50,7 +60,9 @@ image_plot <- function(vesalius_assay,
     #--------------------------------------------------------------------------#
     coordinates <- check_tiles(vesalius)
     # need to check this -
-    tile_colour <- check_embedding(vesalius, embedding, dims)[, dims]
+    tile_colour <- check_embedding(vesalius,
+      embedding,
+      dimensions)[, dimensions]
     #### format needs to be reworked here
     tile_colour <- as.data.frame(tile_colour)
     tile_colour$barcodes <- rownames(tile_colour)
@@ -60,13 +72,13 @@ image_plot <- function(vesalius_assay,
     # Generate plots
     # Ceck to see how you can avoid the hard coding of the dimensions
     #--------------------------------------------------------------------------#
-    if (length(dims) == 3) {
+    if (length(dimensions) == 3) {
       cols <- rgb(coordinates[, 5], coordinates[, 6], coordinates[, 7])
-      title <- paste0("Vesalius - Dims = ", paste0(dims, collapse = "-"))
+      title <- paste0("Vesalius - Dims = ", paste0(dimensions, collapse = "-"))
     } else {
       # to do
       cols <- gray(coordinates[, 5])
-      title <- paste0("Vesalius - Dim = ", paste0(dims, collapse = "-"))
+      title <- paste0("Vesalius - Dim = ", paste0(dimensions, collapse = "-"))
     }
     image <- ggplot(coordinates, aes(x, y)) +
         geom_raster(aes(fill = cols)) +
@@ -108,6 +120,7 @@ image_plot <- function(vesalius_assay,
 #' image <- isolateTerritories.array(image, minBar = 5)
 #' g <- territoryPlot(image,cex = 12, cex.pt = 1)
 #' }
+#' @export
 
 territory_plot <- function(vesalius,
   trial = "last",
@@ -226,6 +239,7 @@ territory_plot <- function(vesalius,
 #' # In a specific territory
 #' g1 <- viewGeneExpression(image, vesalius, ter = 1, genes = "Cst3")
 #' }
+#' @export
 
 
 view_gene_expression <- function(vesalius,

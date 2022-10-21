@@ -2,15 +2,14 @@
 % Please edit documentation in R/image_processing.R
 \name{regularise_image}
 \alias{regularise_image}
-\title{regulariseImage denoise Vesalius images via variance regularization}
+\title{regularise image}
 \usage{
 regularise_image(
-  vesalius,
+  vesalius_assay,
   dimensions = seq(1, 3),
   embedding = "last",
   lambda = 1,
   niter = 100,
-  method = "TVL2.FiniteDifference",
   normalise = TRUE,
   na.rm = TRUE,
   cores = 1,
@@ -18,15 +17,13 @@ regularise_image(
 )
 }
 \arguments{
+\item{vesalius_assay}{a vesalius_assay object}
+
 \item{lambda}{numeric - positive real numbers describing regularization
 parameter (see details)}
 
 \item{niter}{numeric - number of variance regularization iterations
 (Default = 100)}
-
-\item{method}{character - regularization method.
-Select from: "TVL2.FiniteDifference","TVL1.PrimalDual",and "TVL2.PrimalDual"
-(see details)}
 
 \item{normalise}{logical - If TRUE, regularized colour values will be
 min max normalised.}
@@ -35,36 +32,29 @@ min max normalised.}
 
 \item{verbose}{logical - progress message output.}
 
-\item{image}{data.frame - Vesalius formatted data.frame (i.e. barcodes,
-x,y,cc,value,tile,...)}
-
 \item{invert}{logical - If TRUE, colours will be inverted i.e. 1 - colorValue
 (background set to 1 instead of 0).}
 }
 \value{
-Returns a Vesalius data.frame with "barcodes","x","y","cc",
-"value","tile",etc
+a vesalius_assay
 }
 \description{
-regulariseImage denoise Vesalius images via variance regularization
+regularise_image denoise Vesalius images via variance regularization
 }
 \details{
 Image regularization can be seen as a form of image denoising.
 Details on each method can be found in the tvR package under the denoise2
 function \href{tvR}{https://cran.r-project.org/web/packages/tvR/tvR.pdf}.
-
-We recommend using the TVL2.FiniteDifference method.
 }
 \examples{
 \dontrun{
-data(vesalius)
-# Seurat pre-processing
-image <- NormalizeData(vesalius)
-image <- FindVariableFeatures(image, nfeatures = 2000)
-image <- ScaleData(image)
-# converting to rgb
-image <- rgbPCA(image,slices = 1)
-image <- buildImageArray(image, sliceID=1)
-image <- regulariseImage(image)
+data(Vesalius)
+# First we build a simple object
+ves <- build_vesalius_object(coordinates, counts)
+# We can do a simple run
+ves <- build_vesalius_embeddings(ves)
+
+# simple EQ
+ves <- regularise_image(ves, embedding = "PCA")
 }
 }

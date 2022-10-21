@@ -18,7 +18,8 @@ resolution and compressing cooridnates}
 a count matrix with adjusted count values
 }
 \description{
-adjust counts after reducing the resolution of the image tensor.
+adjust counts after reducing the resolution of the image tensor
+or after filtering stray beads
 }
 \details{
 This function will check the coordinate file to 

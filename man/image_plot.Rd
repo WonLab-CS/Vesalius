@@ -4,7 +4,12 @@
 \alias{image_plot}
 \title{imagePlot - Vesalius image plotting}
 \usage{
-image_plot(vesalius, dims = seq(1, 3), embedding = "last", cex = 10)
+image_plot(
+  vesalius_assay,
+  dimensions = seq(1, 3),
+  embedding = "last",
+  cex = 10
+)
 }
 \arguments{
 \item{cex}{numeric - font and point size resizing factor.}

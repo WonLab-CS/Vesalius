@@ -80,7 +80,7 @@ build_vesalius_embeddings <- function(vesalius_assay,
   dimensions = 30,
   tensor_resolution = 1,
   filter_grid = 0.01,
-  filter_threshold = 0.995,
+  filter_threshold = 1,
   nfeatures = 2000,
   min_cutoff = "q5",
   remove_lsi_1 = TRUE,
@@ -100,12 +100,15 @@ build_vesalius_embeddings <- function(vesalius_assay,
     assay <- get_assay_names(vesalius_assay)
     normalisation <- check_norm_methods(normalisation)
     dim_reduction <- check_embed_methods(dim_reduction)
+    status <- search_log(vesalius_assay,
+      "build_vesalius_embeddings",
+      return_assay = FALSE)
     #------------------------------------------------------------------------#
     # if there are no tiles present we compute them 
     # otherwise we skip this step - no need to recompute tiles if they are
     # already there
     #------------------------------------------------------------------------#
-    if (!is.null(coordinates)) {
+    if (!any(status)) {
     #------------------------------------------------------------------------#
     # generate tiles, reduce resoluation and filter out tiles and beads
     #------------------------------------------------------------------------#
@@ -164,7 +167,7 @@ build_vesalius_embeddings <- function(vesalius_assay,
       slot = "embeddings",
       append = TRUE)
     vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
-      data = as.data.frame(embeds[[1L]]),
+      data = embeds[[1L]],
       slot = "active",
       append = FALSE)
     #----------------------------------------------------------------------#

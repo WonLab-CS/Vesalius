@@ -82,7 +82,7 @@ vesalius <- build_vesalius_assay(
   counts  = counts, # count matrix
   assay = "spatial_omics", # name you wish to give your assay
   adjust_coordinates = "origin", # origin snaps coordinates to origin (0,0)
-  verbose = TRUE # Do you want progress messages?
+  verbose = FALSE # Do you want progress messages?
 )
 vesalius
 ```
@@ -97,12 +97,12 @@ There are few dimensionality reduction methods availble, please refer to
 ```{r build_embeddings, eval = TRUE, echo = TRUE}
 vesalius <- build_vesalius_embeddings(vesalius,
   dim_reduction = "PCA",
-  nfeatures = 100 # Setting number of features low for low run time
-  )
+  nfeatures = 100, # Setting number of features low for low run time
+  verbose = FALSE)
 vesalius <- build_vesalius_embeddings(vesalius,
   dim_reduction = "UMAP",
-  nfeatures = 100 # Setting number of features low for low run time
-  )
+  nfeatures = 100, # Setting number of features low for low run time
+  verbose = FALSE)
 ```
 Every time you run a new dimensionality reduction approach it will be appended
 to the previous ones. Vesalius does the same thing for different normalisation 
@@ -124,20 +124,66 @@ Since we are leaving the embedding argument as the default "last" value,
 we can only look at the 3 UMAP dimensions. We can look at them simulaneously by
 creating RGB images with one dimension per color channel. 
 ```{r grey_scale_view, eval = TRUE, echo = TRUE}
-p1 <- imagePlot(vesalius, dims = 1) + labs(title = "Grey UMAP dim 1")
-p2 <- imagePlot(vesalius, dims = seq(1, 3)) + labs(title = "RGB UMAP")
+p1 <- image_plot(vesalius, dimensions = 1) + labs(title = "Grey UMAP dim 1")
+p2 <- image_plot(vesalius, dimensions = seq(1, 3)) + labs(title = "RGB UMAP")
 ```
 If we wanted to look at "PCA" instead, we can simply specify the embedding. 
 Since we used 30 dimensions for PCA, we can use any dimensions to build RGB
 images. 
 
 ```{r grey_scale_view_PCA, eval = TRUE, echo = TRUE}
-p3 <- imagePlot(vesalius, dims = 1, embedding = "PCA") +
+p3 <- image_plot(vesalius, dimensions = 1, embedding = "PCA") +
   labs(title = "Grey PCA dim 1")
-p4 <- imagePlot(vesalius, dims = c(1, 4, 25), embedding = "PCA") +
+p4 <- image_plot(vesalius, dimensions = c(1, 4, 25), embedding = "PCA") +
   labs(title = "Grey PCA dim 1, 4, and 25")
 ```
 
 ```{r out_plot_grey, eval = TRUE, echo = TRUE}
 (p1 + p2) / (p3 + p4)
+```
+
+
+# Image processing and Image segmentation
+## Image Processing
+Once we have these images, we can apply image processing techniques to each gray scale image. 
+Note that all images processing methods are always applied to the active embedding. 
+This means that if you find that your parameter selection is not what you were looking
+for you can always, recall your embedding of choice to start from scratch. No need to 
+re-run the embedding function! 
+
+```{r image_processing, eval = TRUE, echo = TRUE }
+vesalius <- equalize_image(vesalius, verbose = FALSE)
+vesalius <- smooth_image(vesalius, verbose = FALSE)
+vesalius <- regularise_image(vesalius, verbose = FALSE)
+```
+
+You can apply any image processing method you wish and in any order you desire. Please
+note that the default number of dimensions for these function is defined by `seq(1,3)`
+giving the thirst three dimensions. If working with PCA, please set this argument 
+according to how many dimensions you wish to process. 
+
+## Image segmentation
+
+Vesalius will attempts to segment the images intocolor segments. Note that you can run the 
+smoothing directly in the `segment_image` function. Vesalius use a kmeans clustering approach 
+to segment grey scale images. Note that the segmentation here is applied to 
+the whole stack and not individually. 
+```{r segment_image, eval = TRUE, echo = TRUE}
+vesalius <- segment_image(vesalius, col_depth = 5, verbose = FALSE)
+```
+
+## What do we have?
+
+We can see that the vesalius_assay object now contains some more information 
+related to the segmentation.
+
+```{r seg_check, eval = TRUE, echo = TRUE}
+vesalius
+```
+
+We can also have a look at the results of the image segmentation.
+
+```{r plot_segments_only, eval = TRUE, echo = TRUE}
+p5 <- image_plot(vesalius) + labs(title = "Segments only")
+p5
 ```

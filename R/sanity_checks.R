@@ -126,7 +126,7 @@ check_embedding <- function(vesalius_assay, embed, dims) {
     # Lets check if we have all the right embeddings
     #--------------------------------------------------------------------------#
     if (embed == "last") {
-        embeddings <- vesalius_assay@active[[1L]]
+        embeddings <- vesalius_assay@active
     } else {
         in_col <- grep(pattern = embed, x = names(vesalius_assay@embeddings))
         if (length(in_col) == 0) {
@@ -229,4 +229,3 @@ check_min_spatial_index <- function(group, min_spatial_index, id) {
         return(group)
     }
 }
-

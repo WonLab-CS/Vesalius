@@ -40,7 +40,7 @@ setClass("vesalius_assay",
     slots = list(assay = "character",
         tiles = "data.frame",
         embeddings = "embeddings",
-        active = "data.frame",
+        active = "matrix",
         territories = "territory",
         DEG = "DEG",
         counts  = "list",
@@ -56,7 +56,7 @@ setClass("vesalius_assay",
         if (!is(object@embeddings, "embeddings")) {
             stop("Unsupported Embeddings Format")
         }
-        if (!is(object@active, "data.frame")) {
+        if (!is(object@active, "matrix")) {
             stop("Unsupported Active Format")
         }
         if (!is(object@territories, "territory")) {

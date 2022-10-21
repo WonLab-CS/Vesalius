@@ -47,6 +47,7 @@
 #' # clean
 #' c <- territoryMorphing(ter,morphologyFactor = c(-5,5), image = image)
 #' }
+#' @export
 
 territory_morphing <- function(vesalius,
   territory = NULL,
@@ -165,6 +166,7 @@ extend_boundary <- function(territories, morphology_factor) {
 #' image <- isolateTerritories.array(image, minBar = 5)
 #' layer <- layerTerritory.edge(image, seedTerritory = 1)
 #' }
+#' @export
 
 layer_territory <- function(vesalius,
   territory = NULL,

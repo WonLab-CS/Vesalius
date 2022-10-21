@@ -4,12 +4,15 @@
 
 #----------------------/Isolating Territories/---------------------------------#
 
-
+#' Smooth Image
+#' 
 #' Apply iterative smoothing to Vesalius images
-#' @param image a Vesalius data frame
-#' (containing at least barcodes, x, y, cc, value) or a cimg object.
+#' @param vesalius_assay a vesalius_assay object
+#' @param dimensions numeric vector of latent space dimensions to use.
+#' @param embedding character string describing which embedding should 
+#' be used.
 #' @param method character describing smoothing method to use "median" ,
-#' "iso"  or "box"
+#' "iso"  or "box" or a combination of them.
 #' @param iter numeric - number of smoothing iteration
 #' @param sigma numeric - standard deviation associated with isoblur (Gaussian)
 #' @param box numeric describing box size (centered around center pixel)
@@ -20,58 +23,59 @@
 #' used, Dirichlet otherwise (default true, Neumann)
 #' @param gaussian logical - use gaussian filter
 #' @param na.rm logical describing if NA values should be removed
-#' @param acrossLevels character - method used to account for multiple smoothing
-#' levels (see details). Select from: "min","mean", "max"
-#' @param invert logical - If TRUE, colours will be inverted i.e. 1 - colorValue
-#' (background set to 1 instead of 0).
+#' @param across_levels character - method used to account for multiple 
+#' smoothing levels (see details). Select from: "min","mean", "max"
 #' @param verbose logical - progress message output.
-#' @details Images produced by Vesalius should be smoothed in order to retrieve
-#' territories. The \code{smoothArray} function provides multiple ways to smooth
-#' an image array.
+#' @details The smooth_image function provides a series of options to smooth 
+#' your grey scale images contained within the vesalius_assay object.
 #'
-#' First, consider the smoothing method : median, iso ,or box. Median and box
-#' both require the \code{box} argument to be set according to your needs.
-#' Median converts all pixels surronding a center pixel to the median value of
-#' the selected box. Box converts all pixels to the value of the center pixel.
-#' Iso applies a gaussian blur and is modulated by the \code{sigma} argument.
+#' You can select any number of dimensions to be smoothed. As default, we take
+#' the first 3 dimensions.
 #'
-#' Both the \code{box} and \code{sigma} arguments can take more than one value.
-#' Both may take a vector of positive numeric values. During every smoothing
-#' iteration, Vesalius will map this vector over multiple copies of the image
-#' and summarize the final smoothed image by taking values across different
-#' levels. The levels are: min, max, and mean. Min will take the lowest pixel
-#' value (in all three colour channels) across all levels. Max will take the
-#' the highest pixel value (in all three colour channels) across levels. Mean
-#' will take the average pixel value (in all three colour channels) across
-#' levels.
+#' Vesalius provides 3 smoothing methods:
+#'  * median: computes median color in box (box size defined by box)
+#'  * box: computes max color value in box (box size defined by box)
+#'  * iso: compute gaussian kernel using sigma (Gussian SD defined by sigma)
 #'
-#' The optimal smoothing values will depend on the question at hand and which
-#' territories you wish to extract.
-#'
-#' NOTE: this function is applied internally in the
-#' \code{iterativeSegmentation.array} function.
+#' Vesalius can apply the same smoothing paramters over multiple iterations
+#' as defined by the iter argument. 
+#' It is also possible to provide multiple values to box and sigma as numeric
+#' vectors. Vesalius will run the smoothing over all provided values and return
+#' either the maximum, minimum or mean color value as described by the 
+#' across_levels argument.
+#' 
+#' Please note that unless specified the smoothing always applied to 
+#' the active embedding (default is last embedding computed). If you
+#' want to start over you can simply set \code{embedding} to which ever 
+#' embedding you want to work with. 
+#' 
+#' This will take the raw embedding values before any image processing 
+#' has been applied. No need to re-run the embedding if you are not
+#' satisfied with the smoothing. 
 #'
 #' For more information, we suggest reading through the imager vignette.
 #'
-#' @return Returns a Vesalius data.frame with "barcodes","x","y","cc",
-#' "value","tile",...
+#' @return a vesalius_assay
 #' @examples
-#' \dontrun{
-#' data(vesalius)
-#' # Seurat pre-processing
-#' image <- NormalizeData(vesalius)
-#' image <- FindVariableFeatures(image, nfeatures = 2000)
-#' image <- ScaleData(image)
-#' # converting to rgb
-#' image <- rgbPCA(image,slices = 1)
-#' image <- buildImageArray(image, sliceID=1)
-#' image <- smoothArray(image)
-#' # across multiple levels
-#' image <- smoothArray(image,method = c("iso"),
-#' acrossLevels = "mean",sigma = seq(0.5,1.5,l = 10)))
-#' imagePlot(image)
-#' }
-smooth_array <- function(vesalius_assay,
+#' #' \dontrun{
+#' data(Vesalius)
+#' # First we build a simple object
+#' ves <- build_vesalius_object(coordinates, counts)
+#' # We can do a simple run 
+#' ves <- build_vesalius_embeddings(ves)
+#' 
+#' # simple smoothing 
+#' ves <- smooth_image(ves, embedding = "PCA")
+#' # multiple rounds 
+#' ves <- smooth_image(ves, iter = 3, embedding = "PCA")
+#' # accross level
+#' ves <- smooth_image(ves, box = seq(3,11),
+#'  accross_level = "mean",
+#'  embedding = "PCA")
+#'}
+#' @export
+#' @importFrom parallel mclapply
+smooth_image <- function(vesalius_assay,
   dimensions = seq(1, 3),
   embedding = "last",
   method = c("median", "iso", "box"),
@@ -90,11 +94,15 @@ smooth_array <- function(vesalius_assay,
     # ves_to_c => format.R
     #--------------------------------------------------------------------------#
     simple_bar(verbose)
-    images <- format_ves_to_c(vesalius_assay = vesalius_assay,
+    if (is(vesalius_assay, "vesalius_assay")) {
+      assay <- get_assay_names(vesalius_assay)
+      images <- format_ves_to_c(vesalius_assay = vesalius_assay,
         embed = embedding,
         dims = dimensions,
         verbose = verbose)
-
+    } else {
+      stop("Unsupported format to smooth_image function")
+    }
     #--------------------------------------------------------------------------#
     # We can smooth over different arrays in parallel - I hope...
     # this might lead to some issue with low level C
@@ -118,25 +126,38 @@ smooth_array <- function(vesalius_assay,
     # shifting format
     # c_to_ves => format.R
     #--------------------------------------------------------------------------#
-    embeddings <- format_c_to_ves(images,
+    embeds <- format_c_to_ves(images,
       vesalius_assay,
       dimensions,
       embed = embedding,
       verbose = verbose)
     vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
-      data = embeddings,
+      data = embeds,
       slot = "active",
       append = FALSE)
     commit <- create_commit_log(arg_match = as.list(match.call()),
-      default = formals(smooth_array))
+      default = formals(smooth_image))
     vesalius_assay <- commit_log(vesalius_assay,
-      commit = commit,
-      assay = get_assay_names(vesalius_assay))
+      commit,
+      assay)
     simple_bar(verbose)
-    return(vesalius)
+    return(vesalius_assay)
 
 }
 
+
+#' internal smoothing function 
+#' Function that does the smoothing on individual image array 
+#' @param image cimg array
+#' @inheritParams smooth_image
+#' @importFrom imager imrotate
+#' @importFrom imager medianblur
+#' @importFrom imager isoblur
+#' @importFrom imager boxblur
+#' @importFrom imager map_il
+#' @importFrom imager parmin
+#' @importFrom imager parmax
+#' @importFrom imager average
 internal_smooth <- function(image,
   method = c("median", "iso", "box"),
   iter = 1,
@@ -148,43 +169,42 @@ internal_smooth <- function(image,
   na.rm = FALSE,
   across_levels = "min") {
 
-    for (i in seq_len(iter)) {
+  for (i in seq_len(iter)) {
         #----------------------------------------------------------------------#
         # This might seem strange but when doing a lot of smoothing there is
         # directionality bias. This introduces a shift in pixels and colour
         # To avoid this problem we can rotate the image.
         #----------------------------------------------------------------------#
-        if (i %% 2 == 0) {
-            image <- imrotate(image, 180)
-        }
-        for (j in method) {
-          image <- switch(j,
-                     "median" = map_il(box, ~medianblur(image,
-                        .,
-                        threshold)),
-                     "iso" = map_il(sigma, ~isoblur(image,
-                        .,
-                        neuman,
-                        gaussian,
-                        na.rm)),
-                     "box" = map_il(box, ~boxblur(image,
-                        .,
-                        neuman)))
-          image <- switch(across_levels,
-                     "min" = parmin(image),
-                     "max" = parmax(image),
-                     "mean" = average(image))
-        }
-        if (i %% 2 == 0) {
-            image <- imrotate(image,180)
-        }
-
+    if (i %% 2 == 0) {
+      image <- imager::imrotate(image, 180)
     }
-    return(image)
+    for (j in method) {
+      image <- switch(j,
+        "median" = imager::map_il(box, ~imager::medianblur(image,
+          .,
+          threshold)),
+        "iso" = imager::map_il(sigma, ~imager::isoblur(image,
+          .,
+          neuman,
+          gaussian,
+          na.rm)),
+        "box" = imager::map_il(box, ~imager::boxblur(image,
+          .,
+          neuman)))
+      image <- switch(across_levels,
+        "min" = imager::parmin(image),
+        "max" = imager::parmax(image),
+        "mean" = imager::average(image))
+    }
+    if (i %% 2 == 0) {
+      image <- imager::imrotate(image,180)
+    }
+  }
+  return(image)
 }
 
 
-
+#' equalise image histogram 
 #' equalizeHistogram image enhancement via colour histogram equalization.
 #' @param image data.frame - Vesalius formatted data.frame (i.e. barcodes,
 #' x,y,cc,value,...)
@@ -218,18 +238,24 @@ internal_smooth <- function(image,
 #' "value","tile",...
 #' @examples
 #' \dontrun{
-#' data(vesalius)
-#' image <- NormalizeData(vesalius)
-#' image <- FindVariableFeatures(image, nfeatures = 2000)
-#' image <- ScaleData(image)
-#' # converting to rgb
-#' image <- rgbPCA(image,slices = 1)
-#' image <- buildImageArray(image, sliceID=1)
-#' image <- equalizeHistogram(image)
-#' imagePlot(image)
-#' }
+#' data(Vesalius)
+#' # First we build a simple object
+#' ves <- build_vesalius_object(coordinates, counts)
+#' # We can do a simple run
+#' ves <- build_vesalius_embeddings(ves)
+#'
+#' # simple EQ
+#' ves <- equalisz_image(ves, embedding = "PCA")
+#'}
+#' @export
+#' @importFrom imagerExtra EqualizePiecewise
+#' @importFrom imagerExtra BalanceSimplest
+#' @importFrom imagerExtra SPE
+#' @importFrom imagerExtra EqualizeDP
+#' @importFrom imagerExtra EqualizeADP
+#' @importFrom parallel mclapply
 
-equalize_histogram <- function(vesalius,
+equalize_image <- function(vesalius_assay,
   dimensions = seq(1, 3),
   embedding = "last",
   type = "BalanceSimplest",
@@ -245,15 +271,15 @@ equalize_histogram <- function(vesalius,
     simple_bar(verbose)
     #--------------------------------------------------------------------------#
     # shifting format
-    # ves_to_c => format.R
     #--------------------------------------------------------------------------#
-    if (is(vesalius, "vesaliusObject")) {
-        images <- ves_to_c(object = vesalius,
-          embed = embedding,
-          dims = dimensions,
-          verbose = verbose)
+    if (is(vesalius_assay, "vesalius_assay")) {
+      assay <- get_assay_names(vesalius_assay)
+      images <- format_ves_to_c(vesalius_assay = vesalius_assay,
+        embed = embedding,
+        dims = dimensions,
+        verbose = verbose)
     } else {
-      stop("Unsupported format to equalize_histogram function")
+      stop("Unsupported format to equalize_image function")
     }
     message_switch("eq", verbose)
     #--------------------------------------------------------------------------#
@@ -263,58 +289,63 @@ equalize_histogram <- function(vesalius,
     #--------------------------------------------------------------------------#
 
     images <- switch(type,
-           "EqualizePiecewise" = parallel::mclapply(images, EqualizePiecewise,
-             N, mc.cores = cores),
-           "BalanceSimplest" = parallel::mclapply(images, BalanceSimplest,
-             sleft, sright, range = c(0, 1), mc.cores = cores),
-           "SPE" = parallel::mclapply(image, SPE,
-             lambda, mc.cores = cores),
-           "EqualizeDP"  = parallel::mclapply(images, EqualizeDP,
-             down, up, mc.cores = cores),
-           "EqualizeADP" = parallel::mclapply(images, EqualizeADP,
-             mc.cores = cores),
-           "ECDF" = parallel::mclapply(images, ecdf_eq,
-             mc.cores = cores))
+      "EqualizePiecewise" = parallel::mclapply(images,
+        imagerExtra::EqualizePiecewise,
+        N, mc.cores = cores),
+      "BalanceSimplest" = parallel::mclapply(images,
+        imagerExtra::BalanceSimplest,
+        sleft, sright, range = c(0, 1), mc.cores = cores),
+      "SPE" = parallel::mclapply(image, imagerExtra::SPE,
+        lambda, mc.cores = cores),
+      "EqualizeDP"  = parallel::mclapply(images, imagerExtra::EqualizeDP,
+        down, up, mc.cores = cores),
+      "EqualizeADP" = parallel::mclapply(images, imagerExtra::EqualizeADP,
+        mc.cores = cores),
+      "ECDF" = parallel::mclapply(images, ecdf_eq,
+        mc.cores = cores))
     #--------------------------------------------------------------------------#
     # shifting format
     # c_to_ves => format.R
     #--------------------------------------------------------------------------#
-    vesalius <- c_to_ves(images,
-      vesalius,
+    embeds <- format_c_to_ves(images,
+      vesalius_assay,
       dimensions,
       embed = embedding,
       verbose = verbose)
-    vesalius <- update_vesalius(vesalius = vesalius,
-      data = vesalius@activeEmbeddings,
-      slot = "activeEmbeddings",
-      commit = as.list(match.call()),
-      defaults = as.list(args(equalize_histogram)),
+    vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
+      data = embeds,
+      slot = "active",
       append = FALSE)
+    commit <- create_commit_log(arg_match = as.list(match.call()),
+      default = formals(equalize_image))
+    vesalius_assay <- commit_log(vesalius_assay,
+      commit,
+      assay)
     simple_bar(verbose)
-    return(vesalius)
+    return(vesalius_assay)
 }
 
-# Internal function related to ECDF historgram eq.
-# It is just for formatting really
-ecdf_eq <- function(im){
-   return(as.cimg(ecdf(im)(im), dim = dim(im)))
+#' internal ecdf eq 
+#' used for formatting
+#' @param im image matrix
+#' @importFrom imager as.cimg
+#' @importFrom stats ecdf
+ecdf_eq <- function(im) {
+   return(imager::as.cimg(stats::ecdf(im)(im), dim = dim(im)))
 }
 
 
 
 
 
-
-#' regulariseImage denoise Vesalius images via variance regularization
-#' @param image data.frame - Vesalius formatted data.frame (i.e. barcodes,
-#' x,y,cc,value,tile,...)
+#' regularise image
+#' 
+#' regularise_image denoise Vesalius images via variance regularization
+#' @param vesalius_assay a vesalius_assay object
 #' @param lambda numeric - positive real numbers describing regularization
 #' parameter (see details)
 #' @param niter numeric - number of variance regularization iterations
 #' (Default = 100)
-#' @param method character - regularization method.
-#' Select from: "TVL2.FiniteDifference","TVL1.PrimalDual",and "TVL2.PrimalDual"
-#' (see details)
 #' @param normalise logical - If TRUE, regularized colour values will be
 #' min max normalised.
 #' @param na.rm logical - If TRUE, NAs are removed
@@ -325,30 +356,28 @@ ecdf_eq <- function(im){
 #' Details on each method can be found in the tvR package under the denoise2
 #' function \href{tvR}{https://cran.r-project.org/web/packages/tvR/tvR.pdf}.
 #'
-#' We recommend using the TVL2.FiniteDifference method.
 #'
-#' @return Returns a Vesalius data.frame with "barcodes","x","y","cc",
-#' "value","tile",etc
+#' @return a vesalius_assay
 #' @examples
 #' \dontrun{
-#' data(vesalius)
-#' # Seurat pre-processing
-#' image <- NormalizeData(vesalius)
-#' image <- FindVariableFeatures(image, nfeatures = 2000)
-#' image <- ScaleData(image)
-#' # converting to rgb
-#' image <- rgbPCA(image,slices = 1)
-#' image <- buildImageArray(image, sliceID=1)
-#' image <- regulariseImage(image)
-#' }
+#' data(Vesalius)
+#' # First we build a simple object
+#' ves <- build_vesalius_object(coordinates, counts)
+#' # We can do a simple run
+#' ves <- build_vesalius_embeddings(ves)
+#'
+#' # simple EQ
+#' ves <- regularise_image(ves, embedding = "PCA")
+#'}
+#' @export
+#' @importFrom parallel mclapply
 
 
-regularise_image <- function(vesalius,
+regularise_image <- function(vesalius_assay,
   dimensions = seq(1, 3),
   embedding = "last",
   lambda = 1,
   niter = 100,
-  method = "TVL2.FiniteDifference",
   normalise = TRUE,
   na.rm = TRUE,
   cores = 1,
@@ -358,15 +387,15 @@ regularise_image <- function(vesalius,
     # shifting format
     # ves_to_c => format.R
     #--------------------------------------------------------------------------#
-    if (is(vesalius, "vesaliusObject")) {
-        images <- ves_to_c(object = vesalius,
-          embed = embedding,
-          dims = dimensions,
-          verbose = verbose)
+    if (is(vesalius_assay, "vesalius_assay")) {
+      assay <- get_assay_names(vesalius_assay)
+      images <- format_ves_to_c(vesalius_assay = vesalius_assay,
+        embed = embedding,
+        dims = dimensions,
+        verbose = verbose)
     } else {
       stop("Unsupported format to regularise_image function")
     }
-    message_switch("reg", verbose)
     #--------------------------------------------------------------------------#
     # now we can do some var reg!
     # Will add the imager denoising function as well
@@ -375,59 +404,70 @@ regularise_image <- function(vesalius,
     images <- parallel::mclapply(images, regularise,
       lambda,
       niter,
-      method,
       normalise,
       mc.cores = cores)
 
-    vesalius <- c_to_ves(images,
-      vesalius,
+    embeds <- format_c_to_ves(images,
+      vesalius_assay,
       dimensions,
       embed = embedding,
       verbose = verbose)
-    vesalius <- update_vesalius(vesalius = vesalius,
-      data = vesalius@activeEmbeddings,
-      slot = "activeEmbeddings",
-      commit = as.list(match.call()),
-      defaults = as.list(args(regularise_image)),
+    vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
+      data = embeds,
+      slot = "active",
       append = FALSE)
+    commit <- create_commit_log(arg_match = as.list(match.call()),
+      default = formals(regularise_image))
+    vesalius_assay <- commit_log(vesalius_assay,
+      commit,
+      assay)
     simple_bar(verbose)
-    return(vesalius)
+    return(vesalius_assay)
 }
 
-# Internal regularise function.
-
+#' Internal regularise function.
+#' performs total variance regularisation 
+#' @param img image array - generally a matrix
+#' @param lambda lambda value for regularisation
+#' @param niter numeric number of rounds of regularisation 
+#' @param normalise logical should output be normalised
+#' @importFrom tvR denoise2
+#' @importFrom imager as.cimg
 regularise <- function(img,
   lambda = 1,
   niter = 100,
-  method = "TVL2.FiniteDifference",
   normalise = TRUE) {
     #--------------------------------------------------------------------------#
     # might need to change the normalise part
     # it doesn't seem it works well
     # or at all for that matter
+    # Also not parsing any of the other tvR methods for denoise 
+    # They don't work that well - we will see if it worth adding or not
     #--------------------------------------------------------------------------#
-    img <- denoise2(as.matrix(img), lambda = lambda, niter = niter,
-           method = method, normalize = FALSE)
+    img <- tvR::denoise2(as.matrix(img), lambda = lambda, niter = niter,
+           method = "TVL2.FiniteDifference", normalize = FALSE)
     if (normalise) {
         img <- (img - min(img)) / (max(img) - min(img))
     }
-    return(as.cimg(img))
+    return(imager::as.cimg(img))
 }
 
 
 
 
-#' iterativeSegmentation.array - image segmentation via iterative application
-#' of kmeans clustering.
-#' @param image data.frame - Vesalius formatted data.frame (i.e. barcodes,
-#' x,y,cc,value,...)
-#' @param colDepth integer or vector of positive integers.
+#' segment image 
+#' 
+#' segment vesalius images to find initial territories 
+#' @param vesalius_assay a vesalius_assay object
+#' @param method character string for which method should be used for 
+#' segmentation. Only "kmeans" supported.
+#' @param col_depth integer or vector of positive integers.
 #' Colour depth used for segmentation. (see details)
-#' @param smoothIter integer - number of smoothing iterations
-#' @param method character describing smoothing method to use "median" ,
+#' @param smooth_iter integer - number of smoothing iterations
+#' @param smooth_type character describing smoothing method to use "median" ,
 #' "iso"  or "box"
-#' @param acrossLevels character - method used to account for multiple smoothing
-#' levels (see details). Select from: "min","mean", "max"
+#' @param across_levels character - method used to account for multiple 
+#' smoothing levels. Select from: "min","mean", "max"
 #' @param sigma numeric - standard deviation associated with isoblur (Gaussian)
 #' @param box numeric describing box size (centered around a center pixel)
 #' for smoothing
@@ -436,55 +476,55 @@ regularise <- function(img,
 #' @param neuman logical describing If Neumann boundary conditions should be
 #' used, Dirichlet otherwise (default true, Neumann)
 #' @param gaussian logical - use gaussian filter
-#' @param useCenter logical - If TRUE, only the center pixel value will be used
+#' @param use_center logical - If TRUE, only the center pixel value will be used
 #' during segmentation. If FALSE, all pixels will be used (see details)
 #' @param na.rm logical describing if NA values should be removed
-#' @param invert logical - If TRUE, colours will be inverted
-#' i.e. 1 - colourValue (background set to 1 instead of 0).
+#' @param cores numeric - number of cores that should be used
 #' @param verbose logical - progress message output.
-#' @details Once images have been produced by Vesalius, applying image
-#' segmentation ensure a reduction in colour complexity. The colDepth argument
+#' @details Applying image egmentation ensure a reduction in colour complexity.
+#' The \code{col_depth} argument
 #' describes the number of colour segments to select in the image. It should
 #' be noted that this function can take a vector of positive integers. This
-#' becomes handy if you wish to gradually decrease the colour complexity. It is
-#' generally recommend to use a vector of decreasing colDepth values.
+#' becomes handy if you wish to gradually decrease the colour complexity. 
 #'
 #' The segmentation process is always proceeded by smoothing and multiple rounds
 #' may be applied. The segmentation process uses kmeans clustering with k number
-#' of cluster being represented by colDepth values.
+#' of cluster being represented by col_depth values. If you do not wish to 
+#' use any smoothing or if you have already smoothed your images, you can 
+#' set box to 1 and use box smoothing. This will affectively apply no smoothing.
 #'
-#' The segmentation process can be applied on all pixel or only center pixels.
-#' Center pixels are described by the value in the "tile" column in a Vesalius
-#' data frame. Every pixel with a value of 1 in the "tile" column corresponds
-#' to the original barcode location in the Spatial Transcriptomic Assay
-#' (i.e. Original coordinates) before tesselation and rasterisation
-#' (see \code{buildImageArray})
+#' Segmentation can be applied to the center pixel i.e original spatial index
+#' or to the entire tile. In this case there are a few things to consider.
+#' First using centers will signficantly reduce run time as instead of
+#' computing clusters for all pixels, you are computing clusters
+#' on a subset of points.
+#' Second, if you decide to use all pixels, every pixel will be used 
+#' for clustering but only the value of the center pixel will be returned.
+#' This center value will be defined as the average color value in the tile
+#' and will be assgined to the most frequent cluster present in the tile.
 #
-#' @return Returns a Vesalius data.frame with "barcodes","x","y","cc",
-#' "value","tile","cluster".
-#' Cluster represents the colour segement the pixel belongs to.
+#' @return a vesalius_assay object
 #' @examples
 #' \dontrun{
-#' data(vesalius)
-#' # Seurat pre-processing
-#' image <- NormalizeData(vesalius)
-#' image <- FindVariableFeatures(image, nfeatures = 2000)
-#' image <- ScaleData(image)
-#' # converting to rgb
-#' image <- rgbPCA(image,slices = 1)
-#' image <- buildImageArray(image, sliceID=1)
-#' # One segmentation round
-#' image <- iterativeSegmentation.array(image)
-#' # Multiple segmentation rounds & multiple smoothing rounds
-#' image <- iterativeSegmentation.array(image,smoothIter = 3,
-#'       colDepth = seq(12,8, by = -2))
-#' # smoothing across levels
-#' image <- iterativeSegmentation.array(image, smoothIter = 5,
-#' method = c("iso"), acrossLevels = "mean",sigma = seq(0.5,1.5,l = 10))
-#' }
+#' data(Vesalius)
+#' # First we build a simple object
+#' ves <- build_vesalius_object(coordinates, counts)
+#' # We can do a simple run
+#' ves <- build_vesalius_embeddings(ves)
+#'
+#' # simple segmentation with internal smoothing
+#' ves <- segment_image(vesalius)
+#' # simple segmentation without internal smoothing
+#' ves <- segment_image(vesalius, smooth_type = "box", box = 1,
+#'  embedding = "PCA")
+#' # interative segmentation 
+#' ves <- segment_image(vesalius, col_depth = seq(12, 4, by = -2),
+#'  embedding = "PCA")
+#'}
+#' @export
 
-image_segmentation <- function(vesalius,
-  method = c("kmeans", "SISKmeans", "SIS"),
+segment_image <- function(vesalius,
+  method = "kmeans",
   embedding = "last",
   col_depth = 10,
   dimensions = seq(1, 3),
@@ -505,10 +545,10 @@ image_segmentation <- function(vesalius,
   # Parsing vesalius object so we can recontruct it internally and not need to
   # rebuild intermediates and shift between formats...
   #----------------------------------------------------------------------------#
-  image <- switch(method[1L],
+  segments <- switch(method[1L],
     "kmeans" = vesalius_kmeans(vesalius,
       col_depth = col_depth,
-      dims = dimensions,
+      dimensions = dimensions,
       embedding = embedding,
       smooth_iter = smooth_iter,
       method = smooth_type,
@@ -520,28 +560,46 @@ image_segmentation <- function(vesalius,
       gaussian = gaussian,
       na.rm = na.rm,
       use_center = use_center,
-      verbose = verbose),
-    "SISKmeans" = .sis_kmeans(vesalius, dimensions, cores, verbose),
-    "SIS" = .sis(vesalius, dimensions, cores, verbose))
+      verbose = verbose))
 
-  vesalius <- update_vesalius(vesalius = vesalius,
-    data = image$vesalius@activeEmbeddings,
-    slot = "activeEmbeddings",
-    commit = as.list(match.call()),
-    defaults = as.list(args(image_segmentation)),
+  vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
+    data = segments$segments,
+    slot = "active",
     append = FALSE)
-  vesalius <- updateVesalius(vesalius = vesalius,
-    data = image$clusters,
+  vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
+    data = segments$clusters,
     slot = "territories",
-    commit = as.list(match.call()),
-    defaults = as.list(args(image_segmentation)),
     append = TRUE)
+  commit <- create_commit_log(arg_match = as.list(match.call()),
+    default = formals(smooth_image))
+  vesalius_assay <- commit_log(vesalius_assay,
+    commit,
+    get_assay_names(vesalius_assay))
   simple_bar(verbose)
-  return(vesalius)
+  return(vesalius_assay)
 }
 
+#' kmeans segmentation function
+#' @param vesalius a vesalius_assay
+#' @param colDepth integer or vector of positive integers.
+#' Colour depth used for segmentation.
+#' @inheritParams segment_image
+#' @details Run an interaive kmeans segmentation with the possibility 
+#' to run multiple rounds of smoothing. 
+#' @return list containing segmented image as an active embedding and
+#' territory cluster for all barcodes.
+#' @importFrom parallel mclapply
+#' @importFrom dplyr right_join
+#' @importFrom dplyr %>%
+#' @importFrom dplyr filter
+#' @importFrom stats kmeans
+#' @importFrom dplyr group_by
+#' @importFrom dplyr mutate
+#' @importFrom dplyr across
+#' @importFrom dplyr ungroup
+#' @importFrom imager as.cimg
 vesalius_kmeans <- function(vesalius,
-  dims = seq(1, 3),
+  dimensions = seq(1, 3),
   col_depth = 10,
   embedding = "last",
   smooth_iter = 1,
@@ -556,13 +614,14 @@ vesalius_kmeans <- function(vesalius,
   use_center = TRUE,
   cores = 1,
   verbose = TRUE) {
-  if (is(vesalius, "vesaliusObject")) {
-      images <- ves_to_c(object = vesalius,
-        embed = embedding,
-        dims = dims,
-        verbose = verbose)
+  if (is(vesalius_assay, "vesalius_assay")) {
+    assay <- get_assay_names(vesalius_assay)
+    images <- format_ves_to_c(vesalius_assay = vesalius_assay,
+      embed = embedding,
+      dims = dimensions,
+      verbose = verbose)
   } else {
-    stop("Unsupported format to image_segmentation function")
+      stop("Unsupported format to segment_image function")
   }
   #----------------------------------------------------------------------------#
   # Segmenting image by iteratively decreasing colour depth and smoothing
@@ -595,7 +654,7 @@ vesalius_kmeans <- function(vesalius,
     if (use_center) {
         colours <- cbind(as.data.frame(images[[1L]])[, c("x", "y")],
                          as.data.frame(colours)) %>%
-                   right_join(vesalius@tiles,by = c("x", "y")) %>%
+                   right_join(vesalius@tiles, by = c("x", "y")) %>%
                    filter(origin == 1)
         coord <- colours[, c("x", "y")]
         colours <- colours[, !colnames(colours) %in%
@@ -644,7 +703,7 @@ vesalius_kmeans <- function(vesalius,
              group_by(barcodes) %>%
              mutate(across(all_of(embeds),mean),
               cluster = top_cluster(cluster)) %>%
-             ungroup
+             ungroup()
     }
 
 
@@ -658,22 +717,26 @@ vesalius_kmeans <- function(vesalius,
     # Let's rebuild everything
     #--------------------------------------------------------------------------#
 
-    vesalius <- c_to_ves(images,
-      vesalius,
-      dims,
-      mbed = embedding,
+    segments <- format_c_to_ves(images,
+      vesalius_assay,
+      dimensions,
+      embed = embedding,
       verbose = verbose)
     clusters <- clusters %>% 
       filter(origin == 1) %>%
       select(c("barcodes", "x", "y", "cluster")) %>%
       as.data.frame()
 
-    new_trial <- create_trial_tag(colnames(vesalius@territories), "Segment")
+    new_trial <- create_trial_tag(colnames(vesalius_assay@territories),
+      "Segment")
     colnames(clusters) <- c(colnames(clusters)[seq_len(ncol(clusters) - 1)],
         new_trial)
-    return(list("vesalius" = vesalius, "clusters" = clusters))
+    return(list("segments" = segments, "clusters" = clusters))
 }
 
+#' top cluster
+#' get cluster that is most represented in tile
+#' @param cluster named vector containing cluster representation for a barcode
 top_cluster <- function(cluster) {
     top <- table(cluster)
     top <- names(top)[order(top, decreasing = TRUE)]
@@ -681,6 +744,9 @@ top_cluster <- function(cluster) {
 }
 
 ## NOTE this might become redundant if I implement the other segmentation method
+## A pain to make it work with current format. We also want to adapt this for 
+## full stack
+## UNUSED for now!
 sis_kmeans <- function(image, col_depth, box) {
   #----------------------------------------------------------------------------#
   # First we need to convert cimg array to simple array
@@ -782,6 +848,7 @@ sis <- function(image) {
 #' image <- iterativeSegmentation.array(image)
 #' image <- isolateTerritories.array(image, minBar = 5)
 #' }
+#' @export
 
 
 #### Requireds refactoring!!!!! Sanity check functions 

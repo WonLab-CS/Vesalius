@@ -17,7 +17,7 @@ update_vesalius_assay <- function(vesalius_assay,
         data <- c(slot(vesalius_assay, slot), data)
         slot(vesalius_assay, slot) <- data
     }else if (append && slot == "territories") {
-        if (!is.null(slot(vesalius_assay, slot))) {
+        if (!all(dim(slot(vesalius_assay, slot)) == c(0, 0))) {
             df <- data.frame(slot(vesalius_assay, slot), data[, ncol(data)])
             colnames(df)  <- c(colnames(slot(vesalius_assay, slot)),
                 colnames(data)[ncol(data)])
@@ -36,17 +36,14 @@ update_vesalius_assay <- function(vesalius_assay,
 commit_log <- function(vesalius_assay, commit, assay) {
     fun <- get_func_from_commit(commit)
     log <- vesalius_assay@log
-
-    if (length(log) == 0) {
-        tag <- paste0(assay, "_object_build")
-        log <- list(commit)
-        names(log) <- tag
+    if (is.null(names(log))) {
+        tag <- "Not_computed"
     } else {
-        tag <- grep(names(log), fun, value = TRUE)
-        tag <- paste0(assay,"_", create_trial_tag(tag, fun))
-        log <- c(log, list(commit))
-        names(log) <- c(names(log)[-1], tag)
+        tag <- grep(x = names(log), pattern = fun, value = TRUE)
     }
+    tag <- paste0(assay, "_", create_trial_tag(tag, fun))
+    log <- c(log, list(commit))
+    names(log)[length(log)] <- tag
     vesalius_assay@log <- log
     return(vesalius_assay)
 }
@@ -77,7 +74,23 @@ create_commit_log <- function(arg_match, default) {
 }
 
 
-
+# This function will do with some more options 
+# it would be neat to be able to go through the log 
+# not a priority as it would be better for them to keep track of that 
+# in their won code
+search_log <- function(vesalius_assay, arg, return_assay = TRUE) {
+    log <- vesalius_assay@log
+    locs <- lapply(log, function(x, arg) {
+        arg_names <- grepl(pattern = arg, x = x)
+        arg_value <- grepl(pattern = arg, x = names(x))
+        return(any((arg_names | arg_value)))
+    }, arg = arg)
+    if (return_assay) {
+        return(log[unlist(locs)])
+    } else {
+        return(unlist(locs))
+    }
+}
 
 
 slot_apply <- function(x, func, ...) {
@@ -130,13 +143,14 @@ get_last_log <- function(vesalius) {
 
 
 create_trial_tag <- function(trials, tag) {
-    if (any(grepl(x = trials, pattern = tag))) {
-      previous <- grep(x = trials, pattern = tag, value = TRUE)
-      m <- gregexpr("[0-9]+", previous)
-      last <- max(as.numeric(unlist(regmatches(previous, m))))
-      new_trial <- paste0(tag, "_Trial_", last + 1)
+    
+    if (is.null(trials) || !any(grepl(x = trials, pattern = tag))) {
+        new_trial <-  paste0(tag, "_Trial_1")
     } else {
-      new_trial <-  paste0(tag, "_Trial_1")
+        previous <- grep(x = trials, pattern = tag, value = TRUE)
+        m <- gregexpr("[0-9]+", previous)
+        last <- max(as.numeric(unlist(regmatches(previous, m))))
+        new_trial <- paste0(tag, "_Trial_", last + 1)
     }
     return(new_trial)
 }
@@ -158,7 +172,8 @@ get_counts <- function(vesalius_assay, type = "raw") {
 
 
 get_tiles <- function(vesalius_assay) {
-    return(slot(vesalius_assay, "tiles"))
+    tiles <- slot(vesalius_assay, "tiles")
+    return(tiles)
 }
 
 

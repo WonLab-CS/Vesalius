@@ -42,9 +42,7 @@ the default assay name "spatial_omics".
 
 You can decide if you want to adjust the coordinates to the 
 origin i.e remove unnecessary space or normalise the coordinates.
-Norm is not recommened at the moment. 
-
-We highly recommend using \code{\link{vesaliusObjects}} instead!
+Norm is not recommened at the moment
 }
 \examples{
 data(vesalius)

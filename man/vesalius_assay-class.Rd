@@ -5,20 +5,20 @@
 \alias{vesalius_assay-class}
 \title{The vesalius_assay class}
 \description{
-The vesalius_assay class is the functional unit of vesalius. Each assay is 
-stored within this class and it contains all the required information to 
+The vesalius_assay class is the functional unit of vesalius. Each assay is
+stored within this class and it contains all the required information to
 run analysis on your assay of choice. In this object, you can find spatial
 tiles, image embeddings, spatial territories, differentially expressed genes
-(DEG), count matrices (raw and normalised), microscopy images (if present) and
-a functional log that lets you see what had been run on this object.
+(DEG), count matrices (raw and normalised), microscopy images (if present)
+and a functional log that lets you see what had been run on this object.
 }
 \section{Slots}{
 
 \describe{
-\item{\code{tiles}}{data.frame containing spatial coordinates and pixels tiles once 
+\item{\code{tiles}}{data.frame containing spatial coordinates and pixels tiles once
 they have been computed}
 
-\item{\code{embeddings}}{list containing latent space embeddings in the form of 
+\item{\code{embeddings}}{list containing latent space embeddings in the form of
 data.frames.}
 
 \item{\code{territories}}{data.frame containing spatial color segments, spatial

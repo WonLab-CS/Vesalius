@@ -72,27 +72,24 @@ format_c_to_ves <- function(cimg,
   #--------------------------------------------------------------------------#
   # Get stuff out
   #--------------------------------------------------------------------------#
-    tiles <- check_tiles(vesalius_assay)
-    embeddings <- check_embedding(vesalius_assay, embed, dims)
-    embed <- ifelse(embed == "last",
-      yes = names(embeddings),
-      no = embed)
-    #--------------------------------------------------------------------------#
-    # Always going to be a gray scale image.
-    # Colour are only used when during viz
-    # This allows any arbitrary number of embeds
-    #--------------------------------------------------------------------------#
-    message_switch("ctv", verbose)
-    for (i in seq_along(dims)) {
-      img <- as.data.frame(cimg[[i]])
-      barcodes <- left_join(tiles, img, by = c("x", "y")) %>%
-                  filter(origin == 1) %>%
-                  na.exclude()
-      locs <- match(rownames(embed), barcodes$barcodes)
-      embeddings[locs, dims[i]] <- barcodes$value
+  tiles <- check_tiles(vesalius_assay)
+  embeddings <- check_embedding(vesalius_assay, embed, dims)
+  #--------------------------------------------------------------------------#
+  # Always going to be a gray scale image.
+  # Colour are only used when during viz
+  # This allows any arbitrary number of embeds
+  #--------------------------------------------------------------------------#
+  message_switch("ctv", verbose)
+  for (i in seq_along(dims)) {
+    img <- as.data.frame(cimg[[i]])
+    barcodes <- left_join(tiles, img, by = c("x", "y")) %>%
+      filter(origin == 1) %>%
+      na.exclude()
+    locs <- match(rownames(embeddings), barcodes$barcodes)
+    embeddings[!is.na(locs), dims[i]] <- barcodes$value
 
-    }
-    return(embeddings)
+  }
+  return(embeddings)
 }
 
 
