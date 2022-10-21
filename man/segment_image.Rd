@@ -5,54 +5,24 @@
 \title{segment image}
 \usage{
 segment_image(
-  vesalius,
+  vesalius_assay,
   method = "kmeans",
   embedding = "last",
   col_depth = 10,
   dimensions = seq(1, 3),
-  smooth_iter = 1,
-  smooth_type = c("median", "iso", "box"),
-  across_levels = "min",
-  sigma = 1,
-  box = 20,
-  threshold = 0,
-  neuman = TRUE,
-  gaussian = TRUE,
-  na.rm = TRUE,
   use_center = TRUE,
   cores = 1,
   verbose = TRUE
 )
 }
 \arguments{
+\item{vesalius_assay}{a vesalius_assay object}
+
 \item{method}{character string for which method should be used for 
 segmentation. Only "kmeans" supported.}
 
 \item{col_depth}{integer or vector of positive integers.
 Colour depth used for segmentation. (see details)}
-
-\item{smooth_iter}{integer - number of smoothing iterations}
-
-\item{smooth_type}{character describing smoothing method to use "median" ,
-"iso"  or "box"}
-
-\item{across_levels}{character - method used to account for multiple 
-smoothing levels. Select from: "min","mean", "max"}
-
-\item{sigma}{numeric - standard deviation associated with isoblur (Gaussian)}
-
-\item{box}{numeric describing box size (centered around a center pixel)
-for smoothing}
-
-\item{threshold}{numeric - discard pixels that are too low in value (cutoff
-threshold only applied in box/median blurs).}
-
-\item{neuman}{logical describing If Neumann boundary conditions should be
-used, Dirichlet otherwise (default true, Neumann)}
-
-\item{gaussian}{logical - use gaussian filter}
-
-\item{na.rm}{logical describing if NA values should be removed}
 
 \item{use_center}{logical - If TRUE, only the center pixel value will be used
 during segmentation. If FALSE, all pixels will be used (see details)}
@@ -61,7 +31,7 @@ during segmentation. If FALSE, all pixels will be used (see details)}
 
 \item{verbose}{logical - progress message output.}
 
-\item{vesalius_assay}{a vesalius_assay object}
+\item{na.rm}{logical describing if NA values should be removed}
 }
 \value{
 a vesalius_assay object

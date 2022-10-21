@@ -5,10 +5,10 @@
 \title{isolating territories from segmented Vesalius images}
 \usage{
 isolate_territories(
-  vesalius,
-  method = c("distance"),
+  vesalius_assay,
+  method = "distance",
   trial = "last",
-  capture_radius = 0.025,
+  capture_radius = 0.05,
   global = TRUE,
   min_spatial_index = 10,
   verbose = TRUE

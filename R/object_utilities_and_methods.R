@@ -143,7 +143,6 @@ get_last_log <- function(vesalius) {
 
 
 create_trial_tag <- function(trials, tag) {
-    
     if (is.null(trials) || !any(grepl(x = trials, pattern = tag))) {
         new_trial <-  paste0(tag, "_Trial_1")
     } else {
@@ -174,6 +173,11 @@ get_counts <- function(vesalius_assay, type = "raw") {
 get_tiles <- function(vesalius_assay) {
     tiles <- slot(vesalius_assay, "tiles")
     return(tiles)
+}
+
+get_territories <- function(vesalius_assay) {
+    territories <- slot(vesalius_assay, "territories")
+    return(territories)
 }
 
 

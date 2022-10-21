@@ -5,12 +5,12 @@
 \title{territoryPlot plotting Vesalius territories}
 \usage{
 territory_plot(
-  vesalius,
+  vesalius_assay,
   trial = "last",
   split = FALSE,
   randomise = TRUE,
   cex = 10,
-  cex_pt = 0.25
+  cex_pt = 1
 )
 }
 \arguments{

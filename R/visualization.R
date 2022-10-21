@@ -122,12 +122,12 @@ image_plot <- function(vesalius_assay,
 #' }
 #' @export
 
-territory_plot <- function(vesalius,
+territory_plot <- function(vesalius_assay,
   trial = "last",
   split = FALSE,
   randomise = TRUE,
   cex = 10,
-  cex_pt = 0.25) {
+  cex_pt = 1) {
     #--------------------------------------------------------------------------#
     # Dirty ggplot - this is just a quick and dirty plot to show what it look
     # like
@@ -135,7 +135,7 @@ territory_plot <- function(vesalius,
     # Not a prority for custom plotting functions
     # SANITY check here and format
     #--------------------------------------------------------------------------#
-    territories <- check_territories(vesalius, trial)
+    territories <- check_territories(vesalius_assay, trial)
     legend <- sapply(strsplit(trial, "_"), "[[", 1)
     #--------------------------------------------------------------------------#
     # Changing label order because factor can suck ass sometimes
@@ -152,7 +152,14 @@ territory_plot <- function(vesalius,
     # to use this palette instead - Sorry Hadely
     #--------------------------------------------------------------------------#
     ter_col <- length(levels(territories$trial))
-    ter_pal <- colorRampPalette(brewer.pal(8, "Accent"))
+    ter_pal <- colorRampPalette(c("#999999",
+      "#E69F00",
+      "#56B4E9",
+      "#009E73",
+      "#F0E442",
+      "#0072B2",
+      "#D55E00",
+      "#CC79A7"))
 
     if (randomise) {
         ter_col <- sample(ter_pal(ter_col), ter_col)

@@ -153,7 +153,7 @@ re-run the embedding function!
 
 ```{r image_processing, eval = TRUE, echo = TRUE }
 vesalius <- equalize_image(vesalius, verbose = FALSE)
-vesalius <- smooth_image(vesalius, verbose = FALSE)
+vesalius <- smooth_image(vesalius, iter = 5, verbose = FALSE)
 vesalius <- regularise_image(vesalius, verbose = FALSE)
 ```
 
@@ -164,12 +164,13 @@ according to how many dimensions you wish to process.
 
 ## Image segmentation
 
-Vesalius will attempts to segment the images intocolor segments. Note that you can run the 
-smoothing directly in the `segment_image` function. Vesalius use a kmeans clustering approach 
-to segment grey scale images. Note that the segmentation here is applied to 
-the whole stack and not individually. 
+Vesalius will attempts to segment the images intocolor segments. 
+Vesalius use a kmeans clustering approach  to segment grey scale images. 
+Note that the segmentation here is applied to the whole stack and not individually. 
+
+The goal is top obtain colour segments that we can subdivived into territories. 
 ```{r segment_image, eval = TRUE, echo = TRUE}
-vesalius <- segment_image(vesalius, col_depth = 5, verbose = FALSE)
+vesalius <- segment_image(vesalius,method ="leiden", col_depth = 0.05, verbose = FALSE)
 ```
 
 ## What do we have?
@@ -185,5 +186,28 @@ We can also have a look at the results of the image segmentation.
 
 ```{r plot_segments_only, eval = TRUE, echo = TRUE}
 p5 <- image_plot(vesalius) + labs(title = "Segments only")
-p5
+print(p5)
 ```
+
+# Isolating territories
+## Isolating territories from colour segments 
+
+The final step is to isolate color segments into seperate territories. 
+Similar color segments may be of the same colour but are seperated in 2D space. 
+We want to be able to isolate each patch. For this, we can use the `isolate_territories`
+function. 
+
+```{r iso_territories, eval = TRUE, echo = TRUE}
+vesalius <- isolate_territories(vesalius, capture_radius = 0.05)
+```
+
+## What do we have?
+Now we can have a look at the isolated territories.
+
+```{r plot_territories, eval = TRUE, echo = TRUE}
+p6 <- territory_plot(vesalius, cex_pt = 2)
+p6
+```
+
+# Comparing territories
+Once we have our territories, we can compare the expression of genes between territories. 
