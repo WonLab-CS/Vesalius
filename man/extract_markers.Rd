@@ -6,7 +6,7 @@
 territories.}
 \usage{
 extract_markers(
-  vesalius,
+  vesalius_assay,
   trial = "last",
   norm_method = "last",
   seed = NULL,

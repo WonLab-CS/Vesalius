@@ -2,8 +2,7 @@
 % Please edit documentation in R/image_processing.R
 \name{equalize_image}
 \alias{equalize_image}
-\title{equalise image histogram 
-equalizeHistogram image enhancement via colour histogram equalization.}
+\title{equalise image histogram}
 \usage{
 equalize_image(
   vesalius_assay,
@@ -22,6 +21,13 @@ equalize_image(
 )
 }
 \arguments{
+\item{vesalius_assay}{a vesalius_assay object}
+
+\item{dimensions}{numeric vector of latent space dimensions to use.}
+
+\item{embedding}{character string describing which embedding should
+be used.}
+
 \item{type}{character - histogram EQ type. Select from: BalanceSimplest,
 EqualizePiecewise, SPE, EqualizeDP, EqualizeADP, ECDF (see details)}
 
@@ -47,20 +53,14 @@ Used with EqualizeDP.}
 \item{down}{numeric color value threshold in the lower limit.
 Used with EqualizeDP.}
 
+\item{cores}{numeric number of cores to be used}
+
 \item{verbose}{logical - progress message output.}
-
-\item{image}{data.frame - Vesalius formatted data.frame (i.e. barcodes,
-x,y,cc,value,...)}
-
-\item{invert}{logical - If TRUE, colours will be inverted i.e. 1 - colorValue
-(background set to 1 instead of 0).}
 }
 \value{
-Returns a Vesalius data.frame with "barcodes","x","y","cc",
-"value","tile",...
+a vesalius_assay object
 }
 \description{
-equalise image histogram 
 equalizeHistogram image enhancement via colour histogram equalization.
 }
 \details{

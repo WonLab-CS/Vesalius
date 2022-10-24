@@ -153,7 +153,7 @@ re-run the embedding function!
 
 ```{r image_processing, eval = TRUE, echo = TRUE }
 vesalius <- equalize_image(vesalius, verbose = FALSE)
-vesalius <- smooth_image(vesalius, iter = 5, verbose = FALSE)
+vesalius <- smooth_image(vesalius, iter = 10, box = 10, verbose = FALSE)
 vesalius <- regularise_image(vesalius, verbose = FALSE)
 ```
 
@@ -170,7 +170,10 @@ Note that the segmentation here is applied to the whole stack and not individual
 
 The goal is top obtain colour segments that we can subdivived into territories. 
 ```{r segment_image, eval = TRUE, echo = TRUE}
-vesalius <- segment_image(vesalius,method ="leiden", col_depth = 0.05, verbose = FALSE)
+vesalius <- segment_image(vesalius,
+  method = "kmeans",
+  col_resolution = 3,
+  verbose = FALSE)
 ```
 
 ## What do we have?
@@ -211,3 +214,7 @@ p6
 
 # Comparing territories
 Once we have our territories, we can compare the expression of genes between territories. 
+
+```{r compare_territories, eval = TRUE, echo = TRUE}
+vesalius <- extract_markers(vesalius, seed = c(3, 7), query = 8, method = "logit")
+```

@@ -2,7 +2,7 @@
 % Please edit documentation in R/image_processing.R
 \name{internal_smooth}
 \alias{internal_smooth}
-\title{internal smoothing function 
+\title{internal smoothing function
 Function that does the smoothing on individual image array}
 \usage{
 internal_smooth(
@@ -41,10 +41,10 @@ used, Dirichlet otherwise (default true, Neumann)}
 
 \item{na.rm}{logical describing if NA values should be removed}
 
-\item{across_levels}{character - method used to account for multiple 
+\item{across_levels}{character - method used to account for multiple
 smoothing levels (see details). Select from: "min","mean", "max"}
 }
 \description{
-internal smoothing function 
+internal smoothing function
 Function that does the smoothing on individual image array
 }

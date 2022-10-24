@@ -215,9 +215,10 @@ format_counts_for_edger <- function(seed, query) {
   return(merged)
 }
 
-format_counts_for_logit <- function(idx, seed, query) {
+format_counts_for_logit <- function(seed, query) {
   seed_tag <- colnames(seed)
   query_tag <- colnames(query)
+  browser()
   merged <- rbind(seed, query)
   seed_query_info <- data.frame(row.names = c(seed_tag, query_tag))
   seed_query_info[seed_tag, "group"] <- "seed"
@@ -314,10 +315,12 @@ dispatch_deg_group <- function(ter, seed, query, cells, verbose) {
         query_id <- paste0(query, collapse = " ")
         query <- list(ter[ter$trial %in% query, "barcodes"])
     }
-    seed <- mapply(check_cells, territory_barcodes = seed,
-        ter = seed_id, MoreArgs = list(cells, verbose), IMPLIFY = FALSE)
-    query <- mapply(check_cells, territory_barcodes = query,
+    if (!is.null(cells)) {
+      seed <-  mapply(check_cells, territory_barcodes = seed,
+        ter = seed_id, MoreArgs = list(cells, verbose), SIMPLIFY = FALSE)
+      query <- mapply(check_cells, territory_barcodes = query,
         ter = query_id, MoreArgs = list(cells, verbose), SIMPLIFY = FALSE)
+    }
     return(list("seed" = seed, "seed_id" = seed_id,
         "query" = query, "query_id" = query_id))
 }

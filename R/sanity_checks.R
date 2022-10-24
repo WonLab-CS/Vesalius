@@ -190,7 +190,10 @@ check_segments <- function(vesalius_asssay, trial = "last") {
     return(territories)
 }
 
-check_norm <- function(vesalius_asssay, norm_method, method = NULL, verbose = TRUE) {
+check_norm <- function(vesalius_asssay,
+    norm_method,
+    method = NULL,
+    verbose = TRUE) {
     counts <- vesalius_asssay@counts %||%
         stop("Cannot find any counts in vesalius assay!")
     if (norm_method == "last") {
@@ -200,7 +203,7 @@ check_norm <- function(vesalius_asssay, norm_method, method = NULL, verbose = TR
             paste0(deparse(substitute(norm_method)), "is not in count list!")
         )
     }
-    if (!is.null(method) && method %in% c("DEseq2", "edgeR")) {
+    if (!is.null(method[1L]) && method[1L] %in% c("DEseq2", "edgeR")) {
         message_switch("norm_check", verbose, method = method)
         counts <- as.matrix(counts[["raw"]])
     } else {
@@ -222,10 +225,25 @@ check_cells <- function(territory_barcodes, ter, cell_barcodes, verbose) {
 
 check_min_spatial_index <- function(group, min_spatial_index, id) {
     if (is.null(dim(group)) || dim(group)[2L] < min_spatial_index) {
-        warning(paste0("Territory ", id, " does not contain enough cells.\n
+        stop(paste0("Territory ", id, " does not contain enough cells.\n
         Territory will be skipped"), call. = FALSE)
         return(NULL)
     } else {
         return(group)
+    }
+}
+
+check_group_value <- function(territories, group) {
+    present <- unique(territories$trial)
+    group_sub <- group[group %in% present]
+    if (length(group_sub) == 0) {
+        stop(paste(group, "is not present in the select trial!"))
+    } else if (length(group_sub) < length(group)) {
+        warning(paste("Only group territory(ies)",
+            paste(group_sub, collaspe = " "),
+            "is (are) present in the selected trial. Only those will be used"))
+        return(group_sub)
+    } else {
+        return(group_sub)
     }
 }

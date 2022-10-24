@@ -67,7 +67,7 @@
 #' @export
 
 
-extract_markers <- function(vesalius,
+extract_markers <- function(vesalius_assay,
   trial = "last",
   norm_method = "last",
   seed = NULL,
@@ -92,21 +92,28 @@ extract_markers <- function(vesalius,
     #--------------------------------------------------------------------------#
     # First lets get the norm method out and the associated counts
     #--------------------------------------------------------------------------#
-    counts <- check_norm(vesalius, norm_method, method, verbose)
+    counts <- check_norm(vesalius_assay, norm_method, method, verbose)
     #--------------------------------------------------------------------------#
     # Next let's get the territory data
     #--------------------------------------------------------------------------#
-    ter <- check_territories(vesalius, trial)
-    deg_trial <- create_trial_tag(names(vesalius@DEG), "DEG")
+    ter <- check_territories(vesalius_assay, trial)
+    seed <- check_group_value(ter, seed)
+    query <- check_group_value(ter, query)
+    deg_trial <- create_trial_tag(names(vesalius_assay@DEG), "DEG")
     #--------------------------------------------------------------------------#
     # Getting and setting territory categories
     #--------------------------------------------------------------------------#
-    buffer <- deg_group_dispatch(ter, seed, query, cells, verbose)
+    buffer <- dispatch_deg_group(ter, seed, query, cells, verbose)
+    if (is.null(buffer$seed) || is.null(buffer$query)){
+      return(NULL)
+    }
     #--------------------------------------------------------------------------#
     # buffer will contain seed group(s) and query group(s) as well ids for each
     # group. We can loop over each to get Differentially expressed genes
     #--------------------------------------------------------------------------#
-    message_switch("deg_prog", verbose)
+    message_switch("in_assay", verbose,
+      comp_type = "Computing DEGs",
+      assay = get_assay_names(vesalius_assay))
     deg <- vector("list", length(seed))
     for (i in seq_along(buffer$seed)) {
       seed <- counts[, colnames(counts) %in% buffer$seed[[i]]]
@@ -130,21 +137,17 @@ extract_markers <- function(vesalius,
     deg <- do.call("rbind", deg)
     deg <- list(deg)
     names(deg) <- deg_trial
-    vesalius <- update_vesalius(vesalius = vesalius,
-      data = deg,
-      slot = "DEG",
-      commit = as.list(match.call()),
-      defaults = as.list(args(extract_markers)),
-      append = TRUE)
-
-
-    #--------------------------------------------------------------------------#
-    # running grouped analysis for DEG
-    #--------------------------------------------------------------------------#
-
-  cat("\n")
-  simple_bar(verbose)
-  return(vesalius)
+    vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
+    data = deg,
+    slot = "DEG",
+    append = TRUE)
+    commit <- create_commit_log(arg_match = as.list(match.call()),
+      default = formals(extract_markers))
+    vesalius_assay <- commit_log(vesalius_assay,
+      commit,
+      get_assay_names(vesalius_assay))
+    simple_bar(verbose)
+    return(vesalius_assay)
 }
 
 # Internal differantial gene expression function. Essentially all other DEG
@@ -180,16 +183,16 @@ vesalius_deg <- function(seed,
     #--------------------------------------------------------------------------#
     seed <- check_min_spatial_index(seed, min_spatial_index, seed_id)
     query <- check_min_spatial_index(query, min_spatial_index, query_id)
-    
     #--------------------------------------------------------------------------#
     # testing diff gene expression
     #--------------------------------------------------------------------------#
     params <- list("log_fc" = log_fc, "pval" = pval, "min_pct" = min_pct)
-    deg <- switch(EXPR = method,
+    deg <- switch(EXPR = method[1L],
       "wilcox" = vesalius_deg_wilcox(seed, seed_id, query, query_id, params),
       "t.test" = vesalius_deg_ttest(seed, seed_id, query, query_id, params),
       "chisq" = vesalius_deg_chisq(seed, seed_id, query, query_id, params),
-      "fisher.exact" = vesalius_deg_fisher(seed, seed_id, query, query_id, params),
+      "fisher.exact" = vesalius_deg_fisher(seed, seed_id, query, query_id,
+        params),
       "DESeq2" = vesalius_deg_deseq2(seed, seed_id, query, query_id, params),
       "edgeR" = vesalius_deg_edger(seed, seed_id, query, query_id, params),
       "logit" = vesalius_deg_logit(seed, seed_id, query, query_id, params))
@@ -388,19 +391,19 @@ get_deg_metrics <- function(seed, query, params) {
   fc <- rowMeans(seed) - rowMeans(query)
   #--------------------------------------------------------------------------#
   # Dropping genes that don't fit the logFC and pct criteria
-  # this can be handle by edgeR as well but let's stay consistent here 
-  # and keep this approach. 
-  # Maybe it would be a good idea to look into what is the best method 
-  # to select genes for DEG - with spatial componnent 
+  # this can be handle by edgeR as well but let's stay consistent here
+  # and keep this approach.
+  # Maybe it would be a good idea to look into what is the best method
+  # to select genes for DEG - with spatial componnent
   #--------------------------------------------------------------------------#
-  keep <- (seed_pct >= params$min_pct ||
-    query_pct >= params$min_pct) &&
+  keep <- (seed_pct >= params$min_pct |
+    query_pct >= params$min_pct) &
     abs(fc) >= params$log_fc
     return(list("genes" = rownames(seed)[keep],
       "seed" = seed[keep, ],
       "query" = query[keep, ],
       "seed_pct" = seed_pct[keep],
       "query_pct" = query_pct[keep],
-      "fc" = fc))
+      "fc" = fc[keep]))
 
 }

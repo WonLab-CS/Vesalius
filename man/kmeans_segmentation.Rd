@@ -7,7 +7,7 @@
 kmeans_segmentation(
   vesalius_assay,
   dimensions = seq(1, 3),
-  col_depth = 10,
+  col_resolution = 10,
   embedding = "last",
   use_center = TRUE,
   cores = 1,
@@ -17,8 +17,13 @@ kmeans_segmentation(
 \arguments{
 \item{vesalius_assay}{a vesalius_assay object}
 
-\item{col_depth}{integer or vector of positive integers.
-Colour depth used for segmentation. (see details)}
+\item{dimensions}{numeric vector of latent space dimensions to use.}
+
+\item{col_resolution}{integer or vector of positive integers.
+Colour depth used for segmentation.}
+
+\item{embedding}{character string describing which embedding should
+be used.}
 
 \item{use_center}{logical - If TRUE, only the center pixel value will be used
 during segmentation. If FALSE, all pixels will be used (see details)}
@@ -28,9 +33,6 @@ during segmentation. If FALSE, all pixels will be used (see details)}
 \item{verbose}{logical - progress message output.}
 
 \item{vesalius}{a vesalius_assay}
-
-\item{colDepth}{integer or vector of positive integers.
-Colour depth used for segmentation.}
 }
 \value{
 list containing segmented image as an active embedding and

@@ -6,10 +6,10 @@
 \usage{
 segment_image(
   vesalius_assay,
-  method = "kmeans",
-  embedding = "last",
-  col_depth = 10,
   dimensions = seq(1, 3),
+  embedding = "last",
+  method = "kmeans",
+  col_resolution = 10,
   use_center = TRUE,
   cores = 1,
   verbose = TRUE
@@ -18,11 +18,16 @@ segment_image(
 \arguments{
 \item{vesalius_assay}{a vesalius_assay object}
 
-\item{method}{character string for which method should be used for 
-segmentation. Only "kmeans" supported.}
+\item{dimensions}{numeric vector of latent space dimensions to use.}
 
-\item{col_depth}{integer or vector of positive integers.
-Colour depth used for segmentation. (see details)}
+\item{embedding}{character string describing which embedding should
+be used.}
+
+\item{method}{character string for which method should be used for
+segmentation. Select from "kmeans", "louvain", or "leiden".}
+
+\item{col_resolution}{numeric colour resolution used for segmentation. 
+(see details)}
 
 \item{use_center}{logical - If TRUE, only the center pixel value will be used
 during segmentation. If FALSE, all pixels will be used (see details)}
@@ -40,27 +45,27 @@ a vesalius_assay object
 segment vesalius images to find initial territories
 }
 \details{
-Applying image egmentation ensure a reduction in colour complexity.
-The \code{col_depth} argument
-describes the number of colour segments to select in the image. It should
-be noted that this function can take a vector of positive integers. This
-becomes handy if you wish to gradually decrease the colour complexity. 
+Applying image segmentation ensures a reduction in colour
+complexity.
 
-The segmentation process is always proceeded by smoothing and multiple rounds
-may be applied. The segmentation process uses kmeans clustering with k number
-of cluster being represented by col_depth values. If you do not wish to 
-use any smoothing or if you have already smoothed your images, you can 
-set box to 1 and use box smoothing. This will affectively apply no smoothing.
+Vesalius provides 3 different methods for clustering colours and
+reducing color complexity: **Kmeans**, **Louvain**, and **Leiden**.
 
-Segmentation can be applied to the center pixel i.e original spatial index
-or to the entire tile. In this case there are a few things to consider.
-First using centers will signficantly reduce run time as instead of
-computing clusters for all pixels, you are computing clusters
-on a subset of points.
-Second, if you decide to use all pixels, every pixel will be used 
-for clustering but only the value of the center pixel will be returned.
-This center value will be defined as the average color value in the tile
-and will be assgined to the most frequent cluster present in the tile.
+In the case of kmeans clustering the \code{col_resolution} argument
+shows the number of colours that the images should be reduced to.
+In this case, \code{col_resolution} should be an integer and
+we suggest first looking at values between 3 and 20.
+
+In the case of **leiden** and **louvain** clustering, the
+\code{col_resolution} is the granularity of the clustering.
+In this case, we suggest using values between 0.01 and 1 to start with.
+We recommned uisng **louvain** clustering over **leiden** in 
+this context. 
+
+The optimal \code{col_resolution} will depend on your interest and 
+biological question at hand. You might be interested in more or less
+granular territories. Along with smoothing, the number of segments is
+one way to control this granularity.
 }
 \examples{
 \dontrun{
@@ -70,13 +75,10 @@ ves <- build_vesalius_object(coordinates, counts)
 # We can do a simple run
 ves <- build_vesalius_embeddings(ves)
 
-# simple segmentation with internal smoothing
-ves <- segment_image(vesalius)
-# simple segmentation without internal smoothing
-ves <- segment_image(vesalius, smooth_type = "box", box = 1,
- embedding = "PCA")
-# interative segmentation 
-ves <- segment_image(vesalius, col_depth = seq(12, 4, by = -2),
- embedding = "PCA")
+# simple smoothing
+ves <- smooth_image(ves, dimensions = seq(1, 30))
+
+# quick segmentation
+ves <- segment_image(ves, dimensions = seq(1, 30))
 }
 }

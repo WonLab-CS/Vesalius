@@ -19,6 +19,11 @@ regularise_image(
 \arguments{
 \item{vesalius_assay}{a vesalius_assay object}
 
+\item{dimensions}{numeric vector of latent space dimensions to use.}
+
+\item{embedding}{character string describing which embedding should
+be used.}
+
 \item{lambda}{numeric - positive real numbers describing regularization
 parameter (see details)}
 
@@ -54,7 +59,7 @@ ves <- build_vesalius_object(coordinates, counts)
 # We can do a simple run
 ves <- build_vesalius_embeddings(ves)
 
-# simple EQ
+# simple regularisation
 ves <- regularise_image(ves, embedding = "PCA")
 }
 }

@@ -5,11 +5,11 @@
 #----------------------/Isolating Territories/---------------------------------#
 
 #' Smooth Image
-#' 
+#'
 #' Apply iterative smoothing to Vesalius images
 #' @param vesalius_assay a vesalius_assay object
 #' @param dimensions numeric vector of latent space dimensions to use.
-#' @param embedding character string describing which embedding should 
+#' @param embedding character string describing which embedding should
 #' be used.
 #' @param method character describing smoothing method to use "median" ,
 #' "iso"  or "box" or a combination of them.
@@ -23,10 +23,10 @@
 #' used, Dirichlet otherwise (default true, Neumann)
 #' @param gaussian logical - use gaussian filter
 #' @param na.rm logical describing if NA values should be removed
-#' @param across_levels character - method used to account for multiple 
+#' @param across_levels character - method used to account for multiple
 #' smoothing levels (see details). Select from: "min","mean", "max"
 #' @param verbose logical - progress message output.
-#' @details The smooth_image function provides a series of options to smooth 
+#' @details The smooth_image function provides a series of options to smooth
 #' your grey scale images contained within the vesalius_assay object.
 #'
 #' You can select any number of dimensions to be smoothed. As default, we take
@@ -38,20 +38,20 @@
 #'  * iso: compute gaussian kernel using sigma (Gussian SD defined by sigma)
 #'
 #' Vesalius can apply the same smoothing paramters over multiple iterations
-#' as defined by the iter argument. 
+#' as defined by the iter argument.
 #' It is also possible to provide multiple values to box and sigma as numeric
 #' vectors. Vesalius will run the smoothing over all provided values and return
-#' either the maximum, minimum or mean color value as described by the 
+#' either the maximum, minimum or mean color value as described by the
 #' across_levels argument.
-#' 
-#' Please note that unless specified the smoothing always applied to 
+#'
+#' Please note that unless specified the smoothing always applied to
 #' the active embedding (default is last embedding computed). If you
-#' want to start over you can simply set \code{embedding} to which ever 
-#' embedding you want to work with. 
-#' 
-#' This will take the raw embedding values before any image processing 
+#' want to start over you can simply set \code{embedding} to which ever
+#' embedding you want to work with.
+#'
+#' This will take the raw embedding values before any image processing
 #' has been applied. No need to re-run the embedding if you are not
-#' satisfied with the smoothing. 
+#' satisfied with the smoothing.
 #'
 #' For more information, we suggest reading through the imager vignette.
 #'
@@ -61,12 +61,12 @@
 #' data(Vesalius)
 #' # First we build a simple object
 #' ves <- build_vesalius_object(coordinates, counts)
-#' # We can do a simple run 
+#' # We can do a simple run
 #' ves <- build_vesalius_embeddings(ves)
-#' 
-#' # simple smoothing 
+#'
+#' # simple smoothing
 #' ves <- smooth_image(ves, embedding = "PCA")
-#' # multiple rounds 
+#' # multiple rounds
 #' ves <- smooth_image(ves, iter = 3, embedding = "PCA")
 #' # accross level
 #' ves <- smooth_image(ves, box = seq(3,11),
@@ -146,8 +146,8 @@ smooth_image <- function(vesalius_assay,
 }
 
 
-#' internal smoothing function 
-#' Function that does the smoothing on individual image array 
+#' internal smoothing function
+#' Function that does the smoothing on individual image array
 #' @param image cimg array
 #' @inheritParams smooth_image
 #' @importFrom imager imrotate
@@ -204,10 +204,13 @@ internal_smooth <- function(image,
 }
 
 
-#' equalise image histogram 
+#' equalise image histogram
+#'
 #' equalizeHistogram image enhancement via colour histogram equalization.
-#' @param image data.frame - Vesalius formatted data.frame (i.e. barcodes,
-#' x,y,cc,value,...)
+#' @param vesalius_assay a vesalius_assay object
+#' @param dimensions numeric vector of latent space dimensions to use.
+#' @param embedding character string describing which embedding should
+#' be used.
 #' @param type character - histogram EQ type. Select from: BalanceSimplest,
 #' EqualizePiecewise, SPE, EqualizeDP, EqualizeADP, ECDF (see details)
 #' @param N numeric describing how each colour channel will be mapped back to
@@ -225,8 +228,7 @@ internal_smooth <- function(image,
 #' Used with EqualizeDP.
 #' @param down numeric color value threshold in the lower limit.
 #' Used with EqualizeDP.
-#' @param invert logical - If TRUE, colours will be inverted i.e. 1 - colorValue
-#' (background set to 1 instead of 0).
+#' @param cores numeric number of cores to be used 
 #' @param verbose logical - progress message output.
 #' @details Histogram equalization ensures that image details are amplified.
 #' In turn, territories may be extract with greater precision. We recommend
@@ -234,8 +236,7 @@ internal_smooth <- function(image,
 #'
 #' For further details on each method described here, please refer to
 #' \href{imagerExtra Vignette}{https://cran.r-project.org/web/packages/imagerExtra/vignettes/gettingstarted.html}
-#' @return Returns a Vesalius data.frame with "barcodes","x","y","cc",
-#' "value","tile",...
+#' @return a vesalius_assay object
 #' @examples
 #' \dontrun{
 #' data(Vesalius)
@@ -342,6 +343,9 @@ ecdf_eq <- function(im) {
 #' 
 #' regularise_image denoise Vesalius images via variance regularization
 #' @param vesalius_assay a vesalius_assay object
+#' @param dimensions numeric vector of latent space dimensions to use.
+#' @param embedding character string describing which embedding should
+#' be used.
 #' @param lambda numeric - positive real numbers describing regularization
 #' parameter (see details)
 #' @param niter numeric - number of variance regularization iterations
@@ -366,7 +370,7 @@ ecdf_eq <- function(im) {
 #' # We can do a simple run
 #' ves <- build_vesalius_embeddings(ves)
 #'
-#' # simple EQ
+#' # simple regularisation
 #' ves <- regularise_image(ves, embedding = "PCA")
 #'}
 #' @export
@@ -455,40 +459,43 @@ regularise <- function(img,
 
 
 
-#' segment image 
-#' 
-#' segment vesalius images to find initial territories 
+#' segment image
+#'
+#' segment vesalius images to find initial territories
 #' @param vesalius_assay a vesalius_assay object
-#' @param method character string for which method should be used for 
-#' segmentation. Only "kmeans" supported.
-#' @param col_depth integer or vector of positive integers.
-#' Colour depth used for segmentation. (see details)
+#' @param dimensions numeric vector of latent space dimensions to use.
+#' @param embedding character string describing which embedding should
+#' be used.
+#' @param method character string for which method should be used for
+#' segmentation. Select from "kmeans", "louvain", or "leiden".
+#' @param col_resolution numeric colour resolution used for segmentation. 
+#' (see details)
 #' @param use_center logical - If TRUE, only the center pixel value will be used
 #' during segmentation. If FALSE, all pixels will be used (see details)
 #' @param na.rm logical describing if NA values should be removed
 #' @param cores numeric - number of cores that should be used
 #' @param verbose logical - progress message output.
-#' @details Applying image egmentation ensure a reduction in colour complexity.
-#' The \code{col_depth} argument
-#' describes the number of colour segments to select in the image. It should
-#' be noted that this function can take a vector of positive integers. This
-#' becomes handy if you wish to gradually decrease the colour complexity. 
+#' @details Applying image segmentation ensures a reduction in colour
+#' complexity.
 #'
-#' The segmentation process is always proceeded by smoothing and multiple rounds
-#' may be applied. The segmentation process uses kmeans clustering with k number
-#' of cluster being represented by col_depth values. If you do not wish to 
-#' use any smoothing or if you have already smoothed your images, you can 
-#' set box to 1 and use box smoothing. This will affectively apply no smoothing.
+#' Vesalius provides 3 different methods for clustering colours and
+#' reducing color complexity: **Kmeans**, **Louvain**, and **Leiden**.
 #'
-#' Segmentation can be applied to the center pixel i.e original spatial index
-#' or to the entire tile. In this case there are a few things to consider.
-#' First using centers will signficantly reduce run time as instead of
-#' computing clusters for all pixels, you are computing clusters
-#' on a subset of points.
-#' Second, if you decide to use all pixels, every pixel will be used 
-#' for clustering but only the value of the center pixel will be returned.
-#' This center value will be defined as the average color value in the tile
-#' and will be assgined to the most frequent cluster present in the tile.
+#' In the case of kmeans clustering the \code{col_resolution} argument
+#' shows the number of colours that the images should be reduced to.
+#' In this case, \code{col_resolution} should be an integer and
+#' we suggest first looking at values between 3 and 20.
+#' 
+#' In the case of **leiden** and **louvain** clustering, the
+#' \code{col_resolution} is the granularity of the clustering.
+#' In this case, we suggest using values between 0.01 and 1 to start with.
+#' We recommned uisng **louvain** clustering over **leiden** in 
+#' this context. 
+#' 
+#' The optimal \code{col_resolution} will depend on your interest and 
+#' biological question at hand. You might be interested in more or less
+#' granular territories. Along with smoothing, the number of segments is
+#' one way to control this granularity. 
 #
 #' @return a vesalius_assay object
 #' @examples
@@ -499,22 +506,19 @@ regularise <- function(img,
 #' # We can do a simple run
 #' ves <- build_vesalius_embeddings(ves)
 #'
-#' # simple segmentation with internal smoothing
-#' ves <- segment_image(vesalius)
-#' # simple segmentation without internal smoothing
-#' ves <- segment_image(vesalius, smooth_type = "box", box = 1,
-#'  embedding = "PCA")
-#' # interative segmentation 
-#' ves <- segment_image(vesalius, col_depth = seq(12, 4, by = -2),
-#'  embedding = "PCA")
+#' # simple smoothing
+#' ves <- smooth_image(ves, dimensions = seq(1, 30))
+#' 
+#' # quick segmentation
+#' ves <- segment_image(ves, dimensions = seq(1, 30))
 #'}
 #' @export
 
 segment_image <- function(vesalius_assay,
-  method = "kmeans",
-  embedding = "last",
-  col_depth = 10,
   dimensions = seq(1, 3),
+  embedding = "last",
+  method = "kmeans",
+  col_resolution = 10,
   use_center = TRUE,
   cores = 1,
   verbose = TRUE) {
@@ -525,14 +529,20 @@ segment_image <- function(vesalius_assay,
   #----------------------------------------------------------------------------#
   segments <- switch(method[1L],
     "kmeans" = kmeans_segmentation(vesalius_assay,
-      col_depth = col_depth,
+      col_resolution = col_resolution,
       dimensions = dimensions,
       embedding = embedding,
       use_center = use_center,
       verbose = verbose),
     "leiden" = leiden_segmentation(vesalius_assay,
       dimensions = dimensions,
-      col_depth = col_depth,
+      col_resolution = col_resolution,
+      embedding = embedding,
+      cores = cores,
+      verbose = verbose),
+    "louvain" = louvain_segmentation(vesalius_assay,
+      dimensions = dimensions,
+      col_resolution = col_resolution,
       embedding = embedding,
       cores = cores,
       verbose = verbose))
@@ -556,7 +566,7 @@ segment_image <- function(vesalius_assay,
 
 #' kmeans segmentation function
 #' @param vesalius a vesalius_assay
-#' @param colDepth integer or vector of positive integers.
+#' @param col_resolution integer or vector of positive integers.
 #' Colour depth used for segmentation.
 #' @inheritParams segment_image
 #' @details Run an interaive kmeans segmentation with the possibility 
@@ -577,7 +587,7 @@ segment_image <- function(vesalius_assay,
 #' @importFrom imager as.cimg
 kmeans_segmentation <- function(vesalius_assay,
   dimensions = seq(1, 3),
-  col_depth = 10,
+  col_resolution = 10,
   embedding = "last",
   use_center = TRUE,
   cores = 1,
@@ -615,7 +625,7 @@ kmeans_segmentation <- function(vesalius_assay,
   # Now lets cluster colours
   # Remember that here colours are your new active embedding values
   #--------------------------------------------------------------------------#
-  km <- kmeans(colours, col_depth, iter.max = 200, nstart = 50)
+  km <- kmeans(colours, col_resolution, iter.max = 200, nstart = 50)
   cluster <- km$cluster
   kcenters <- km$centers
   for (i in seq_len(ncol(colours))) {
@@ -683,9 +693,22 @@ top_cluster <- function(cluster) {
 }
 
 
+#' leiden segmentation
+#'
+#' using leiden clustering to cluster colors
+#' @param vesalius_assay a vesalius_assay object
+#' @param dimensions embedding dimensions used for clustering
+#' @param col_resolution clustering resolution used for leiden
+#' @param embedding embedding type used for clustering
+#' @param cores numeric describing the number of cores that should be used
+#' @param verbose logical if progress message should outputed
+#' @returns list with updated segmented embedding values 
+#' and segment territories.
+#' @importFrom igraph cluster_leiden
+#' @importFrom dplyr %>%
 leiden_segmentation <- function(vesalius_assay,
   dimensions = seq(1, 3),
-  col_depth = 0.01,
+  col_resolution = 0.01,
   embedding = "last",
   cores = 1,
   verbose = TRUE) {
@@ -695,8 +718,9 @@ leiden_segmentation <- function(vesalius_assay,
   graph <- compute_nearest_neighbor_graph(embeddings = embeddings,
     cores = cores)
   clusters <- igraph::cluster_leiden(graph, resolution_parameter = col_depth)
-  cluster <- data.frame("cluster" = clusters$membership)
-  cluster$barcodes <- clusters$names
+  cluster <- data.frame("cluster" = clusters$membership,
+    "barcodes" = clusters$names)
+
   for (i in unique(cluster)) {
     locs  <- rownames(embeddings) %in% cluster$barcodes[cluster == i]
     embeddings[locs, ] <- apply(embeddings[locs, ], 1, median)
@@ -710,7 +734,56 @@ leiden_segmentation <- function(vesalius_assay,
   return(list("segments" = embeddings, "clusters" = clusters))
 }
 
-compute_nearest_neighbor_graph <- function(embeddings, k = 10, cores = 1) {
+#' leiden segmentation
+#'
+#' using leiden clustering to cluster colors
+#' @param vesalius_assay a vesalius_assay object
+#' @param dimensions embedding dimensions used for clustering
+#' @param col_resolution clustering resolution used for leiden
+#' @param embedding embedding type used for clustering
+#' @param cores numeric describing the number of cores that should be used
+#' @param verbose logical if progress message should outputed
+#' @returns list with updated segmented embedding values 
+#' and segment territories.
+#' @importFrom  igraph cluster_louvain
+#' @importFrom dplyr %>%
+louvain_segmentation <- function(vesalius_assay,
+  dimensions = seq(1, 3),
+  col_resolution = 0.01,
+  embedding = "last",
+  cores = 1,
+  verbose = TRUE) {
+  coord <- get_tiles(vesalius_assay) %>%
+    filter(origin == 1)
+  embeddings <- check_embedding(vesalius_assay, embedding, dimensions)
+  graph <- compute_nearest_neighbor_graph(embeddings = embeddings,
+    cores = cores)
+  clusters <- igraph::cluster_louvain(graph, resolution = col_resolution)
+  cluster <- data.frame("cluster" = clusters$membership,
+    "barcodes" = clusters$names)
+
+  for (i in unique(cluster)) {
+    locs  <- rownames(embeddings) %in% cluster$barcodes[cluster == i]
+    embeddings[locs, ] <- apply(embeddings[locs, ], 1, median)
+  }
+  match_loc <- !is.na(match(cluster$barcodes, coord$barcodes))
+  clusters <- data.frame(coord,"cluster" = cluster$cluster[match_loc])
+  new_trial <- create_trial_tag(colnames(vesalius_assay@territories),
+    "Segment")
+  colnames(clusters) <- c(colnames(clusters)[seq_len(ncol(clusters) - 1)],
+    new_trial)
+  return(list("segments" = embeddings, "clusters" = clusters))
+}
+
+#' compute and greate nearest neighbor graph
+#' @param embeddings embedding matrix
+#' @param k numeric describing number of nearest neighbors
+#' @param cores numeric for number of cores to be used
+#' @return igraph object
+#' @importFrom RANN nn2
+#' @importFrom igraph graph_from_data_frame
+#' @importFrom parallel mclapply
+compute_nearest_neighbor_graph <- function(embeddings, k = 20, cores = 1) {
     knn <- RANN::nn2(embeddings, k = k)$nn.idx
     rownames(knn) <- rownames(embeddings)
     chunk <- chunker(knn, cores = cores)
@@ -719,6 +792,12 @@ compute_nearest_neighbor_graph <- function(embeddings, k = 10, cores = 1) {
     graph <- igraph::graph_from_data_frame(graph, directed = FALSE)
 }
 
+#' chunker
+#'
+#' creates data frame chunks to parse to multiple cores
+#' @param df data.frame to chunk list elements
+#' @param cores numeric number of chunks
+#' @returns list of data frame chunks
 chunker <- function(df, cores) {
     if (cores > 1) {
       chunk_ranges <- floor(seq(1, nrow(df), length.out = cores + 1))
@@ -735,6 +814,9 @@ chunker <- function(df, cores) {
     }
 }
 
+#' populate graph with network connections
+#' @param chunk data frame with nearest neighbors
+#' @returns data frame with network connections
 populate_graph <- function(chunk) {
   barcodes <- rownames(chunk)
   nxk <- ncol(chunk)
@@ -743,26 +825,28 @@ populate_graph <- function(chunk) {
   return(template)
 }
 
-#' isolating territories from segmented Vesalius images
-#' @param image data.frame - Vesalius formatted data.frame (i.e. barcodes,
-#' x,y,cc,value,tile) - Segmentation must have been applied beforehand!
+#' isolating territories from vesalius image segments
+#' @param vesalius_assay vesalius_Assay object
 #' @param method character describing barcode pooling method.
 #' Currently, only "distance" availble
-#' @param captureRadius numeric - proportion of maximum distance between
+#' @param trial character string describing which segmentation trial
+#' to use. Default is "last" which is the last segmentation trial used.
+#' @param capture_radius numeric - proportion of maximum distance between
 #' barcodes that will be used to pool barcodes together (range 0 - 1).
 #' @param global logical - If TRUE, territories will be numbered across all
 #' colour segments. If FALSE, territories will be numbered within each colour
 #' segment.
-#' @param minBar integer - minimum number of barcodes allowed in each territory
+#' @param min_spatial_index integer - minimum number of barcodes/spots/beads
+#' required in each territory
 #' @param verbose logical - progress message output.
-#' @details Segmented images in the form of a Vesalius formatted data frame are
-#' further separated into territories. This is accomplished by pooling barcodes
+#' @details Image segments can be further subdivided into 2D
+#' seperated territorires. This is accomplished by pooling barcodes
 #' that are associated with a colour cluster into territories based on the
 #' distance between each barcode.
 #'
-#' First, \code{isolateTerritories.array} considers the maximum distance
-#' between all beads. The captureRadius will define which proportion of this
-#' distance should be considered.
+#' First, \code{isolate_territories} considers the maximum distance
+#' between all beads. The \code{capture_radius} will define which 
+#' proportion of this distance should be considered.
 #'
 #' Second, a seed barcode will be selected and all barcodes that are within the
 #' capture distance of the seed barcode with be pooled together. This process
@@ -776,24 +860,24 @@ populate_graph <- function(chunk) {
 #' isolated territory. This territory contains all isolated territories
 #' regardless of colour cluster of origin.
 #'
-#' @return Returns a Vesalius data.frame with "barcodes","x","y","cc",
-#' "value","tile","cluster","territory".
-#' "cluster" represents the colour segment the pixel belongs to and "territory"
-#' describe the tissue territory after pooling.
+#' @return a vesalius_assay object
 #' @examples
 #' \dontrun{
-#' data(vesalius)
-#' # Seurat pre-processing
-#' image <- NormalizeData(vesalius)
-#' image <- FindVariableFeatures(image, nfeatures = 2000)
-#' image <- ScaleData(image)
-#' # converting to rgb
-#' image <- rgbPCA(image,slices = 1)
-#' image <- buildImageArray(image, sliceID=1)
-#' # One segmentation round
-#' image <- iterativeSegmentation.array(image)
-#' image <- isolateTerritories.array(image, minBar = 5)
-#' }
+#' data(Vesalius)
+#' # First we build a simple object
+#' ves <- build_vesalius_object(coordinates, counts)
+#' # We can do a simple run
+#' ves <- build_vesalius_embeddings(ves)
+#'
+#' # simple smoothing
+#' ves <- smooth_image(ves, dimensions = seq(1, 30))
+#' 
+#' # quick segmentation
+#' ves <- segment_image(ves, dimensions = seq(1, 30))
+#' 
+#' # isolate territories
+#' ves <- isolate_territories(ves)
+#'}
 #' @export
 isolate_territories <- function(vesalius_assay,
   method = "distance",

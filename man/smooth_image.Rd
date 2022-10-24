@@ -26,7 +26,7 @@ smooth_image(
 
 \item{dimensions}{numeric vector of latent space dimensions to use.}
 
-\item{embedding}{character string describing which embedding should 
+\item{embedding}{character string describing which embedding should
 be used.}
 
 \item{method}{character describing smoothing method to use "median" ,
@@ -49,7 +49,7 @@ used, Dirichlet otherwise (default true, Neumann)}
 
 \item{na.rm}{logical describing if NA values should be removed}
 
-\item{across_levels}{character - method used to account for multiple 
+\item{across_levels}{character - method used to account for multiple
 smoothing levels (see details). Select from: "min","mean", "max"}
 
 \item{verbose}{logical - progress message output.}
@@ -61,7 +61,7 @@ a vesalius_assay
 Apply iterative smoothing to Vesalius images
 }
 \details{
-The smooth_image function provides a series of options to smooth 
+The smooth_image function provides a series of options to smooth
 your grey scale images contained within the vesalius_assay object.
 
 You can select any number of dimensions to be smoothed. As default, we take
@@ -73,20 +73,20 @@ Vesalius provides 3 smoothing methods:
  * iso: compute gaussian kernel using sigma (Gussian SD defined by sigma)
 
 Vesalius can apply the same smoothing paramters over multiple iterations
-as defined by the iter argument. 
+as defined by the iter argument.
 It is also possible to provide multiple values to box and sigma as numeric
 vectors. Vesalius will run the smoothing over all provided values and return
-either the maximum, minimum or mean color value as described by the 
+either the maximum, minimum or mean color value as described by the
 across_levels argument.
 
-Please note that unless specified the smoothing always applied to 
+Please note that unless specified the smoothing always applied to
 the active embedding (default is last embedding computed). If you
-want to start over you can simply set \code{embedding} to which ever 
-embedding you want to work with. 
+want to start over you can simply set \code{embedding} to which ever
+embedding you want to work with.
 
-This will take the raw embedding values before any image processing 
+This will take the raw embedding values before any image processing
 has been applied. No need to re-run the embedding if you are not
-satisfied with the smoothing. 
+satisfied with the smoothing.
 
 For more information, we suggest reading through the imager vignette.
 }
@@ -95,12 +95,12 @@ For more information, we suggest reading through the imager vignette.
 data(Vesalius)
 # First we build a simple object
 ves <- build_vesalius_object(coordinates, counts)
-# We can do a simple run 
+# We can do a simple run
 ves <- build_vesalius_embeddings(ves)
 
-# simple smoothing 
+# simple smoothing
 ves <- smooth_image(ves, embedding = "PCA")
-# multiple rounds 
+# multiple rounds
 ves <- smooth_image(ves, iter = 3, embedding = "PCA")
 # accross level
 ves <- smooth_image(ves, box = seq(3,11),

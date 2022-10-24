@@ -2,7 +2,7 @@
 % Please edit documentation in R/image_processing.R
 \name{isolate_territories}
 \alias{isolate_territories}
-\title{isolating territories from segmented Vesalius images}
+\title{isolating territories from vesalius image segments}
 \usage{
 isolate_territories(
   vesalius_assay,
@@ -15,41 +15,41 @@ isolate_territories(
 )
 }
 \arguments{
+\item{vesalius_assay}{vesalius_Assay object}
+
 \item{method}{character describing barcode pooling method.
 Currently, only "distance" availble}
+
+\item{trial}{character string describing which segmentation trial
+to use. Default is "last" which is the last segmentation trial used.}
+
+\item{capture_radius}{numeric - proportion of maximum distance between
+barcodes that will be used to pool barcodes together (range 0 - 1).}
 
 \item{global}{logical - If TRUE, territories will be numbered across all
 colour segments. If FALSE, territories will be numbered within each colour
 segment.}
 
+\item{min_spatial_index}{integer - minimum number of barcodes/spots/beads
+required in each territory}
+
 \item{verbose}{logical - progress message output.}
-
-\item{image}{data.frame - Vesalius formatted data.frame (i.e. barcodes,
-x,y,cc,value,tile) - Segmentation must have been applied beforehand!}
-
-\item{captureRadius}{numeric - proportion of maximum distance between
-barcodes that will be used to pool barcodes together (range 0 - 1).}
-
-\item{minBar}{integer - minimum number of barcodes allowed in each territory}
 }
 \value{
-Returns a Vesalius data.frame with "barcodes","x","y","cc",
-"value","tile","cluster","territory".
-"cluster" represents the colour segment the pixel belongs to and "territory"
-describe the tissue territory after pooling.
+a vesalius_assay object
 }
 \description{
-isolating territories from segmented Vesalius images
+isolating territories from vesalius image segments
 }
 \details{
-Segmented images in the form of a Vesalius formatted data frame are
-further separated into territories. This is accomplished by pooling barcodes
+Image segments can be further subdivided into 2D
+seperated territorires. This is accomplished by pooling barcodes
 that are associated with a colour cluster into territories based on the
 distance between each barcode.
 
-First, \code{isolateTerritories.array} considers the maximum distance
-between all beads. The captureRadius will define which proportion of this
-distance should be considered.
+First, \code{isolate_territories} considers the maximum distance
+between all beads. The \code{capture_radius} will define which 
+proportion of this distance should be considered.
 
 Second, a seed barcode will be selected and all barcodes that are within the
 capture distance of the seed barcode with be pooled together. This process
@@ -65,16 +65,19 @@ regardless of colour cluster of origin.
 }
 \examples{
 \dontrun{
-data(vesalius)
-# Seurat pre-processing
-image <- NormalizeData(vesalius)
-image <- FindVariableFeatures(image, nfeatures = 2000)
-image <- ScaleData(image)
-# converting to rgb
-image <- rgbPCA(image,slices = 1)
-image <- buildImageArray(image, sliceID=1)
-# One segmentation round
-image <- iterativeSegmentation.array(image)
-image <- isolateTerritories.array(image, minBar = 5)
+data(Vesalius)
+# First we build a simple object
+ves <- build_vesalius_object(coordinates, counts)
+# We can do a simple run
+ves <- build_vesalius_embeddings(ves)
+
+# simple smoothing
+ves <- smooth_image(ves, dimensions = seq(1, 30))
+
+# quick segmentation
+ves <- segment_image(ves, dimensions = seq(1, 30))
+
+# isolate territories
+ves <- isolate_territories(ves)
 }
 }
