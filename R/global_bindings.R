@@ -6,4 +6,4 @@
 utils::globalVariables(c(".", "barcodes", "cc",
   "cc.y", "cluster", "p.value", "seurat_clusters",
   "territories", "territorries", "territory",
-   "tile", "tmpImg", "value", "x", "y", "img"))
+  "tile", "tmpImg", "value", "x", "y", "img"))

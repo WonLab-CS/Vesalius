@@ -5,81 +5,88 @@
 #-------------------------/Territory identity/---------------------------------#
 
 
-#' extractMarkers compute differential gene expression between selected
-#' territories.
-#' @param image a dataframe containing territory information
-#' @param counts seurat object containing counts. Alternatively, matrix or
-#' sparse matrix. Colnames as barcodes and rownames as genes.
+#' identify_markers computes differential observation expression 
+#' between selected territories.
+#' @param vesalius_assay a vesalius_assay
+#' @param trial character string - which territory trial that 
+#' should be used to select
+#' territorires. Default is last one computed
+#' @param norm_method charcater string - which normalisation method should 
+#' be used. 
 #' @param seed Integer or vector of integers describing territories to be
 #' included in group 1 for differential gene expression analysis.
 #' @param query Integer or vector of integers describing territories to be
 #' included in group 2 for differential gene expression analysis. Default = NULL
+#' @param cells character vector containing barcodes of cells of interest. 
 #' @param method character describing the statistical test to use in order to
-#' extract differantial gene expression (currently only wilcox and t.test)
-#' @param logFC numeric describing minimum log fold change value for
+#' extract differantial gene expression.
+#' Select from:
+#' "wilcox", "t.test", "chisq", "fisher.exact", "DEseq2", "QLF", "LRT","logit"
+#' @param log_fc numeric describing minimum log fold change value for
 #' differential gene expression. Default set at 0.25.
 #' @param pval numeric for pval threshold. Default set at 0.05
 #' @param minPct numeric defining the minimum percentage of cells that should
 #' contain any given gene.
-#' @param minBar integer defining minimum number of barcodes in a territory.
+#' @param min_spatial_index integer defining minimum number of 
+#' barcodes in a territory.
 #' @param morphologyFactorSeed Integer or vector of integers describing growth
 #' or shrink rate of seed territories
-#' @param morphologyFactorQuery Integer or vector of integers describing growth
-#' or shrink rate of query territories
 #' @param verbose logical - progress message output
-#' @details extractMarkers compares a set of selected territories to another set
-#' of selected territories. If one of territory sets does not contain enough
-#' barcodes, \code{extractMarkers} will return NULL.
+#' @details Identifying markers is a key aspect of spatial data analysis. 
+#' This functions let's you select which territory trial you which to use.
+#' Note that this can be any territory trial that you have run, including 
+#' color segments, isolated territories, dilated or eroded territories and
+#' layered territories. By default, \code{identify_markers} takes the last 
+#' one that has been computed.
+#' 
+#' The normalisation method refers to the normalisation method applied to
+#' the count matrices. If you use, DESeq2, QLF (edgeR) or LRT (edgeR), 
+#' raw counts will be selected and will ignore any cother command. 
+#' This is a requirement for both of these packages.
+#' 
+#' If you have some cells you are interested in comparing between territories,
+#' you can simply parse a character vector containing the barcodes of your 
+#' cells of interest. \code{identify_markers} will automatically retrieve cells
+#' in each territory and only use these cell for comparison.
+#' 
+#' Once the Differentially expressed genes/oberservations have been computed 
+#' they are stored in the vesalius_assay object. This allows you to run multiple
+#' trial and have all these trials sorted within your object.
+#' 
+#' To retrieve them from the object, you can use \code{\link{get_markers}}
 #'
-#' A seed territory (or territories) should always be
-#' provided. Query territories can be left as the default NULL. In this case,
-#' the seed territory will be compared to all remaining barcodes that are NOT
-#' present in the seed. Otherwise, seed territories will be compared to query
-#' territories after any morphological operations
-#' (see \code{territoryMorphology}.
-#'
-#' extractMarkers provides a way to manipulate each set of territories
-#' independtly as described in \code{morphologyFactorSeed} and
-#' \code{morphologyFactorQuery.}
-#'
-#' @return A data.frame (tibble) containing differential gene expression as well
-#' p.value,
-#' logFC,
-#' seedPct (percentage of cells containing gene in first group),
-#' queryPct (percentage of cells containing gene in second group),
-#' seedTerritory (territory used as group 1)
-#' queryTerritory (territory used as group 2)
+#' @return a vesalius_assay object
 #' @examples
-#'\dontrun{
-#' data(vesalius)
-#' # Seurat pre-processing
-#' image <- NormalizeData(vesalius)
-#' image <- FindVariableFeatures(image, nfeatures = 2000)
-#' image <- ScaleData(image)
-#' # converting to rgb
-#' image <- rgbPCA(image,slices = 1)
-#' image <- buildImageArray(image, sliceID=1)
-#' # One segmentation round
-#' image <- iterativeSegmentation.array(image)
-#' image <- isolateTerritories.array(image, minBar = 5)
-#' markers <- extractMarkers(image, vesalius, seed = 1, query = 2)
-#' }
+#' \dontrun{
+#' data(Vesalius)
+#' # First we build a simple object
+#' ves <- build_vesalius_object(coordinates, counts)
+#' # We can do a simple run
+#' ves <- build_vesalius_embeddings(ves)
+#'
+#' # simple smoothing
+#' ves <- smooth_image(ves, dimensions = seq(1, 30))
+#' 
+#' # quick segmentation
+#' ves <- segment_image(ves, dimensions = seq(1, 30))
+#' 
+#' # isolate territories
+#' ves <- isolate_territories(ves)
+#' 
+#' # identify markers
+#' ves <- identify_markers(ves, seed = c(3,5), query = 8)
+#' deg <- get_markers(ves)
+#'}
 #' @export
 
 
-extract_markers <- function(vesalius_assay,
+identify_markers <- function(vesalius_assay,
   trial = "last",
   norm_method = "last",
   seed = NULL,
   query = NULL,
   cells = NULL,
-  method = c("wilcox",
-    "t.test",
-    "chisq",
-    "fisher.exact",
-    "DEseq2",
-    "edgeR",
-    "logit"),
+  method = "wilcox",
   log_fc = 0.25,
   pval = 0.05,
   min_pct = 0.05,
@@ -104,7 +111,7 @@ extract_markers <- function(vesalius_assay,
     # Getting and setting territory categories
     #--------------------------------------------------------------------------#
     buffer <- dispatch_deg_group(ter, seed, query, cells, verbose)
-    if (is.null(buffer$seed) || is.null(buffer$query)){
+    if (is.null(buffer$seed) || is.null(buffer$query)) {
       return(NULL)
     }
     #--------------------------------------------------------------------------#
@@ -142,7 +149,7 @@ extract_markers <- function(vesalius_assay,
     slot = "DEG",
     append = TRUE)
     commit <- create_commit_log(arg_match = as.list(match.call()),
-      default = formals(extract_markers))
+      default = formals(identify_markers))
     vesalius_assay <- commit_log(vesalius_assay,
       commit,
       get_assay_names(vesalius_assay))
@@ -150,18 +157,21 @@ extract_markers <- function(vesalius_assay,
     return(vesalius_assay)
 }
 
-# Internal differantial gene expression function. Essentially all other DEG
-# Functions will call this one function to do diff analysis.
-# seed = group1 count data
-# query = group 2 count data
-# seedID = territory ID's for group 1
-# queryID = territory ID's for group 2
-# method = DEG stat method
-# logFC = fold change threshold
-# pval = p value threshold
-# minPct = minimum percentage of barcodes that should contain a given gene
-# minBar = minimum number of barcodes present in a territory
-# verbose  = progress message output
+#' Internal differantial gene expression function.
+#' 
+#' This function dispatches the groups to the various methods 
+#' That are avialbale 
+#' @param seed = group1 count data
+#' @param query = group 2 count data
+#' @param seed_id = territory ID's for group 1
+#' @param query_id = territory ID's for group 2
+#' @param method = DEG stat method
+#' @param log_fc = fold change threshold
+#' @param pval = p value threshold
+#' @param min_pct = minimum percentage of barcodes that should contain a
+#'  given gene
+#' @param min_spatial_index = minimum number of barcodes present in a territory
+#' @param verbose  = progress message output
 
 vesalius_deg <- function(seed,
   query,
@@ -194,17 +204,26 @@ vesalius_deg <- function(seed,
       "fisher.exact" = vesalius_deg_fisher(seed, seed_id, query, query_id,
         params),
       "DESeq2" = vesalius_deg_deseq2(seed, seed_id, query, query_id, params),
-      "edgeR" = vesalius_deg_edger(seed, seed_id, query, query_id, params),
+      "QLF" = vesalius_deg_edger(seed, seed_id, query, query_id, params, "QLF"),
+      "LRT" = vesalius_deg_edger(seed, seed_id, query, query_id, params, "LRT"),
       "logit" = vesalius_deg_logit(seed, seed_id, query, query_id, params))
     return(deg)
 }
 
+#' wilcox rank sum test for DEG
+#' @param seed count matrix for group 1
+#' @param seed_id territory used in group 1
+#' @param query count matrix for group 2
+#' @param query_id territory used in group 2
+#' @param params parameter value list (pval, log_fc, min_pct)
+#' @importFrom stats wilcox.test
+#' @importFrom dplyr filter
 vesalius_deg_wilcox <- function(seed, seed_id, query, query_id, params) {
   buffer <- get_deg_metrics(seed, query, params)
   pvals <- sapply(seq_len(nrow(buffer$seed)), function(idx, seed, query) {
-    return(wilcox.test(seed[idx,],query[idx,])$p.value)
+    return(suppressWarnings(wilcox.test(seed[idx, ], query[idx, ])$p.value))
   }, seed = buffer$seed, query = buffer$query)
-  deg <- tibble("genes" = buffer$genes,
+  deg <- data.frame("genes" = buffer$genes,
     "p_value" = pvals,
     "p_value_adj" = p.adjust(pvals),
     "seed_pct" = buffer$seed_pct,
@@ -216,12 +235,20 @@ vesalius_deg_wilcox <- function(seed, seed_id, query, query_id, params) {
   return(deg)
 }
 
+#' t.test for DEG
+#' @param seed count matrix for group 1
+#' @param seed_id territory used in group 1
+#' @param query count matrix for group 2
+#' @param query_id territory used in group 2
+#' @param params parameter value list (pval, log_fc, min_pct)
+#' @importFrom stats t.test
+#' @importFrom dplyr filter
 vesalius_deg_ttest <- function(seed, seed_id, query, query_id, params) {
   buffer <- get_deg_metrics(seed, query, params)
   pvals <- sapply(seq_len(nrow(buffer$seed)), function(idx, seed, query) {
-    return(t.test(seed[idx,],query[idx,])$p.value)
+    return(t.test(seed[idx, ], query[idx, ])$p.value)
   }, seed = buffer$seed, query = buffer$query)
-  deg <- tibble("genes" = buffer$genes,
+  deg <- data.frame("genes" = buffer$genes,
     "p_value" = pvals,
     "p_value_adj" = p.adjust(pvals),
     "seed_pct" = buffer$seed_pct,
@@ -233,6 +260,14 @@ vesalius_deg_ttest <- function(seed, seed_id, query, query_id, params) {
   return(deg)
 }
 
+#' chisq test for DEG
+#' @param seed count matrix for group 1
+#' @param seed_id territory used in group 1
+#' @param query count matrix for group 2
+#' @param query_id territory used in group 2
+#' @param params parameter value list (pval, log_fc, min_pct)
+#' @importFrom stats chisq.test
+#' @importFrom dplyr filter
 vesalius_deg_chisq <- function(seed, seed_id, query, query_id, params) {
   buffer <- get_deg_metrics(seed, query, params)
   pvals <- sapply(seq_len(nrow(buffer$seed)), function(idx, seed, query) {
@@ -243,7 +278,7 @@ vesalius_deg_chisq <- function(seed, seed_id, query, query_id, params) {
     }
     return(chisq.test(dat)$p.value)
   }, seed = buffer$seed, query = buffer$query)
-  deg <- tibble("genes" = buffer$genes,
+  deg <- data.frame("genes" = buffer$genes,
     "p_value" = pvals,
     "p_value_adj" = p.adjust(pvals),
     "seed_pct" = buffer$seed_pct,
@@ -255,6 +290,14 @@ vesalius_deg_chisq <- function(seed, seed_id, query, query_id, params) {
   return(deg)
 }
 
+#' Fisher's excat test for DEG
+#' @param seed count matrix for group 1
+#' @param seed_id territory used in group 1
+#' @param query count matrix for group 2
+#' @param query_id territory used in group 2
+#' @param params parameter value list (pval, log_fc, min_pct)
+#' @importFrom stats fisher.test
+#' @importFrom dplyr filter
 vesalius_deg_fisher <- function(seed, seed_id, query, query_id, params) {
   buffer <- get_deg_metrics(seed, query, params)
   pvals <- sapply(seq_len(nrow(buffer$seed)), function(idx, seed, query) {
@@ -265,7 +308,7 @@ vesalius_deg_fisher <- function(seed, seed_id, query, query_id, params) {
     }
     return(fisher.test(dat)$p.value)
   }, seed = buffer$seed, query = buffer$query)
-  deg <- tibble("genes" = buffer$genes,
+  deg <- data.frame("genes" = buffer$genes,
     "p_value" = pvals,
     "p_value_adj" = p.adjust(pvals),
     "seed_pct" = buffer$seed_pct,
@@ -277,6 +320,14 @@ vesalius_deg_fisher <- function(seed, seed_id, query, query_id, params) {
   return(deg)
 }
 
+#' DESeq negatove binomail for DEG
+#' @param seed count matrix for group 1
+#' @param seed_id territory used in group 1
+#' @param query count matrix for group 2
+#' @param query_id territory used in group 2
+#' @param params parameter value list (pval, log_fc, min_pct)
+#' @importFrom DESeq2 DESeq results
+#' @importFrom dplyr filter
 vesalius_deg_deseq2 <- function(seed, seed_id, query, query_id, params) {
   if (!require("DESeq2")) {
     stop("DESeq2 not installed!")
@@ -303,7 +354,7 @@ vesalius_deg_deseq2 <- function(seed, seed_id, query, query_id, params) {
     contrast = c("group", "seed", "query"),
     alpha = params$pval
   )
-  deg <- tibble("genes" = rownames(deg),
+  deg <- data.frame("genes" = rownames(deg),
     "p_value" = deg$pvalue,
     "p_value_adj" = deg$padj,
     "seed_pct" = buffer$seed_pct,
@@ -316,7 +367,24 @@ vesalius_deg_deseq2 <- function(seed, seed_id, query, query_id, params) {
   
 }
 
-vesalius_deg_edger <- function(seed, seed_id, query, query_id, params) {
+#' edgeR functions for DEG
+#' @param seed count matrix for group 1
+#' @param seed_id territory used in group 1
+#' @param query count matrix for group 2
+#' @param query_id territory used in group 2
+#' @param params parameter value list (pval, log_fc, min_pct)
+#' @param type either "QLF" for quasi-likelihood F-test or 
+#' "LRT" fpr likelihood ratio test
+#' @importFrom edgeR calcNormFactors estimateDisp
+#' @importFrom edgeR glmQLFit glmQLFTest glmFit glmLRT topTags
+#' @importFrom stats model.matrix
+#' @importFrom dplyr filter
+vesalius_deg_edger <- function(seed,
+  seed_id,
+  query,
+  query_id,
+  params,
+  type) {
   if (!require("edgeR")) {
     stop("edgeR not installed!")
   }
@@ -332,13 +400,18 @@ vesalius_deg_edger <- function(seed, seed_id, query, query_id, params) {
   # recommaned default - not much is said about single cell
   # TODO look into best paramters for edgeR for single cell data 
   #--------------------------------------------------------------------------#
-  deg <- calcNormFactors(deg)
-  design <- model.matrix(~group)
-  deg <- estimateDisp(deg, design)
-  fit <- glmFit(deg, design)
-  lrt <- glmLRT(fit, coef = 2)
-  deg <- topTags(lrt)
-  deg <- tibble("genes" = deg$Symbol,
+  deg <- edgeR::calcNormFactors(deg)
+  design <- stats::model.matrix(~deg@.Data[[2]]$group)
+  deg <- edgeR::estimateDisp(deg, design)
+  if (type == "QLF") {
+    fit <- edgeR::glmQLFit(deg, design)
+    mod_fit <- edgeR::glmQLFTest(fit)
+  } else {
+    fit <- edgeR::glmFit(deg, design)
+    mod_fit <- edgeR::glmLRT(fit)
+  }
+  deg <- edgeR::topTags(mod_fit, n = nrow(seed))@.Data[[1]]
+  deg <- data.frame("genes" = rownames(deg),
     "p_value" = deg$PValue,
     "p_value_adj" = deg$FDR,
     "seed_pct" = buffer$seed_pct,
@@ -350,14 +423,25 @@ vesalius_deg_edger <- function(seed, seed_id, query, query_id, params) {
   return(deg)
 }
 
+#' Logistic Regression for DEG
+#' @param seed count matrix for group 1
+#' @param seed_id territory used in group 1
+#' @param query count matrix for group 2
+#' @param query_id territory used in group 2
+#' @param params parameter value list (pval, log_fc, min_pct)
+#' @importFrom stats glm as.formula
+#' @importFrom lmtest lrtest
+#' @importFrom dplyr filter
 vesalius_deg_logit <- function(seed, seed_id, query, query_id, params) {
   #--------------------------------------------------------------------------#
   # Setting up data for loigt regression as suggested by the signac package 
   # I don't want to rebuild a seurat object as they do in their vignette
+  # NOTE that there will be a lot of work to do here!!!!
+  # It does not work completly for ATAC data. 
   #--------------------------------------------------------------------------#
   buffer <- get_deg_metrics(seed, query, params)
-  merged <- format_counts_for_logit(buffer$seed, buffer$query) 
-  pvals <- sapply(seq_len(nrow(merged)), function(idx, merged) {
+  merged <- format_counts_for_logit(buffer$seed, buffer$query)
+  pvals <- sapply(seq_len(nrow(merged[[1L]])), function(idx, merged) {
     model_data <- cbind("gene" = merged$merged[idx, ], merged$seed_query_info)
     gene_model <- as.formula("group ~ gene")
     gene_model <- glm(formula = gene_model,
@@ -369,7 +453,7 @@ vesalius_deg_logit <- function(seed, seed_id, query, query_id, params) {
       family = "binomial")
     return(lrtest(gene_model, null_model)$Pr[2])
   }, merged = merged)
-   deg <- tibble("genes" = buffer$genes,
+   deg <- data.frame("genes" = buffer$genes,
     "p_value" = pvals,
     "p_value_adj" = p.adjust(pvals),
     "seed_pct" = buffer$seed_pct,
@@ -381,6 +465,15 @@ vesalius_deg_logit <- function(seed, seed_id, query, query_id, params) {
   return(deg)
 }
 
+
+#' get DEG metrics from groups
+#' @param seed count matrix for group 1
+#' @param query count matrix for group 2
+#' @param params parameter list (pval,log_fc, min_pct)
+#' @details Computes basic metrics such as fold change 
+#' and percent of cells containing each gene. This functions 
+#' is used to filter out genes so we don't run differential 
+#' expression on all genes.
 get_deg_metrics <- function(seed, query, params) {
   #--------------------------------------------------------------------------#
   # this asumes that we receive normalised counts

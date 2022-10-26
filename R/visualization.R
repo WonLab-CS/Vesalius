@@ -151,21 +151,7 @@ territory_plot <- function(vesalius_assay,
     # My pure hatred for the standard ggplot rainbow colours has forced me
     # to use this palette instead - Sorry Hadely
     #--------------------------------------------------------------------------#
-    ter_col <- length(levels(territories$trial))
-    ter_pal <- colorRampPalette(c("#999999",
-      "#E69F00",
-      "#56B4E9",
-      "#009E73",
-      "#F0E442",
-      "#0072B2",
-      "#D55E00",
-      "#CC79A7"))
-
-    if (randomise) {
-        ter_col <- sample(ter_pal(ter_col), ter_col)
-    } else {
-        ter_col <- ter_pal(ter_col)
-    }
+    ter_col <- create_palette(territories, randomise)
     if (split) {
       ter_plot <- ggplot(territories, aes(x, y, col = trial)) +
           geom_point(size = cex_pt, alpha = 0.65) +
@@ -200,7 +186,29 @@ territory_plot <- function(vesalius_assay,
 }
 
 
-
+create_palette <- function(territories, randomise) {
+  ter_col <- length(levels(territories$trial))
+  base_colours <- c(
+      "#E69F00",
+      "#56B4E9",
+      "#009E73",
+      "#F0E442",
+      "#0072B2",
+      "#D55E00",
+      "#CC79A7",
+      "#999999")
+  if (ter_col < length(base_colours)) {
+      ter_pal <- colorRampPalette(base_colours[seq(1, ter_col)])
+  } else {
+      ter_pal <- colorRampPalette(base_colours)
+  }
+  if (randomise) {
+        ter_col <- sample(ter_pal(ter_col), ter_col)
+  } else {
+        ter_col <- ter_pal(ter_col)
+  }
+  return(ter_col)
+}
 
 #' viewGeneExpression - plot gene expression.
 #' @param image a Vesalius data frame containing barcodes, x, y, cc, value,
@@ -249,7 +257,7 @@ territory_plot <- function(vesalius_assay,
 #' @export
 
 
-view_gene_expression <- function(vesalius,
+view_gene_expression <- function(vesalius_assay,
   genes = NULL,
   norm_method = "last",
   trial = "last",
@@ -262,9 +270,9 @@ view_gene_expression <- function(vesalius,
     #--------------------------------------------------------------------------#
     # First lets get the norm method out and the associated counts
     #--------------------------------------------------------------------------#
-    counts <- check_norm(vesalius, norm_method)
-    territories <- check_territories(vesalius, trial) %>%
-      territory_dispatch(territory_1, territory_2, cells)
+    counts <- check_norm(vesalius_assay, norm_method)
+    territories <- check_territories(vesalius_assay, trial) %>%
+      dispatch_territory(territory_1, territory_2, cells)
     #--------------------------------------------------------------------------#
     # Getting genes
     # We will facet wrap if there is more than one.
@@ -363,20 +371,3 @@ view_gene_expression <- function(vesalius,
     return(gene_list)
 }
 
-
-
-
-
-
-
-## assuming a list after chunking images
-view_transform <- function(ves) {
-    for (i in seq_along(ves)) {
-        for (j in seq_along(ves[[i]])) {
-            plot(ves[[i]][[j]]$img, main = "Image")
-            plot(ves[[i]][[j]]$fft, main = "Imaginary")
-            sqrt(ves[[i]][[j]]$real^2 + ves[[i]][[j]]$fft^2) %>%
-              plot(main = "Power spectrum")
-        }
-    }
-}

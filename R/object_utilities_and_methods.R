@@ -18,10 +18,11 @@ update_vesalius_assay <- function(vesalius_assay,
         slot(vesalius_assay, slot) <- data
     }else if (append && slot == "territories") {
         if (!all(dim(slot(vesalius_assay, slot)) == c(0, 0))) {
-            df <- data.frame(slot(vesalius_assay, slot), data[, ncol(data)])
-            colnames(df)  <- c(colnames(slot(vesalius_assay, slot)),
-                colnames(data)[ncol(data)])
-            slot(vesalius_assay, slot) <- df
+            df <-  slot(vesalius_assay, slot)
+            data <- data[match(df$barcodes, data$barcodes), ]
+            d <- data.frame(df, data[, ncol(data)])
+            colnames(d)  <- c(colnames(df), colnames(data)[ncol(data)])
+            slot(vesalius_assay, slot) <- d
         } else {
             slot(vesalius_assay, slot) <- data
         }
@@ -155,32 +156,55 @@ create_trial_tag <- function(trials, tag) {
 }
 
 
-
+#' @export
 get_assay_names <- function(vesalius_assay) {
     return(vesalius_assay@assay)
 }
 
 
 
-
+#' @export
 get_counts <- function(vesalius_assay, type = "raw") {
     counts <- slot(vesalius_assay, "counts")[[type]]
     return(counts)
 }
 
 
-
+#' @export
 get_tiles <- function(vesalius_assay) {
     tiles <- slot(vesalius_assay, "tiles")
     return(tiles)
 }
 
+#' @export
 get_territories <- function(vesalius_assay) {
     territories <- slot(vesalius_assay, "territories")
     return(territories)
 }
 
-
+#' @export
+get_markers <- function(vesalius_assay, trial = "last") {
+    deg <- vesalius_assay@DEG %||%
+        stop("No DEGs have been computed!")
+    if (trial == "last") {
+        trial <- tail(names(deg), 1)
+        return(deg[[trial]])
+    } else {
+        in_deg <- grep(pattern = trial, x = names(deg))
+        if (length(in_deg) == 0) {
+            stop(paste(deparse(substitute(trial)),
+                ": Unknown embedding selected!"))
+        } else if (length(in_deg) > 1) {
+            warning(paste("More than 1", deparse(substitute(trial)), "embedding.
+            Vesalius will return DEG list"))
+            trial <- names(deg)[in_deg]
+            return(deg[trial])
+        } else {
+            trial <- names(deg)[in_deg]
+            return(deg[[trial]])
+        }
+    }
+}
 
 view_trial_summary <- function(vesalius_assay) {
     trials <- lapply(c("Segment", "Territory", "Morphology", "Layer"),

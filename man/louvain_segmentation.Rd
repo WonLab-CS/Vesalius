@@ -2,7 +2,7 @@
 % Please edit documentation in R/image_processing.R
 \name{louvain_segmentation}
 \alias{louvain_segmentation}
-\title{leiden segmentation}
+\title{louvain segmentation}
 \usage{
 louvain_segmentation(
   vesalius_assay,

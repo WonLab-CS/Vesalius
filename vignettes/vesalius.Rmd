@@ -164,7 +164,7 @@ according to how many dimensions you wish to process.
 
 ## Image segmentation
 
-Vesalius will attempts to segment the images intocolor segments. 
+Vesalius will attempts to segment the images into color segments. 
 Vesalius use a kmeans clustering approach  to segment grey scale images. 
 Note that the segmentation here is applied to the whole stack and not individually. 
 
@@ -208,7 +208,7 @@ vesalius <- isolate_territories(vesalius, capture_radius = 0.05)
 Now we can have a look at the isolated territories.
 
 ```{r plot_territories, eval = TRUE, echo = TRUE}
-p6 <- territory_plot(vesalius, cex_pt = 2)
+p6 <- territory_plot(vesalius, cex_pt = 3.5)
 p6
 ```
 
@@ -216,5 +216,21 @@ p6
 Once we have our territories, we can compare the expression of genes between territories. 
 
 ```{r compare_territories, eval = TRUE, echo = TRUE}
-vesalius <- extract_markers(vesalius, seed = c(3, 7), query = 8, method = "logit")
+vesalius <- identify_markers(vesalius, seed = c(3,5), query = 8)
+deg <- get_markers(vesalius)
+```
+
+And finally we can visualise the expression of our genes of interest. You can parse more than one gene.
+Here we show the overall expression profile of **Malat1** but also its mean expression 
+in each territory. 
+```{r view_DEG, eval = TRUE, echo = TRUE, fig.width = 12,fig.height = 4}
+
+p7 <- view_gene_expression(vesalius, genes = "Malat1")
+p8 <- view_gene_expression(vesalius, genes = "Malat1", as_layer = TRUE)
+p7 + p8
+```
+
+
+```{r, session, eval = TRUE, echo = TRUE}
+sessionInfo()
 ```

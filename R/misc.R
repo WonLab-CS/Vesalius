@@ -28,8 +28,10 @@ select_similar <- function(img, cols, segment, threshold = "auto") {
   img <- as.cimg(img)
   return(img)
 }
+
+
 detect_edges <- function(img) {
-  img <- img %>% 
+  img <- img %>%
     imgradient("xy") %>%
     enorm() %>%
     add() %>%

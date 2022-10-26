@@ -210,6 +210,7 @@ format_counts_for_deseq2 <- function(seed, query) {
 
 format_counts_for_edger <- function(seed, query) {
   merged <- cbind(seed, query)
+  rownames(merged) <- rownames(seed)
   group <- c(rep("seed", ncol(seed)), rep("query", ncol(query)))
   merged <- edgeR::DGEList(counts = merged, group = group)
   return(merged)
@@ -218,8 +219,7 @@ format_counts_for_edger <- function(seed, query) {
 format_counts_for_logit <- function(seed, query) {
   seed_tag <- colnames(seed)
   query_tag <- colnames(query)
-  browser()
-  merged <- rbind(seed, query)
+  merged <- cbind(seed, query)
   seed_query_info <- data.frame(row.names = c(seed_tag, query_tag))
   seed_query_info[seed_tag, "group"] <- "seed"
   seed_query_info[query_tag, "group"] <- "query"
@@ -241,7 +241,7 @@ format_call <- function(call) {
       call[[el]] <- tmp
     }
   }
-  names(call) <- c("fun", names(call)[seq(2,length(call))])
+  names(call) <- c("fun", names(call)[seq(2, length(call))])
   return(as.list(call))
 }
 

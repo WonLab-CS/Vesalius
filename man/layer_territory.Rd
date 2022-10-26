@@ -2,62 +2,74 @@
 % Please edit documentation in R/morphology_operators.R
 \name{layer_territory}
 \alias{layer_territory}
-\title{extractIdentity compute differentially expressed genes for each territory}
+\title{layer_territory generates layer from the outside to the inside of 
+a territory}
 \usage{
 layer_territory(
-  vesalius,
+  vesalius_assay,
   territory = NULL,
   trial = "last",
   layer_depth = NULL,
   morphology_factor = 0,
-  verbose = RUE
+  verbose = TRUE
 )
 }
 \arguments{
-\item{verbose}{logical - progress message output.}
+\item{vesalius_assay}{vesalius_assay object}
 
-\item{image}{data.frame - Vesalius formatted data.frame (i.e. barcodes,
-x,y,cc,value,cluster, territory)}
+\item{territory}{integer or vector of integers desrcining territories 
+to morph.}
 
-\item{seedTerritory}{integer describing which territory should be layered}
+\item{trial}{character string - which territory trial that 
+should be used to select
+territorires. Default is last one computed}
 
-\item{layerDepth}{integer describing maximum number of layers}
+\item{layer_depth}{integer describing the number of final layers.}
 
-\item{morphologyFactor}{integer or vector of integers describing growth
+\item{morphology_factor}{integer or vector of integers describing growth
 and/or shrink extent.}
+
+\item{verbose}{logical - progress message output.}
 }
 \value{
-Returns a Vesalius data.frame with "barcodes","x","y","cc",
-"value","tile","cluster","territory" and "layer".
-Layer describes the layer to which a barcode belongs.
+a vesalius_assay
 }
 \description{
-extractIdentity compute differentially expressed genes for each territory
+layer_territory generates layer from the outside to the inside of 
+a territory
 }
 \details{
-To divide a territory into layers, one approach is to use edge
-detection. Terriotries are converted to a black and white image containing
-only the territories of interest. Sobel edge detection is applied along the
-x and y axis and all barcodes sharing a pixel with the edge are pooled into
-a layer. The process is applied until no more barcodes can be pooled into
-a layer.
+Each territory can be subdivided into a series of layers. 
+Each layer will be considered a seperate territory and can be treated as
+such for functions such as \code{\link{identify_markers}} and 
+\code{\link{territory_plot}}.
 
-Morphological operators are applied to the isolated territory prior to
-layering (see \code{territoryMorphing}).
+However, all other territories present will be labled as "out". 
+This means that for the time being you can only work with a single
+territory at a time.
 }
 \examples{
 \dontrun{
-data("vesalius")
-# Seurat pre-processing
-image <- NormalizeData(vesalius)
-image <- FindVariableFeatures(image, nfeatures = 2000)
-image <- ScaleData(image)
-# converting to rgb
-image <- rgbPCA(image,slices = 1)
-image <- buildImageArray(image, sliceID=1)
-# One segmentation round
-image <- iterativeSegmentation.array(image)
-image <- isolateTerritories.array(image, minBar = 5)
-layer <- layerTerritory.edge(image, seedTerritory = 1)
+data(Vesalius)
+# First we build a simple object
+ves <- build_vesalius_object(coordinates, counts)
+# We can do a simple run
+ves <- build_vesalius_embeddings(ves)
+
+# simple smoothing
+ves <- smooth_image(ves, dimensions = seq(1, 30))
+
+# quick segmentation
+ves <- segment_image(ves, dimensions = seq(1, 30))
+
+# isolate territories
+ves <- isolate_territories(ves)
+
+# morph territory
+
+ves <- layer_territory(ves)
+
+# view territory morphing
+territory_plot(ves)
 }
 }

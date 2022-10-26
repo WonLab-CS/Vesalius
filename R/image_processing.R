@@ -726,7 +726,7 @@ leiden_segmentation <- function(vesalius_assay,
     embeddings[locs, ] <- apply(embeddings[locs, ], 1, median)
   }
   match_loc <- !is.na(match(cluster$barcodes, coord$barcodes))
-  clusters <- data.frame(coord,"cluster" = cluster$cluster[match_loc])
+  clusters <- data.frame(coord, "cluster" = cluster$cluster[match_loc])
   new_trial <- create_trial_tag(colnames(vesalius_assay@territories),
     "Segment")
   colnames(clusters) <- c(colnames(clusters)[seq_len(ncol(clusters) - 1)],
@@ -734,7 +734,7 @@ leiden_segmentation <- function(vesalius_assay,
   return(list("segments" = embeddings, "clusters" = clusters))
 }
 
-#' leiden segmentation
+#' louvain segmentation
 #'
 #' using leiden clustering to cluster colors
 #' @param vesalius_assay a vesalius_assay object
@@ -767,7 +767,7 @@ louvain_segmentation <- function(vesalius_assay,
     embeddings[locs, ] <- apply(embeddings[locs, ], 1, median)
   }
   match_loc <- !is.na(match(cluster$barcodes, coord$barcodes))
-  clusters <- data.frame(coord,"cluster" = cluster$cluster[match_loc])
+  clusters <- data.frame(coord, "cluster" = cluster$cluster[match_loc])
   new_trial <- create_trial_tag(colnames(vesalius_assay@territories),
     "Segment")
   colnames(clusters) <- c(colnames(clusters)[seq_len(ncol(clusters) - 1)],
@@ -915,7 +915,6 @@ isolate_territories <- function(vesalius_assay,
     # and run the pooling algorithm
     #--------------------------------------------------------------------------#
     segment <- unique(ter$segment)
-
     for (i in seq_along(segment)) {
       message_switch("ter_pool", verbose, ter = i)
       #------------------------------------------------------------------------#
@@ -972,17 +971,23 @@ isolate_territories <- function(vesalius_assay,
 
 
 
-
+#' distance pooling beads of colour segment into seperate territories
+#' @param img data frame contain all barcodes of a single sgement
+#' @param capture_radius numeric proportion of max distance between beads
+#' to use as distance threshold between beads
+#' @param min_spatial_index numeric minimum number of beads that should
+#' be contained in a territory. 
+#' @details Beads that are too far away or bead cluster that are below
+#' the minimum number of spatial indices will all be pooled under the
+#' isolated label. Note that this label is used across color segments.
+#' @importFrom dplyr %>% distinct
 distance_pooling <- function(img, capture_radius, min_spatial_index) {
     #--------------------------------------------------------------------------#
     # Select center point of each tile for only one channel
     # Dont need to run it for all channels
     #--------------------------------------------------------------------------#
-
     img_copy <- img  %>% distinct(barcodes, .keep_all = TRUE)
     if (nrow(img_copy) < 1) { return(NULL) }
-
-
     #--------------------------------------------------------------------------#
     # Compute distances
     #--------------------------------------------------------------------------#
@@ -1071,7 +1076,7 @@ distance_pooling <- function(img, capture_radius, min_spatial_index) {
                 # There are still some new barcodes to pool
                 # lets do some more looping then
                 #------------------------------------------------------#
-                pool <- unique(c(pool,new_pool[!overlap]))
+                pool <- unique(c(pool, new_pool[!overlap]))
                 inter <- unique(new_pool[!overlap])
                 converge <- FALSE
               } else {

@@ -162,7 +162,7 @@ check_territories <- function(vesalius_assay, trial) {
         stop("No territories have been computed!")
     if (trial == "last") {
       trial <- colnames(territories)[ncol(territories)]
-    } else if (length(grep(x = colnames(vesalius@territories),
+    } else if (length(grep(x = colnames(vesalius_assay@territories),
         pattern = trial)) == 0) {
       stop(paste(deparse(substitute(trial)), "is not in territory data frame"))
     }
@@ -185,6 +185,7 @@ check_segments <- function(vesalius_asssay, trial = "last") {
             paste(deparse(substitute(trial)), "is not in territory data frame")
         )
     }
+    
     territories <- territories[, c("barcodes", "x", "y", trial)]
     colnames(territories) <- c("barcodes", "x", "y", "segment")
     return(territories)

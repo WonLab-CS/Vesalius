@@ -2,10 +2,10 @@
 % Please edit documentation in R/morphology_operators.R
 \name{territory_morphing}
 \alias{territory_morphing}
-\title{territoryMorphing applies morphological operators to a set of territoriees}
+\title{territory_morphing applies morphological operators to a set of territoriees}
 \usage{
 territory_morphing(
-  vesalius,
+  vesalius_assay,
   territory = NULL,
   trial = "last",
   morphology_factor = 0,
@@ -13,26 +13,25 @@ territory_morphing(
 )
 }
 \arguments{
-\item{verbose}{logical - progress message output.}
+\item{vesalius_assay}{vesalius_assay object}
 
-\item{territories}{data.frame - Vesalius formatted data.frame (i.e. barcodes,
-x,y,cc,value,cluster, territory) only containing territories of interest.}
+\item{territory}{integer or vector of integers desrcining territories 
+to morph.}
 
-\item{morphologyFactor}{integer or vector of integers describing growth
+\item{trial}{character string - which territory trial that 
+should be used to select
+territorires. Default is last one computed}
+
+\item{morphology_factor}{integer or vector of integers describing growth
 and/or shrink extent.}
 
-\item{image}{data.frame - Vesalius formatted data.frame (i.e. barcodes,
-x,y,cc,value,cluster, territory) containing all territories.}
+\item{verbose}{logical - progress message output.}
 }
 \value{
-Returns a Vesalius data.frame with "barcodes","x","y","cc",
-"value","tile","cluster", and "territory".
-This data.frame will contain the new territory after morphological operators
-and will contain barcodes associated with other territories and colour
-segments.
+a vesalius_assay
 }
 \description{
-territoryMorphing applies morphological operators to a set of territoriees
+territory_morphing applies morphological operators to a set of territoriees
 }
 \details{
 Territory morphing can manipulate territories by growing, shrinking,
@@ -45,25 +44,27 @@ Cleaning = shrink followed by grow.
 }
 \examples{
 \dontrun{
-data(vesalius)
-# Seurat pre-processing
-image <- NormalizeData(vesalius)
-image <- FindVariableFeatures(image, nfeatures = 2000)
-image <- ScaleData(image)
-# converting to rgb
-image <- rgbPCA(image,slices = 1)
-image <- buildImageArray(image, sliceID=1)
-# One segmentation round
-image <- iterativeSegmentation.array(image)
-image <- isolateTerritories.array(image, minBar = 5)
-ter <- image \%>\% filter(territory == 1)
-# grow
-g <- territoryMorphing(ter,morphologyFactor = 5, image = image)
-# shrink
-s <- territoryMorphing(ter,morphologyFactor = -5, image = image)
-# fill
-f <- territoryMorphing(ter,morphologyFactor = c(5,-5), image = image)
-# clean
-c <- territoryMorphing(ter,morphologyFactor = c(-5,5), image = image)
+data(Vesalius)
+# First we build a simple object
+ves <- build_vesalius_object(coordinates, counts)
+# We can do a simple run
+ves <- build_vesalius_embeddings(ves)
+
+# simple smoothing
+ves <- smooth_image(ves, dimensions = seq(1, 30))
+
+# quick segmentation
+ves <- segment_image(ves, dimensions = seq(1, 30))
+
+# isolate territories
+ves <- isolate_territories(ves)
+
+# morph territory
+
+ves <- territory_morphing(ves, 8, morphology_factor = 30)
+ves <- terriotry_morphing(ves, 1, morpholgy_factor = c(-15, 15))
+
+# view territory morphing
+territory_plot(ves)
 }
 }

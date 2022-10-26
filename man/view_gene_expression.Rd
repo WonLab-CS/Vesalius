@@ -5,7 +5,7 @@
 \title{viewGeneExpression - plot gene expression.}
 \usage{
 view_gene_expression(
-  vesalius,
+  vesalius_assay,
   genes = NULL,
   norm_method = "last",
   trial = "last",
