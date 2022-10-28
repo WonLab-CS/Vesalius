@@ -8,6 +8,8 @@ log_norm(counts, nfeatures)
 }
 \arguments{
 \item{counts}{seurat object containing counts}
+
+\item{nfeatures}{number of top variable features to select}
 }
 \value{
 list with seurat object used later and normalised counts to be stored

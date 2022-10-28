@@ -25,13 +25,12 @@
 #' @param log_fc numeric describing minimum log fold change value for
 #' differential gene expression. Default set at 0.25.
 #' @param pval numeric for pval threshold. Default set at 0.05
-#' @param minPct numeric defining the minimum percentage of cells that should
-#' contain any given gene.
+#' @param min_pct numeric defining the minimum percentage of cells that should
+#' contain any given gene. Deault set at 0.05
 #' @param min_spatial_index integer defining minimum number of 
 #' barcodes in a territory.
-#' @param morphologyFactorSeed Integer or vector of integers describing growth
-#' or shrink rate of seed territories
 #' @param verbose logical - progress message output
+#' @param ... other parameters parsed to DESeq2 or edgeR (not functional)
 #' @details Identifying markers is a key aspect of spatial data analysis. 
 #' This functions let's you select which territory trial you which to use.
 #' Note that this can be any territory trial that you have run, including 
@@ -92,7 +91,6 @@ identify_markers <- function(vesalius_assay,
   min_pct = 0.05,
   min_spatial_index = 10,
   verbose = TRUE,
-  cores = 1,
   ...) {
     simple_bar(verbose)
     args <- list(...)
@@ -172,6 +170,7 @@ identify_markers <- function(vesalius_assay,
 #'  given gene
 #' @param min_spatial_index = minimum number of barcodes present in a territory
 #' @param verbose  = progress message output
+#' @param args arguments parse to (...) in upper level function (not functional)
 
 vesalius_deg <- function(seed,
   query,

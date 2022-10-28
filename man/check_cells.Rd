@@ -7,15 +7,15 @@
 check_cells(territory_barcodes, ter, cell_barcodes, verbose)
 }
 \arguments{
+\item{territory_barcodes}{character vector containing spatial barcodes
+of territories}
+
 \item{ter}{string selected territories in the form of chacater string}
 
 \item{cell_barcodes}{character vector containing barcodes of cells
 of interest}
 
 \item{verbose}{logical if progress message should be outputed}
-
-\item{territoty_barcodes}{character vector containing spatial barcodes
-of territories}
 }
 \value{
 charcater vector of common barcodes between territory 

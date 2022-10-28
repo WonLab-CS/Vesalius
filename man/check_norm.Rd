@@ -4,16 +4,16 @@
 \alias{check_norm}
 \title{check if select norm method is an available option}
 \usage{
-check_norm(vesalius_asssay, norm_method, method = NULL, verbose = TRUE)
+check_norm(vesalius_assay, norm_method, method = NULL, verbose = TRUE)
 }
 \arguments{
+\item{vesalius_assay}{a vesalius_assay}
+
 \item{norm_method}{string - selected normalisation parsed by user}
 
 \item{method}{DEG method}
 
 \item{verbose}{logical if progress message should be ouputed}
-
-\item{vesalius_assay}{a vesalius_assay}
 }
 \value{
 count matrix

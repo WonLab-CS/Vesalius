@@ -16,7 +16,6 @@ equalize_image(
   lambda = 0.1,
   up = 100,
   down = 10,
-  cores = 1,
   verbose = TRUE
 )
 }
@@ -52,8 +51,6 @@ Used with EqualizeDP.}
 
 \item{down}{numeric color value threshold in the lower limit.
 Used with EqualizeDP.}
-
-\item{cores}{numeric number of cores to be used}
 
 \item{verbose}{logical - progress message output.}
 }

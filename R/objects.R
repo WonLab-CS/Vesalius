@@ -30,6 +30,8 @@ setClassUnion("DEG", c("list", NULL))
 #' @slot territories data.frame containing spatial color segments, spatial
 #' territories, or layers.
 #' @slot DEG list of data.frame for each differentially gene expression trial
+#' @slot counts list that containing count matrices. Raw and normalised will
+#' be stored here and named by the normalisation method used. 
 #' @slot image list containing associated microscopy images (NOT implemented)
 #' @slot log list containing analysis history of the object. 
 #' 

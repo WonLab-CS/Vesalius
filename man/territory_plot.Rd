@@ -26,7 +26,7 @@ separate panels}
 
 \item{cex}{numeric describing font size multiplier.}
 
-\item{cex.pt}{numeric describing point size multiplier.}
+\item{cex_pt}{numeric describing point size multiplier.}
 }
 \value{
 a ggplot object

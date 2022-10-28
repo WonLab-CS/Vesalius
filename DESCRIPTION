@@ -33,7 +33,8 @@ Imports:
     tvR,
     Matrix,
     RColorBrewer,
-    parallel,
+    future,
+    future.apply,
     imagerExtra,
     methods,
     Signac,
@@ -52,6 +53,7 @@ Suggests:
     knitr,
     RUnit,
     rmarkdown,
+    patchwork,
     testthat (>= 3.0.0)
 Encoding: UTF-8
 LazyData: true

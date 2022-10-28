@@ -4,12 +4,12 @@
 \alias{check_segments}
 \title{check if segment selection is a valid option}
 \usage{
-check_segments(vesalius_asssay, trial = "last")
+check_segments(vesalius_assay, trial = "last")
 }
 \arguments{
-\item{trial}{string - trial selection parse by user}
-
 \item{vesalius_assay}{a vesalius_assay object}
+
+\item{trial}{string - trial selection parse by user}
 }
 \value{
 data frame contain selected trial

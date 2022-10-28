@@ -30,6 +30,9 @@ territories, or layers.}
 
 \item{\code{DEG}}{list of data.frame for each differentially gene expression trial}
 
+\item{\code{counts}}{list that containing count matrices. Raw and normalised will
+be stored here and named by the normalisation method used.}
+
 \item{\code{image}}{list containing associated microscopy images (NOT implemented)}
 
 \item{\code{log}}{list containing analysis history of the object.}

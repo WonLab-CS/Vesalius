@@ -10,12 +10,11 @@ kmeans_segmentation(
   col_resolution = 10,
   embedding = "last",
   use_center = TRUE,
-  cores = 1,
   verbose = TRUE
 )
 }
 \arguments{
-\item{vesalius_assay}{a vesalius_assay object}
+\item{vesalius_assay}{a vesalius_assay}
 
 \item{dimensions}{numeric vector of latent space dimensions to use.}
 
@@ -28,11 +27,7 @@ be used.}
 \item{use_center}{logical - If TRUE, only the center pixel value will be used
 during segmentation. If FALSE, all pixels will be used (see details)}
 
-\item{cores}{numeric - number of cores that should be used}
-
 \item{verbose}{logical - progress message output.}
-
-\item{vesalius}{a vesalius_assay}
 }
 \value{
 list containing segmented image as an active embedding and

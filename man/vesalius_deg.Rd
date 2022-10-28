@@ -39,6 +39,8 @@ given gene}
 \item{min_spatial_index}{= minimum number of barcodes present in a territory}
 
 \item{verbose}{= progress message output}
+
+\item{args}{arguments parse to (...) in upper level function (not functional)}
 }
 \description{
 This function dispatches the groups to the various methods 

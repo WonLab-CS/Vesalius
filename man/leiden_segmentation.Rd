@@ -9,7 +9,6 @@ leiden_segmentation(
   dimensions = seq(1, 3),
   col_resolution = 0.01,
   embedding = "last",
-  cores = 1,
   verbose = TRUE
 )
 }
@@ -21,8 +20,6 @@ leiden_segmentation(
 \item{col_resolution}{clustering resolution used for leiden}
 
 \item{embedding}{embedding type used for clustering}
-
-\item{cores}{numeric describing the number of cores that should be used}
 
 \item{verbose}{logical if progress message should outputed}
 }

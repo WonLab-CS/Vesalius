@@ -16,8 +16,8 @@ process_counts(
 \arguments{
 \item{counts}{count matrix in the form of a sparse matrix}
 
-\item{assay}{character string describing the assay that is being pre-processed
-in the vesaliusObject or vesalius_assay}
+\item{assay}{character string describing the assay that is being 
+pre-processed in the vesaliusObject or vesalius_assay}
 
 \item{method}{character string describing which normalisation method to use.
 One of the following "log_norm", "SCT", "TFIDF", "raw".}

@@ -4,14 +4,12 @@
 \alias{embed_pcal}
 \title{embed PCA loading values}
 \usage{
-embed_pcal(counts, dimensions, cores = 1, verbose = TRUE)
+embed_pcal(counts, dimensions, verbose = TRUE)
 }
 \arguments{
 \item{counts}{Seurat object containing normalised counts}
 
 \item{dimensions}{number dimension to retain from PCA}
-
-\item{cores}{numeric number of cores to use}
 
 \item{verbose}{logical if progress messages should be outputed}
 }

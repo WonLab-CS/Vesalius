@@ -11,8 +11,6 @@ regularise_image(
   lambda = 1,
   niter = 100,
   normalise = TRUE,
-  na.rm = TRUE,
-  cores = 1,
   verbose = TRUE
 )
 }
@@ -33,12 +31,7 @@ parameter (see details)}
 \item{normalise}{logical - If TRUE, regularized colour values will be
 min max normalised.}
 
-\item{na.rm}{logical - If TRUE, NAs are removed}
-
 \item{verbose}{logical - progress message output.}
-
-\item{invert}{logical - If TRUE, colours will be inverted i.e. 1 - colorValue
-(background set to 1 instead of 0).}
 }
 \value{
 a vesalius_assay

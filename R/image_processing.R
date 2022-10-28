@@ -57,7 +57,7 @@
 #'
 #' @return a vesalius_assay
 #' @examples
-#' #' \dontrun{
+#' \dontrun{
 #' data(vesalius)
 #' # First we build a simple object
 #' ves <- build_vesalius_object(coordinates, counts)
@@ -74,7 +74,7 @@
 #'  embedding = "PCA")
 #'}
 #' @export
-#' @importFrom parallel mclapply
+#' @importFrom future.apply future_lapply
 smooth_image <- function(vesalius_assay,
   dimensions = seq(1, 3),
   embedding = "last",
@@ -87,7 +87,6 @@ smooth_image <- function(vesalius_assay,
   gaussian = TRUE,
   na.rm = FALSE,
   across_levels = "min",
-  cores = 1,
   verbose = TRUE) {
     #--------------------------------------------------------------------------#
     # shifting format
@@ -111,7 +110,7 @@ smooth_image <- function(vesalius_assay,
     # required.
     #--------------------------------------------------------------------------#
     message_switch("smooth", verbose)
-    images <- parallel::mclapply(images, internal_smooth,
+    images <- future_lapply(images, internal_smooth,
       method = method,
       iter = iter,
       sigma = sigma,
@@ -120,8 +119,7 @@ smooth_image <- function(vesalius_assay,
       neuman = neuman,
       gaussian = gaussian,
       na.rm = na.rm,
-      across_levels = across_levels,
-      mc.cores = cores)
+      across_levels = across_levels)
     #--------------------------------------------------------------------------#
     # shifting format
     # c_to_ves => format.R
@@ -228,7 +226,6 @@ internal_smooth <- function(image,
 #' Used with EqualizeDP.
 #' @param down numeric color value threshold in the lower limit.
 #' Used with EqualizeDP.
-#' @param cores numeric number of cores to be used 
 #' @param verbose logical - progress message output.
 #' @details Histogram equalization ensures that image details are amplified.
 #' In turn, territories may be extract with greater precision. We recommend
@@ -254,7 +251,7 @@ internal_smooth <- function(image,
 #' @importFrom imagerExtra SPE
 #' @importFrom imagerExtra EqualizeDP
 #' @importFrom imagerExtra EqualizeADP
-#' @importFrom parallel mclapply
+#' @importFrom future.apply future_lapply
 
 equalize_image <- function(vesalius_assay,
   dimensions = seq(1, 3),
@@ -267,7 +264,6 @@ equalize_image <- function(vesalius_assay,
   lambda = 0.1,
   up = 100,
   down = 10,
-  cores = 1,
   verbose = TRUE) {
     simple_bar(verbose)
     #--------------------------------------------------------------------------#
@@ -290,20 +286,14 @@ equalize_image <- function(vesalius_assay,
     #--------------------------------------------------------------------------#
 
     images <- switch(type,
-      "EqualizePiecewise" = parallel::mclapply(images,
-        imagerExtra::EqualizePiecewise,
-        N, mc.cores = cores),
-      "BalanceSimplest" = parallel::mclapply(images,
-        imagerExtra::BalanceSimplest,
-        sleft, sright, range = c(0, 1), mc.cores = cores),
-      "SPE" = parallel::mclapply(images, imagerExtra::SPE,
-        lambda, mc.cores = cores),
-      "EqualizeDP"  = parallel::mclapply(images, imagerExtra::EqualizeDP,
-        down, up, mc.cores = cores),
-      "EqualizeADP" = parallel::mclapply(images, imagerExtra::EqualizeADP,
-        mc.cores = cores),
-      "ECDF" = parallel::mclapply(images, ecdf_eq,
-        mc.cores = cores))
+      "EqualizePiecewise" = future_lapply(images,
+        imagerExtra::EqualizePiecewise, N),
+      "BalanceSimplest" = future_lapply(images,
+        imagerExtra::BalanceSimplest, sleft, sright, range = c(0, 1)),
+      "SPE" = future_lapply(images, imagerExtra::SPE, lambda),
+      "EqualizeDP"  = future_lapply(images, imagerExtra::EqualizeDP, down, up),
+      "EqualizeADP" = future_lapply(images, imagerExtra::EqualizeADP),
+      "ECDF" = future_lapply(images, ecdf_eq))
     #--------------------------------------------------------------------------#
     # shifting format
     # c_to_ves => format.R
@@ -352,9 +342,6 @@ ecdf_eq <- function(im) {
 #' (Default = 100)
 #' @param normalise logical - If TRUE, regularized colour values will be
 #' min max normalised.
-#' @param na.rm logical - If TRUE, NAs are removed
-#' @param invert logical - If TRUE, colours will be inverted i.e. 1 - colorValue
-#' (background set to 1 instead of 0).
 #' @param verbose logical - progress message output.
 #' @details Image regularization can be seen as a form of image denoising.
 #' Details on each method can be found in the tvR package under the denoise2
@@ -374,7 +361,7 @@ ecdf_eq <- function(im) {
 #' ves <- regularise_image(ves, embedding = "PCA")
 #'}
 #' @export
-#' @importFrom parallel mclapply
+#' @importFrom future.apply future_lapply
 
 
 regularise_image <- function(vesalius_assay,
@@ -383,8 +370,6 @@ regularise_image <- function(vesalius_assay,
   lambda = 1,
   niter = 100,
   normalise = TRUE,
-  na.rm = TRUE,
-  cores = 1,
   verbose = TRUE) {
     simple_bar(verbose)
     #--------------------------------------------------------------------------#
@@ -405,11 +390,10 @@ regularise_image <- function(vesalius_assay,
     # Will add the imager denoising function as well
     # regularisation is essentially denoising anyway
     #--------------------------------------------------------------------------#
-    images <- parallel::mclapply(images, regularise,
+    images <- future_lapply(images, regularise,
       lambda,
       niter,
-      normalise,
-      mc.cores = cores)
+      normalise)
 
     embeds <- format_c_to_ves(images,
       vesalius_assay,
@@ -472,8 +456,6 @@ regularise <- function(img,
 #' (see details)
 #' @param use_center logical - If TRUE, only the center pixel value will be used
 #' during segmentation. If FALSE, all pixels will be used (see details)
-#' @param na.rm logical describing if NA values should be removed
-#' @param cores numeric - number of cores that should be used
 #' @param verbose logical - progress message output.
 #' @details Applying image segmentation ensures a reduction in colour
 #' complexity.
@@ -520,7 +502,6 @@ segment_image <- function(vesalius_assay,
   method = "kmeans",
   col_resolution = 10,
   use_center = TRUE,
-  cores = 1,
   verbose = TRUE) {
   simple_bar(verbose)
   #----------------------------------------------------------------------------#
@@ -538,13 +519,11 @@ segment_image <- function(vesalius_assay,
       dimensions = dimensions,
       col_resolution = col_resolution,
       embedding = embedding,
-      cores = cores,
       verbose = verbose),
     "louvain" = louvain_segmentation(vesalius_assay,
       dimensions = dimensions,
       col_resolution = col_resolution,
       embedding = embedding,
-      cores = cores,
       verbose = verbose))
 
   vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
@@ -565,7 +544,7 @@ segment_image <- function(vesalius_assay,
 }
 
 #' kmeans segmentation function
-#' @param vesalius a vesalius_assay
+#' @param vesalius_assay a vesalius_assay
 #' @param col_resolution integer or vector of positive integers.
 #' Colour depth used for segmentation.
 #' @inheritParams segment_image
@@ -573,7 +552,6 @@ segment_image <- function(vesalius_assay,
 #' to run multiple rounds of smoothing. 
 #' @return list containing segmented image as an active embedding and
 #' territory cluster for all barcodes.
-#' @importFrom parallel mclapply
 #' @importFrom dplyr right_join
 #' @importFrom dplyr %>%
 #' @importFrom dplyr filter
@@ -590,7 +568,6 @@ kmeans_segmentation <- function(vesalius_assay,
   col_resolution = 10,
   embedding = "last",
   use_center = TRUE,
-  cores = 1,
   verbose = TRUE) {
   if (is(vesalius_assay, "vesalius_assay")) {
     tiles <- get_tiles(vesalius_assay)
@@ -700,7 +677,6 @@ top_cluster <- function(cluster) {
 #' @param dimensions embedding dimensions used for clustering
 #' @param col_resolution clustering resolution used for leiden
 #' @param embedding embedding type used for clustering
-#' @param cores numeric describing the number of cores that should be used
 #' @param verbose logical if progress message should outputed
 #' @returns list with updated segmented embedding values 
 #' and segment territories.
@@ -710,13 +686,11 @@ leiden_segmentation <- function(vesalius_assay,
   dimensions = seq(1, 3),
   col_resolution = 0.01,
   embedding = "last",
-  cores = 1,
   verbose = TRUE) {
   coord <- get_tiles(vesalius_assay) %>%
     filter(origin == 1)
   embeddings <- check_embedding(vesalius_assay, embedding, dimensions)
-  graph <- compute_nearest_neighbor_graph(embeddings = embeddings,
-    cores = cores)
+  graph <- compute_nearest_neighbor_graph(embeddings = embeddings)
   clusters <- igraph::cluster_leiden(graph,
     resolution_parameter = col_resolution)
   cluster <- data.frame("cluster" = clusters$membership,
@@ -742,7 +716,6 @@ leiden_segmentation <- function(vesalius_assay,
 #' @param dimensions embedding dimensions used for clustering
 #' @param col_resolution clustering resolution used for leiden
 #' @param embedding embedding type used for clustering
-#' @param cores numeric describing the number of cores that should be used
 #' @param verbose logical if progress message should outputed
 #' @returns list with updated segmented embedding values 
 #' and segment territories.
@@ -752,13 +725,11 @@ louvain_segmentation <- function(vesalius_assay,
   dimensions = seq(1, 3),
   col_resolution = 0.01,
   embedding = "last",
-  cores = 1,
   verbose = TRUE) {
   coord <- get_tiles(vesalius_assay) %>%
     filter(origin == 1)
   embeddings <- check_embedding(vesalius_assay, embedding, dimensions)
-  graph <- compute_nearest_neighbor_graph(embeddings = embeddings,
-    cores = cores)
+  graph <- compute_nearest_neighbor_graph(embeddings = embeddings)
   clusters <- igraph::cluster_louvain(graph, resolution = col_resolution)
   cluster <- data.frame("cluster" = clusters$membership,
     "barcodes" = clusters$names)
@@ -779,16 +750,16 @@ louvain_segmentation <- function(vesalius_assay,
 #' compute and greate nearest neighbor graph
 #' @param embeddings embedding matrix
 #' @param k numeric describing number of nearest neighbors
-#' @param cores numeric for number of cores to be used
 #' @return igraph object
 #' @importFrom RANN nn2
 #' @importFrom igraph graph_from_data_frame
-#' @importFrom parallel mclapply
-compute_nearest_neighbor_graph <- function(embeddings, k = 20, cores = 1) {
+#' @importFrom future.apply future_lapply
+#' @importFrom future nbrOfWorkers
+compute_nearest_neighbor_graph <- function(embeddings, k = 20) {
     knn <- RANN::nn2(embeddings, k = k)$nn.idx
     rownames(knn) <- rownames(embeddings)
-    chunk <- chunker(knn, cores = cores)
-    graph <- parallel::mclapply(chunk, populate_graph, mc.cores = cores)
+    chunk <- chunker(knn, cores = future::nbrOfWorkers())
+    graph <- future_lapply(chunk, populate_graph)
     graph <- do.call("rbind", graph)
     graph <- igraph::graph_from_data_frame(graph, directed = FALSE)
 }

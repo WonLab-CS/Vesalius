@@ -14,8 +14,6 @@
 #' "PCA", "PCA_L", "UMAP", "LSI", "LSI_UMAP".
 #' @param normalisation character string describing which normalisation 
 #' method to use. One of the following "log_norm", "SCT", "TFIDF", "raw".
-#' @param assay character string describing which assay the embeddings 
-#' should be performed on.
 #' @param dimensions numeric describing the number of Principle Components or
 #' Latent space dimension to use. Default dimensions = 30
 #' @param tensor_resolution numeric (range 0 - 1) describing the compression
@@ -32,7 +30,6 @@
 #' method is LSI or LSI_UMAP
 #' indicating if the first LSI component should be removed from further analysis
 #' as it usually captures sequencing depth (technical variation)
-#' @param cores numeric number of cores to use. Default = 1
 #' @param verbose logical output progress message or not. Default = TRUE
 #' @details The core principle behind vesalius is to convert spatial omics
 #' data into an image. \code{build_vesalius_embeddings} allows you to convert
@@ -84,7 +81,6 @@ build_vesalius_embeddings <- function(vesalius_assay,
   nfeatures = 2000,
   min_cutoff = "q5",
   remove_lsi_1 = TRUE,
-  cores = 1,
   verbose = TRUE) {
     simple_bar(verbose)
     #--------------------------------------------------------------------------#
@@ -117,17 +113,14 @@ build_vesalius_embeddings <- function(vesalius_assay,
         tensor_resolution = tensor_resolution,
         filter_grid = filter_grid,
         filter_threshold = filter_threshold,
-        verbose = verbose,
-        cores = cores)
+        verbose = verbose)
     #------------------------------------------------------------------------#
     # adjusted counts if necessary
     # essentially merging counts when barcodes overlap
     #------------------------------------------------------------------------#
     message_switch("adj_counts", verbose)
     counts <- adjust_counts(tiles,
-        counts,
-        cores = cores)
-    
+        counts)
     vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
         data = tiles,
         slot = "tiles",
@@ -160,7 +153,6 @@ build_vesalius_embeddings <- function(vesalius_assay,
       dim_reduction,
       dimensions = dimensions,
       remove_lsi_1 = remove_lsi_1,
-      cores = cores,
       verbose = verbose)
     vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
       data = embeds,
@@ -192,7 +184,7 @@ build_vesalius_embeddings <- function(vesalius_assay,
 #' generate pixel tiles from punctual spatial assay coordinates 
 #' @param coordinates coordinates data frame in the form of barcodes
 #' x coord, y coord. 
-#' @param assays character describing the assay in the vesaliusObject or
+#' @param assay character describing the assay in the vesaliusObject or
 #' vesalius_array object that is being processed
 #' @param tensor_resolution numeric (range 0 - 1) describing the compression
 #' ratio to be applied to the final image. Default = 1
@@ -200,7 +192,6 @@ build_vesalius_embeddings <- function(vesalius_assay,
 #' outlier beads. Defined as a proportion of total image size. Default = 0.1
 #' @param filter_threshold numeric (range 0 -1) describing the quantile
 #' @param verbose logical describing if progress message should be outputed
-#' @param cores number of cores used to rasteris tiles
 #' @details This function converts punctual coordinates into pixel tiles.
 #' The first step is to filter outlier beads. Essentially removing any bead 
 #' that lies outside of the main assay (seed \code{\link{filter_grid}}). If 
@@ -226,8 +217,7 @@ generate_tiles <- function(coordinates,
   tensor_resolution = 1,
   filter_grid = 0.01,
   filter_threshold = 0.995,
-  verbose = TRUE,
-  cores = 1) {
+  verbose = TRUE) {
   message_switch("in_assay",
     verbose = verbose,
     assay = assay,
@@ -265,7 +255,7 @@ generate_tiles <- function(coordinates,
   # Resterise tiles
   #----------------------------------------------------------------------#
   message_switch("raster", verbose)
-  tiles <- rasterise(filtered, cores)
+  tiles <- rasterise(filtered)
   #----------------------------------------------------------------------#
   # return tiles and adjusted counts
   #----------------------------------------------------------------------#
@@ -321,7 +311,8 @@ filter_grid <- function(coordinates, filter_grid) {
 #' Each barcode that overlap with each other are marged together. Their 
 #' respective counts will also be merged together. This allows us to 
 #' retain all barcodes for downstream analysis. 
-#' @return a data frame with barcodes, x and coordinates 
+#' @return a data frame with barcodes, x and coordinates
+#' @importFrom dplyr %>% distinct
 reduce_tensor_resolution <- function(coordinates, tensor_resolution = 1) {
   #----------------------------------------------------------------------------#
   # we will reduce number of points this way
@@ -366,15 +357,14 @@ reduce_tensor_resolution <- function(coordinates, tensor_resolution = 1) {
 #' @param coordinates data frame containing coordinates after reducing 
 #' resolution and compressing cooridnates
 #' @param counts count matrix 
-#' @param cores numeric describing number of cores to be used 
 #' @details This function will check the coordinate file to 
 #' see if any barcodes have been merged together. If so,
 #' the counts will be adjusted by taking the average count value accross 
 #' all barcodes that have been merged together. 
 #' @return a count matrix with adjusted count values 
 #' @importFrom Matrix Matrix
-#' @importFrom parallel mclapply
-adjust_counts <- function(coordinates, counts, cores = 1) {
+#' @importFrom future.apply future_lapply
+adjust_counts <- function(coordinates, counts) {
     #--------------------------------------------------------------------------#
     # First get all barcode names and compare which ones are missing
     #--------------------------------------------------------------------------#
@@ -390,10 +380,10 @@ adjust_counts <- function(coordinates, counts, cores = 1) {
     #--------------------------------------------------------------------------#
     tmp_bar <- strsplit(coord_bar, "_et_")
 
-    empty <- parallel::mclapply(tmp_bar, function(coord, count) {
+    empty <- future_lapply(tmp_bar, function(coord, count) {
       tmp <- rowSums(count[, coord])
       return(tmp)
-    }, count = counts, mc.cores = cores)
+    }, count = counts)
     empty <- do.call("cbind", empty)
     if (is.null(dim(empty)) && length(empty) != 0) {
         empty <- Matrix::Matrix(empty, ncol = 1)
@@ -438,7 +428,6 @@ filter_tiles <- function(tesselation, coordinates, filter_threshold) {
 #' 
 #' fill tiles with pixel - rasterisation 
 #' @param filtered data.frame with voronoi tile coordinates
-#' @param cores numeric with number of cores to be used
 #' @details Here, we take our tile cooridnates and fill them 
 #' with pixels. Essentially, each voronoi tile can be discretised 
 #' into a series of pixels and we achieve this by reconstructing a 
@@ -450,11 +439,11 @@ filter_tiles <- function(tesselation, coordinates, filter_threshold) {
 #' order the coordinates before recontructing the polygon (see
 #' \code{\link{convexify}})
 #' @return a data frame barcodes and their associated pixels.
-#' @importFrom parallel mclapply
+#' @importFrom future.apply future_lapply
 #' @importFrom sp point.in.polygon
-rasterise <- function(filtered, cores = 1) {
+rasterise <- function(filtered) {
     idx <- seq_len(nrow(filtered$coordinates))
-    tiles <- parallel::mclapply(idx, function(idx, filtered) {
+    tiles <- future_lapply(idx, function(idx, filtered) {
 
         #----------------------------------------------------------------------#
         # get indecies from original data
@@ -509,7 +498,7 @@ rasterise <- function(filtered, cores = 1) {
           "y" = max_y,
           "origin" = centers)
         return(tile)
-    }, filtered = filtered, mc.cores = cores)
+    }, filtered = filtered)
     tiles <- do.call("rbind", tiles)
     tiles <- tiles %>% filter(x > 1 & y > 1)
     return(tiles)
@@ -554,8 +543,8 @@ convexify <- function(xside, yside, indx, indy) {
 #' 
 #' pre-process count matrices
 #' @param counts count matrix in the form of a sparse matrix 
-#' @param assay character string describing the assay that is being pre-processed
-#' in the vesaliusObject or vesalius_assay
+#' @param assay character string describing the assay that is being 
+#' pre-processed in the vesaliusObject or vesalius_assay
 #' @param method character string describing which normalisation method to use.
 #' One of the following "log_norm", "SCT", "TFIDF", "raw".
 #' @param nfeatures numeric describing the number of variable features to use.
@@ -611,7 +600,8 @@ raw_norm <- function(counts) {
 #' log norm
 #' 
 #' log normalisation, scaling and top variable features
-#' @param counts seurat object containing counts 
+#' @param counts seurat object containing counts
+#' @param nfeatures number of top variable features to select
 #' @return list with seurat object used later and normalised counts to be stored
 #' in a vesalius object
 #' @importFrom Seurat GetAssayData
@@ -633,7 +623,10 @@ log_norm <- function(counts, nfeatures) {
 #' SCTransform
 #' 
 #' SCTransform pre-processing from Seurat
-#' @param counts seurat object containing counts 
+#' @param counts seurat object containing counts
+#' @param assay seurat assay to use here we jjust use the spatial one
+#' but we could just use default RNA
+#' @param nfeatures number of top variable features to select
 #' @return list with seurat object used later and normalised counts to be stored
 #' in a vesalius object
 #' @importFrom Seurat SCTransform
@@ -674,14 +667,13 @@ tfidf_norm <- function(counts, min_cutoff) {
 #' 
 #' Embed latent space into grey color scale.
 #' @param counts Seurat object containing counts (generally normalised)
-#' @param assays charcter string of the assay being used 
+#' @param assay charcter string of the assay being used 
 #' @param dim_reduction dimensionality reduction method that will be used
 #' Select from PCA, PCA_L, UMAP, LSI, LSI_UMAP
 #' @param dimensions numeric for number of dimeniosn top retain after 
 #' dimensionality reduction
 #' @param remove_lsi_1 logical if first dimension of LSI embedding should be 
 #' removed (will soon be depreciated)
-#' @param cores numeric for number of cores to be used 
 #' @param verbose logical if progress messages should be outputed or not
 #' @details General method dispatch function for dim reduction methods 
 #' @return data frame of normalised embedding values.
@@ -690,7 +682,6 @@ embed_latent_space <- function(counts,
   dim_reduction,
   dimensions,
   remove_lsi_1,
-  cores,
   verbose) {
     message_switch("in_assay",
       verbose,
@@ -702,7 +693,6 @@ embed_latent_space <- function(counts,
         verbose = verbose),
       "PCA_L" = embed_pcal(counts,
         dimensions = dimensions,
-        cores = cores,
         verbose = verbose),
       "UMAP" = embed_umap(counts,
         dimensions = dimensions,
@@ -755,7 +745,6 @@ embed_pca <- function(counts,
 #' embed in grey scale using PCA Loading value 
 #' @param counts Seurat object containing normalised counts
 #' @param dimensions number dimension to retain from PCA
-#' @param cores numeric number of cores to use
 #' @param verbose logical if progress messages should be outputed
 #' @details This approach is a slightly different as it takes 
 #' the loading value associted to each gene in a barcode and sums
@@ -766,10 +755,9 @@ embed_pca <- function(counts,
 #' @importFrom Seurat RunPCA
 #' @importFrom Seurat Loadings
 #' @importFrom Seurat GetAssayData
-#' @importFrom parallel mclapply
+#' @importFrom future.apply future_lapply
 embed_pcal <- function(counts,
   dimensions,
-  cores = 1,
   verbose = TRUE) {
     #--------------------------------------------------------------------------#
     # First run PCA
@@ -792,11 +780,11 @@ embed_pcal <- function(counts,
     #--------------------------------------------------------------------------#
     for (p in seq_len(ncol(pca))) {
       message_switch("pcal_rgb_tensor", verbose, pc = p)
-      bars <- parallel::mclapply(seq_len(ncol(mat)), function(idx, mat, pca) {
+      bars <- future_lapply(seq_len(ncol(mat)), function(idx, mat, pca) {
         c_vec <- as.numeric(mat[names(pca), idx])
         colour <- sum(pca * c_vec)
         return(colour)
-      }, mat = mat, pca = pca[, p], mc.cores = cores)
+      }, mat = mat, pca = pca[, p])
       bars <- unlist(bars)
 
       colour_matrix[, p] <- norm_pixel(bars,"minmax")

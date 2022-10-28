@@ -112,7 +112,7 @@ image_plot <- function(vesalius_assay,
 #' separate panels
 #' @param randomise logical - If TRUE, colour palette will be randomised.
 #' @param cex numeric describing font size multiplier.
-#' @param cex.pt numeric describing point size multiplier.
+#' @param cex_pt numeric describing point size multiplier.
 #' @details Territory plots show all territories in false colour after they
 #' have been isolated from a Vesalius image.
 #' 

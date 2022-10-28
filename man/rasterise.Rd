@@ -4,12 +4,10 @@
 \alias{rasterise}
 \title{rasterise tiles}
 \usage{
-rasterise(filtered, cores = 1)
+rasterise(filtered)
 }
 \arguments{
 \item{filtered}{data.frame with voronoi tile coordinates}
-
-\item{cores}{numeric with number of cores to be used}
 }
 \value{
 a data frame barcodes and their associated pixels.

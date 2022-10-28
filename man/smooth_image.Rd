@@ -17,7 +17,6 @@ smooth_image(
   gaussian = TRUE,
   na.rm = FALSE,
   across_levels = "min",
-  cores = 1,
   verbose = TRUE
 )
 }
@@ -91,7 +90,7 @@ satisfied with the smoothing.
 For more information, we suggest reading through the imager vignette.
 }
 \examples{
-#' \dontrun{
+\dontrun{
 data(vesalius)
 # First we build a simple object
 ves <- build_vesalius_object(coordinates, counts)

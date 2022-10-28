@@ -15,7 +15,6 @@ build_vesalius_embeddings(
   nfeatures = 2000,
   min_cutoff = "q5",
   remove_lsi_1 = TRUE,
-  cores = 1,
   verbose = TRUE
 )
 }
@@ -52,12 +51,7 @@ method is LSI or LSI_UMAP
 indicating if the first LSI component should be removed from further analysis
 as it usually captures sequencing depth (technical variation)}
 
-\item{cores}{numeric number of cores to use. Default = 1}
-
 \item{verbose}{logical output progress message or not. Default = TRUE}
-
-\item{assay}{character string describing which assay the embeddings 
-should be performed on.}
 }
 \value{
 vesalius_object or vesalius_assay 

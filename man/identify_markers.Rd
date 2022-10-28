@@ -18,7 +18,6 @@ identify_markers(
   min_pct = 0.05,
   min_spatial_index = 10,
   verbose = TRUE,
-  cores = 1,
   ...
 )
 }
@@ -50,16 +49,15 @@ differential gene expression. Default set at 0.25.}
 
 \item{pval}{numeric for pval threshold. Default set at 0.05}
 
+\item{min_pct}{numeric defining the minimum percentage of cells that should
+contain any given gene. Deault set at 0.05}
+
 \item{min_spatial_index}{integer defining minimum number of 
 barcodes in a territory.}
 
 \item{verbose}{logical - progress message output}
 
-\item{minPct}{numeric defining the minimum percentage of cells that should
-contain any given gene.}
-
-\item{morphologyFactorSeed}{Integer or vector of integers describing growth
-or shrink rate of seed territories}
+\item{...}{other parameters parsed to DESeq2 or edgeR (not functional)}
 }
 \value{
 a vesalius_assay object

@@ -4,7 +4,7 @@
 \alias{check_tiles}
 \title{check tile integretiy}
 \usage{
-check_tiles(vesalius_asssay)
+check_tiles(vesalius_assay)
 }
 \arguments{
 \item{vesalius_assay}{a vesalius_assay}

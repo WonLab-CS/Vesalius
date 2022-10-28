@@ -4,15 +4,13 @@
 \alias{adjust_counts}
 \title{adjust count}
 \usage{
-adjust_counts(coordinates, counts, cores = 1)
+adjust_counts(coordinates, counts)
 }
 \arguments{
 \item{coordinates}{data frame containing coordinates after reducing 
 resolution and compressing cooridnates}
 
 \item{counts}{count matrix}
-
-\item{cores}{numeric describing number of cores to be used}
 }
 \value{
 a count matrix with adjusted count values

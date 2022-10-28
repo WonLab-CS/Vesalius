@@ -135,9 +135,9 @@ check_norm_methods <- function(norm) {
 }
 
 #' check if embedding method is present in availble options
-#' @param norm string - embedding method parsed to function 
-#' @return embedding method string or error 
-check_embed_methods <- function(embed, n_counts) {
+#' @param embed embedding method selected by user
+#' @return embedding method string or error
+check_embed_methods <- function(embed) {
     if (any(!embed %in% c("PCA", "PCA_L", "UMAP", "LSI", "LSI_UMAP"))) {
         stop("Embedding method provided do not match available options \n
             Select from: \n
@@ -196,8 +196,8 @@ check_embedding <- function(vesalius_assay, embed, dims) {
 #' @param vesalius_assay a vesalius_assay 
 #' @details place holder for in depth checks at the moment only return tiles 
 #' @return tile data frame 
-check_tiles <- function(vesalius_asssay) {
-    tiles <- vesalius_asssay@tiles
+check_tiles <- function(vesalius_assay) {
+    tiles <- vesalius_assay@tiles
     return(tiles)
 }
 
@@ -233,8 +233,8 @@ check_territories <- function(vesalius_assay, trial) {
 #' @return data frame contain selected trial
 #' @importFrom infix %||%
 #' @importFrom utils tail
-check_segments <- function(vesalius_asssay, trial = "last") {
-    territories <- vesalius_asssay@territories %||%
+check_segments <- function(vesalius_assay, trial = "last") {
+    territories <- vesalius_assay@territories %||%
         stop("No image segments have been computed yet!")
     if (!any(grepl(x = colnames(territories), pattern = "Segment"))) {
         stop("No image segments have been computed yet!")
@@ -264,11 +264,11 @@ check_segments <- function(vesalius_asssay, trial = "last") {
 #' those methods, we ignore request and parse raw count instead.
 #' @return count matrix
 #' @importFrom infix %||%
-check_norm <- function(vesalius_asssay,
+check_norm <- function(vesalius_assay,
     norm_method,
     method = NULL,
     verbose = TRUE) {
-    counts <- vesalius_asssay@counts %||%
+    counts <- vesalius_assay@counts %||%
         stop("Cannot find any counts in vesalius assay!")
     if (norm_method == "last") {
         norm_method <- length(counts)
@@ -288,7 +288,7 @@ check_norm <- function(vesalius_asssay,
 
 
 #' check if provided cells are contained withing provided territory 
-#' @param territoty_barcodes character vector containing spatial barcodes
+#' @param territory_barcodes character vector containing spatial barcodes
 #' of territories
 #' @param ter string selected territories in the form of chacater string
 #' @param cell_barcodes character vector containing barcodes of cells

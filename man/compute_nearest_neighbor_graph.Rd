@@ -4,14 +4,12 @@
 \alias{compute_nearest_neighbor_graph}
 \title{compute and greate nearest neighbor graph}
 \usage{
-compute_nearest_neighbor_graph(embeddings, k = 20, cores = 1)
+compute_nearest_neighbor_graph(embeddings, k = 20)
 }
 \arguments{
 \item{embeddings}{embedding matrix}
 
 \item{k}{numeric describing number of nearest neighbors}
-
-\item{cores}{numeric for number of cores to be used}
 }
 \value{
 igraph object

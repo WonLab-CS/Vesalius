@@ -4,10 +4,10 @@
 \alias{check_embed_methods}
 \title{check if embedding method is present in availble options}
 \usage{
-check_embed_methods(embed, n_counts)
+check_embed_methods(embed)
 }
 \arguments{
-\item{norm}{string - embedding method parsed to function}
+\item{embed}{embedding method selected by user}
 }
 \value{
 embedding method string or error
