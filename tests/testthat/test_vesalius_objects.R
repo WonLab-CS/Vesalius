@@ -16,6 +16,4 @@ test_that("Vesalius build single assay", {
     expect_error(build_vesalius_assay(coordinates, "counts"))
     expect_error(build_vesalius_assay(coordinates, 2))
     expect_error(build_vesalius_assay("coordinates", counts))
-    # checking normal builds with too many assays provided
-    expect_error(build_vesalius_assay(coordinates, counts, c("one", "two")))
 })

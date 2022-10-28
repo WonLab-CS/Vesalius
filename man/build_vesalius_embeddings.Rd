@@ -74,7 +74,7 @@ The stack hight will be equal to the number of dimenions you
 selected excluding UMAP type as only 3 are availbale.
 
 The algorithm is broadly to many spatial omics assays. As such, you can use
-the \code{\link{build_vesalius_object}} function to create a single object
+the \code{\link{build_vesalius_assay}} function to create a single object
 that will contain all your different assays.
 You can select a different normalisation method
 and dim_reudction method for each (see examples).
@@ -92,7 +92,7 @@ you would like to use. All other functions use the last entry as default.
 }
 \examples{
 \dontrun{
-data(Vesalius)
+data(vesalius)
 # First we build a simple object
 ves <- build_vesalius_object(coordinates, counts)
 # We can do a simple run 

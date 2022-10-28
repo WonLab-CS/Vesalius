@@ -15,7 +15,7 @@ filter_tiles(tesselation, coordinates, filter_threshold)
 to use for area filtering}
 }
 \value{
-a list with 2 data frame. 1 with filtered tesselation results 
+a list with 2 data frame. 1 with filtered tesselation results
 2 filtered coordinate file.
 }
 \description{

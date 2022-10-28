@@ -4,7 +4,19 @@
 
 #---------------------/Format conversion Functions/----------------------------#
 
-
+#' convert vesalius_assay to cimg images 
+#' @param vesalius_assay a vesalius_Assay object
+#' @param dims integer vector indicating the number of dimensions to select from
+#' embeddings.
+#' @param embed character indicating which embedding should be selected.
+#' Default uses last embedding produced
+#' @param correct_background logical indicating if image background should be
+#' corrected to reflect median color value or left as black
+#' @param verbose logical if progress message should be outputed
+#' @return list of cimg images
+#' @importFrom dplyr right_join select
+#' @importFrom stats median na.exclude
+#' @importFrom imager as.cimg
 format_ves_to_c <- function(vesalius_assay,
   dims,
   embed = "last",
@@ -45,8 +57,7 @@ format_ves_to_c <- function(vesalius_assay,
       if (correct_background) {
         cimg_tmp <- cimg %>%
           select(c("x", "y", "value")) %>%
-          suppressWarnings() %>%
-          as.cimg() %>%
+          suppressWarnings(as.cimg()) %>%
           as.data.frame()
         non_img <- paste0(cimg$x, "_", cimg$y)
         in_img <- paste0(cimg_tmp$x, "_", cimg_tmp$y)
@@ -63,7 +74,15 @@ format_ves_to_c <- function(vesalius_assay,
 }
 
 
-
+#' convert cimg list to vesalius object embedding
+#' @param cimg cimg image list
+#' @param vesalius_assay a vesalius_assay object
+#' @param dims integer vector of embedding that need to be updated
+#' @param embed character string which embedding should be updated
+#' @param verbose logical should progress message be outputed
+#' @return a vesalius_Assay obejct
+#' @importFrom dplyr left_join filter
+#' @importFrom stats na.exclude
 format_c_to_ves <- function(cimg,
   vesalius_assay,
   dims,
@@ -92,106 +111,11 @@ format_c_to_ves <- function(cimg,
   return(embeddings)
 }
 
-
-
-format_ves_to_sis <- function(vesalius_assay,
-  dims,
-  embed = "last",
-  correct_background = TRUE,
-  verbose = TRUE) {
-    #--------------------------------------------------------------------------#
-    # First getting the right embedding and stuff out
-    #--------------------------------------------------------------------------#
-    tiles <- check_tiles(vesalius_assay)
-    embeddings <- check_embedding(vesalius_assay, embed, dims)
-    #--------------------------------------------------------------------------#
-    # Now we can create the image list
-    #--------------------------------------------------------------------------#
-    image_list <- list()
-    for (i in seq_along(dims)) {
-      embeds <- embeddings[, dims[i]]
-      embeds <- data.frame(names(embeds), embeds)
-      colnames(embeds) <- c("barcodes", as.character(dims[i]))
-      cimg <- right_join(tiles, embeds, by = "barcodes")
-      colnames(cimg) <- c("barcodes", "x", "y", "origin", "value")
-      cimg <- na.exclude(cimg)
-      x <- max(cimg$x)
-      y <- max(cimg$y)
-      #------------------------------------------------------------------------#
-      # now we can convert that data frame to a cimg and correct background if
-      # required. Note that we are going back and forth between formats
-      # This is done so we can fill in the borders and empty space in the array
-      #------------------------------------------------------------------------#
-      if (correct_background) {
-          cimg_tmp <- cimg %>%
-            select(c("x", "y", "value")) %>%
-            suppressWarnings() %>%
-            as.cimg() %>%
-            as.data.frame()
-          non_img <- paste0(cimg$x, "_", cimg$y)
-          in_img <- paste0(cimg_tmp$x, "_", cimg_tmp$y)
-          # Median value for background - Other metrics??
-          cimg_tmp[!in_img %in% non_img, "value"] <- median(cimg$value)
-          sis <- as.matrix(suppressWarnings(
-          as.cimg(cimg_tmp[, c("x", "y", "value")], x = x, y = y)))
-      } else {
-          sis <- as.matrix(suppressWarnings(
-          as.cimg(cimg_tmp[, c("x", "y", "value")], x = x, y = y)))
-      }
-
-      #------------------------------------------------------------------------#
-      # hopefully this will do the trick - OpenImage require 3d Arrays
-      # so we will create 3 instances of the same gray scale array
-      #------------------------------------------------------------------------#
-      img <- replicate(sis, 3)
-      dim(img) <- c(nrow(sis), ncol(sis), 3)
-      image_list[[i]] <- img
-    }
-    return(image_list)
-}
-
-format_sis_to_ves <- function(image,
-  object,
-  dims,
-  embed = "last") {
-  #--------------------------------------------------------------------------#
-  # Get stuff out
-  #--------------------------------------------------------------------------#
-  tiles <- check_tiles(vesalius)
-  embeddings <- check_embedding(vesalius, embed, dims)
-  embed <- ifelse(embed == "last",
-    yes = names(embeddings),
-    no = embed)
-  #--------------------------------------------------------------------------#
-  # Always going to be a gray scale image.
-  # Colour are only used when during viz
-  # This allows any arbitrary number of embeds
-  #--------------------------------------------------------------------------#
-  for (i in seq_along(dims)){
-    img <- .sis_to_df(image[[i]])
-    barcodes <- left_join(tiles, img, by = c("x", "y")) %>%
-                 filter(origin == 1) %>%
-                 na.exclude()
-    locs <- match(barcodes$barcodes, rownames(embed))
-    embeddings[locs, dims[i]] <- barcodes$value
-
-  }
-  embeddings <- list(embeddings)
-  names(embeddings) <- embed
-  object@activeEmbeddings <- embeddings
-
-  return(object)
-}
-
-format_sis_to_df <- function(image, is_cimg = TRUE) {
-  image <- image$AP_image_data
-  y <- rep(seq(1, ncol(image)), each = nrow(image))
-  x <- rep(seq(1, nrow(image)), times = ncol(image))
-  value <- as.vector(image[seq_len(nrow(image)), seq_len(ncol(image)), 1])
-  df <- data.frame("x" = x, "y" = y, "value" = value)
-  return(df)
-}
-
+#' format counts for DESeq
+#' @param seed seed count matrix
+#' @param query query count matrix
+#' @return DESeq2 object
+#' @importFrom DESeq2 DESeqDataSetFromMatrix
 format_counts_for_deseq2 <- function(seed, query) {
   seed_tag <- colnames(seed)
   query_tag <- colnames(query)
@@ -208,6 +132,11 @@ format_counts_for_deseq2 <- function(seed, query) {
   return(deseq)
 }
 
+#' format counts for edgeR
+#' @param seed seed count matrix
+#' @param query query count matrix
+#' @return DGEList object from edgeR
+#' @importFrom edgeR DGEList
 format_counts_for_edger <- function(seed, query) {
   merged <- cbind(seed, query)
   rownames(merged) <- rownames(seed)
@@ -216,6 +145,10 @@ format_counts_for_edger <- function(seed, query) {
   return(merged)
 }
 
+#' format counts for logistic regression
+#' @param seed seed count matrix
+#' @param query query count matrix
+#' @return list of merged counts and meta data formated for logit
 format_counts_for_logit <- function(seed, query) {
   seed_tag <- colnames(seed)
   query_tag <- colnames(query)
@@ -227,6 +160,8 @@ format_counts_for_logit <- function(seed, query) {
   return(list("merged" = merged, "seed_query_info" = seed_query_info))
 }
 
+#' format function call to list for log update
+#' @param call a function call argument list
 format_call <- function(call) {
   #---------------------------------------------------------------------------#
   # NOTE: if the user put their arguments in "external variable"
@@ -236,7 +171,7 @@ format_call <- function(call) {
   for (el in seq_along(call)) {
     tmp <- as.character(call[[el]])
     if(is(call[[el]], "call")) {
-      call[[el]] <- tmp[seq(2,length(tmp))]
+      call[[el]] <- tmp[seq(2, length(tmp))]
     } else {
       call[[el]] <- tmp
     }
@@ -245,6 +180,14 @@ format_call <- function(call) {
   return(as.list(call))
 }
 
+
+#' dispatch territories labels territories according to which
+#' group they belong to.
+#' @param territories territories data frame from territoires slot in 
+#' vesalius_assay object
+#' @param ter_1 integer vector containing territories in group 1
+#' @param ter_2 integer vector containing territories in group 2
+#' @param cells cell barcodes
 dispatch_territory <- function(territories, ter_1, ter_2, cells) {
     if (is.null(ter_1) && is.null(ter_2)) {
         territories <- select(territories, c("barcodes", "x", "y", "trial"))
@@ -264,6 +207,17 @@ dispatch_territory <- function(territories, ter_1, ter_2, cells) {
     return(territories)
 }
 
+
+#' dispatch barcodes to seed and query groups
+#' @param ter territories data frame from territoires slot in
+#' vesalius_assay object
+#' @param seed interger vector indicating which territories should be included
+#' in seed group
+#' @param query interger vector indicating which territories should be included
+#' in query group
+#' @param cells cell barcodes
+#' @param verbose logical if progress messages should be outputed
+#' @return list with seed group and seed id as well as query group and query id 
 dispatch_deg_group <- function(ter, seed, query, cells, verbose) {
     if (is.null(seed) && is.null(query)) {
         #----------------------------------------------------------------------#

@@ -58,7 +58,7 @@
 #' @return a vesalius_assay object
 #' @examples
 #' \dontrun{
-#' data(Vesalius)
+#' data(vesalius)
 #' # First we build a simple object
 #' ves <- build_vesalius_object(coordinates, counts)
 #' # We can do a simple run
@@ -218,6 +218,7 @@ vesalius_deg <- function(seed,
 #' @param params parameter value list (pval, log_fc, min_pct)
 #' @importFrom stats wilcox.test
 #' @importFrom dplyr filter
+#' @importFrom stats p.adjust
 vesalius_deg_wilcox <- function(seed, seed_id, query, query_id, params) {
   buffer <- get_deg_metrics(seed, query, params)
   pvals <- sapply(seq_len(nrow(buffer$seed)), function(idx, seed, query) {
@@ -243,6 +244,7 @@ vesalius_deg_wilcox <- function(seed, seed_id, query, query_id, params) {
 #' @param params parameter value list (pval, log_fc, min_pct)
 #' @importFrom stats t.test
 #' @importFrom dplyr filter
+#' @importFrom stats p.adjust
 vesalius_deg_ttest <- function(seed, seed_id, query, query_id, params) {
   buffer <- get_deg_metrics(seed, query, params)
   pvals <- sapply(seq_len(nrow(buffer$seed)), function(idx, seed, query) {
@@ -268,6 +270,7 @@ vesalius_deg_ttest <- function(seed, seed_id, query, query_id, params) {
 #' @param params parameter value list (pval, log_fc, min_pct)
 #' @importFrom stats chisq.test
 #' @importFrom dplyr filter
+#' @importFrom stats p.adjust
 vesalius_deg_chisq <- function(seed, seed_id, query, query_id, params) {
   buffer <- get_deg_metrics(seed, query, params)
   pvals <- sapply(seq_len(nrow(buffer$seed)), function(idx, seed, query) {
@@ -298,6 +301,7 @@ vesalius_deg_chisq <- function(seed, seed_id, query, query_id, params) {
 #' @param params parameter value list (pval, log_fc, min_pct)
 #' @importFrom stats fisher.test
 #' @importFrom dplyr filter
+#' @importFrom stats p.adjust
 vesalius_deg_fisher <- function(seed, seed_id, query, query_id, params) {
   buffer <- get_deg_metrics(seed, query, params)
   pvals <- sapply(seq_len(nrow(buffer$seed)), function(idx, seed, query) {
@@ -329,9 +333,6 @@ vesalius_deg_fisher <- function(seed, seed_id, query, query_id, params) {
 #' @importFrom DESeq2 DESeq results
 #' @importFrom dplyr filter
 vesalius_deg_deseq2 <- function(seed, seed_id, query, query_id, params) {
-  if (!require("DESeq2")) {
-    stop("DESeq2 not installed!")
-  }
   buffer <- get_deg_metrics(seed, query, params)
   seed <- buffer$seed
   query <- buffer$query
@@ -344,7 +345,7 @@ vesalius_deg_deseq2 <- function(seed, seed_id, query, query_id, params) {
   #--------------------------------------------------------------------------#
   # run deseq with recommended params for single cell data
   #--------------------------------------------------------------------------#
-  deg <- DESeq2::DEseq(deg,
+  deg <- DESeq2::DESeq(deg,
     test = "LRT",
     useT = TRUE,
     minmu = 1e-6,
@@ -364,7 +365,6 @@ vesalius_deg_deseq2 <- function(seed, seed_id, query, query_id, params) {
     "query" = rep(query_id, nrow(deg)))
   deg <- filter(deg, p_value_adj <= params$pval)
   return(deg)
-  
 }
 
 #' edgeR functions for DEG
@@ -385,9 +385,6 @@ vesalius_deg_edger <- function(seed,
   query_id,
   params,
   type) {
-  if (!require("edgeR")) {
-    stop("edgeR not installed!")
-  }
   buffer <- get_deg_metrics(seed, query, params)
   seed <- buffer$seed
   query <- buffer$query
@@ -432,6 +429,7 @@ vesalius_deg_edger <- function(seed,
 #' @importFrom stats glm as.formula
 #' @importFrom lmtest lrtest
 #' @importFrom dplyr filter
+#' @importFrom stats p.adjust
 vesalius_deg_logit <- function(seed, seed_id, query, query_id, params) {
   #--------------------------------------------------------------------------#
   # Setting up data for loigt regression as suggested by the signac package 

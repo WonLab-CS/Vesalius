@@ -24,7 +24,7 @@
 #' @return a vesalius_assay
 #' @examples
 #' \dontrun{
-#' data(Vesalius)
+#' data(vesalius)
 #' # First we build a simple object
 #' ves <- build_vesalius_object(coordinates, counts)
 #' # We can do a simple run
@@ -144,7 +144,7 @@ extend_boundary <- function(territories, morphology_factor) {
   territories <- territories %>% 
     select(c("x", "y", "value")) %>%
     rbind(., c(xmin, ymin, 1), c(xmax, ymax, 1)) %>%
-    as.cimg()
+    suppressWarnings(as.cimg())
   return(territories)
 }
 
@@ -171,7 +171,7 @@ extend_boundary <- function(territories, morphology_factor) {
 #' @return a vesalius_assay
 #' @examples
 #' \dontrun{
-#' data(Vesalius)
+#' data(vesalius)
 #' # First we build a simple object
 #' ves <- build_vesalius_object(coordinates, counts)
 #' # We can do a simple run
@@ -255,13 +255,13 @@ layer_territory <- function(vesalius_assay,
     grad <- ter  %>%
       detect_edges() %>%
       grow(1) %>%
-      as.cimg() %>%
+      suppressWarnings(as.cimg()) %>%
       as.data.frame() %>%
       filter(value > 0)
     #------------------------------------------------------------------------#
     # getting barcodes from territory
     #------------------------------------------------------------------------#
-    edge <- inner_join(grad,ter_for_loop, by = c("x", "y")) %>%
+    edge <- inner_join(grad, ter_for_loop, by = c("x", "y")) %>%
       select(c("barcodes"))
 
     #------------------------------------------------------------------------#

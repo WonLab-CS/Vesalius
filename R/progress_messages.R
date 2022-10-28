@@ -8,6 +8,7 @@
 # Prettify is only for graphical stuff. Could add more stuff.
 
 #-----------------------------/Prettify/-----------------------------------#
+# Simple bar output used to start any progress message output
 simple_bar <- function(verbose = TRUE) {
     if (!verbose) return(NULL)
     width_display <- round(options()$width)
@@ -20,6 +21,17 @@ simple_bar <- function(verbose = TRUE) {
 
 #-----------------------------/Messages/-----------------------------------#
 
+#' switch message output based in input
+#' @param type name of message output to produce
+#' @param verbose logical if message should be outputed
+#' @param ... any other parameter
+#' @details Essentially, all message types are listed in this giant switch.
+#' The type defines what message you want to output. We select named
+#' arguments from `...` and parse them when required.
+#' Adding message is straight forward by simply using the template in 
+#' other switch types. This also means that you can add and remove messages
+#' without causing errors. While this might lead to dead code, better dead
+#' code than buggy code with undefined functions...
 message_switch <- function(type, verbose = TRUE, ...) {
     args <- list(...)
     t <- Sys.time()

@@ -53,7 +53,7 @@ function \href{tvR}{https://cran.r-project.org/web/packages/tvR/tvR.pdf}.
 }
 \examples{
 \dontrun{
-data(Vesalius)
+data(vesalius)
 # First we build a simple object
 ves <- build_vesalius_object(coordinates, counts)
 # We can do a simple run

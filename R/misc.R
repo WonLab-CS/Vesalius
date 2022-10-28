@@ -4,8 +4,13 @@
 
 
 
-# Used to convert territories per cluster to territories across the whole
-# ST array
+#' globalise territories
+#' converts territories number from territory values per segment
+#' to territory values overall the entire spatial omics assay.
+#' @param img a vesalius territory data frame containing segments
+#' and new territory trial
+#' @return the same data frame but with adjusted terriroty values
+#' @importFrom dplyr filter %>%
 globalise_territories <- function(img) {
   img_tmp <- img %>% filter(trial != "isolated")
   ter <- paste0(img_tmp$segment, "_", img_tmp$trial)
@@ -15,46 +20,38 @@ globalise_territories <- function(img) {
   return(img)
 }
 
-#---------------------------/Edge Functions/-----------------------------#
-# This might need to be moved somewhere else
-# Also these functions will need to be cleaned and updated
-# can still be used - need to think about what i am going to do with this.
-select_similar <- function(img, cols, segment, threshold = "auto") {
-  img <- img %>% 
-    { . - imfill(dim = dim(img), val = cols[segment, 2:4])} %>%
-    imsplit("c") %>%
-    enorm()
-  img <- !threshold(img, threshold)
-  img <- as.cimg(img)
-  return(img)
-}
 
 
+#' detect_edges
+#' detect territory edges in black and white images with sobel filter
+#' @param img a cimg image
+#' @return a pix set containing deteced edges
+#' @importFrom dplyr %>%
+#' @importFrom imager imgradient enorm add
 detect_edges <- function(img) {
   img <- img %>%
-    imgradient("xy") %>%
-    enorm() %>%
-    add() %>%
+    imager::imgradient("xy") %>%
+    imager::enorm() %>%
+    imager::add() %>%
     sqrt()
   return(img)
 }
 
-pmap <- function(edges, method = c("inverse", "none")) {
-    pmap <- switch(method[1],
-      "inverse" = 1 / (1 + edges),
-      "none" = edges)
-    return(pmap)
-}
 
 
 #------------------------/ Normalising Embeds /--------------------------------#
+
+#' pixel normalisation dispatch function
+#' @param embeds a embedding vector 
+#' @param type string "minmax" or "quantileNorm"
+#' @details how pixels should be normalised 
+#' At the moment only miman is used. Quantile needs to be tested.
 norm_pixel <- function(embeds, type = c("minmax", "quantileNorm")) {
     #--------------------------------------------------------------------------#
     # Normalise pixels values
     # at the moment i am only using min max but just in case
     # context: Dr Hong suggest imnvestigating the influence of dat normalisation
     #--------------------------------------------------------------------------#
-    
     embeds <- switch(type[1L],
                      "minmax" = min_max(embeds),
                      "quantileNorm" = quantile_norm(embeds))
@@ -62,12 +59,17 @@ norm_pixel <- function(embeds, type = c("minmax", "quantileNorm")) {
 }
 
 
-min_max <- function(x){
+#' min max normalisation
+#' @param x numeric vector
+#' @return min max nornalised vector
+min_max <- function(x) {
   return((x - min(x)) / (max(x) - min(x)))
 }
 
-
-quantile_norm <- function(x){
+#' quantile normalisation 
+#' @param x numeric vector
+#' @return quatile normalised vector 
+quantile_norm <- function(x) {
   x_rank <- apply(x, 2, rank, ties.method = "min")
   x <- data.frame(apply(x, 2, sort))
   x_mean <- apply(x, 1, mean)
@@ -77,5 +79,3 @@ quantile_norm <- function(x){
   rownames(x_final) <- rownames(x)
   return(x_final)
 }
-
-

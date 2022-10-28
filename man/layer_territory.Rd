@@ -50,7 +50,7 @@ territory at a time.
 }
 \examples{
 \dontrun{
-data(Vesalius)
+data(vesalius)
 # First we build a simple object
 ves <- build_vesalius_object(coordinates, counts)
 # We can do a simple run

@@ -21,11 +21,12 @@ setClassUnion("DEG", c("list", NULL))
 #' tiles, image embeddings, spatial territories, differentially expressed genes
 #' (DEG), count matrices (raw and normalised), microscopy images (if present)
 #' and a functional log that lets you see what had been run on this object.
-#'
+#' @slot assay character assay name 
 #' @slot tiles data.frame containing spatial coordinates and pixels tiles once
 #' they have been computed
 #' @slot embeddings list containing latent space embeddings in the form of
 #' data.frames.
+#' @slot active matrix containing active embedding data
 #' @slot territories data.frame containing spatial color segments, spatial
 #' territories, or layers.
 #' @slot DEG list of data.frame for each differentially gene expression trial
@@ -131,6 +132,7 @@ setMethod("show",
 #' data(vesalius)
 #' # Single assay object
 #' ves <- build_vesalius_assay(coordinates, counts)
+#' @importFrom methods new
 
 build_vesalius_assay <- function(coordinates,
     counts,

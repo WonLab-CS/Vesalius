@@ -2,7 +2,7 @@
 % Please edit documentation in R/visualization.R
 \name{territory_plot}
 \alias{territory_plot}
-\title{territoryPlot plotting Vesalius territories}
+\title{territory_plot - plotting Vesalius territories}
 \usage{
 territory_plot(
   vesalius_assay,
@@ -14,6 +14,11 @@ territory_plot(
 )
 }
 \arguments{
+\item{vesalius_assay}{a vesalius_Assay object}
+
+\item{trial}{character string describing which segmentation trial
+to use. Default is "last" which is the last segmentation trial used.}
+
 \item{split}{logical - If TRUE, territories will be plotted in
 separate panels}
 
@@ -21,34 +26,39 @@ separate panels}
 
 \item{cex}{numeric describing font size multiplier.}
 
-\item{territories}{a Vesalius data frame conatining territory information
-(i.e. containing the terriotry column)}
-
 \item{cex.pt}{numeric describing point size multiplier.}
 }
 \value{
 a ggplot object
 }
 \description{
-territoryPlot plotting Vesalius territories
+territory_plot - plotting Vesalius territories
 }
 \details{
 Territory plots show all territories in false colour after they
 have been isolated from a Vesalius image.
+
+Note that this function can be applied to image segments, territories,
+and layers.
 }
 \examples{
 \dontrun{
 data(vesalius)
-# Seurat pre-processing
-image <- NormalizeData(vesalius)
-image <- FindVariableFeatures(image, nfeatures = 2000)
-image <- ScaleData(image)
-# converting to rgb
-image <- rgbPCA(image,slices = 1)
-image <- buildImageArray(image, sliceID=1)
-# One segmentation round
-image <- iterativeSegmentation.array(image)
-image <- isolateTerritories.array(image, minBar = 5)
-g <- territoryPlot(image,cex = 12, cex.pt = 1)
+# First we build a simple object
+ves <- build_vesalius_object(coordinates, counts)
+# We can do a simple run
+ves <- build_vesalius_embeddings(ves)
+
+# simple smoothing
+ves <- smooth_image(ves, dimensions = seq(1, 30))
+
+# quick segmentation
+ves <- segment_image(ves, dimensions = seq(1, 30))
+
+# isolate territories
+ves <- isolate_territories(ves)
+
+# Plot Territories
+p <- territory_plot(ves)
 }
 }

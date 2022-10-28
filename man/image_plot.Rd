@@ -2,7 +2,7 @@
 % Please edit documentation in R/visualization.R
 \name{image_plot}
 \alias{image_plot}
-\title{imagePlot - Vesalius image plotting}
+\title{image_plot - plotting vesalius embeddings}
 \usage{
 image_plot(
   vesalius_assay,
@@ -12,42 +12,51 @@ image_plot(
 )
 }
 \arguments{
+\item{vesalius_assay}{a vesalius_assay object}
+
+\item{dimensions}{which dimensions to use to generate image (see details)}
+
+\item{embedding}{character string descrining which embedding should be 
+used for image generation.}
+
 \item{cex}{numeric - font and point size resizing factor.}
-
-\item{image}{a Vesalius data frame containing at least
-barcodes, x, y, cc, value}
-
-\item{as.cimg}{logical - If TRUE, will plot directly using cimg plotting.
-If FALSE, will produce a ggplot object.}
 }
 \value{
-cimg plot or ggplot object
+ggplot object
 }
 \description{
-imagePlot - Vesalius image plotting
+image_plot - plotting vesalius embeddings
 }
 \details{
-Vesalius provides basic plotting functions. This function
-only shows Vesalius images (i.e. using true embedded colours or segmented
-colours).
+Once you have generated your embeddings, 
+you can visualise these embeddings using the \code{image_plot} function.
+This function will generate a ggplot object representing the embedding 
+image containing all pixels. You can select any dimension and in any 
+combination you desire, however you can only select 1 or 3 dimensions 
+to visualise at a time. This will either generate grey scale image 
+or RGB images. 
 
-Currently, we advise to use as.cimg as false for custom plots.
+This function is always applied to the active embedding. By default,
+this is the last you generated. This means that you can also use
+this function to visualise the effect if smoothing, equalization,
+regularisation or segmentation. 
 
-As Vesalius nearly always returns data frames, custom plots are left to
-the discretion of the user.
+Please note that if you are using "louvain" or "leiden" for 
+image segmentation, this will always generate grey scale images
+even if you select multiple dimensions. "Kmeans" on the other hand 
+will still produce RGB color segments.
+
+The usage of this function remains the same in after any processing steps.
 }
 \examples{
 \dontrun{
 data(vesalius)
-# Seurat pre-processing
-image <- NormalizeData(vesalius)
-image <- FindVariableFeatures(image, nfeatures = 2000)
-image <- ScaleData(image)
-# converting to rgb
-image <- rgbPCA(image,slices = 1)
-image <- buildImageArray(image, sliceID=1)
-imagePlot(image)
-# as ggplot
-g <- imagePlot(image,as.cimg = F)
+# First we build a simple object
+ves <- build_vesalius_object(coordinates, counts)
+# We can do a simple run 
+ves <- build_vesalius_embeddings(ves)
+# Plot 1st 3 PCs
+p <- image_plot(ves)
+
 }
 }

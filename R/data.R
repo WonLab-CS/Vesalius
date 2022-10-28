@@ -1,17 +1,15 @@
-#' @title vesalius Spatial Transcriptomic data - Slide-seqV2 - Mouse Brain
+#' Spatial coordinates and count matrix for vesalius
 #'
-#' This data set is a subset of the slide-seqV2 data set that can be found here:
+#'
+#' @docType data
+#' @keywords datasets
+#' @name coordinates counts
+#' @usage data(vesalius)
 #' @source \url{https://singlecell.broadinstitute.org/single_cell/study/SCP948/robust-decomposition-of-cell-type-mixtures-in-spatial-transcriptomics#study-download}
-#'
-#' More specifically,Puck_200115_08.
-#'
-#' @format Seurat object containing trimmed SlideSeq V2 Coordinates.
-#'
-#'
-#' For a full overview of Vesalius, please refer to the Vesalius_Analysis.Rmd.
-#' This file contains a full analysis related to the Vesalius paper.
-#'
-#'
-#'
+#' @format coordinate data frame and sparse count matrix
+#' \describe{
+#'  \item{coordinates}{spatial coodinates of Puck_200815 taken from slide-seV2}
+#'  \item{counts}{gene counts of Puck_200815 taken from slide-seV2}
+#' }
 #'
 NULL

@@ -2,7 +2,7 @@
 % Please edit documentation in R/visualization.R
 \name{view_gene_expression}
 \alias{view_gene_expression}
-\title{viewGeneExpression - plot gene expression.}
+\title{view_gene_expression}
 \usage{
 view_gene_expression(
   vesalius_assay,
@@ -18,60 +18,99 @@ view_gene_expression(
 )
 }
 \arguments{
-\item{genes}{character - gene of interest (only on gene at a time)}
+\item{vesalius_assay}{a vesalius_assay object}
 
-\item{cex}{numeric - font size modulator}
+\item{genes}{character vector containing the genes you wish to 
+visualise.}
 
-\item{image}{a Vesalius data frame containing barcodes, x, y, cc, value,
-cluster, and territory.}
+\item{norm_method}{character string - which count matrix should be used.}
 
-\item{counts}{count matrix - either matrix, sparse matrix or seurat object
-This matrix should contain genes as rownames and cells/barcodes as colnames}
+\item{trial}{character string describing which segmentation trial
+to use. Default is "last" which is the last trial used.}
 
-\item{ter}{integer - Territory ID in which gene expression will be viewed. If
-NULL, all territories will be selected.}
+\item{territory_1}{integer or vector of integers descrbing territories in
+group 1 (see details)}
 
-\item{normalise}{logical - If TRUE, gene expression values will be min/max
-normalised.}
+\item{territory_2}{integer or vector of integers descrbing territories in
+group 2 (see details)}
+
+\item{cells}{charactor vector containing barcodes/spatial_indices
+associated with cell types of interest (see details)}
+
+\item{norm}{logical indicating if expression should be min/max normalised}
+
+\item{as_layer}{logical indicating if expression should represented as
+a territory/ layer.}
+
+\item{cex}{numeric - font/point size modulator}
 }
 \value{
-a ggplot object (geom_raster)
+a ggplot object
 }
 \description{
-viewGeneExpression - plot gene expression.
+View gene expression in spatial omics data, in specific territories or
+the expression of genes in a subset of cells.
 }
 \details{
-Visualization of gene expression in all or in selected territories.
-Gene expression is shown "as is". This means that if no transformation
-is applied to the data then normalized raw count will be shown.
+Vesalius offers a plotting function that allows you to 
+visualise gene expression. 
 
-If normalization and scaling have been applied, normalized counts will be
-shown.
+This function offers multiple options depending on what you provide.
 
-This also applies to any data transformation applied on the count matrix
-or the Seurat object.
+1. Overall expression
+You can visualise the overall expression pattern of a set of genes
+by providing a vesalius_assay object containing counts.
+If \code{as_layer} is set to FALSE this will show the expression at
+each sptial index indivdually. If set to TRUE, this will show the
+average expression on a gene in all territories present.
 
-We recommend using Seurat Objects.
+2. Expression in a territory
+You can visualise the expression of a gene in an isolated territory.
 
-NOTE : You might be promoted to use geom_tiles instead of geom_raster.
-However - this will increase file size to unreasonable heights.
+3. Expression of cells in one or more territory
+If you want to visualise the expression of specific cells, you can
+parse a character vector containing your cells of interest. This
+function will automatically subset the relevant territory data and
+show the expression only in the spatial indeces hat are associated
+with your cell type of interest. You can use this option to contrast
+the expression of cells between territories by also providing which
+territories you wish to contrast (`territory_1` and `territory_2`).
+If only a single territory is provided, vesalius will only shows cell
+in that territory.
+
+If you provide more than one gene, `view_gene_expression` will return 
+a ggarrange list containing all your genes as individual plots.
 }
 \examples{
 \dontrun{
 data(vesalius)
-# Seurat pre-processing
-image <- NormalizeData(vesalius)
-image <- FindVariableFeatures(image, nfeatures = 2000)
-image <- ScaleData(image)
-# converting to rgb
-image <- rgbPCA(image,slices = 1)
-image <- buildImageArray(image, sliceID=1)
-# One segmentation round
-image <- iterativeSegmentation.array(image)
-image <- isolateTerritories.array(image, minBar = 5)
-# In all points
-g <- viewGeneExpression(image,vesalius, genes = "Cst3")
-# In a specific territory
-g1 <- viewGeneExpression(image, vesalius, ter = 1, genes = "Cst3")
+# First we build a simple object
+ves <- build_vesalius_object(coordinates, counts)
+# We can do a simple run
+ves <- build_vesalius_embeddings(ves)
+
+# simple smoothing
+ves <- smooth_image(ves, dimensions = seq(1, 30))
+
+# quick segmentation
+ves <- segment_image(ves, dimensions = seq(1, 30))
+
+# isolate territories
+ves <- isolate_territories(ves)
+
+# view over all expression
+p <- view_gene_expression(ves, genes = "Malat1")
+p1 <- view_gene_expression(ves, genes = "Malat1", as_layer = TRUE)
+
+# view expression in isolated territory 
+p2 <- view_gene_expression(ves, genes = "Malat1", territory_1 = 5)
+
+# view expression of cells
+cells <- sample(colnames(get_counts(ves)),300)
+p3 <- view_gene_expression(ves,
+ genes = "Malat",
+ cells = cells,
+ territory_1 = 5,
+ terriotry_2 = 8)
 }
 }

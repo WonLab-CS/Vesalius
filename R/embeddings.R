@@ -41,7 +41,7 @@
 #' selected excluding UMAP type as only 3 are availbale.
 #'
 #' The algorithm is broadly to many spatial omics assays. As such, you can use
-#' the \code{\link{build_vesalius_object}} function to create a single object
+#' the \code{\link{build_vesalius_assay}} function to create a single object
 #' that will contain all your different assays.
 #' You can select a different normalisation method
 #' and dim_reudction method for each (see examples).
@@ -62,7 +62,7 @@
 #'  (depending on which was used as input)
 #' @examples
 #' \dontrun{
-#' data(Vesalius)
+#' data(vesalius)
 #' # First we build a simple object
 #' ves <- build_vesalius_object(coordinates, counts)
 #' # We can do a simple run 
@@ -420,8 +420,9 @@ adjust_counts <- function(coordinates, counts, cores = 1) {
 #' @param coordinates data frame with original coordinates
 #' @param filter_threshold numeric describing the quantile threshold value
 #' to use for area filtering
-#' @return a list with 2 data frame. 1 with filtered tesselation results 
+#' @return a list with 2 data frame. 1 with filtered tesselation results
 #' 2 filtered coordinate file.
+#' @importFrom stats quantile
 filter_tiles <- function(tesselation, coordinates, filter_threshold) {
   max_area <- quantile(tesselation$summary$dir.area, filter_threshold)
   idx <- which(tesselation$summary$dir.area >= max_area)

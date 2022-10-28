@@ -52,6 +52,7 @@ please refer to the other articles.
 ```{r loading, eval = TRUE, echo = TRUE}
 suppressMessages(library(vesalius))
 library(patchwork)
+library(ggplot2)
 data(vesalius, package = "vesalius")
 
 ```
@@ -216,7 +217,7 @@ p6
 Once we have our territories, we can compare the expression of genes between territories. 
 
 ```{r compare_territories, eval = TRUE, echo = TRUE}
-vesalius <- identify_markers(vesalius, seed = c(3,5), query = 8)
+vesalius <- identify_markers(vesalius, seed = 3, query = 6)
 deg <- get_markers(vesalius)
 ```
 

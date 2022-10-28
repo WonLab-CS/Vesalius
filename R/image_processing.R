@@ -58,7 +58,7 @@
 #' @return a vesalius_assay
 #' @examples
 #' #' \dontrun{
-#' data(Vesalius)
+#' data(vesalius)
 #' # First we build a simple object
 #' ves <- build_vesalius_object(coordinates, counts)
 #' # We can do a simple run
@@ -197,7 +197,7 @@ internal_smooth <- function(image,
         "mean" = imager::average(image))
     }
     if (i %% 2 == 0) {
-      image <- imager::imrotate(image,180)
+      image <- imager::imrotate(image, 180)
     }
   }
   return(image)
@@ -239,7 +239,7 @@ internal_smooth <- function(image,
 #' @return a vesalius_assay object
 #' @examples
 #' \dontrun{
-#' data(Vesalius)
+#' data(vesalius)
 #' # First we build a simple object
 #' ves <- build_vesalius_object(coordinates, counts)
 #' # We can do a simple run
@@ -296,7 +296,7 @@ equalize_image <- function(vesalius_assay,
       "BalanceSimplest" = parallel::mclapply(images,
         imagerExtra::BalanceSimplest,
         sleft, sright, range = c(0, 1), mc.cores = cores),
-      "SPE" = parallel::mclapply(image, imagerExtra::SPE,
+      "SPE" = parallel::mclapply(images, imagerExtra::SPE,
         lambda, mc.cores = cores),
       "EqualizeDP"  = parallel::mclapply(images, imagerExtra::EqualizeDP,
         down, up, mc.cores = cores),
@@ -332,7 +332,7 @@ equalize_image <- function(vesalius_assay,
 #' @importFrom imager as.cimg
 #' @importFrom stats ecdf
 ecdf_eq <- function(im) {
-   return(imager::as.cimg(stats::ecdf(im)(im), dim = dim(im)))
+   return(suppressWarnings(imager::as.cimg(stats::ecdf(im)(im), dim = dim(im))))
 }
 
 
@@ -364,7 +364,7 @@ ecdf_eq <- function(im) {
 #' @return a vesalius_assay
 #' @examples
 #' \dontrun{
-#' data(Vesalius)
+#' data(vesalius)
 #' # First we build a simple object
 #' ves <- build_vesalius_object(coordinates, counts)
 #' # We can do a simple run
@@ -453,7 +453,7 @@ regularise <- function(img,
     if (normalise) {
         img <- (img - min(img)) / (max(img) - min(img))
     }
-    return(imager::as.cimg(img))
+    return(suppressWarnings(imager::as.cimg(img)))
 }
 
 
@@ -500,7 +500,7 @@ regularise <- function(img,
 #' @return a vesalius_assay object
 #' @examples
 #' \dontrun{
-#' data(Vesalius)
+#' data(vesalius)
 #' # First we build a simple object
 #' ves <- build_vesalius_object(coordinates, counts)
 #' # We can do a simple run
@@ -661,7 +661,7 @@ kmeans_segmentation <- function(vesalius_assay,
   images <- lapply(embeds, function(idx, cols) {
     tmp <- cols[, c("x", "y", as.character(idx))]
     colnames(tmp) <- c("x", "y", "value")
-    return(as.cimg(tmp))
+    return(suppressWarnings(as.cimg(tmp)))
     }, cols = clusters)
   #--------------------------------------------------------------------------#
   # Let's rebuild everything
@@ -717,7 +717,8 @@ leiden_segmentation <- function(vesalius_assay,
   embeddings <- check_embedding(vesalius_assay, embedding, dimensions)
   graph <- compute_nearest_neighbor_graph(embeddings = embeddings,
     cores = cores)
-  clusters <- igraph::cluster_leiden(graph, resolution_parameter = col_depth)
+  clusters <- igraph::cluster_leiden(graph,
+    resolution_parameter = col_resolution)
   cluster <- data.frame("cluster" = clusters$membership,
     "barcodes" = clusters$names)
 
@@ -863,7 +864,7 @@ populate_graph <- function(chunk) {
 #' @return a vesalius_assay object
 #' @examples
 #' \dontrun{
-#' data(Vesalius)
+#' data(vesalius)
 #' # First we build a simple object
 #' ves <- build_vesalius_object(coordinates, counts)
 #' # We can do a simple run

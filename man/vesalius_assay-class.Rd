@@ -15,11 +15,15 @@ and a functional log that lets you see what had been run on this object.
 \section{Slots}{
 
 \describe{
+\item{\code{assay}}{character assay name}
+
 \item{\code{tiles}}{data.frame containing spatial coordinates and pixels tiles once
 they have been computed}
 
 \item{\code{embeddings}}{list containing latent space embeddings in the form of
 data.frames.}
+
+\item{\code{active}}{matrix containing active embedding data}
 
 \item{\code{territories}}{data.frame containing spatial color segments, spatial
 territories, or layers.}

@@ -2,35 +2,43 @@
 ############################   ST package        ###############################
 ################################################################################
 
-#' imagePlot - Vesalius image plotting
-#' @param image a Vesalius data frame containing at least
-#' barcodes, x, y, cc, value
-#' @param as.cimg logical - If TRUE, will plot directly using cimg plotting.
-#' If FALSE, will produce a ggplot object.
+#' image_plot - plotting vesalius embeddings
+#' @param vesalius_assay a vesalius_assay object
+#' @param dimensions which dimensions to use to generate image (see details)
+#' @param embedding character string descrining which embedding should be 
+#' used for image generation.
 #' @param cex numeric - font and point size resizing factor.
-#' @details Vesalius provides basic plotting functions. This function
-#' only shows Vesalius images (i.e. using true embedded colours or segmented
-#' colours).
-#'
-#' Currently, we advise to use as.cimg as false for custom plots.
-#'
-#' As Vesalius nearly always returns data frames, custom plots are left to
-#' the discretion of the user.
-#' @return cimg plot or ggplot object
+#' @details Once you have generated your embeddings, 
+#' you can visualise these embeddings using the \code{image_plot} function.
+#' This function will generate a ggplot object representing the embedding 
+#' image containing all pixels. You can select any dimension and in any 
+#' combination you desire, however you can only select 1 or 3 dimensions 
+#' to visualise at a time. This will either generate grey scale image 
+#' or RGB images. 
+#' 
+#' This function is always applied to the active embedding. By default,
+#' this is the last you generated. This means that you can also use
+#' this function to visualise the effect if smoothing, equalization,
+#' regularisation or segmentation. 
+#' 
+#' Please note that if you are using "louvain" or "leiden" for 
+#' image segmentation, this will always generate grey scale images
+#' even if you select multiple dimensions. "Kmeans" on the other hand 
+#' will still produce RGB color segments.
+#' 
+#' The usage of this function remains the same in after any processing steps.
+#' @return ggplot object
 #' @examples
 #' \dontrun{
 #' data(vesalius)
-#' # Seurat pre-processing
-#' image <- NormalizeData(vesalius)
-#' image <- FindVariableFeatures(image, nfeatures = 2000)
-#' image <- ScaleData(image)
-#' # converting to rgb
-#' image <- rgbPCA(image,slices = 1)
-#' image <- buildImageArray(image, sliceID=1)
-#' imagePlot(image)
-#' # as ggplot
-#' g <- imagePlot(image,as.cimg = F)
-#' }
+#' # First we build a simple object
+#' ves <- build_vesalius_object(coordinates, counts)
+#' # We can do a simple run 
+#' ves <- build_vesalius_embeddings(ves)
+#' # Plot 1st 3 PCs
+#' p <- image_plot(ves)
+#'
+#'}
 #' @export
 #' @importFrom ggplot2 ggplot
 #' @importFrom ggplot2 geom_raster
@@ -41,6 +49,8 @@
 #' @importFrom ggplot2 aes
 #' @importFrom ggplot2 element_text
 #' @importFrom dplyr right_join
+#' @importFrom stats na.exclude
+#' @importFrom grDevices rgb gray
 
 image_plot <- function(vesalius_assay,
   dimensions = seq(1, 3),
@@ -94,9 +104,10 @@ image_plot <- function(vesalius_assay,
 
 
 
-#' territoryPlot plotting Vesalius territories
-#' @param territories a Vesalius data frame conatining territory information
-#' (i.e. containing the terriotry column)
+#' territory_plot - plotting Vesalius territories
+#' @param vesalius_assay a vesalius_Assay object
+#' @param trial character string describing which segmentation trial
+#' to use. Default is "last" which is the last segmentation trial used.
 #' @param split logical - If TRUE, territories will be plotted in
 #' separate panels
 #' @param randomise logical - If TRUE, colour palette will be randomised.
@@ -104,23 +115,34 @@ image_plot <- function(vesalius_assay,
 #' @param cex.pt numeric describing point size multiplier.
 #' @details Territory plots show all territories in false colour after they
 #' have been isolated from a Vesalius image.
+#' 
+#' Note that this function can be applied to image segments, territories,
+#' and layers.
 #' @return a ggplot object
 #' @examples
 #' \dontrun{
 #' data(vesalius)
-#' # Seurat pre-processing
-#' image <- NormalizeData(vesalius)
-#' image <- FindVariableFeatures(image, nfeatures = 2000)
-#' image <- ScaleData(image)
-#' # converting to rgb
-#' image <- rgbPCA(image,slices = 1)
-#' image <- buildImageArray(image, sliceID=1)
-#' # One segmentation round
-#' image <- iterativeSegmentation.array(image)
-#' image <- isolateTerritories.array(image, minBar = 5)
-#' g <- territoryPlot(image,cex = 12, cex.pt = 1)
-#' }
+#' # First we build a simple object
+#' ves <- build_vesalius_object(coordinates, counts)
+#' # We can do a simple run
+#' ves <- build_vesalius_embeddings(ves)
+#'
+#' # simple smoothing
+#' ves <- smooth_image(ves, dimensions = seq(1, 30))
+#' 
+#' # quick segmentation
+#' ves <- segment_image(ves, dimensions = seq(1, 30))
+#' 
+#' # isolate territories
+#' ves <- isolate_territories(ves)
+#' 
+#' # Plot Territories
+#' p <- territory_plot(ves)
+#'}
 #' @export
+#' @importFrom ggplot2 ggplot geom_point aes facet_wrap theme_classic
+#' @importFrom ggplot2 scale_color_manual theme element_text
+#' @importFrom ggplot2 guides guide_legend labs
 
 territory_plot <- function(vesalius_assay,
   trial = "last",
@@ -186,6 +208,18 @@ territory_plot <- function(vesalius_assay,
 }
 
 
+
+#' create color palette from predefine scheme
+#' @param territories vesalius territories taken from a vesalius_assay
+#' @param randomise logical describing if colour palette should be 
+#' randomised.
+#' @details We use a predefined palette that use colour blind friendly
+#' base colours. We generate a color palette based on the number of 
+#' territories present. If required the colours will be randomly assinged
+#' to each territory. Note that as the territory plot 
+#' return a ggplot object, you can easily override the color scheme. 
+#' @return color vector
+#' @importFrom grDevices colorRampPalette
 create_palette <- function(territories, randomise) {
   ter_col <- length(levels(territories$trial))
   base_colours <- c(
@@ -210,53 +244,96 @@ create_palette <- function(territories, randomise) {
   return(ter_col)
 }
 
-#' viewGeneExpression - plot gene expression.
-#' @param image a Vesalius data frame containing barcodes, x, y, cc, value,
-#' cluster, and territory.
-#' @param counts count matrix - either matrix, sparse matrix or seurat object
-#' This matrix should contain genes as rownames and cells/barcodes as colnames
-#' @param ter integer - Territory ID in which gene expression will be viewed. If
-#' NULL, all territories will be selected.
-#' @param genes character - gene of interest (only on gene at a time)
-#' @param normalise logical - If TRUE, gene expression values will be min/max
-#' normalised.
-#' @param cex numeric - font size modulator
-#' @details Visualization of gene expression in all or in selected territories.
-#' Gene expression is shown "as is". This means that if no transformation
-#' is applied to the data then normalized raw count will be shown.
-#'
-#' If normalization and scaling have been applied, normalized counts will be
-#' shown.
-#'
-#' This also applies to any data transformation applied on the count matrix
-#' or the Seurat object.
-#'
-#' We recommend using Seurat Objects.
-#'
-#' NOTE : You might be promoted to use geom_tiles instead of geom_raster.
-#' However - this will increase file size to unreasonable heights.
-#' @return a ggplot object (geom_raster)
+#' view_gene_expression
+#' 
+#' View gene expression in spatial omics data, in specific territories or
+#' the expression of genes in a subset of cells.
+#' @param vesalius_assay a vesalius_assay object
+#' @param genes character vector containing the genes you wish to 
+#' visualise.
+#' @param norm_method character string - which count matrix should be used.
+#' @param trial character string describing which segmentation trial
+#' to use. Default is "last" which is the last trial used.
+#' @param territory_1 integer or vector of integers descrbing territories in
+#' group 1 (see details)
+#' @param territory_2 integer or vector of integers descrbing territories in
+#' group 2 (see details)
+#' @param cells charactor vector containing barcodes/spatial_indices
+#' associated with cell types of interest (see details)
+#' @param norm logical indicating if expression should be min/max normalised
+#' @param as_layer logical indicating if expression should represented as
+#' a territory/ layer.
+#' @param cex numeric - font/point size modulator
+#' @details Vesalius offers a plotting function that allows you to 
+#' visualise gene expression. 
+#' 
+#' This function offers multiple options depending on what you provide.
+#' 
+#' 1. Overall expression
+#' You can visualise the overall expression pattern of a set of genes
+#' by providing a vesalius_assay object containing counts.
+#' If \code{as_layer} is set to FALSE this will show the expression at
+#' each sptial index indivdually. If set to TRUE, this will show the
+#' average expression on a gene in all territories present.
+#' 
+#' 2. Expression in a territory
+#' You can visualise the expression of a gene in an isolated territory.
+#' 
+#' 3. Expression of cells in one or more territory
+#' If you want to visualise the expression of specific cells, you can
+#' parse a character vector containing your cells of interest. This
+#' function will automatically subset the relevant territory data and
+#' show the expression only in the spatial indeces hat are associated
+#' with your cell type of interest. You can use this option to contrast
+#' the expression of cells between territories by also providing which
+#' territories you wish to contrast (`territory_1` and `territory_2`).
+#' If only a single territory is provided, vesalius will only shows cell
+#' in that territory.
+#' 
+#' If you provide more than one gene, `view_gene_expression` will return 
+#' a ggarrange list containing all your genes as individual plots. 
+#' @return a ggplot object
 #' @examples
 #' \dontrun{
 #' data(vesalius)
-#' # Seurat pre-processing
-#' image <- NormalizeData(vesalius)
-#' image <- FindVariableFeatures(image, nfeatures = 2000)
-#' image <- ScaleData(image)
-#' # converting to rgb
-#' image <- rgbPCA(image,slices = 1)
-#' image <- buildImageArray(image, sliceID=1)
-#' # One segmentation round
-#' image <- iterativeSegmentation.array(image)
-#' image <- isolateTerritories.array(image, minBar = 5)
-#' # In all points
-#' g <- viewGeneExpression(image,vesalius, genes = "Cst3")
-#' # In a specific territory
-#' g1 <- viewGeneExpression(image, vesalius, ter = 1, genes = "Cst3")
-#' }
+#' # First we build a simple object
+#' ves <- build_vesalius_object(coordinates, counts)
+#' # We can do a simple run
+#' ves <- build_vesalius_embeddings(ves)
+#'
+#' # simple smoothing
+#' ves <- smooth_image(ves, dimensions = seq(1, 30))
+#' 
+#' # quick segmentation
+#' ves <- segment_image(ves, dimensions = seq(1, 30))
+#' 
+#' # isolate territories
+#' ves <- isolate_territories(ves)
+#' 
+#' # view over all expression
+#' p <- view_gene_expression(ves, genes = "Malat1")
+#' p1 <- view_gene_expression(ves, genes = "Malat1", as_layer = TRUE)
+#' 
+#' # view expression in isolated territory 
+#' p2 <- view_gene_expression(ves, genes = "Malat1", territory_1 = 5)
+#' 
+#' # view expression of cells
+#' cells <- sample(colnames(get_counts(ves)),300)
+#' p3 <- view_gene_expression(ves,
+#'  genes = "Malat",
+#'  cells = cells,
+#'  territory_1 = 5,
+#'  terriotry_2 = 8)
+#'}
 #' @export
-
-
+#' @importFrom infix %||%
+#' @importFrom dplyr left_join filter group_by mutate
+#' @importFrom stats na.exclude
+#' @importFrom ggplot2 ggplot geom_point aes facet_wrap theme_classic
+#' @importFrom ggplot2 scale_color_gradientn theme element_text
+#' @importFrom ggplot2 guides guide_legend labs margin
+#' @importFrom RColorBrewer brewer.pal
+#' @importFrom ggpubr ggarrange
 view_gene_expression <- function(vesalius_assay,
   genes = NULL,
   norm_method = "last",
