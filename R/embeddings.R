@@ -362,7 +362,7 @@ reduce_tensor_resolution <- function(coordinates, tensor_resolution = 1) {
 #' the counts will be adjusted by taking the average count value accross 
 #' all barcodes that have been merged together. 
 #' @return a count matrix with adjusted count values 
-#' @importFrom Matrix Matrix
+#' @importFrom Matrix Matrix rowSums
 #' @importFrom future.apply future_lapply
 adjust_counts <- function(coordinates, counts) {
     #--------------------------------------------------------------------------#
@@ -380,10 +380,10 @@ adjust_counts <- function(coordinates, counts) {
     #--------------------------------------------------------------------------#
     tmp_bar <- strsplit(coord_bar, "_et_")
 
-    empty <- future_lapply(tmp_bar, function(coord, count) {
-      tmp <- rowSums(count[, coord])
-      return(tmp)
-    }, count = counts)
+    empty <- future_lapply(tmp_bar, function(tmp_bar, counts) {
+        return(Matrix::rowSums(counts[, tmp_bar]))
+    }, counts = counts)
+
     empty <- do.call("cbind", empty)
     if (is.null(dim(empty)) && length(empty) != 0) {
         empty <- Matrix::Matrix(empty, ncol = 1)

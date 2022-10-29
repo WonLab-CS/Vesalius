@@ -44,7 +44,7 @@ message_switch <- function(type, verbose = TRUE, ...) {
         "pca_tensor" = cat(paste(t,
             " Running Principle Component Analysis \n")),
         "pca_rgb_tensor" = cat(paste(t,
-            " Converting PCA Embediing Values to gray scale \n")),
+            " Converting PCA Embedding Values to gray scale \n")),
         "pcal_rgb_tensor" = cat(paste(t,
             " Converting Loading Values to gray scale in PC", args$pc, "\n")),
         "svd_tensor" = cat(paste(t,
