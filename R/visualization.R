@@ -443,7 +443,8 @@ view_gene_expression <- function(vesalius_assay,
       gene_list <- gene_list[[1L]]
     } else {
       gene_list <- ggarrange(plotlist = gene_list,
-        ncol = floor(sqrt(length(gene_list))))
+        ncol = floor(sqrt(length(gene_list))),
+        nrow = floor(sqrt(length(gene_list))))
     }
     return(gene_list)
 }
