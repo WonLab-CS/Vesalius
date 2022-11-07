@@ -68,11 +68,12 @@ image_plot <- function(vesalius_assay,
     #--------------------------------------------------------------------------#
     # First get image data from vesalius object
     #--------------------------------------------------------------------------#
-    coordinates <- check_tiles(vesalius)
+    coordinates <- check_tiles(vesalius_assay)
     # need to check this -
-    tile_colour <- check_embedding(vesalius,
+    tile_colour <- check_embedding(vesalius_assay,
       embedding,
       dimensions)[, dimensions]
+    embed_name <- get_last_embedding(vesalius_assay, embedding)
     #### format needs to be reworked here
     tile_colour <- as.data.frame(tile_colour)
     tile_colour$barcodes <- rownames(tile_colour)
@@ -84,11 +85,13 @@ image_plot <- function(vesalius_assay,
     #--------------------------------------------------------------------------#
     if (length(dimensions) == 3) {
       cols <- rgb(coordinates[, 5], coordinates[, 6], coordinates[, 7])
-      title <- paste0("Vesalius - Dims = ", paste0(dimensions, collapse = "-"))
+      title <- paste0(embed_name, " - Dims = ",
+        paste0(dimensions, collapse = "-"))
     } else {
       # to do
       cols <- gray(coordinates[, 5])
-      title <- paste0("Vesalius - Dim = ", paste0(dimensions, collapse = "-"))
+      title <- paste0(embed_name, " - Dim = ",
+        paste0(dimensions, collapse = "-"))
     }
     image <- ggplot(coordinates, aes(x, y)) +
         geom_raster(aes(fill = cols)) +

@@ -279,3 +279,20 @@ get_markers <- function(vesalius_assay, trial = "last") {
         }
     }
 }
+
+#' get last embedding
+#' @param vesalius_assay a vesalius_assay object
+#' @return character string with name of last embedding used
+get_last_embedding <- function(vesalius_assay, embedding) {
+    if (length(search_log(vesalius_assay,
+        arg = "embedding",
+        return_assay = TRUE)) == 0) {
+            stop("No embeddings have been computed!")
+    } else {
+        log <- search_log(vesalius_assay, embedding, return_assay = FALSE) |
+            search_log(vesalius_assay, "embedding", return_assay = FALSE)
+        log <- vesalius_assay@log[log]
+        log <- log[[length(log)]]
+        return(log$dim_reduction)
+    }
+}
