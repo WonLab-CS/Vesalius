@@ -119,7 +119,8 @@ smooth_image <- function(vesalius_assay,
       neuman = neuman,
       gaussian = gaussian,
       na.rm = na.rm,
-      across_levels = across_levels)
+      across_levels = across_levels,
+      future.seed = TRUE)
     #--------------------------------------------------------------------------#
     # shifting format
     # c_to_ves => format.R
@@ -287,13 +288,19 @@ equalize_image <- function(vesalius_assay,
 
     images <- switch(type,
       "EqualizePiecewise" = future_lapply(images,
-        imagerExtra::EqualizePiecewise, N),
+        imagerExtra::EqualizePiecewise, N,
+        future.seed = TRUE),
       "BalanceSimplest" = future_lapply(images,
-        imagerExtra::BalanceSimplest, sleft, sright, range = c(0, 1)),
-      "SPE" = future_lapply(images, imagerExtra::SPE, lambda),
-      "EqualizeDP"  = future_lapply(images, imagerExtra::EqualizeDP, down, up),
-      "EqualizeADP" = future_lapply(images, imagerExtra::EqualizeADP),
-      "ECDF" = future_lapply(images, ecdf_eq))
+        imagerExtra::BalanceSimplest, sleft, sright, range = c(0, 1),
+        future.seed = TRUE),
+      "SPE" = future_lapply(images, imagerExtra::SPE, lambda,
+        future.seed = TRUE),
+      "EqualizeDP"  = future_lapply(images, imagerExtra::EqualizeDP, down, up,
+        future.seed = TRUE),
+      "EqualizeADP" = future_lapply(images, imagerExtra::EqualizeADP,
+        future.seed = TRUE),
+      "ECDF" = future_lapply(images, ecdf_eq,
+        future.seed = TRUE))
     #--------------------------------------------------------------------------#
     # shifting format
     # c_to_ves => format.R
@@ -393,7 +400,8 @@ regularise_image <- function(vesalius_assay,
     images <- future_lapply(images, regularise,
       lambda,
       niter,
-      normalise)
+      normalise,
+      future.seed = TRUE)
 
     embeds <- format_c_to_ves(images,
       vesalius_assay,
@@ -759,7 +767,8 @@ compute_nearest_neighbor_graph <- function(embeddings, k = 20) {
     knn <- RANN::nn2(embeddings, k = k)$nn.idx
     rownames(knn) <- rownames(embeddings)
     chunk <- chunker(knn, cores = future::nbrOfWorkers())
-    graph <- future_lapply(chunk, populate_graph)
+    graph <- future_lapply(chunk, populate_graph,
+      future.seed = TRUE)
     graph <- do.call("rbind", graph)
     graph <- igraph::graph_from_data_frame(graph, directed = FALSE)
 }
@@ -1079,4 +1088,3 @@ distance_pooling <- function(img, capture_radius, min_spatial_index) {
     }
       return(all_ters)
 }
-

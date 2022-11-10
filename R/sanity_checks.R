@@ -242,7 +242,7 @@ check_segments <- function(vesalius_assay, trial = "last") {
     if (trial == "last") {
         trial <- grep("Segment", colnames(territories), value = TRUE) %>%
             tail(1)
-    } else if (length(grep(trial, colnames(territories)) == 0)) {
+    } else if (length(grep(trial, colnames(territories))) == 0) {
         stop(
             paste(deparse(substitute(trial)), "is not in territory data frame")
         )

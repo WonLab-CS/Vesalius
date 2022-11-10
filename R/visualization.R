@@ -73,7 +73,9 @@ image_plot <- function(vesalius_assay,
     tile_colour <- check_embedding(vesalius_assay,
       embedding,
       dimensions)[, dimensions]
-    embed_name <- get_last_embedding(vesalius_assay, embedding)
+    embed_name <- ifelse(embedding == "last",
+      get_last_embedding(vesalius_assay, embedding),
+      embedding)
     #### format needs to be reworked here
     tile_colour <- as.data.frame(tile_colour)
     tile_colour$barcodes <- rownames(tile_colour)

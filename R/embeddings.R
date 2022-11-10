@@ -382,7 +382,7 @@ adjust_counts <- function(coordinates, counts) {
 
     empty <- future_lapply(tmp_bar, function(tmp_bar, counts) {
         return(Matrix::rowSums(counts[, tmp_bar]))
-    }, counts = counts)
+    }, counts = counts, future.seed = TRUE)
 
     empty <- do.call("cbind", empty)
     if (is.null(dim(empty)) && length(empty) != 0) {
@@ -498,7 +498,7 @@ rasterise <- function(filtered) {
           "y" = max_y,
           "origin" = centers)
         return(tile)
-    }, filtered = filtered)
+    }, filtered = filtered, future.seed = TRUE)
     tiles <- do.call("rbind", tiles)
     tiles <- tiles %>% filter(x > 1 & y > 1)
     return(tiles)
@@ -784,7 +784,7 @@ embed_pcal <- function(counts,
         c_vec <- as.numeric(mat[names(pca), idx])
         colour <- sum(pca * c_vec)
         return(colour)
-      }, mat = mat, pca = pca[, p])
+      }, mat = mat, pca = pca[, p], future.seed = TRUE)
       bars <- unlist(bars)
 
       colour_matrix[, p] <- norm_pixel(bars,"minmax")
