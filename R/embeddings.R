@@ -91,7 +91,7 @@ build_vesalius_embeddings <- function(vesalius_assay,
     # we will extract the assay based on name (should have been filtered)
     # will always return list even if you parse a single assay
     #--------------------------------------------------------------------------#
-    coordinates <- get_tiles(vesalius_assay)
+    tiles <- get_tiles(vesalius_assay)
     counts <- get_counts(vesalius_assay, type = "raw")
     assay <- get_assay_names(vesalius_assay)
     normalisation <- check_norm_methods(normalisation)
@@ -108,12 +108,17 @@ build_vesalius_embeddings <- function(vesalius_assay,
     #------------------------------------------------------------------------#
     # generate tiles, reduce resoluation and filter out tiles and beads
     #------------------------------------------------------------------------#
-    tiles <- generate_tiles(coordinates,
+    tiles <- generate_tiles(tiles,
         assay = assay,
         tensor_resolution = tensor_resolution,
         filter_grid = filter_grid,
         filter_threshold = filter_threshold,
         verbose = verbose)
+    vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
+        data = tiles,
+        slot = "tiles",
+        append = FALSE)
+    }
     #------------------------------------------------------------------------#
     # adjusted counts if necessary
     # essentially merging counts when barcodes overlap
@@ -121,11 +126,6 @@ build_vesalius_embeddings <- function(vesalius_assay,
     message_switch("adj_counts", verbose)
     counts <- adjust_counts(tiles,
         counts)
-    vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
-        data = tiles,
-        slot = "tiles",
-        append = FALSE)
-    }
     #--------------------------------------------------------------------------#
     # Now we can start creating colour embeddings
     # This section can be run multiple times

@@ -509,9 +509,9 @@ segment_image <- function(vesalius_assay,
   embedding = "last",
   method = "kmeans",
   col_resolution = 10,
-  use_center = TRUE,
   verbose = TRUE) {
   simple_bar(verbose)
+  message_switch("seg", verbose, method = method)
   #----------------------------------------------------------------------------#
   # Parsing vesalius object so we can recontruct it internally and not need to
   # rebuild intermediates and shift between formats...
@@ -521,7 +521,6 @@ segment_image <- function(vesalius_assay,
       col_resolution = col_resolution,
       dimensions = dimensions,
       embedding = embedding,
-      use_center = use_center,
       verbose = verbose),
     "leiden" = leiden_segmentation(vesalius_assay,
       dimensions = dimensions,
@@ -575,107 +574,33 @@ kmeans_segmentation <- function(vesalius_assay,
   dimensions = seq(1, 3),
   col_resolution = 10,
   embedding = "last",
-  use_center = TRUE,
   verbose = TRUE) {
-  if (is(vesalius_assay, "vesalius_assay")) {
-    tiles <- get_tiles(vesalius_assay)
-    images <- format_ves_to_c(vesalius_assay = vesalius_assay,
-      embed = embedding,
-      dims = dimensions,
-      verbose = verbose)
-  } else {
-      stop("Unsupported format to segment_image function")
-  }
-  #----------------------------------------------------------------------------#
-  # Segmenting image by iteratively decreasing colour depth and smoothing
-  # Well that's true only the user parse an array of decreasing values
-  # add some sanity checks maybe?
-  #----------------------------------------------------------------------------#
-  colours <- lapply(images, function(img) {
-        return(as.data.frame(img)$value)
-  })
-  colours <- as.matrix(do.call("cbind", colours))
-  if (use_center) {
-    colours <- cbind(as.data.frame(images[[1L]])[, c("x", "y")],
-      as.data.frame(colours)) %>%
-      right_join(tiles, by = c("x", "y")) %>%
-      filter(origin == 1)
-    coord <- colours[, c("x", "y")]
-    colours <- colours[, !colnames(colours) %in%
-      c("x", "y", "barcodes", "origin")] %>% as.matrix()
-  }
-  message_switch("seg", verbose)
-  cat("\n")
+  coord <- get_tiles(vesalius_assay) %>%
+    filter(origin == 1)
+  embeddings <- check_embedding(vesalius_assay, embedding, dimensions)
+
   #--------------------------------------------------------------------------#
   # Now lets cluster colours
   # Remember that here colours are your new active embedding values
   #--------------------------------------------------------------------------#
-  km <- kmeans(colours, col_resolution, iter.max = 200, nstart = 50)
-  cluster <- km$cluster
+  km <- suppressWarnings(kmeans(embeddings,
+    col_resolution,
+    iter.max = 100,
+    nstart = 10))
+  clusters <- km$cluster
   kcenters <- km$centers
-  for (i in seq_len(ncol(colours))) {
-    colours[, i] <- kcenters[cluster, i]
+  for (i in seq_len(ncol(embeddings))) {
+    embeddings[, i] <- kcenters[clusters, i]
   }
-  #------------------------------------------------------------------------#
-  # This section is so we don't end up having barcode associated with
-  # multiple clusters/segments.
-  # There are a lot of pixel associated to each barcode. When smoothing
-  # it is possible that some pixel will be assigned to a different segment
-  # than the center pixel. This is a pain to deal with in later steps
-  # instead: take mean value per barcode and take the cluster that is the
-  # most represented as the cluster value that we will use
-  # this is mostly relevant when using useCentre =F and multiple colDepth
-  # values.
-  #------------------------------------------------------------------------#
-  if (use_center) {
-    clusters <- data.frame(coord, colours, cluster) %>%
-      right_join(tiles, by = c("x", "y"))
-    embeds <- colnames(clusters)[!colnames(clusters) %in%
-      c("x", "y", "cluster", "barcodes", "origin")]
-  } else {
-    clusters <- cbind(as.data.frame(
-      images[[1L]])[, c("x", "y")], colours, cluster)
-    embeds <- colnames(clusters)[!colnames(clusters) %in%
-        c("x", "y", "cluster")]
-    clusters <- right_join(clusters, tiles, by = c("x", "y")) %>%
-      group_by(barcodes) %>%
-      mutate(across(all_of(embeds),mean),
-      cluster = top_cluster(cluster)) %>%
-      ungroup()
-  }
-  images <- lapply(embeds, function(idx, cols) {
-    tmp <- cols[, c("x", "y", as.character(idx))]
-    colnames(tmp) <- c("x", "y", "value")
-    return(suppressWarnings(as.cimg(tmp)))
-    }, cols = clusters)
-  #--------------------------------------------------------------------------#
-  # Let's rebuild everything
-  #--------------------------------------------------------------------------#
-  segments <- format_c_to_ves(images,
-    vesalius_assay,
-    dimensions,
-    embed = embedding,
-    verbose = verbose)
-  clusters <- clusters %>%
-    filter(origin == 1) %>%
-    select(c("barcodes", "x", "y", "cluster")) %>%
-    as.data.frame()
-
+  match_loc <- !is.na(match(names(clusters), coord$barcodes))
+  clusters <- data.frame(coord, "cluster" = clusters[match_loc])
   new_trial <- create_trial_tag(colnames(vesalius_assay@territories),
     "Segment")
   colnames(clusters) <- c(colnames(clusters)[seq_len(ncol(clusters) - 1)],
     new_trial)
-  return(list("segments" = segments, "clusters" = clusters))
+  return(list("segments" = embeddings, "clusters" = clusters))
 }
 
-#' top cluster
-#' get cluster that is most represented in tile
-#' @param cluster named vector containing cluster representation for a barcode
-top_cluster <- function(cluster) {
-    top <- table(cluster)
-    top <- names(top)[order(top, decreasing = TRUE)]
-    return(as.numeric(top[1]))
-}
 
 
 #' leiden segmentation

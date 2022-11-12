@@ -70,7 +70,7 @@ message_switch <- function(type, verbose = TRUE, ...) {
         "reg" = cat(paste(t,
             " Regularising Image \n")),
         "seg" = cat(paste(t,
-            " Segmenting Image \n")),
+            " Segmenting Image using", args$method, "\n")),
         "smooth" = cat(paste(t,
             " Smoothing Image Arrays \n")),
         "ter_pool" = cat(paste(t,
