@@ -452,7 +452,7 @@ filter_tiles <- function(tesselation, coordinates, filter_threshold) {
 rasterise <- function(filtered) {
     idx <- seq_len(nrow(filtered$coordinates))
     tiles <- future_lapply(idx, function(idx, filtered) {
-        print(idx)
+        
         #----------------------------------------------------------------------#
         # get indecies from original data
         #----------------------------------------------------------------------#
