@@ -592,15 +592,21 @@ buildImageArray <- function(coordinates,
   coordinates <- coordinates[-gridCoord,]
   return(coordinates)
 }
-.filterTiles <- function(tesselation,coordinates,filterThreshold){
-  maxArea <- quantile(tesselation$summary$dir.area, filterThreshold)
-  idx <- which(tesselation$summary$dir.area >= maxArea)
-  tessV <- tesselation$dirsgs
-  pointsToRemove <- tessV$ind1 %in% idx | tessV$ind2 %in% idx
-  tessV <- tessV[!pointsToRemove,]
-  coordinates$ind <- seq_len(nrow(coordinates))
-  coordinates <- coordinates[-idx,]
-  return(list("tessV" = tessV,"coordinates" = coordinates))
+.filterTiles <- function(tesselation, coordinates, filter_threshold) {
+  if (filter_threshold == 1) {
+    coordinates$ind <- seq_len(nrow(coordinates))
+    return(list("tess_v" = tesselation$dirsgs,
+      "coordinates" = coordinates))
+  } else {
+    max_area <- quantile(tesselation$summary$dir.area, filter_threshold)
+    idx <- which(tesselation$summary$dir.area >= max_area)
+    tess_v <- tesselation$dirsgs
+    points_to_keep <- tess_v$ind1 %in% idx | tess_v$ind2 %in% idx
+    tess_v <- tess_v[!points_to_keep, ]
+    coordinates$ind <- seq_len(nrow(coordinates))
+    coordinates <- coordinates[-idx, ]
+    return(list("tess_v" = tess_v, "coordinates" = coordinates))
+  }
 }
 
 .rasterise <- function(filtered,cores = 1){
