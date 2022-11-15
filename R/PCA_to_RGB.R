@@ -595,7 +595,7 @@ buildImageArray <- function(coordinates,
 .filterTiles <- function(tesselation, coordinates, filter_threshold) {
   if (filter_threshold == 1) {
     coordinates$ind <- seq_len(nrow(coordinates))
-    return(list("tess_v" = tesselation$dirsgs,
+    return(list("tessV" = tesselation$dirsgs,
       "coordinates" = coordinates))
   } else {
     max_area <- quantile(tesselation$summary$dir.area, filter_threshold)
@@ -605,7 +605,7 @@ buildImageArray <- function(coordinates,
     tess_v <- tess_v[!points_to_keep, ]
     coordinates$ind <- seq_len(nrow(coordinates))
     coordinates <- coordinates[-idx, ]
-    return(list("tess_v" = tess_v, "coordinates" = coordinates))
+    return(list("tessV" = tess_v, "coordinates" = coordinates))
   }
 }
 
