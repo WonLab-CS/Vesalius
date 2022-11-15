@@ -42,7 +42,7 @@ message_switch <- function(type, verbose = TRUE, ...) {
         "conserve_sparse" = cat(paste(t,
             " Converting Sparse Matrix to Matrix \n")),
         "pca_tensor" = cat(paste(t,
-            " Running Principle Component Analysis \n")),
+            " Running Principal Component Analysis \n")),
         "pca_rgb_tensor" = cat(paste(t,
             " Converting PCA Embedding Values to gray scale \n")),
         "pcal_rgb_tensor" = cat(paste(t,

@@ -77,7 +77,7 @@ build_vesalius_embeddings <- function(vesalius_assay,
   dimensions = 30,
   tensor_resolution = 1,
   filter_grid = 0.01,
-  filter_threshold = 1,
+  filter_threshold = 0.995,
   nfeatures = 2000,
   min_cutoff = "q5",
   remove_lsi_1 = TRUE,
@@ -412,13 +412,20 @@ adjust_counts <- function(coordinates, counts) {
 #' @param coordinates data frame with original coordinates
 #' @param filter_threshold numeric describing the quantile threshold value
 #' to use for area filtering
+#' @details Here we want to filter based on the size of the tile
+#' under the assumption that very large tiles are probably due to 
+#' unpexted space. The issue is that if you don't apply this threshold,
+#' subtle pixel patterns are lost wuhtin the sea of pixels. 
+#' If the ueser really dont want to filter anything out then you don't
+#' We will set a filter threshold pretty high though to make sure 
+#' that it does get filter out as default.
 #' @return a list with 2 data frame. 1 with filtered tesselation results
 #' 2 filtered coordinate file.
 #' @importFrom stats quantile
 filter_tiles <- function(tesselation, coordinates, filter_threshold) {
   if (filter_threshold == 1) {
     coordinates$ind <- seq_len(nrow(coordinates))
-    return(list("tess_v" = tesselation$dirsgs,
+    return(list("tess_v" = tess_v,
       "coordinates" = coordinates))
   } else {
     max_area <- quantile(tesselation$summary$dir.area, filter_threshold)
@@ -432,7 +439,7 @@ filter_tiles <- function(tesselation, coordinates, filter_threshold) {
   }
 }
 
-#' rasterise tiles 
+#' rasterise tiles
 #' 
 #' fill tiles with pixel - rasterisation 
 #' @param filtered data.frame with voronoi tile coordinates

@@ -53,21 +53,22 @@ format_ves_to_c <- function(vesalius_assay,
       # now we can convert that data frame to a cimg and correct background if
       # required. Note that we are going back and forth between formats
       # This is done so we can fill in the borders and empty space in the array
+      # Also need to be done step by step. Using pipe does not work
       #------------------------------------------------------------------------#
       if (correct_background) {
         cimg_tmp <- cimg %>%
-          select(c("x", "y", "value")) %>%
-          suppressWarnings(as.cimg()) %>%
-          as.data.frame()
-        non_img <- paste0(cimg$x, "_", cimg$y)
-        in_img <- paste0(cimg_tmp$x, "_", cimg_tmp$y)
+          select(c("x", "y", "value"))
+        cimg_tmp <- suppressWarnings(as.cimg(cimg_tmp, x = x, y = y))
+        cimg_tmp <- as.data.frame(cimg_tmp)
+        non_img <- paste0(cimg_tmp$x, "_", cimg_tmp$y)
+        in_img <- paste0(cimg$x, "_", cimg$y)
         # Median value for background - Other metrics??
-        cimg_tmp[!in_img %in% non_img, "value"] <- median(cimg$value)
+        cimg_tmp[!non_img %in% in_img, "value"] <- median(cimg$value)
         image_list[[i]] <- suppressWarnings(
           as.cimg(cimg_tmp[, c("x", "y", "value")], x = x, y = y))
       } else {
         image_list[[i]] <- suppressWarnings(
-          as.cimg(cimg_tmp[, c("x", "y", "value")], x = x, y = y))
+          as.cimg(cimg[, c("x", "y", "value")], x = x, y = y))
       }
   }
   return(image_list)
