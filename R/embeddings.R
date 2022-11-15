@@ -350,8 +350,10 @@ reduce_tensor_resolution <- function(coordinates, tensor_resolution = 1) {
   return(coordinates)
 }
 
-#' adjust count 
-#' 
+
+
+#' adjust count
+#'
 #' adjust counts after reducing the resolution of the image tensor
 #' or after filtering stray beads
 #' @param coordinates data frame containing coordinates after reducing 
@@ -414,14 +416,19 @@ adjust_counts <- function(coordinates, counts) {
 #' 2 filtered coordinate file.
 #' @importFrom stats quantile
 filter_tiles <- function(tesselation, coordinates, filter_threshold) {
-  max_area <- quantile(tesselation$summary$dir.area, filter_threshold)
-  idx <- which(tesselation$summary$dir.area >= max_area)
-  tess_v <- tesselation$dirsgs
-  points_to_remove <- tess_v$ind1 %in% idx | tess_v$ind2 %in% idx
-  tess_v <- tess_v[!points_to_remove, ]
-  coordinates$ind <- seq_len(nrow(coordinates))
-  coordinates <- coordinates[-idx, ]
-  return(list("tess_v" = tess_v, "coordinates" = coordinates))
+  if (filter_threshold == 1) {
+    return(list("tess_v" = tesselation$dirsgs,
+      "coordinates" = coordinates))
+  } else {
+    max_area <- quantile(tesselation$summary$dir.area, filter_threshold)
+    idx <- which(tesselation$summary$dir.area >= max_area)
+    tess_v <- tesselation$dirsgs
+    points_to_keep <- tess_v$ind1 %in% idx | tess_v$ind2 %in% idx
+    tess_v <- tess_v[!points_to_keep, ]
+    coordinates$ind <- seq_len(nrow(coordinates))
+    coordinates <- coordinates[-idx, ]
+    return(list("tess_v" = tess_v, "coordinates" = coordinates))
+  }
 }
 
 #' rasterise tiles 
