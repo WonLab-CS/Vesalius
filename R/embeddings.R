@@ -417,6 +417,7 @@ adjust_counts <- function(coordinates, counts) {
 #' @importFrom stats quantile
 filter_tiles <- function(tesselation, coordinates, filter_threshold) {
   if (filter_threshold == 1) {
+    coordinates$ind <- seq_len(nrow(coordinates))
     return(list("tess_v" = tesselation$dirsgs,
       "coordinates" = coordinates))
   } else {
@@ -451,7 +452,7 @@ filter_tiles <- function(tesselation, coordinates, filter_threshold) {
 rasterise <- function(filtered) {
     idx <- seq_len(nrow(filtered$coordinates))
     tiles <- future_lapply(idx, function(idx, filtered) {
-
+        print(idx)
         #----------------------------------------------------------------------#
         # get indecies from original data
         #----------------------------------------------------------------------#
