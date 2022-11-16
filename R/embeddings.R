@@ -124,8 +124,7 @@ build_vesalius_embeddings <- function(vesalius_assay,
     # essentially merging counts when barcodes overlap
     #------------------------------------------------------------------------#
     message_switch("adj_counts", verbose)
-    counts <- adjust_counts(tiles,
-        counts)
+    counts <- adjust_counts(tiles, counts)
     #--------------------------------------------------------------------------#
     # Now we can start creating colour embeddings
     # This section can be run multiple times
@@ -424,8 +423,8 @@ adjust_counts <- function(coordinates, counts) {
 #' @importFrom stats quantile
 filter_tiles <- function(tesselation, coordinates, filter_threshold) {
   if (filter_threshold == 1) {
-    coordinates$ind <- seq_len(nrow(coordinates))
-    return(list("tess_v" = tess_v,
+    coordinates$ind <- tesselation$ind.orig
+    return(list("tess_v" = tesselation$dirsgs,
       "coordinates" = coordinates))
   } else {
     max_area <- quantile(tesselation$summary$dir.area, filter_threshold)
@@ -433,8 +432,8 @@ filter_tiles <- function(tesselation, coordinates, filter_threshold) {
     tess_v <- tesselation$dirsgs
     points_to_keep <- tess_v$ind1 %in% idx | tess_v$ind2 %in% idx
     tess_v <- tess_v[!points_to_keep, ]
-    coordinates$ind <- seq_len(nrow(coordinates))
     coordinates <- coordinates[-idx, ]
+    coordinates$ind <- tesselation$ind.orig[-idx]
     return(list("tess_v" = tess_v, "coordinates" = coordinates))
   }
 }
@@ -485,15 +484,15 @@ rasterise <- function(filtered) {
         # rasterising.
         #----------------------------------------------------------------------#
         convex <- convexify(x, y, indx, indy)
-        x <- convex$x
-        y <- convex$y
+        x <- ceiling(convex$x)
+        y <- ceiling(convex$y)
         #----------------------------------------------------------------------#
         # define max polygon containing all pixels
         #----------------------------------------------------------------------#
-        lpx <- round(min(x)) - 1
-        hpx <- round(max(x)) + 1
-        lpy <- round(min(y)) - 1
-        hpy <- round(max(y)) + 1
+        lpx <- min(x) - 1
+        hpx <- max(x) + 1
+        lpy <- min(y) - 1
+        hpy <- max(y) + 1
 
         max_polygon_x <- rep(seq(lpx, hpx), times = hpy - lpy + 1)
         max_polygon_y <- rep(seq(lpy, hpy), each = hpx - lpx + 1)
@@ -504,7 +503,16 @@ rasterise <- function(filtered) {
         cell <- sp::point.in.polygon(max_polygon_x, max_polygon_y, x, y)
         max_x <- max_polygon_x[cell %in% c(1, 2, 3)]
         max_y <- max_polygon_y[cell %in% c(1, 2, 3)]
+        #----------------------------------------------------------------------#
+        # get original point location 
+        # in some cases this is not possible because of the strange shape
+        # of the tile
+        # in this case we select the mid point of the ordered coordinates
+        #----------------------------------------------------------------------#
         cent <- which(max_x == round(indx) & max_y == round(indy))
+        if (length(cent) == 0) {
+            cent <- as.integer(length(max_y) / 2)
+        }
         centers <- rep(0, length(max_x))
         centers[cent] <- 1
         tile <- data.frame("barcodes" = rep(filtered$coordinates$barcodes[idx],

@@ -533,12 +533,12 @@ segment_image <- function(vesalius_assay,
       embedding = embedding,
       verbose = verbose))
 
+  #vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
+  #  data = segments$segments,
+  #  slot = "active",
+  #  append = FALSE)
   vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
-    data = segments$segments,
-    slot = "active",
-    append = FALSE)
-  vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
-    data = segments$clusters,
+    data = segments,
     slot = "territories",
     append = TRUE)
   commit <- create_commit_log(arg_match = as.list(match.call()),
@@ -589,16 +589,16 @@ kmeans_segmentation <- function(vesalius_assay,
     nstart = 10))
   clusters <- km$cluster
   kcenters <- km$centers
-  for (i in seq_len(ncol(embeddings))) {
-    embeddings[, i] <- kcenters[clusters, i]
-  }
+  #for (i in seq_len(ncol(embeddings))) {
+   # embeddings[, i] <- kcenters[clusters, i]
+  #}
   match_loc <- !is.na(match(names(clusters), coord$barcodes))
   clusters <- data.frame(coord, "cluster" = clusters[match_loc])
   new_trial <- create_trial_tag(colnames(vesalius_assay@territories),
     "Segment")
   colnames(clusters) <- c(colnames(clusters)[seq_len(ncol(clusters) - 1)],
     new_trial)
-  return(list("segments" = embeddings, "clusters" = clusters))
+  return(clusters)
 }
 
 
@@ -629,17 +629,17 @@ leiden_segmentation <- function(vesalius_assay,
   cluster <- data.frame("cluster" = clusters$membership,
     "barcodes" = clusters$names)
 
-  for (i in unique(cluster)) {
-    locs  <- rownames(embeddings) %in% cluster$barcodes[cluster == i]
-    embeddings[locs, ] <- apply(embeddings[locs, ], 1, median)
-  }
+  #for (i in unique(cluster)) {
+  #  locs  <- rownames(embeddings) %in% cluster$barcodes[cluster == i]
+  #  embeddings[locs, ] <- apply(embeddings[locs, ], 1, median)
+  #}
   match_loc <- !is.na(match(cluster$barcodes, coord$barcodes))
   clusters <- data.frame(coord, "cluster" = cluster$cluster[match_loc])
   new_trial <- create_trial_tag(colnames(vesalius_assay@territories),
     "Segment")
   colnames(clusters) <- c(colnames(clusters)[seq_len(ncol(clusters) - 1)],
     new_trial)
-  return(list("segments" = embeddings, "clusters" = clusters))
+  return(clusters)
 }
 
 #' louvain segmentation
@@ -667,17 +667,17 @@ louvain_segmentation <- function(vesalius_assay,
   cluster <- data.frame("cluster" = clusters$membership,
     "barcodes" = clusters$names)
 
-  for (i in unique(cluster)) {
-    locs  <- rownames(embeddings) %in% cluster$barcodes[cluster == i]
-    embeddings[locs, ] <- apply(embeddings[locs, ], 1, median)
-  }
+  #for (i in unique(cluster)) {
+  #  locs  <- rownames(embeddings) %in% cluster$barcodes[cluster == i]
+  #  embeddings[locs, ] <- apply(embeddings[locs, ], 1, median)
+  #}
   match_loc <- !is.na(match(cluster$barcodes, coord$barcodes))
   clusters <- data.frame(coord, "cluster" = cluster$cluster[match_loc])
   new_trial <- create_trial_tag(colnames(vesalius_assay@territories),
     "Segment")
   colnames(clusters) <- c(colnames(clusters)[seq_len(ncol(clusters) - 1)],
     new_trial)
-  return(list("segments" = embeddings, "clusters" = clusters))
+  return(clusters)
 }
 
 #' compute and greate nearest neighbor graph
@@ -688,7 +688,7 @@ louvain_segmentation <- function(vesalius_assay,
 #' @importFrom igraph graph_from_data_frame
 #' @importFrom future.apply future_lapply
 #' @importFrom future nbrOfWorkers
-compute_nearest_neighbor_graph <- function(embeddings, k = 20) {
+compute_nearest_neighbor_graph <- function(embeddings, k = 10) {
     knn <- RANN::nn2(embeddings, k = k)$nn.idx
     rownames(knn) <- rownames(embeddings)
     chunk <- chunker(knn, cores = future::nbrOfWorkers())
@@ -708,9 +708,10 @@ chunker <- function(df, cores) {
     if (cores > 1) {
       chunk_ranges <- floor(seq(1, nrow(df), length.out = cores + 1))
       chunk_set <- vector("list", cores)
-      start <- chunk_ranges[seq(1, (length(chunk_ranges) - 1))]
-      end <- c(chunk_ranges[seq(1, (length(chunk_ranges) - 1))] - 1,
-      chunk_ranges[length(chunk_ranges)])
+      start <- head(chunk_ranges, length(chunk_ranges) - 1)
+      end <- tail(chunk_ranges, length(chunk_ranges) - 1)
+      end <- end + 1
+      end[length(end)] <- nrow(df)
       for (i in seq_len(cores)) {
         chunk_set[[i]] <- df[seq(start[i], end[i]), ]
       }

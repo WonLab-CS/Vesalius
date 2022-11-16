@@ -106,7 +106,7 @@ format_c_to_ves <- function(cimg,
       filter(origin == 1) %>%
       na.exclude()
     locs <- match(rownames(embeddings), barcodes$barcodes)
-    embeddings[!is.na(locs), dims[i]] <- barcodes$value
+    embeddings[, dims[i]] <- barcodes$value[locs]
 
   }
   return(embeddings)
