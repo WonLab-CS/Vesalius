@@ -13,7 +13,7 @@ simple_bar <- function(verbose = TRUE) {
     if (!verbose) return(NULL)
     width_display <- round(options()$width)
     bar <- paste0("#",
-        paste0(rep("-", width_display * 0.9), collapse = ""),
+        paste0(rep("-", width_display), collapse = ""),
         "#")
     cat(bar, "\n")
 

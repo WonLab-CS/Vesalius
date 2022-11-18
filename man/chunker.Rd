@@ -2,7 +2,7 @@
 % Please edit documentation in R/image_processing.R
 \name{chunker}
 \alias{chunker}
-\title{chunker}
+\title{chunker DEAD CODE}
 \usage{
 chunker(df, cores)
 }

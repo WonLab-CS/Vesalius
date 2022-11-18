@@ -85,19 +85,38 @@ setClass("vesalius_assay",
 setMethod("show",
     signature = "vesalius_assay",
     definition = function(object) {
+        #---------------------------------------------------------------------#
+        # initialize the show
+        # not that this will need to be updated with the empty object feature
+        #---------------------------------------------------------------------#
         simple_bar(TRUE)
         cat(paste(object@assay,"as vesalius assay containing:\n\n"))
+        #---------------------------------------------------------------------#
+        # check and show tiles 
+        #---------------------------------------------------------------------#
         tiles  <- get_tiles(object)
-        if (any(colnames(tiles) == "origin")){
-            n_indices <- sum(tiles$origin)
-            cat(paste(n_indices,
-            "spatial indices used to form pixel tiles \n"))
-        } else {
-            n_indices <- nrow(tiles)
-            cat(paste(n_indices, "spatial indices\n"))
-        }
+        if (!is.null(tiles)) {
+            if (any(colnames(tiles) == "origin")){
+                n_indices <- sum(tiles$origin)
+                cat(paste(n_indices,
+                    "spatial indices used to form pixel tiles \n"))
+            } else {
+                n_indices <- nrow(tiles)
+                cat(paste(n_indices, "spatial indices\n"))
+            }
+        } 
+        #---------------------------------------------------------------------#
+        # check and show counts
+        #---------------------------------------------------------------------#
         counts <- get_counts(object)
-        cat(paste(nrow(counts), "observations in the count matrix\n"))
+        if (!is.null(counts)) {
+            cat(paste(nrow(counts), "observations in the count matrix\n"))
+        }
+
+        #---------------------------------------------------------------------#
+        # check embeddings
+        #---------------------------------------------------------------------#
+
 
         simple_bar(TRUE)
     }
@@ -167,4 +186,3 @@ build_vesalius_assay <- function(coordinates,
     return(vesalius_assay)
 }
 
-## TO DO add show method

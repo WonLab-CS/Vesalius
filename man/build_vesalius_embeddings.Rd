@@ -11,7 +11,7 @@ build_vesalius_embeddings(
   dimensions = 30,
   tensor_resolution = 1,
   filter_grid = 0.01,
-  filter_threshold = 1,
+  filter_threshold = 0.995,
   nfeatures = 2000,
   min_cutoff = "q5",
   remove_lsi_1 = TRUE,

@@ -319,3 +319,21 @@ get_last_embedding <- function(vesalius_assay) {
     }
     return(last)
 }
+
+
+#' add active tag
+#' @param vesalius_assay a vesalius assay object
+#' @param embed_mat matrix containing embeddings
+#' @param embed embedding used 
+#' @return a embedding matrix with added tag that describes
+#' which embedding was used to produce that embedding 
+add_active_tag <- function(vesalius_assay, embed_mat, embed) {
+    if (embed == "last") {
+        dim_reduction <- get_last_embedding(vesalius_assay)
+        
+    } else {
+        dim_reduction <- embed
+    }
+    comment(embed_mat) <- dim_reduction
+    return(embed_mat)
+}

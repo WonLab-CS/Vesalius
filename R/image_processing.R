@@ -130,6 +130,7 @@ smooth_image <- function(vesalius_assay,
       dimensions,
       embed = embedding,
       verbose = verbose)
+   embeds <- add_active_tag(vesalius_assay, embeds, embedding)
     vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
       data = embeds,
       slot = "active",
@@ -310,6 +311,7 @@ equalize_image <- function(vesalius_assay,
       dimensions,
       embed = embedding,
       verbose = verbose)
+    embeds <- add_active_tag(vesalius_assay, embeds, embedding)
     vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
       data = embeds,
       slot = "active",
@@ -408,6 +410,7 @@ regularise_image <- function(vesalius_assay,
       dimensions,
       embed = embedding,
       verbose = verbose)
+    embeds <- add_active_tag(vesalius_assay, embeds, embedding)
     vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
       data = embeds,
       slot = "active",
@@ -592,7 +595,7 @@ kmeans_segmentation <- function(vesalius_assay,
   #for (i in seq_len(ncol(embeddings))) {
    # embeddings[, i] <- kcenters[clusters, i]
   #}
-  match_loc <- !is.na(match(names(clusters), coord$barcodes))
+  match_loc <- match(coord$barcodes, names(clusters))
   clusters <- data.frame(coord, "cluster" = clusters[match_loc])
   new_trial <- create_trial_tag(colnames(vesalius_assay@territories),
     "Segment")
@@ -633,7 +636,7 @@ leiden_segmentation <- function(vesalius_assay,
   #  locs  <- rownames(embeddings) %in% cluster$barcodes[cluster == i]
   #  embeddings[locs, ] <- apply(embeddings[locs, ], 1, median)
   #}
-  match_loc <- !is.na(match(cluster$barcodes, coord$barcodes))
+  match_loc <- match(coord$barcodes, cluster$barcodes)
   clusters <- data.frame(coord, "cluster" = cluster$cluster[match_loc])
   new_trial <- create_trial_tag(colnames(vesalius_assay@territories),
     "Segment")
@@ -671,7 +674,7 @@ louvain_segmentation <- function(vesalius_assay,
   #  locs  <- rownames(embeddings) %in% cluster$barcodes[cluster == i]
   #  embeddings[locs, ] <- apply(embeddings[locs, ], 1, median)
   #}
-  match_loc <- !is.na(match(cluster$barcodes, coord$barcodes))
+  match_loc <- match(coord$barcodes, cluster$barcodes)
   clusters <- data.frame(coord, "cluster" = cluster$cluster[match_loc])
   new_trial <- create_trial_tag(colnames(vesalius_assay@territories),
     "Segment")
@@ -688,17 +691,14 @@ louvain_segmentation <- function(vesalius_assay,
 #' @importFrom igraph graph_from_data_frame
 #' @importFrom future.apply future_lapply
 #' @importFrom future nbrOfWorkers
-compute_nearest_neighbor_graph <- function(embeddings, k = 10) {
-    knn <- RANN::nn2(embeddings, k = k)$nn.idx
+compute_nearest_neighbor_graph <- function(embeddings, k = 20) {
+    knn <- RANN::nn2(embeddings, k = k + 1)$nn.idx
     rownames(knn) <- rownames(embeddings)
-    chunk <- chunker(knn, cores = future::nbrOfWorkers())
-    graph <- future_lapply(chunk, populate_graph,
-      future.seed = TRUE)
-    graph <- do.call("rbind", graph)
+    graph <- populate_graph(knn)
     graph <- igraph::graph_from_data_frame(graph, directed = FALSE)
 }
 
-#' chunker
+#' chunker DEAD CODE
 #'
 #' creates data frame chunks to parse to multiple cores
 #' @param df data.frame to chunk list elements

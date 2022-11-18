@@ -9,7 +9,6 @@ kmeans_segmentation(
   dimensions = seq(1, 3),
   col_resolution = 10,
   embedding = "last",
-  use_center = TRUE,
   verbose = TRUE
 )
 }
@@ -23,9 +22,6 @@ Colour depth used for segmentation.}
 
 \item{embedding}{character string describing which embedding should
 be used.}
-
-\item{use_center}{logical - If TRUE, only the center pixel value will be used
-during segmentation. If FALSE, all pixels will be used (see details)}
 
 \item{verbose}{logical - progress message output.}
 }

@@ -4,7 +4,7 @@
 \alias{get_last_embedding}
 \title{get last embedding}
 \usage{
-get_last_embedding(vesalius_assay, embedding)
+get_last_embedding(vesalius_assay)
 }
 \arguments{
 \item{vesalius_assay}{a vesalius_assay object}

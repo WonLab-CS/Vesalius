@@ -10,7 +10,6 @@ segment_image(
   embedding = "last",
   method = "kmeans",
   col_resolution = 10,
-  use_center = TRUE,
   verbose = TRUE
 )
 }
@@ -28,10 +27,10 @@ segmentation. Select from "kmeans", "louvain", or "leiden".}
 \item{col_resolution}{numeric colour resolution used for segmentation. 
 (see details)}
 
+\item{verbose}{logical - progress message output.}
+
 \item{use_center}{logical - If TRUE, only the center pixel value will be used
 during segmentation. If FALSE, all pixels will be used (see details)}
-
-\item{verbose}{logical - progress message output.}
 }
 \value{
 a vesalius_assay object

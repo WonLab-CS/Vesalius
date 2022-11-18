@@ -157,8 +157,10 @@ build_vesalius_embeddings <- function(vesalius_assay,
       data = embeds,
       slot = "embeddings",
       append = TRUE)
+    embeds <- embeds[[1L]]
+    comment(embeds) <- dim_reduction
     vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
-      data = embeds[[1L]],
+      data = embeds,
       slot = "active",
       append = FALSE)
     #----------------------------------------------------------------------#
