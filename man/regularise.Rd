@@ -13,8 +13,6 @@ regularise(img, lambda = 1, niter = 100, normalise = TRUE)
 \item{lambda}{lambda value for regularisation}
 
 \item{niter}{numeric number of rounds of regularisation}
-
-\item{normalise}{logical should output be normalised}
 }
 \description{
 Internal regularise function.

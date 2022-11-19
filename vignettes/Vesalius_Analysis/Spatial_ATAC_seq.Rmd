@@ -1,5 +1,5 @@
 ---
-title: "Vesalius: Spatial ATAC-seq"
+title: "Vesalius: Spatial Epigenomics - ATAC-seq"
 author: Patrick C.N. Martin
 output:
   word_document: default

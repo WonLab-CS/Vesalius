@@ -6,6 +6,13 @@ output:
   html_document: default
 ---
 
+*IMPORTANT NOTICE*
+
+The code provide here shows the work flow using vesalius 1.0.1.
+
+The forzen source code can be found (here)[https://github.com/patrickCNMartin/Vesalius/releases/tag/Release_1.0.1]
+
+
 
 # Preface
 

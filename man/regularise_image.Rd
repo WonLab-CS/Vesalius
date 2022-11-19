@@ -10,7 +10,6 @@ regularise_image(
   embedding = "last",
   lambda = 1,
   niter = 100,
-  normalise = TRUE,
   verbose = TRUE
 )
 }
@@ -27,9 +26,6 @@ parameter (see details)}
 
 \item{niter}{numeric - number of variance regularization iterations
 (Default = 100)}
-
-\item{normalise}{logical - If TRUE, regularized colour values will be
-min max normalised.}
 
 \item{verbose}{logical - progress message output.}
 }

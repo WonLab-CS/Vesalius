@@ -83,17 +83,20 @@ image_plot <- function(vesalius_assay,
     tile_colour$barcodes <- rownames(tile_colour)
     coordinates <- right_join(coordinates, tile_colour, by = "barcodes") %>%
       na.exclude()
+    coordinates <- rebalence_colors(coordinates,
+      length(dimensions),
+      method = "minmax")
     #--------------------------------------------------------------------------#
     # Generate plots
     # Ceck to see how you can avoid the hard coding of the dimensions
     #--------------------------------------------------------------------------#
     if (length(dimensions) == 3) {
-      cols <- rgb(coordinates[, 5], coordinates[, 6], coordinates[, 7])
+      cols <- rgb(coordinates$R, coordinates$G, coordinates$B)
       title <- paste0(embed_name, " - Dims = ",
         paste0(dimensions, collapse = "-"))
     } else {
       # to do
-      cols <- gray(coordinates[, 5])
+      cols <- gray(coordinates$Gray)
       title <- paste0(embed_name, " - Dim = ",
         paste0(dimensions, collapse = "-"))
     }
@@ -109,7 +112,44 @@ image_plot <- function(vesalius_assay,
 }
 
 
-
+#' rebalence colors
+#' @param coordinates data frame containing barcodes, x/y coord, origin,
+#' and color value. 
+#' @param dims number dimensions select for plotting
+#' @param method character string: min max or truncate
+#' @details This function is use to re-bound values between 0 and 1. 
+#' Some image processing steps may lead to negative values being introduced.
+#' Imager handles this without an issue but for plotting we want to make sure 
+#' that all values are indeed bound between 0 and 1. We will try to different 
+#' methods either we truncate the value or we min max norm. 
+#' @return data frame with [0,1] bound values
+#' @importFrom dplyr select
+rebalence_colors <- function(coordinates, dimensions, method = "minmax") {
+    if (dimensions == 3) {
+        template <- select(coordinates, c("barcodes", "x", "y", "origin"))
+        colors <- coordinates[, c(5, 6, 7)]
+        if (method == "minmax") {
+            colors <- apply(colors, 2, min_max)
+        } else {
+            colors[which(colors < 0, arr.ind = TRUE)] <- 0
+            colors[which(colors > 1, arr.ind = TRUE)] <- 1
+        }
+        template <- data.frame(template, colors)
+        colnames(template) <- c("barcodes", "x", "y", "origin", "R", "G", "B")
+    } else {
+        template <- select(coordinates, c("barcodes", "x", "y", "origin"))
+        colors <- coordinates[, c(5)]
+        if (method == "minmax") {
+            colors <- min_max(colors)
+        } else {
+            colors[which(colors < 0)] <- 0
+            colors[which(colors > 1)] <- 1
+        }
+        template <- data.frame(template, colors)
+        colnames(template) <- c("barcodes", "x", "y", "origin", "Gray")
+    }
+    return(template)
+}
 
 #' territory_plot - plotting Vesalius territories
 #' @param vesalius_assay a vesalius_Assay object

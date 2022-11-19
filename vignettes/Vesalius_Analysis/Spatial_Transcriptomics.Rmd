@@ -1,9 +1,104 @@
 ---
-title: "Vesalius: New manucript Analyis"
+title: "Vesalius: Spatial Transcriptomics"
 author: Patrick C.N. Martin
 output:
   word_document: default
   html_document: default
 ---
 
+# Forward
 
+The following notebook highlights the analysis shown in the (Vesalius 2.0)[] manuscript.
+More specifcially, we show the analysis for Spatial Transcriptomic Slide-SeqV2 in mouse
+brain and mouse embryo. 
+
+The aim of this notebook is two-fold:
+
+1. Provide a clear demonstration of how the figures in the manuscript were produced.
+2. A more in depth guide to how to use Vesalius in the context of Spatial Transcriptomics.
+
+
+
+# Introduction 
+
+## Vesalius 
+
+Vesalius is a tool to decipher tissue anatomy and spatial domains from spatial omics data. 
+To achieve this, Vesalius converts latent space embeddings into images upon which 
+image processing techniques can be applied.
+
+## Slide-seq V2 
+
+(Slide-seq version 2)[https://www.nature.com/articles/s41587-020-0739-1] is a high resolution spatial trancriptomics data that uses
+spatially indexed beads that hybridise with mRNA species prensent in the tissue. 
+As such, there are a few aspect to consider when using this type of data:
+
+1. Spatially Indexed beads will not necessarily line up with the cells from the tissue. As a consequence,
+  each bead can recover mRNA transcript from multiple cells. Conversly, in the case of large cells, transcripts
+  might be spread over multiple spatial indices. 
+2. Slide-seq provides an unbiased representation of the transcriptomic landscape that is limited by its sensitvity to
+  mRNA transcript binding. 
+
+## Aims 
+
+Vesalius aims to recover the finer details of spatial patterning by providing uniform tissue territories.
+
+Uniform territories enable:
+
+1. In depth analysis of spatial patterning. 
+2. Differential gene expression analysis between territories but also cell types present in different territories.
+3. Tissue border expression.
+4. Morphology dependant expression.
+
+# Spatial transcriptomic analysis
+
+Before starting, make sure you have vesalius installed and that you have your data ready and downloaded.
+
+To facilitate the analysis process, we use input/output folder to store and save data. 
+
+```{r env_set_ip, eval = TRUE, echo = TRUE}
+library(vesalius)
+
+# Input data directory
+spatial_coordinates <- "SSv2/Puck_200115_08_bead_locations.csv"
+counts <- "SSv2/Puck_200115_08.digital_expression.txt.gz"
+
+# Output directory
+if (!dir.exists("output_plots/")) {
+    dir.create("output_plots/")
+}
+output_plots <- "output_plots/"
+
+if (!dir.exists("output_data/")) {
+    dir.create("output_data/")
+}
+output_data <- "output_data/"
+```
+
+## Slide-RNA-seq - Mouse Liver Metastasis
+
+### Loading data and building objects
+
+The first step is to load the spatial transcriptomic data. Generally, spatial data comes in two seperate files.
+
+1. Spatial coordinates: This contains the x, y (even z) coordinates of each spatially indexed barcodes. 
+2. Count matrix: This contains the number of gene counts at every spatial index. 
+
+Reading in spatial coordinates. 
+```{r load_spatial_coord, eval = TRUE, echo = TRUE}
+spatial_coordinates <- read.csv(spatial_coordinates, header = TRUE, skip = 1)
+colnames(spatial_coordinates) <- c("barcodes", "x", "y")
+head(spatial_coordinates)
+```
+Note the use of `skip = 1`. This may not be required depending on how your data is formatted. 
+
+Reading in count data
+```{r load_counts_not_sparse, eval = TRUE, echo = TRUE}
+counts <- count <- read.table(counts, header = TRUE, row.names = 1)
+counts[1:5, 1:5]
+```
+
+In some cases, you might come across count matrixes that will be saved in sparse format. 
+```{ r load_sparse, eval = TRUE, echo = FALSE}
+
+```

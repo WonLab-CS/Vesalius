@@ -1,5 +1,5 @@
 ---
-title: "Vesalius: Spatial Slide-DNA-seq"
+title: "Vesalius: Spatial Genomics"
 author: Patrick C.N. Martin
 output:
   word_document: default

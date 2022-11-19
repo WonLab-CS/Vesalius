@@ -349,8 +349,6 @@ ecdf_eq <- function(im) {
 #' parameter (see details)
 #' @param niter numeric - number of variance regularization iterations
 #' (Default = 100)
-#' @param normalise logical - If TRUE, regularized colour values will be
-#' min max normalised.
 #' @param verbose logical - progress message output.
 #' @details Image regularization can be seen as a form of image denoising.
 #' Details on each method can be found in the tvR package under the denoise2
@@ -378,7 +376,6 @@ regularise_image <- function(vesalius_assay,
   embedding = "last",
   lambda = 1,
   niter = 100,
-  normalise = TRUE,
   verbose = TRUE) {
     simple_bar(verbose)
     #--------------------------------------------------------------------------#
@@ -402,7 +399,6 @@ regularise_image <- function(vesalius_assay,
     images <- future_lapply(images, regularise,
       lambda,
       niter,
-      normalise,
       future.seed = TRUE)
 
     embeds <- format_c_to_ves(images,
@@ -429,7 +425,6 @@ regularise_image <- function(vesalius_assay,
 #' @param img image array - generally a matrix
 #' @param lambda lambda value for regularisation
 #' @param niter numeric number of rounds of regularisation 
-#' @param normalise logical should output be normalised
 #' @importFrom tvR denoise2
 #' @importFrom imager as.cimg
 regularise <- function(img,
@@ -445,9 +440,8 @@ regularise <- function(img,
     #--------------------------------------------------------------------------#
     img <- tvR::denoise2(as.matrix(img), lambda = lambda, niter = niter,
            method = "TVL2.FiniteDifference", normalize = FALSE)
-    if (normalise) {
-        img <- (img - min(img)) / (max(img) - min(img))
-    }
+  
+    img <- (img - min(img)) / (max(img) - min(img))
     return(suppressWarnings(imager::as.cimg(img)))
 }
 
