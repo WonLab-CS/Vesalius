@@ -27,7 +27,7 @@ format_ves_to_c <- function(vesalius_assay,
     # other options that we need to account for.
     # Might update this with medici later
     #--------------------------------------------------------------------------#
-    embeddings <- check_embedding(vesalius_assay, embed, dims)
+    embeddings <- check_embedding_selection(vesalius_assay, embed, dims)
     tiles <- check_tiles(vesalius_assay)
     #--------------------------------------------------------------------------#
     # generate a list of images based on the number of dims
@@ -93,7 +93,7 @@ format_c_to_ves <- function(cimg,
   # Get stuff out
   #--------------------------------------------------------------------------#
   tiles <- check_tiles(vesalius_assay)
-  embeddings <- check_embedding(vesalius_assay, embed, dims)
+  embeddings <- check_embedding_selection(vesalius_assay, embed, dims)
   #--------------------------------------------------------------------------#
   # Always going to be a gray scale image.
   # Colour are only used when during viz

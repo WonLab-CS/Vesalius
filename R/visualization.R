@@ -70,7 +70,7 @@ image_plot <- function(vesalius_assay,
     #--------------------------------------------------------------------------#
     coordinates <- check_tiles(vesalius_assay)
     # need to check this -
-    tile_colour <- check_embedding(vesalius_assay,
+    tile_colour <- check_embedding_selection(vesalius_assay,
       embedding,
       dimensions)[, dimensions]
     if (embedding == "last") {

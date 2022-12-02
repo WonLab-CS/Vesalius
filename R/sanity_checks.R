@@ -20,28 +20,58 @@ check_inputs <- function(counts,
     adjust_coordinates,
     verbose) {
     #--------------------------------------------------------------------------#
-    # next let's check counts
-    # create a list that we name and comment.
-    # the comment tells us which count matrix is the default one 
-    #--------------------------------------------------------------------------#
-    counts <- list(check_counts(counts, assay, verbose))
-    names(counts) <- "raw"
-    comment(counts) <- "raw"
-    #--------------------------------------------------------------------------#
-    # now we can check the validity of the coordinates
+    #we can check the validity of the coordinates
     #--------------------------------------------------------------------------#
     coordinates <- check_coordinates(coordinates,
         assay,
         adjust_coordinates,
         verbose)
     #--------------------------------------------------------------------------#
-    # Finally we can rebuild an assay list filled with vesalius_assay objects 
+    # next let's check counts if they are present
+    # if they are we also check if the barcodes between the counts and the 
+    # coordinates match
     #--------------------------------------------------------------------------#
-    return(list("counts" = counts,
-        "coordinates" = coordinates,
-        "assay" = assay[length(counts)]))
+    if (!is.null(counts)) {
+        counts <- check_counts(counts, assay, verbose)
+        loc <- check_barcodes(colnames(counts), coordinates$barcodes)
+        counts <- counts[, loc]
+        counts <- list(counts)
+        names(counts) <- "raw"
+        comment(counts) <- "raw"
+    } else {
+        counts <- list()
+        comment(counts) <- "empty"
+    }
+    
+    #--------------------------------------------------------------------------#
+    # Finally we return the objects hat will populate the vesalius_assay
+    #--------------------------------------------------------------------------#
+    return(list("counts" = counts, "coordinates" = coordinates))
 }
 
+#' checking overlap between barcodes in counts and coordinates
+#' @param counts character vector containing barcode names in count matrix
+#' @param coordinates character vector containing barcode names in tile
+#' data frame
+#' @details Will throw in a warning if the overlap is not perfect.
+#' @return overlapping location between counts and coordinates
+check_barcodes <- function(counts, coordinates) {
+    if (sum(duplicated(counts)) > 0) {
+        stop("Duplicated colnames in count matrix!")
+    }
+    loc <- counts %in% coordinates
+    if (sum(loc) == 0) {
+        stop("Barcodes in count matrix and coordinates do no match")
+    }
+    if (sum(loc) != length(counts)) {
+        # Might want to remove this warning 
+        # useful for me but could be annoying ofr the user
+        warning("Unshared barcodes between counts and coordinates \n
+            Count matrix will be filtered to match coordinates")
+    }
+    return(loc)
+
+}
 
 #' check if counts are of the correct type and format
 #' @param counts count matrix
@@ -121,17 +151,45 @@ check_coordinates <- function(coordinates,
 }
 
 
+#' check embeddings
+#' checking user provided embedding matrix 
+#' @param embeddings a matrix 
+#' @details If a user provides their own embedding matrix, we need 
+#' to check if it fits the required format and if not throw, errors,
+#' warnings or adjust if possible. 
+#' @return a formated matrix
+check_embeddings <- function(embeddings) {
+    if (!is.null(rownames(embeddings))) {
+        stop("No rownames provided to embedding matrix! \n")
+    }
+    barcodes <- rownames(embeddings)
+    if (is(embeddings, "data.frame")) {
+        embeddings <- as.matrix(embeddings)
+        rownames(embeddings) <- barcodes
+    }
+    return(embeddings)
+}
+
 #' check if norm method is present in availble options
 #' @param norm string - norm method parsed to function 
-#' @return norm method string or error 
-check_norm_methods <- function(norm) {
+#' @param use_counts string - which count matrix to use
+#' @return norm method string or error
+check_norm_methods <- function(norm, use_counts = NULL) {
     if (any(!norm %in% c("log_norm", "SCTransform", "TFIDF", "raw"))) {
         stop("Normalisation method provided do not match available options \n
             Select from: \n
             log_norm, SCTransform, TFIDF, or raw")
-    } else {
-        return(norm)
     }
+    #-------------------------------------------------------------------------#
+    # here we are assuming that if the user parses anything else but raw 
+    # to use counts they want to use their own normalised matrix when creating
+    # the embeddings. we can skip the normalisation method by setting the norm
+    # method to raw. 
+    #--------------------------------------------------------------------------#
+    if (!is.null(use_counts) && use_counts != "raw") {
+        norm <- "raw"
+    }
+    return(norm)
 }
 
 #' check if embedding method is present in availble options
@@ -162,7 +220,7 @@ check_embed_methods <- function(embed) {
 #' We make sure that those dimensions can be extracted from the embedding 
 #' data frame.
 #' @return embedding data frame
-check_embedding <- function(vesalius_assay, embed, dims) {
+check_embedding_selection <- function(vesalius_assay, embed, dims) {
     #--------------------------------------------------------------------------#
     # Lets check if we have all the right embeddings
     #--------------------------------------------------------------------------#
@@ -268,8 +326,10 @@ check_norm <- function(vesalius_assay,
     norm_method,
     method = NULL,
     verbose = TRUE) {
-    counts <- vesalius_assay@counts %||%
+    counts <- vesalius_assay@counts
+    if (length(counts) == 0) {
         stop("Cannot find any counts in vesalius assay!")
+    }
     if (norm_method == "last") {
         norm_method <- length(counts)
     } else if (length(grep(norm_method, names(counts))) == 0) {
@@ -279,7 +339,13 @@ check_norm <- function(vesalius_assay,
     }
     if (!is.null(method[1L]) && method[1L] %in% c("DEseq2", "QLF", "LRT")) {
         message_switch("norm_check", verbose, method = method)
-        counts <- as.matrix(counts[["raw"]])
+        if (comment(counts) == "empty") {
+            stop("No raw counts provided! 
+                Using user provided count matrix.
+                Results will be sub-optimal!")
+        }
+        counts <- counts[["raw"]]
+        counts <- as.matrix(counts)
     } else {
         counts <- as.matrix(counts[[norm_method]])
     }

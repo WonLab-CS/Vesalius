@@ -90,34 +90,70 @@ setMethod("show",
         # not that this will need to be updated with the empty object feature
         #---------------------------------------------------------------------#
         simple_bar(TRUE)
-        cat(paste(object@assay,"as vesalius assay containing:\n\n"))
+        cat(paste(object@assay, "as vesalius assay containing:\n\n"))
+        #---------------------------------------------------------------------#
+        # Get log modifications
+        #---------------------------------------------------------------------#
+        log <- length(object@log)
+        cat(paste(log, "modifications applied to base object. \n"))
         #---------------------------------------------------------------------#
         # check and show tiles 
         #---------------------------------------------------------------------#
         tiles  <- get_tiles(object)
         if (!is.null(tiles)) {
+            cat("\n")
             if (any(colnames(tiles) == "origin")){
                 n_indices <- sum(tiles$origin)
                 cat(paste(n_indices,
-                    "spatial indices used to form pixel tiles \n"))
+                    "spatial indices used to form pixel tiles. \n"))
             } else {
                 n_indices <- nrow(tiles)
-                cat(paste(n_indices, "spatial indices\n"))
+                cat(paste(n_indices, "spatial indices. \n"))
             }
-        } 
+        }
         #---------------------------------------------------------------------#
         # check and show counts
         #---------------------------------------------------------------------#
-        counts <- get_counts(object)
-        if (!is.null(counts)) {
-            cat(paste(nrow(counts), "observations in the count matrix\n"))
+        counts <- get_counts(object, type = "all")
+        if (comment(counts) != "empty") {
+            cat("\n")
+            active <- comment(counts)
+            counts <- counts[[active]]
+            cat(paste(nrow(counts), "observations in the",
+                active,
+                "count matrix. \n"))
         }
 
         #---------------------------------------------------------------------#
         # check embeddings
         #---------------------------------------------------------------------#
-
-
+        all_embeds <- get_embeddings(object, active = FALSE)
+        if (length(all_embeds) != 0) {
+            cat("\n")
+            cat(paste(paste(names(all_embeds), sep = " ", collapse = ", "),
+                "as embeddings. \n"))
+            cat(paste("with", comment(all_embeds), "as active embedding. \n"))
+        }
+        #---------------------------------------------------------------------#
+        # check territories
+        #---------------------------------------------------------------------#
+        ter <- summarise_territories(object, as_log = FALSE)
+        if (any(unlist(ter) > 0)) {
+            cat("\n")
+            for (i in seq_along(ter)) {
+                cat(paste(ter[i], names(ter)[i], "trials. \n"))
+            }
+        }
+        #---------------------------------------------------------------------#
+        #check for DEGs
+        #---------------------------------------------------------------------#
+        deg <- object@DEG
+        if (length(deg) != 0) {
+            cat("\n")
+            all_deg <- sapply(deg, nrow)
+            cat(paste(sum(all_deg), "DEGs found across",
+                length(all_deg)), "trials. \n")
+        }
         simple_bar(TRUE)
     }
 )
@@ -127,16 +163,35 @@ setMethod("show",
 #' build a simple vesalius assay object from single count matrix and spatial
 #' coordinate pair.
 #' 
-#' @param coordinates data.frame in the format 
+#' @param coordinates data.frame in the format
 #' barcodes, x, y.
-#' @param counts matrix, sparse matrix containing counts .
-#' @param assay character vector containing names of the assays 
+#' Default is NULL. See details.
+#' @param counts matrix, sparse matrix containing counts.
+#' Default is NULL. See details.
+#' @param assay character vector containing names of the assays
 #' (see details).
 #' @param adjust_coordinates character of one of the following
 #' "origin" or "norm" (see details).
 #' @param verbose logical indicating if progress message should be
-#' outputed or not. 
-#' @details 
+#' outputed or not.
+#' @details
+#' The vesalius_assay constructor allows you to create
+#' partial or complete vesalius_assay objects.
+#' 
+#' Partial objects contain only the coordinates.
+#' 
+#' Complete objects contain both the counts and the coordinates.
+#'
+#' The main purpose of using partial objects (or empty objects) is 
+#' for you to be able to provide your own count matrix. 
+#' This will be useful if you want to normalise your data in a 
+#' way that is not provided by vesalius.
+#' 
+#' This approach of using your own data can also apply to embeddings.
+#' If you have generated a set of latent space embeddings that you 
+#' wish to use instead of those provided by vesalius, you can 
+#' use the \code{\link{add_embeddings}} function. 
+#' 
 #' 
 #' Along side this input data, you can provide a name 
 #' to your assay. If none are provided, 
@@ -156,13 +211,16 @@ setMethod("show",
 #' @importFrom methods new
 
 build_vesalius_assay <- function(coordinates,
-    counts,
+    counts = NULL,
     assay = "spatial_omics",
     adjust_coordinates = "origin",
     verbose = TRUE) {
     simple_bar(verbose)
     #--------------------------------------------------------------------------#
     # checking inputs
+    # sanity check to make sure that what is being parsed is what we expect
+    # note that if counts is NULL - this function will return an empty list
+    # but commented (tagged as "empty") for input$counts
     #--------------------------------------------------------------------------#
     input <- check_inputs(counts,
         coordinates,
@@ -173,7 +231,7 @@ build_vesalius_assay <- function(coordinates,
     # add assay log
     #--------------------------------------------------------------------------#
     vesalius_assay <- new("vesalius_assay",
-        assay = input$assay,
+        assay = assay,
         counts = input$counts,
         tiles = input$coordinates
         )
@@ -181,7 +239,7 @@ build_vesalius_assay <- function(coordinates,
       default = formals(build_vesalius_assay))
     vesalius_assay <- commit_log(vesalius_assay,
         commit = commit,
-        assay = input$assay)
+        assay = assay)
     simple_bar(verbose)
     return(vesalius_assay)
 }

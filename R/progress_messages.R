@@ -114,6 +114,8 @@ message_switch <- function(type, verbose = TRUE, ...) {
             " Converting Images to Vesalius\n")),
         "vtdf" = cat(paste(t,
             " Converting Vesalius to Data frame\n")),
+        "force_count" = cat(paste(t,
+            " Force setting normalized counts as raw counts\n"))
         )
     } else {
         return(NULL)

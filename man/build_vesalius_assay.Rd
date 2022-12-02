@@ -6,19 +6,21 @@
 \usage{
 build_vesalius_assay(
   coordinates,
-  counts,
+  counts = NULL,
   assay = "spatial_omics",
   adjust_coordinates = "origin",
   verbose = TRUE
 )
 }
 \arguments{
-\item{coordinates}{data.frame in the format 
-barcodes, x, y.}
+\item{coordinates}{data.frame in the format
+barcodes, x, y.
+Default is NULL. See details.}
 
-\item{counts}{matrix, sparse matrix containing counts .}
+\item{counts}{matrix, sparse matrix containing counts.
+Default is NULL. See details.}
 
-\item{assay}{character vector containing names of the assays 
+\item{assay}{character vector containing names of the assays
 (see details).}
 
 \item{adjust_coordinates}{character of one of the following
@@ -35,6 +37,24 @@ build a simple vesalius assay object from single count matrix and spatial
 coordinate pair.
 }
 \details{
+The vesalius_assay constructor allows you to create
+partial or complete vesalius_assay objects.
+
+Partial objects contain only the coordinates.
+
+Complete objects contain both the counts and the coordinates.
+
+The main purpose of using partial objects (or empty objects) is 
+for you to be able to provide your own count matrix. 
+This will be useful if you want to normalise your data in a 
+way that is not provided by vesalius.
+
+This approach of using your own data can also apply to embeddings.
+If you have generated a set of latent space embeddings that you 
+wish to use instead of those provided by vesalius, you can 
+use the \code{\link{add_embeddings}} function. 
+
+
 Along side this input data, you can provide a name 
 to your assay. If none are provided, 
 Vesalius will generate a set of names based on 

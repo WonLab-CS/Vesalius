@@ -96,11 +96,11 @@ There are few dimensionality reduction methods availble, please refer to
 (the build_vesalius_embeddings page)[link to page].
 
 ```{r build_embeddings, eval = TRUE, echo = TRUE}
-vesalius <- build_vesalius_embeddings(vesalius,
+vesalius <- generate_embeddings(vesalius,
   dim_reduction = "PCA",
   nfeatures = 100, # Setting number of features low for low run time
   verbose = FALSE)
-vesalius <- build_vesalius_embeddings(vesalius,
+vesalius <- generate_embeddings(vesalius,
   dim_reduction = "UMAP",
   nfeatures = 100, # Setting number of features low for low run time
   verbose = FALSE)

@@ -5,9 +5,9 @@
 #---------------------/Latent space embeddings/--------------------------------#
 
 
-#' Build vesalius embeddings.
+#' Generate embeddings.
 #'
-#' Build image mebdding from spatial omics data.
+#' Generate image embddings from spatial omics data.
 #' @param vesalius_assay vesalius_assay object.
 #' @param dim_reduction character string describing which dimensionality
 #' reduction method should be used. One of the following:
@@ -71,9 +71,10 @@
 #' @export
 
 
-build_vesalius_embeddings <- function(vesalius_assay,
+generate_embeddings <- function(vesalius_assay,
   dim_reduction = "PCA",
   normalisation = "log_norm",
+  use_count = "raw",
   dimensions = 30,
   tensor_resolution = 1,
   filter_grid = 0.01,
@@ -86,63 +87,65 @@ build_vesalius_embeddings <- function(vesalius_assay,
     #--------------------------------------------------------------------------#
     # Check Status of object
     # getting out coordinates and counts from vesalius objects
-    # In this case - we always get raw counts even if other are present
-    # there is a normalisation step in this function
+    # In this case - we get extract either raw counts
     # we will extract the assay based on name (should have been filtered)
     # will always return list even if you parse a single assay
     #--------------------------------------------------------------------------#
-    tiles <- get_tiles(vesalius_assay)
-    counts <- get_counts(vesalius_assay, type = "raw")
     assay <- get_assay_names(vesalius_assay)
-    normalisation <- check_norm_methods(normalisation)
+    normalisation <- check_norm_methods(normalisation, use_count)
     dim_reduction <- check_embed_methods(dim_reduction)
     status <- search_log(vesalius_assay,
-      "build_vesalius_embeddings",
+      "generate_embeddings",
       return_assay = FALSE)
     #------------------------------------------------------------------------#
     # if there are no tiles present we compute them 
     # otherwise we skip this step - no need to recompute tiles if they are
     # already there
+    # NOTE : Maybe it would worth removing this step?
+    # Originally it was to avoid re computing tiles everytime the user wants
+    # to run a new embedding. But what if the user want to only update
+    # the tile? e.g changing the tensor resolution
     #------------------------------------------------------------------------#
     if (!any(status)) {
-    #------------------------------------------------------------------------#
-    # generate tiles, reduce resoluation and filter out tiles and beads
-    #------------------------------------------------------------------------#
-    tiles <- generate_tiles(tiles,
-        assay = assay,
+      #----------------------------------------------------------------------#
+      # generate tiles, reduce resoluation and filter out tiles and beads
+      #----------------------------------------------------------------------#
+      vesalius_assay <- generate_tiles(vesalius_assay,
         tensor_resolution = tensor_resolution,
         filter_grid = filter_grid,
         filter_threshold = filter_threshold,
         verbose = verbose)
-    vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
-        data = tiles,
-        slot = "tiles",
-        append = FALSE)
+      counts <- get_counts(vesalius_assay, type = use_count)
+    } else {
+      tiles <- get_tiles(vesalius_assay)
+      counts <- get_counts(vesalius_assay, type = use_count)
+      counts <- adjust_counts(tiles, counts, verbose)
     }
-    #------------------------------------------------------------------------#
-    # adjusted counts if necessary
-    # essentially merging counts when barcodes overlap
-    #------------------------------------------------------------------------#
-    message_switch("adj_counts", verbose)
-    counts <- adjust_counts(tiles, counts)
+    
     #--------------------------------------------------------------------------#
     # Now we can start creating colour embeddings
     # This section can be run multiple times
     # for now we dont want to have multiple "tiles" options
     # Once you compute your tiles for an assay you stuck with that 
     # First we pre-process count data -> selecting variable features
-    # and normalisation. 
+    # and normalisation.
+    # if use_count is anythin else than raw we consider that the user wants 
+    # to use their custom count matrix
     #--------------------------------------------------------------------------#
     counts <- process_counts(counts,
       assay = assay,
       method = normalisation,
+      use_counts = use_counts,
       nfeatures = nfeatures,
       min_cutoff = min_cutoff,
       verbose = verbose)
     vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
-      data = counts$counts,
+      data = counts$norm,
       slot = "counts",
       append = TRUE)
+    comment(vesalius_assay@counts) <- ifelse(use_count == "raw",
+      normalisation,
+      use_count)
     #--------------------------------------------------------------------------#
     # Embeddings - get embedding method and convert latent space
     # to color space.
@@ -158,20 +161,18 @@ build_vesalius_embeddings <- function(vesalius_assay,
       slot = "embeddings",
       append = TRUE)
     embeds <- embeds[[1L]]
-    comment(embeds) <- dim_reduction
     vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
       data = embeds,
       slot = "active",
       append = FALSE)
+    comment(vesalius_assay@embeddings) <- dim_reduction
     #----------------------------------------------------------------------#
     # Update objects and add log
-    # update_vesalius => objectUtilies.R
-    # Updating all slots that have been modified
-    # we also create a commit log => clean argument list when more than
-    # 1 argument is supplied. will be commited to individual assasys
+    # create log with arguments that have been used in this function 
+    # add them to the log list contained in vesalius_assay
     #----------------------------------------------------------------------#
     commit <- create_commit_log(arg_match = as.list(match.call()),
-      default = formals(build_vesalius_embeddings))
+      default = formals(generate_embeddings))
     vesalius_assay <- commit_log(vesalius_assay,
       commit,
       assay)
@@ -183,10 +184,7 @@ build_vesalius_embeddings <- function(vesalius_assay,
 #' generate tiles
 #'
 #' generate pixel tiles from punctual spatial assay coordinates 
-#' @param coordinates coordinates data frame in the form of barcodes
-#' x coord, y coord. 
-#' @param assay character describing the assay in the vesaliusObject or
-#' vesalius_array object that is being processed
+#' @param vesalius_assay a vesalius_assay object
 #' @param tensor_resolution numeric (range 0 - 1) describing the compression
 #' ratio to be applied to the final image. Default = 1
 #' @param filter_grid numeric (range 0 - 1) size of the grid used when filtering
@@ -213,16 +211,23 @@ build_vesalius_embeddings <- function(vesalius_assay,
 #' @returns a data.frame containing barcodes, x and you coordinates
 #' of each pixel as well as the original x/y coordinates
 #' @importFrom deldir deldir
-generate_tiles <- function(coordinates,
-  assay,
+#' @export
+generate_tiles <- function(vesalius_assay,
   tensor_resolution = 1,
   filter_grid = 0.01,
   filter_threshold = 0.995,
   verbose = TRUE) {
+  #----------------------------------------------------------------------#
+  # getting out relevant data
+  # Could be a good idea to add some sanity checks here
+  #----------------------------------------------------------------------#
+  coordinates <- get_tiles(vesalius_assay)
+  assay <- get_assay_names(vesalius_assay)
   message_switch("in_assay",
     verbose = verbose,
     assay = assay,
     comp_type = "Generating Tiles")
+
   #----------------------------------------------------------------------#
   # Filter outlier beads
   #----------------------------------------------------------------------#
@@ -257,10 +262,34 @@ generate_tiles <- function(coordinates,
   #----------------------------------------------------------------------#
   message_switch("raster", verbose)
   tiles <- rasterise(filtered)
+  #------------------------------------------------------------------------#
+  # adjusted counts if necessary
+  # essentially merging counts when barcodes overlap
+  #------------------------------------------------------------------------#
+  message_switch("adj_counts", verbose)
+  counts <- get_counts(vesalius_assay, type = "all")
+  if (length(counts) > 0) {
+    for (i in seq_along(counts)) {
+      counts[[i]] <- adjust_counts(tiles, counts[[i]], verbose = FALSE)
+    }
+    vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
+      data = counts,
+      slot = "counts",
+      append = FALSE)
+  }
   #----------------------------------------------------------------------#
-  # return tiles and adjusted counts
+  # return tiles
   #----------------------------------------------------------------------#
-  return(tiles)
+  vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
+    data = tiles,
+    slot = "tiles",
+    append = FALSE)
+  commit <- create_commit_log(arg_match = as.list(match.call()),
+      default = formals(generate_tiles))
+  vesalius_assay <- commit_log(vesalius_assay,
+      commit,
+      assay)
+  return(vesalius_assay)
 }
 
 
@@ -319,8 +348,8 @@ reduce_tensor_resolution <- function(coordinates, tensor_resolution = 1) {
   # we will reduce number of points this way
   # this should keep all barcodes - with overlapping coordinates
   #----------------------------------------------------------------------------#
-  coordinates$x <- round(coordinates$x * tensor_resolution)
-  coordinates$y <- round(coordinates$y * tensor_resolution)
+  coordinates$x <- round(coordinates$x * tensor_resolution) + 1
+  coordinates$y <- round(coordinates$y * tensor_resolution) + 1
   #----------------------------------------------------------------------------#
   # Now we get coordinate tags - we use this to find all the merge locations
   # sorting and using rle to ensure that we actually merge them
@@ -353,53 +382,6 @@ reduce_tensor_resolution <- function(coordinates, tensor_resolution = 1) {
 
 
 
-#' adjust count
-#'
-#' adjust counts after reducing the resolution of the image tensor
-#' or after filtering stray beads
-#' @param coordinates data frame containing coordinates after reducing 
-#' resolution and compressing cooridnates
-#' @param counts count matrix 
-#' @details This function will check the coordinate file to 
-#' see if any barcodes have been merged together. If so,
-#' the counts will be adjusted by taking the average count value accross 
-#' all barcodes that have been merged together. 
-#' @return a count matrix with adjusted count values 
-#' @importFrom Matrix Matrix rowSums
-#' @importFrom future.apply future_lapply
-adjust_counts <- function(coordinates, counts) {
-    #--------------------------------------------------------------------------#
-    # First get all barcode names and compare which ones are missing
-    #--------------------------------------------------------------------------#
-    coord_bar_uni <- unique(coordinates$barcodes)
-    coord_bar <- coord_bar_uni[
-      sapply(strsplit(coord_bar_uni, "_et_"), length) > 1]
-    if (length(coord_bar) == 0) {
-       return(counts[, colnames(counts) %in% coord_bar_uni])
-    }
-
-    #--------------------------------------------------------------------------#
-    # next we merge counts together when barcodes have been merged
-    #--------------------------------------------------------------------------#
-    tmp_bar <- strsplit(coord_bar, "_et_")
-
-    empty <- future_lapply(tmp_bar, function(tmp_bar, counts) {
-        return(Matrix::rowSums(counts[, tmp_bar]))
-    }, counts = counts, future.seed = TRUE)
-
-    empty <- do.call("cbind", empty)
-    if (is.null(dim(empty)) && length(empty) != 0) {
-        empty <- Matrix::Matrix(empty, ncol = 1)
-    }
-    colnames(empty) <- coord_bar
-    merged <- cbind(counts[, !colnames(counts) %in% unlist(unique(tmp_bar))],
-      empty)
-    #--------------------------------------------------------------------------#
-    # next we remove any barcodes that were dropped during filtering
-    #--------------------------------------------------------------------------#
-    merged <- merged[, colnames(merged) %in% coordinates$barcodes]
-    return(merged)
-}
 
 
 
@@ -459,7 +441,7 @@ filter_tiles <- function(tesselation, coordinates, filter_threshold) {
 #' @importFrom sp point.in.polygon
 rasterise <- function(filtered) {
     idx <- seq_len(nrow(filtered$coordinates))
-    tiles <- future_lapply(idx, function(idx, filtered) {
+    tiles <- lapply(idx, function(idx, filtered) {
         
         #----------------------------------------------------------------------#
         # get indecies from original data
@@ -501,10 +483,16 @@ rasterise <- function(filtered) {
 
         #----------------------------------------------------------------------#
         # Fill triangles with all point in that space
+        # And filter out negetive coordinates (associated with tesselation 
+        # boundary extension) 
         #----------------------------------------------------------------------#
         cell <- sp::point.in.polygon(max_polygon_x, max_polygon_y, x, y)
-        max_x <- max_polygon_x[cell %in% c(1, 2, 3)]
-        max_y <- max_polygon_y[cell %in% c(1, 2, 3)]
+        max_x <- max_polygon_x[cell %in% c(1, 2, 3) &
+          max_polygon_x > 0 &
+          max_polygon_y > 0]
+        max_y <- max_polygon_y[cell %in% c(1, 2, 3) &
+          max_polygon_y > 0 &
+          max_polygon_x > 0]
         #----------------------------------------------------------------------#
         # get original point location 
         # in some cases this is not possible because of the strange shape
@@ -523,9 +511,9 @@ rasterise <- function(filtered) {
           "y" = max_y,
           "origin" = centers)
         return(tile)
-    }, filtered = filtered, future.seed = TRUE)
+    }, filtered = filtered)#, future.seed = TRUE)
+    
     tiles <- do.call("rbind", tiles)
-    tiles <- tiles %>% filter(x > 1 & y > 1)
     return(tiles)
 }
 
@@ -581,6 +569,7 @@ convexify <- function(xside, yside, indx, indy) {
 process_counts <- function(counts,
   assay,
   method = "log_norm",
+  use_counts = "raw",
   nfeatures = 2000,
   min_cutoff = "q5",
   verbose = TRUE) {
@@ -594,12 +583,12 @@ process_counts <- function(counts,
     # we have to change things in the embbeddings as well
     #--------------------------------------------------------------------------
     counts <- Seurat::CreateSeuratObject(counts, assay = "Spatial")
-    counts <- switch(method[1L],
+    counts <- switch(method,
                     "log_norm" = log_norm(counts, nfeatures),
                     "SCTransform" = int_sctransform(counts, assay = "Spatial",
                       nfeatures = nfeatures),
                     "TFIDF" = tfidf_norm(counts, min_cutoff = min_cutoff),
-                    "raw" = raw_norm(counts))
+                    "raw" = raw_norm(counts, use_count))
     return(counts)
 }
 
@@ -610,7 +599,7 @@ process_counts <- function(counts,
 #' @return list with seurat object used later and raw counts to be stored in
 #' the vesalius objects 
 #' @importFrom Seurat GetAssayData
-raw_norm <- function(counts) {
+raw_norm <- function(counts, use_count = "raw") {
     #--------------------------------------------------------------------------#
     # Essentially we want people to be able to parse their matrix
     # If they want to use a different type of norm method that is not present
@@ -619,7 +608,7 @@ raw_norm <- function(counts) {
     # We are using this just for formating at the moment
     #--------------------------------------------------------------------------#
     norm_counts <- list(Seurat::GetAssayData(counts, slot = "counts"))
-    names(norm_counts) <- "raw"
+    names(norm_counts) <- use_count
     return(list("SO" = counts, "norm" = norm_counts))
 }
 #' log norm

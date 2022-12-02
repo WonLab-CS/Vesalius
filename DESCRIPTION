@@ -19,10 +19,11 @@ Collate: image_processing.R
     global_bindings.R
     data.R
     objects.R
-    embeddings.R
+    embeddings_and_tiles.R
     format_and_dispatch.R
     object_utilities_and_methods.R
     sanity_checks.R
+    object_modification.R
 Depends: R (>= 4.0.0)
 Imports:
     grDevices,

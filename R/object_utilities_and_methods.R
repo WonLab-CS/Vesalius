@@ -5,6 +5,58 @@
 #----------------------------/Object Utilities/--------------------------------#
 
 
+#' adjust count
+#'
+#' adjust counts after reducing the resolution of the image tensor
+#' or after filtering stray beads
+#' @param coordinates data frame containing coordinates after reducing 
+#' resolution and compressing cooridnates
+#' @param counts count matrix 
+#' @details This function will check the coordinate file to 
+#' see if any barcodes have been merged together. If so,
+#' the counts will be adjusted by taking the average count value accross 
+#' all barcodes that have been merged together. 
+#' @return a count matrix with adjusted count values 
+#' @importFrom Matrix Matrix rowMeans
+#' @importFrom future.apply future_lapply
+adjust_counts <- function(coordinates, counts, verbose = TRUE) {
+    message_switch("adj_counts", verbose)
+    #--------------------------------------------------------------------------#
+    # First get all barcode names and compare which ones are missing
+    #--------------------------------------------------------------------------#
+    coord_bar_uni <- unique(coordinates$barcodes)
+    coord_bar <- coord_bar_uni[
+      sapply(strsplit(coord_bar_uni, "_et_"), length) > 1]
+    if (length(coord_bar) == 0) {
+      loc <- check_barcodes(colnames(counts), coord_bar_uni)
+      return(counts[, loc])
+    }
+
+    #--------------------------------------------------------------------------#
+    # next we merge counts together when barcodes have been merged
+    # and take the average count value in that barcode location.
+    #--------------------------------------------------------------------------#
+    tmp_bar <- strsplit(coord_bar, "_et_")
+
+    empty <- future_lapply(tmp_bar, function(tmp_bar, counts) {
+        return(Matrix::rowMeans(counts[, tmp_bar]))
+    }, counts = counts, future.seed = TRUE)
+
+    empty <- do.call("cbind", empty)
+    if (is.null(dim(empty)) && length(empty) != 0) {
+        empty <- Matrix::Matrix(empty, ncol = 1)
+    }
+    colnames(empty) <- coord_bar
+    merged <- cbind(counts[, !colnames(counts) %in% unlist(unique(tmp_bar))],
+      empty)
+    #--------------------------------------------------------------------------#
+    # next we remove any barcodes that were dropped during filtering
+    #--------------------------------------------------------------------------#
+    merged <- merged[, colnames(merged) %in% coordinates$barcodes]
+    return(merged)
+}
+
+
 #' update vesalius assay object
 #' @param vesalius_assay a vesalius_assay object
 #' @param data data that will be inserted into the vesalius_assay
@@ -222,9 +274,29 @@ get_assay_names <- function(vesalius_assay) {
 #' @rdname get_counts
 #' @export
 #' @importFrom methods slot
+#' @importFrom utils tail
 get_counts <- function(vesalius_assay, type = "raw") {
-    counts <- slot(vesalius_assay, "counts")[[type]]
-    return(counts)
+    counts <- slot(vesalius_assay, "counts")
+    #--------------------------------------------------------------------------#
+    # If the user does not parse any counts - there is not slot named raw 
+    # Instead it is an empty list that is tagged with an "empty" comment
+    # We want to check if that is the case and throw an error
+    #--------------------------------------------------------------------------#
+    if (type == "all") {
+        return(counts)
+    } else {
+        loc <- grep(type, names(counts))
+        if (length(loc) == 0) {
+            stop(paste(type, "is not present in count matrix list"))
+        } else if (length(loc) > 1) {
+            warning(paste("More than 1 count matrix called", type,
+                "Vesalius will return last entry"))
+            counts <- counts[[tail(loc)]]
+        } else {
+            counts <- counts[[loc]]
+        }
+        return(counts)
+    }
 }
 
 
@@ -310,7 +382,7 @@ get_last_embedding <- function(vesalius_assay) {
             return_assay = TRUE), "[[", "embedding")
         if (all(last == "last")) {
             last <-  search_log(vesalius_assay,
-                "build_vesalius_embeddings",
+                "generate_embeddings",
                 return_assay = TRUE)
             last <- last[[length(last)]]$dim_reduction
         } else {
@@ -330,10 +402,46 @@ get_last_embedding <- function(vesalius_assay) {
 add_active_tag <- function(vesalius_assay, embed_mat, embed) {
     if (embed == "last") {
         dim_reduction <- get_last_embedding(vesalius_assay)
-        
     } else {
         dim_reduction <- embed
     }
     comment(embed_mat) <- dim_reduction
     return(embed_mat)
+}
+
+
+#' summarise territories
+#' @param vesalius_assay a vesalius assay object
+#' @param as_log logical defining if log list should be returned
+#' @return a list containing summary of territory transformation
+#' and manipulations. 
+#' @export
+summarise_territories <- function(vesalius_assay, as_log = FALSE) {
+    if (as_log) {
+        log <- vector("list", 4)
+        names(log) <- c("Segmentation",
+            "Territory",
+            "Morphing",
+            "Layering")
+        log[["Segmentation"]] <- search_log(vesalius_assay,
+            "image_segmentation")
+        log[["Territory"]] <- search_log(vesalius_assay,
+            "isolate_territories")
+        log[["Morphing"]] <- search_log(vesalius_assay,
+            "territory_morphing")
+        log[["Layering"]] <- search_log(vesalius_assay,
+            "layer_territory")
+    } else {
+        log <- vector("list", 4)
+        territories <- get_territories(vesalius_assay)
+        names(log) <- c("Segmentation",
+            "Territory",
+            "Morphing",
+            "Layering")
+        log[["Segmentation"]] <- length(grep("Segment", colnames(territories)))
+        log[["Territory"]] <- length(grep("Territory", colnames(territories)))
+        log[["Morphing"]] <- length(grep("Morphology", colnames(territories)))
+        log[["Layering"]] <- length(grep("Layer", colnames(territories)))
+    }
+    return(log)
 }

@@ -574,7 +574,9 @@ kmeans_segmentation <- function(vesalius_assay,
   verbose = TRUE) {
   coord <- get_tiles(vesalius_assay) %>%
     filter(origin == 1)
-  embeddings <- check_embedding(vesalius_assay, embedding, dimensions)
+  embeddings <- check_embedding_selection(vesalius_assay,
+    embedding,
+    dimensions)
 
   #--------------------------------------------------------------------------#
   # Now lets cluster colours
@@ -619,7 +621,9 @@ leiden_segmentation <- function(vesalius_assay,
   verbose = TRUE) {
   coord <- get_tiles(vesalius_assay) %>%
     filter(origin == 1)
-  embeddings <- check_embedding(vesalius_assay, embedding, dimensions)
+  embeddings <- check_embedding_selection(vesalius_assay,
+    embedding,
+    dimensions)
   graph <- compute_nearest_neighbor_graph(embeddings = embeddings)
   clusters <- igraph::cluster_leiden(graph,
     resolution_parameter = col_resolution)
@@ -658,7 +662,9 @@ louvain_segmentation <- function(vesalius_assay,
   verbose = TRUE) {
   coord <- get_tiles(vesalius_assay) %>%
     filter(origin == 1)
-  embeddings <- check_embedding(vesalius_assay, embedding, dimensions)
+  embeddings <- check_embedding_selection(vesalius_assay,
+    embedding,
+    dimensions)
   graph <- compute_nearest_neighbor_graph(embeddings = embeddings)
   clusters <- igraph::cluster_louvain(graph, resolution = col_resolution)
   cluster <- data.frame("cluster" = clusters$membership,

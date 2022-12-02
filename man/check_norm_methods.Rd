@@ -4,10 +4,12 @@
 \alias{check_norm_methods}
 \title{check if norm method is present in availble options}
 \usage{
-check_norm_methods(norm)
+check_norm_methods(norm, use_counts = NULL)
 }
 \arguments{
 \item{norm}{string - norm method parsed to function}
+
+\item{use_counts}{string - which count matrix to use}
 }
 \value{
 norm method string or error
