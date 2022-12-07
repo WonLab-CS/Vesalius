@@ -104,7 +104,6 @@ identify_markers <- function(vesalius_assay,
     ter <- check_territories(vesalius_assay, trial)
     seed <- check_group_value(ter, seed)
     query <- check_group_value(ter, query)
-    deg_trial <- create_trial_tag(names(vesalius_assay@DEG), "DEG")
     #--------------------------------------------------------------------------#
     # Getting and setting territory categories
     #--------------------------------------------------------------------------#
@@ -141,7 +140,7 @@ identify_markers <- function(vesalius_assay,
     }
     deg <- do.call("rbind", deg)
     deg <- list(deg)
-    names(deg) <- deg_trial
+    names(deg) <- "DEG"
     vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
     data = deg,
     slot = "DEG",

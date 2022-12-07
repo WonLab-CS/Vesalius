@@ -69,10 +69,13 @@ update_vesalius_assay <- function(vesalius_assay,
     slot,
     append = TRUE) {
     #--------------------------------------------------------------------------#
-    # First we do some checks 
+    # First we do some checks
     #--------------------------------------------------------------------------#
     if (append && slot != "territories") {
-        data <- c(slot(vesalius_assay, slot), data)
+        internal <- slot(vesalius_assay, slot)
+        tag <- create_trial_tag(names(internal), names(data))
+        data <- c(internal, data)
+        names(data) <- tag
         slot(vesalius_assay, slot) <- data
     }else if (append && slot == "territories") {
         if (!all(dim(slot(vesalius_assay, slot)) == c(0, 0))) {
@@ -121,14 +124,10 @@ create_commit_log <- function(arg_match, default) {
 commit_log <- function(vesalius_assay, commit, assay) {
     fun <- get_func_from_commit(commit)
     log <- vesalius_assay@log
-    if (is.null(names(log))) {
-        tag <- "Not_computed"
-    } else {
-        tag <- grep(x = names(log), pattern = fun, value = TRUE)
-    }
-    tag <- paste0(assay, "_", create_trial_tag(tag, fun))
+    tag <- paste0(assay, "_", fun)
+    tag <- create_trial_tag(names(log), tag)
     log <- c(log, list(commit))
-    names(log)[length(log)] <- tag
+    names(log) <- tag
     vesalius_assay@log <- log
     return(vesalius_assay)
 }
@@ -244,16 +243,11 @@ slot_assign <- function(object, sl, input) {
 #' that have already been computed
 #' @param tag character string describing which trial tag to add
 create_trial_tag <- function(trials, tag) {
-    if (is.null(trials) || !any(grepl(x = trials, pattern = tag))) {
-        new_trial <-  paste0(tag, "_Trial_1")
-    } else {
-        previous <- grep(x = trials, pattern = tag, value = TRUE)
-        m <- gregexpr("[0-9]+", previous)
-        last <- max(as.numeric(unlist(regmatches(previous, m))))
-        new_trial <- paste0(tag, "_Trial_", last + 1)
-    }
+    new_trial <- make.names(c(trials, tag), unique = TRUE)
     return(new_trial)
 }
+
+
 
 #' get assay names from vesalius_assay
 #' @param vesalius_assay a vesalius_assay
@@ -285,13 +279,13 @@ get_counts <- function(vesalius_assay, type = "raw") {
     if (type == "all") {
         return(counts)
     } else {
-        loc <- grep(type, names(counts))
+        loc <- grep(type, names(counts), value = TRUE)
         if (length(loc) == 0) {
             stop(paste(type, "is not present in count matrix list"))
         } else if (length(loc) > 1) {
             warning(paste("More than 1 count matrix called", type,
-                "Vesalius will return last entry"))
-            counts <- counts[[tail(loc)]]
+                "Vesalius will return first instance"))
+            counts <- counts[[head(loc,1)]]
         } else {
             counts <- counts[[loc]]
         }
@@ -323,7 +317,6 @@ get_embeddings <- function(vesalius_assay, active = TRUE) {
     } else {
         tiles <- slot(vesalius_assay, "embeddings")
     }
-    
     return(tiles)
 }
 
@@ -371,44 +364,50 @@ get_markers <- function(vesalius_assay, trial = "last") {
 #' get last embedding
 #' @param vesalius_assay a vesalius_assay object
 #' @return character string with name of last embedding used
-get_last_embedding <- function(vesalius_assay) {
-    if (length(search_log(vesalius_assay,
-        arg = "embedding",
-        return_assay = TRUE)) == 0) {
-            stop("No embeddings have been computed!")
-    } else {
-        last <- sapply(search_log(vesalius_assay,
-            "last",
-            return_assay = TRUE), "[[", "embedding")
-        if (all(last == "last")) {
-            last <-  search_log(vesalius_assay,
-                "generate_embeddings",
-                return_assay = TRUE)
-            last <- last[[length(last)]]$dim_reduction
-        } else {
-            last <- last[[tail(which(last != "last"))]]$dim_reduction
-        }
-    }
+get_active_embedding_tag <- function(vesalius_assay) {
+    last <- comment(get_embeddings(vesalius_assay, active = FALSE))
     return(last)
 }
 
-
-#' add active tag
-#' @param vesalius_assay a vesalius assay object
-#' @param embed_mat matrix containing embeddings
-#' @param embed embedding used 
-#' @return a embedding matrix with added tag that describes
-#' which embedding was used to produce that embedding 
-add_active_tag <- function(vesalius_assay, embed_mat, embed) {
-    if (embed == "last") {
-        dim_reduction <- get_last_embedding(vesalius_assay)
-    } else {
-        dim_reduction <- embed
-    }
-    comment(embed_mat) <- dim_reduction
-    return(embed_mat)
+#' get last count matrix used
+#' @param vesalius_assay a vesalius_assay object
+#' @return character string with name of last embedding used
+get_active_count_tag <- function(vesalius_assay) {
+    last <- comment(get_counts(vesalius_assay, type = "all"))
+    return(last)
 }
 
+#' add active embedding tag
+#' @param vesalius_assay a vesalius assay object
+#' @param embeddings embedding
+#' @return commented list with active embedding tag
+#' @importFrom dplyr %>%
+#' @importFrom utils tail
+add_active_embedding_tag <- function(vesalius_assay, embedding) {
+   if (embedding != "last") {
+        active <- names(vesalius_assay@embeddings)
+        active <- grep(embedding, active, value = TRUE) %>%
+            tail(1)
+        comment(vesalius_assay@embeddings) <- active
+   }
+    return(vesalius_assay)
+}
+
+#' add active count tag
+#' @param vesalius_assay a vesalius assay object
+#' @param norm requested count matrix
+#' @return commented list with active embedding tag
+#' @importFrom dplyr %>%
+#' @importFrom utils tail
+add_active_count_tag <- function(vesalius_assay, norm) {
+    if (norm != "last") {
+        active <- names(vesalius_assay@counts)
+        active <- grep(norm, active, value = TRUE) %>%
+            tail(1)
+        comment(vesalius_assay@counts) <- active
+    }
+    return(vesalius_assay)
+}
 
 #' summarise territories
 #' @param vesalius_assay a vesalius assay object

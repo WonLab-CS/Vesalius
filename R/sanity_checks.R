@@ -151,6 +151,8 @@ check_coordinates <- function(coordinates,
 }
 
 
+
+
 #' check embeddings
 #' checking user provided embedding matrix 
 #' @param embeddings a matrix 
@@ -159,7 +161,7 @@ check_coordinates <- function(coordinates,
 #' warnings or adjust if possible. 
 #' @return a formated matrix
 check_embeddings <- function(embeddings) {
-    if (!is.null(rownames(embeddings))) {
+    if (is.null(rownames(embeddings))) {
         stop("No rownames provided to embedding matrix! \n")
     }
     barcodes <- rownames(embeddings)
@@ -171,7 +173,7 @@ check_embeddings <- function(embeddings) {
 }
 
 #' check if norm method is present in availble options
-#' @param norm string - norm method parsed to function 
+#' @param norm string - norm method parsed to function
 #' @param use_counts string - which count matrix to use
 #' @return norm method string or error
 check_norm_methods <- function(norm, use_counts = NULL) {
@@ -232,9 +234,13 @@ check_embedding_selection <- function(vesalius_assay, embed, dims) {
             stop(paste(deparse(substitute(embed)),
                 ": Unknown embedding selected!"))
         } else if (length(in_col) > 1) {
-            warning(paste("More than 1", deparse(substitute(embed)), "embedding.
-            Vesalius will use the latest entry - See Vesalius Log"))
-            embeddings <- vesalius_assay@embeddings[[in_col[length(in_col)]]]
+            trial <- grep(x = names(vesalius_assay@embeddings),
+                pattern = embed,
+                value = TRUE)
+            warning(paste("More than one trial contains that name: \n",
+                paste(trial, collapse = " ", sep = " "),
+                "\nUsing first trial"))
+            embeddings <- vesalius_assay@embeddings[[trial[1L]]]
         } else {
             embeddings <- vesalius_assay@embeddings[[in_col]]
         }
@@ -276,6 +282,15 @@ check_territories <- function(vesalius_assay, trial) {
     } else if (length(grep(x = colnames(vesalius_assay@territories),
         pattern = trial)) == 0) {
       stop(paste(deparse(substitute(trial)), "is not in territory data frame"))
+    } else if (length(grep(x = colnames(vesalius_assay@territories),
+        pattern = trial)) > 1) {
+        trial <- grep(x = colnames(vesalius_assay@territories),
+            pattern = trial,
+            value = TRUE)
+        warning(paste("More than one trial contains that name: \n",
+            paste(trial, collapse = " ", sep = " "),
+            "\nUsing first trial"))
+        trial <- trial[1L]
     }
     territories <- territories[, c("barcodes", "x", "y", trial)]
     colnames(territories) <- c("barcodes", "x", "y", "trial")
@@ -304,6 +319,15 @@ check_segments <- function(vesalius_assay, trial = "last") {
         stop(
             paste(deparse(substitute(trial)), "is not in territory data frame")
         )
+    } else if (length(grep(x = colnames(vesalius_assay@territories),
+        pattern = trial)) > 1) {
+        trial <- grep(x = colnames(vesalius_assay@territories),
+            pattern = trial,
+            value = TRUE)
+        warning(paste("More than one trial contains that name: \n",
+            paste(trial, collapse = " ", sep = " "),
+            "\nUsing first trial"))
+        trial <- trial[1L]
     }
     territories <- territories[, c("barcodes", "x", "y", trial)]
     colnames(territories) <- c("barcodes", "x", "y", "segment")
@@ -331,15 +355,21 @@ check_norm <- function(vesalius_assay,
         stop("Cannot find any counts in vesalius assay!")
     }
     if (norm_method == "last") {
-        norm_method <- length(counts)
+        norm_method <- get_active_count_tag(vesalius_assay)
     } else if (length(grep(norm_method, names(counts))) == 0) {
         stop(
             paste0(deparse(substitute(norm_method)), "is not in count list!")
         )
+    } else if (length(grep(norm_method, names(counts))) > 1) {
+        trial <- grep(norm_method, names(counts), value = TRUE)
+        warning(paste("More than one trial contains that name: \n",
+            paste(trial, collapse = " ", sep = " "),
+            "Using first trial"))
+        trial <- trial[1L]
     }
     if (!is.null(method[1L]) && method[1L] %in% c("DEseq2", "QLF", "LRT")) {
         message_switch("norm_check", verbose, method = method)
-        if (comment(counts) == "empty") {
+        if (norm_method == "empty") {
             stop("No raw counts provided! 
                 Using user provided count matrix.
                 Results will be sub-optimal!")

@@ -95,7 +95,7 @@ generate_embeddings <- function(vesalius_assay,
     normalisation <- check_norm_methods(normalisation, use_count)
     dim_reduction <- check_embed_methods(dim_reduction)
     status <- search_log(vesalius_assay,
-      "generate_embeddings",
+      "generate_tiles",
       return_assay = FALSE)
     #------------------------------------------------------------------------#
     # if there are no tiles present we compute them 
@@ -121,7 +121,6 @@ generate_embeddings <- function(vesalius_assay,
       counts <- get_counts(vesalius_assay, type = use_count)
       counts <- adjust_counts(tiles, counts, verbose)
     }
-    
     #--------------------------------------------------------------------------#
     # Now we can start creating colour embeddings
     # This section can be run multiple times
@@ -143,9 +142,8 @@ generate_embeddings <- function(vesalius_assay,
       data = counts$norm,
       slot = "counts",
       append = TRUE)
-    comment(vesalius_assay@counts) <- ifelse(use_count == "raw",
-      normalisation,
-      use_count)
+    vesalius_assay <- add_active_count_tag(vesalius_assay,
+      norm = ifelse(use_count == "raw", normalisation, use_count))
     #--------------------------------------------------------------------------#
     # Embeddings - get embedding method and convert latent space
     # to color space.
@@ -165,7 +163,8 @@ generate_embeddings <- function(vesalius_assay,
       data = embeds,
       slot = "active",
       append = FALSE)
-    comment(vesalius_assay@embeddings) <- dim_reduction
+    vesalius_assay <- add_active_embedding_tag(vesalius_assay,
+      dim_reduction)
     #----------------------------------------------------------------------#
     # Update objects and add log
     # create log with arguments that have been used in this function 
@@ -176,14 +175,13 @@ generate_embeddings <- function(vesalius_assay,
     vesalius_assay <- commit_log(vesalius_assay,
       commit,
       assay)
-    # Progress message simpleBar => Prog.R
     simple_bar(verbose)
     return(vesalius_assay)
 }
 
 #' generate tiles
 #'
-#' generate pixel tiles from punctual spatial assay coordinates 
+#' generate pixel tiles from punctual spatial assay coordinates
 #' @param vesalius_assay a vesalius_assay object
 #' @param tensor_resolution numeric (range 0 - 1) describing the compression
 #' ratio to be applied to the final image. Default = 1
@@ -211,17 +209,35 @@ generate_embeddings <- function(vesalius_assay,
 #' @returns a data.frame containing barcodes, x and you coordinates
 #' of each pixel as well as the original x/y coordinates
 #' @importFrom deldir deldir
+#' @importFrom dplyr %>% filter
 #' @export
 generate_tiles <- function(vesalius_assay,
   tensor_resolution = 1,
   filter_grid = 0.01,
   filter_threshold = 0.995,
   verbose = TRUE) {
+  env <- identical(.GlobalEnv, parent.frame()) && verbose
+  simple_bar(env)
   #----------------------------------------------------------------------#
   # getting out relevant data
   # Could be a good idea to add some sanity checks here
   #----------------------------------------------------------------------#
-  coordinates <- get_tiles(vesalius_assay)
+  status <- any(search_log(vesalius_assay,
+    "generate_tiles",
+    return_assay = FALSE))
+  #----------------------------------------------------------------------#
+  # we do the tile check here - if we don't the tiles will be computed on
+  # pixels and that will take ages and will lead to nonsense. 
+  # I am not sure if holding the orginal data before filtering is worth it
+  # While I figure that out, we just return object and skip tlling
+  #----------------------------------------------------------------------#
+  if (status) {
+    warning("Tiles have already been computed!
+      Returning vesalius_assay. For a new set of tiles,
+      Create a new vesalius_assay
+      then 'generate_tiles' or 'generate _embeddings'")
+    return(vesalius_assay)
+  }
   assay <- get_assay_names(vesalius_assay)
   message_switch("in_assay",
     verbose = verbose,
@@ -289,6 +305,7 @@ generate_tiles <- function(vesalius_assay,
   vesalius_assay <- commit_log(vesalius_assay,
       commit,
       assay)
+  simple_bar(env)
   return(vesalius_assay)
 }
 
@@ -441,8 +458,7 @@ filter_tiles <- function(tesselation, coordinates, filter_threshold) {
 #' @importFrom sp point.in.polygon
 rasterise <- function(filtered) {
     idx <- seq_len(nrow(filtered$coordinates))
-    tiles <- lapply(idx, function(idx, filtered) {
-        
+    tiles <- future_lapply(idx, function(idx, filtered) {
         #----------------------------------------------------------------------#
         # get indecies from original data
         #----------------------------------------------------------------------#
@@ -511,8 +527,7 @@ rasterise <- function(filtered) {
           "y" = max_y,
           "origin" = centers)
         return(tile)
-    }, filtered = filtered)#, future.seed = TRUE)
-    
+    }, filtered = filtered, future.seed = TRUE)
     tiles <- do.call("rbind", tiles)
     return(tiles)
 }
@@ -582,11 +597,10 @@ process_counts <- function(counts,
     # rememmber that if we do decide to change things
     # we have to change things in the embbeddings as well
     #--------------------------------------------------------------------------
-    counts <- Seurat::CreateSeuratObject(counts, assay = "Spatial")
+    counts <- Seurat::CreateSeuratObject(counts)
     counts <- switch(method,
                     "log_norm" = log_norm(counts, nfeatures),
-                    "SCTransform" = int_sctransform(counts, assay = "Spatial",
-                      nfeatures = nfeatures),
+                    "SCTransform" = int_sctransform(counts, nfeatures),
                     "TFIDF" = tfidf_norm(counts, min_cutoff = min_cutoff),
                     "raw" = raw_norm(counts, use_count))
     return(counts)
@@ -645,11 +659,11 @@ log_norm <- function(counts, nfeatures) {
 #' in a vesalius object
 #' @importFrom Seurat SCTransform
 #' @importFrom Seurat GetAssayData
-int_sctransform <- function(counts, assay = "Spatial", nfeatures) {
-    counts <- Seurat::SCTransform(counts, assay = "Spatial",
+int_sctransform <- function(counts, nfeatures) {
+    counts <- Seurat::SCTransform(counts,
       variable.features.n = nfeatures, verbose = FALSE)
     norm_counts <- list(GetAssayData(counts, slot = "data"))
-    names(norm_counts) <- "SCT"
+    names(norm_counts) <- "SCTransform"
     return(list("SO" = counts, "norm" = norm_counts))
 }
 

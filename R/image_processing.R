@@ -78,7 +78,7 @@
 smooth_image <- function(vesalius_assay,
   dimensions = seq(1, 3),
   embedding = "last",
-  method = c("median", "iso", "box"),
+  method = "iso",
   iter = 1,
   sigma = 1,
   box = 20,
@@ -130,11 +130,11 @@ smooth_image <- function(vesalius_assay,
       dimensions,
       embed = embedding,
       verbose = verbose)
-   embeds <- add_active_tag(vesalius_assay, embeds, embedding)
     vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
       data = embeds,
       slot = "active",
       append = FALSE)
+    vesalius_assay <- add_active_embedding_tag(vesalius_assay, embedding)
     commit <- create_commit_log(arg_match = as.list(match.call()),
       default = formals(smooth_image))
     vesalius_assay <- commit_log(vesalius_assay,
@@ -311,11 +311,11 @@ equalize_image <- function(vesalius_assay,
       dimensions,
       embed = embedding,
       verbose = verbose)
-    embeds <- add_active_tag(vesalius_assay, embeds, embedding)
     vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
       data = embeds,
       slot = "active",
       append = FALSE)
+    vesalius_assay <- add_active_embedding_tag(vesalius_assay, embedding)
     commit <- create_commit_log(arg_match = as.list(match.call()),
       default = formals(equalize_image))
     vesalius_assay <- commit_log(vesalius_assay,
@@ -406,11 +406,11 @@ regularise_image <- function(vesalius_assay,
       dimensions,
       embed = embedding,
       verbose = verbose)
-    embeds <- add_active_tag(vesalius_assay, embeds, embedding)
     vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
       data = embeds,
       slot = "active",
       append = FALSE)
+    vesalius_assay <- add_active_embedding_tag(vesalius_assay, embedding)
     commit <- create_commit_log(arg_match = as.list(match.call()),
       default = formals(regularise_image))
     vesalius_assay <- commit_log(vesalius_assay,
@@ -538,6 +538,7 @@ segment_image <- function(vesalius_assay,
     data = segments,
     slot = "territories",
     append = TRUE)
+  vesalius_assay <- add_active_embedding_tag(vesalius_assay, embedding)
   commit <- create_commit_log(arg_match = as.list(match.call()),
     default = formals(segment_image))
   vesalius_assay <- commit_log(vesalius_assay,
@@ -567,6 +568,7 @@ segment_image <- function(vesalius_assay,
 #' @importFrom dplyr select
 #' @importFrom dplyr ungroup
 #' @importFrom imager as.cimg
+#' @importFrom utils tail
 kmeans_segmentation <- function(vesalius_assay,
   dimensions = seq(1, 3),
   col_resolution = 10,
@@ -588,15 +590,13 @@ kmeans_segmentation <- function(vesalius_assay,
     nstart = 10))
   clusters <- km$cluster
   kcenters <- km$centers
-  #for (i in seq_len(ncol(embeddings))) {
-   # embeddings[, i] <- kcenters[clusters, i]
-  #}
+  
   match_loc <- match(coord$barcodes, names(clusters))
-  clusters <- data.frame(coord, "cluster" = clusters[match_loc])
+  clusters <- data.frame(coord, "Segment" = clusters[match_loc])
   new_trial <- create_trial_tag(colnames(vesalius_assay@territories),
-    "Segment")
-  colnames(clusters) <- c(colnames(clusters)[seq_len(ncol(clusters) - 1)],
-    new_trial)
+    "Segment") %>%
+    tail(1)
+  colnames(clusters) <- gsub("Segment", new_trial, colnames(clusters))
   return(clusters)
 }
 
@@ -630,16 +630,13 @@ leiden_segmentation <- function(vesalius_assay,
   cluster <- data.frame("cluster" = clusters$membership,
     "barcodes" = clusters$names)
 
-  #for (i in unique(cluster)) {
-  #  locs  <- rownames(embeddings) %in% cluster$barcodes[cluster == i]
-  #  embeddings[locs, ] <- apply(embeddings[locs, ], 1, median)
-  #}
+  
   match_loc <- match(coord$barcodes, cluster$barcodes)
-  clusters <- data.frame(coord, "cluster" = cluster$cluster[match_loc])
+  clusters <- data.frame(coord, "Segment" = cluster$cluster[match_loc])
   new_trial <- create_trial_tag(colnames(vesalius_assay@territories),
-    "Segment")
-  colnames(clusters) <- c(colnames(clusters)[seq_len(ncol(clusters) - 1)],
-    new_trial)
+    "Segment") %>%
+    tail(1)
+  colnames(clusters) <- gsub("Segment", new_trial, colnames(clusters))
   return(clusters)
 }
 
@@ -670,16 +667,13 @@ louvain_segmentation <- function(vesalius_assay,
   cluster <- data.frame("cluster" = clusters$membership,
     "barcodes" = clusters$names)
 
-  #for (i in unique(cluster)) {
-  #  locs  <- rownames(embeddings) %in% cluster$barcodes[cluster == i]
-  #  embeddings[locs, ] <- apply(embeddings[locs, ], 1, median)
-  #}
+
   match_loc <- match(coord$barcodes, cluster$barcodes)
-  clusters <- data.frame(coord, "cluster" = cluster$cluster[match_loc])
+  clusters <- data.frame(coord, "Segment" = cluster$cluster[match_loc])
   new_trial <- create_trial_tag(colnames(vesalius_assay@territories),
-    "Segment")
-  colnames(clusters) <- c(colnames(clusters)[seq_len(ncol(clusters) - 1)],
-    new_trial)
+    "Segment") %>%
+    tail(1)
+  colnames(clusters) <- gsub("Segment", new_trial, colnames(clusters))
   return(clusters)
 }
 
@@ -698,28 +692,7 @@ compute_nearest_neighbor_graph <- function(embeddings, k = 20) {
     graph <- igraph::graph_from_data_frame(graph, directed = FALSE)
 }
 
-#' chunker DEAD CODE
-#'
-#' creates data frame chunks to parse to multiple cores
-#' @param df data.frame to chunk list elements
-#' @param cores numeric number of chunks
-#' @returns list of data frame chunks
-chunker <- function(df, cores) {
-    if (cores > 1) {
-      chunk_ranges <- floor(seq(1, nrow(df), length.out = cores + 1))
-      chunk_set <- vector("list", cores)
-      start <- head(chunk_ranges, length(chunk_ranges) - 1)
-      end <- tail(chunk_ranges, length(chunk_ranges) - 1)
-      end <- end + 1
-      end[length(end)] <- nrow(df)
-      for (i in seq_len(cores)) {
-        chunk_set[[i]] <- df[seq(start[i], end[i]), ]
-      }
-      return(chunk_set)
-    } else {
-      return(list(df))
-    }
-}
+
 
 #' populate graph with network connections
 #' @param chunk data frame with nearest neighbors
@@ -815,7 +788,8 @@ isolate_territories <- function(vesalius_assay,
     # we at least make sure that we are using the right input
     #--------------------------------------------------------------------------#
     new_trial <- create_trial_tag(colnames(get_territories(vesalius_assay)),
-      "Territory")
+      "Territory") %>%
+      tail(1)
     ter$trial <- 0
     #--------------------------------------------------------------------------#
     # Now we can dispatch the necessary information
@@ -861,8 +835,7 @@ isolate_territories <- function(vesalius_assay,
     #Now we can add it to the full territory df and update vesalius
     #--------------------------------------------------------------------------#
 
-  colnames(ter) <- c(colnames(ter)[seq(1, length(colnames(ter)) - 1)],
-    new_trial)
+  colnames(ter) <- gsub("trial", new_trial, colnames(ter))
   vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
     data = ter,
     slot = "territories",

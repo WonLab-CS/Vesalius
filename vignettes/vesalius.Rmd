@@ -98,6 +98,7 @@ There are few dimensionality reduction methods availble, please refer to
 ```{r build_embeddings, eval = TRUE, echo = TRUE}
 vesalius <- generate_embeddings(vesalius,
   dim_reduction = "PCA",
+  normalisation = "log_norm",
   nfeatures = 100, # Setting number of features low for low run time
   verbose = FALSE)
 vesalius <- generate_embeddings(vesalius,
@@ -154,7 +155,7 @@ re-run the embedding function!
 
 ```{r image_processing, eval = TRUE, echo = TRUE }
 vesalius <- equalize_image(vesalius, verbose = FALSE)
-vesalius <- smooth_image(vesalius, iter = 10, box = 10, verbose = FALSE)
+vesalius <- smooth_image(vesalius, iter = 10, sigma = 1, verbose = FALSE)
 vesalius <- regularise_image(vesalius, verbose = FALSE)
 ```
 
@@ -172,6 +173,7 @@ Note that the segmentation here is applied to the whole stack and not individual
 The goal is top obtain colour segments that we can subdivived into territories. 
 ```{r segment_image, eval = TRUE, echo = TRUE}
 vesalius <- segment_image(vesalius,
+  embedding = "PCA",
   method = "kmeans",
   col_resolution = 3,
   verbose = FALSE)

@@ -74,7 +74,7 @@ image_plot <- function(vesalius_assay,
       embedding,
       dimensions)[, dimensions]
     if (embedding == "last") {
-      embed_name <- get_last_embedding(vesalius_assay)
+      embed_name <- get_active_embedding_tag(vesalius_assay)
     } else {
       embed_name <- embedding
     }

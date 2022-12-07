@@ -4,15 +4,15 @@
 \alias{int_sctransform}
 \title{SCTransform}
 \usage{
-int_sctransform(counts, assay = "Spatial", nfeatures)
+int_sctransform(counts, nfeatures)
 }
 \arguments{
 \item{counts}{seurat object containing counts}
 
+\item{nfeatures}{number of top variable features to select}
+
 \item{assay}{seurat assay to use here we jjust use the spatial one
 but we could just use default RNA}
-
-\item{nfeatures}{number of top variable features to select}
 }
 \value{
 list with seurat object used later and normalised counts to be stored

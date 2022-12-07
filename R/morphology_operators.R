@@ -109,7 +109,7 @@ territory_morphing <- function(vesalius_assay,
     ter <- inner_join(ter, get_tiles(vesalius_assay), by = c("x", "y")) %>%
       filter(origin == 1)
     buffer$trial[buffer$barcodes %in% ter$barcodes] <- adjusted_territory_values
-    colnames(buffer) <- c(colnames(buffer)[seq(1, ncol(buffer) - 1)], new_trial)
+    colnames(buffer) <-  new_trial
 
     vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
     data = ter,
@@ -307,7 +307,7 @@ layer_territory <- function(vesalius_assay,
   }
   #--------------------------------------------------------------------------#
   # rename new column
-  colnames(buffer) <- c(colnames(buffer)[seq(1, ncol(buffer) - 1)], new_trial)
+  colnames(buffer) <-  new_trial
 
   vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
     data = ter,

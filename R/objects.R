@@ -128,10 +128,14 @@ setMethod("show",
         # check embeddings
         #---------------------------------------------------------------------#
         all_embeds <- get_embeddings(object, active = FALSE)
-        if (length(all_embeds) != 0) {
+        if (length(all_embeds) > 0 & length(all_embeds) < 4) {
             cat("\n")
             cat(paste(paste(names(all_embeds), sep = " ", collapse = ", "),
                 "as embeddings. \n"))
+            cat(paste("with", comment(all_embeds), "as active embedding. \n"))
+        } else if (length(all_embeds) > 3) {
+            cat("\n")
+            cat(paste(length(all_embeds), "total embedding trials\n"))
             cat(paste("with", comment(all_embeds), "as active embedding. \n"))
         }
         #---------------------------------------------------------------------#

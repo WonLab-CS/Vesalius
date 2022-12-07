@@ -8,7 +8,7 @@ smooth_image(
   vesalius_assay,
   dimensions = seq(1, 3),
   embedding = "last",
-  method = c("median", "iso", "box"),
+  method = "iso",
   iter = 1,
   sigma = 1,
   box = 20,

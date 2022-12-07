@@ -40,6 +40,7 @@ add_counts <- function(vesalius_assay,
     verbose = TRUE) {
     simple_bar(verbose)
     assay <- get_assay_names(vesalius_assay)
+    message_switch("add_counts", verbose, assay = assay)
     #--------------------------------------------------------------------------#
     # First lets check count validity
     #--------------------------------------------------------------------------#
@@ -76,7 +77,7 @@ add_counts <- function(vesalius_assay,
     # we can update the comment on the count slot list 
     # this comment will indicate which count matrix is set as default
     #--------------------------------------------------------------------------#
-    comment(vesalius_assay@counts) <- count_type
+    vesalius_assay <- add_active_count_tag(vesalius_assay, norm = count_type)
     #--------------------------------------------------------------------------#
     # Finally we update the vesalius commit log
     #--------------------------------------------------------------------------#
@@ -115,7 +116,7 @@ add_embeddings <- function(vesalius_assay,
     verbose = TRUE) {
     simple_bar(verbose)
     assay <- get_assay_names(vesalius_assay)
-    message_switch("add_embed", verbose, assay = assay)
+    message_switch("add_embeds", verbose, assay = assay)
     #--------------------------------------------------------------------------#
     # First we check the embedding matrix to see if it is what is expected
     #--------------------------------------------------------------------------#
@@ -130,7 +131,7 @@ add_embeddings <- function(vesalius_assay,
       append = FALSE)
     #--------------------------------------------------------------------------#
     # We create a list element that will be appended to the embedding list
-    # present in the vesalius_assay 
+    # present in the vesalius_assay
     #--------------------------------------------------------------------------#
     embeddings <- list(embeddings)
     names(embeddings) <- embedding_type
@@ -142,7 +143,7 @@ add_embeddings <- function(vesalius_assay,
     # we can update the comment on the embedding slot list 
     # this comment will indicate which embedding is actually active 
     #--------------------------------------------------------------------------#
-    comment(vesalius_assay@embeddings) <- embedding_type
+    vesalius_assay <- add_active_embedding_tag(vesalius_assay, embedding_type)
     #--------------------------------------------------------------------------#
     # Finally we update the vesalius commit log
     #--------------------------------------------------------------------------#

@@ -115,7 +115,11 @@ message_switch <- function(type, verbose = TRUE, ...) {
         "vtdf" = cat(paste(t,
             " Converting Vesalius to Data frame\n")),
         "force_count" = cat(paste(t,
-            " Force setting normalized counts as raw counts\n"))
+            " Force setting normalized counts as raw counts\n")),
+        "add_counts" = cat(paste(t,
+            " Adding counts to", args$assay, "\n")),
+        "add_embeds" = cat(paste(t,
+            " Adding embeddings to", args$assay, "\n"))
         )
     } else {
         return(NULL)
