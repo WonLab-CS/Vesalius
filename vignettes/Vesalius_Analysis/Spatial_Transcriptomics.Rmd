@@ -4,6 +4,7 @@ author: Patrick C.N. Martin
 output:
   word_document: default
   html_document: default
+  pdf_document: default
 ---
 
 # Forward
@@ -15,8 +16,11 @@ brain and mouse embryo.
 The aim of this notebook is two-fold:
 
 1. Provide a clear demonstration of how the figures in the manuscript were produced.
-2. A more in depth guide to how to use Vesalius in the context of Spatial Transcriptomics.
+2. A contextual vignette that demonstrates how one could use Vesalius
 
+You will find through out this article subsection with the prefix "See also". 
+These sections will highlight link towards documentation that will enable you to go beyond 
+what we did with vesalius for this analysis. 
 
 
 # Introduction 
@@ -25,7 +29,10 @@ The aim of this notebook is two-fold:
 
 Vesalius is a tool to decipher tissue anatomy and spatial domains from spatial omics data. 
 To achieve this, Vesalius converts latent space embeddings into images upon which 
-image processing techniques can be applied.
+image processing techniques can be applied. In contrast to many other tools, Vesalius does not
+create a spatially aware latent space but utilises images that *represent* latent space 
+to isolate tissue domains.  
+
 
 ## Slide-seq V2 
 
@@ -55,29 +62,52 @@ Uniform territories enable:
 Before starting, make sure you have vesalius installed and that you have your data ready and downloaded.
 
 To facilitate the analysis process, we use input/output folder to store and save data. 
+For visualization purposes, we also load a few extra packages. We also load the `future` package
+to limit the number of cores being used. 
 
 ```{r env_set_ip, eval = TRUE, echo = TRUE}
-library(vesalius)
+# Load libraries and set seed
+library(vesalius, lib.loc = "/common/martinp4/R")
+library(ggplot2)
+library(patchwork)
+library(ggpubr)
+library(future)
+library(Matrix)
+set.seed(1514)
 
-# Input data directory
-spatial_coordinates <- "SSv2/Puck_200115_08_bead_locations.csv"
-counts <- "SSv2/Puck_200115_08.digital_expression.txt.gz"
+# Using Multi core !!! See note below !!!
+plan(multicore, workers = 10)
+
+
+# Input data directory Brain
+spatial_coordinates_brain <- "/common/martinp4/SSv2/Puck_200115_08_bead_locations.csv"
+counts_brain <- "/common/martinp4/SSv2/Puck_200115_08.digital_expression.txt.gz"
+
+# Input data directory Embryo
+spatial_coordinates_embryo <- "/common/martinp4/SSv2/Puck_190926_03_bead_locations.csv"
+counts_embryo <- "/common/martinp4/SSv2/Puck_190926_03.digital_expression.txt.gz"
 
 # Output directory
-if (!dir.exists("output_plots/")) {
-    dir.create("output_plots/")
+if (!dir.exists("/common/martinp4/output_plots/")) {
+    dir.create("/common/martinp4/output_plots/")
 }
-output_plots <- "output_plots/"
+output_plots <- "/common/martinp4/output_plots/"
 
-if (!dir.exists("output_data/")) {
-    dir.create("output_data/")
+if (!dir.exists("/common/martinp4/output_data/")) {
+    dir.create("/common/martinp4/output_data/")
 }
-output_data <- "output_data/"
+output_data <- "/common/martinp4/output_data/"
 ```
 
-## Slide-RNA-seq - Mouse Liver Metastasis
+**NOTE** Here, we use multicore processing from the [future](https://cran.r-project.org/web/packages/future/index.html) 
+and [future.apply](https://cran.r-project.org/web/packages/future.apply/index.html) packages.
 
-### Loading data and building objects
+To use a single core, use `plan(sequential)`
+
+If you are using a windows machine, multicore is not supported. 
+Instead you can use `plan(multisession, workers = 10)`
+
+## Loading data and building objects
 
 The first step is to load the spatial transcriptomic data. Generally, spatial data comes in two seperate files.
 
@@ -86,19 +116,277 @@ The first step is to load the spatial transcriptomic data. Generally, spatial da
 
 Reading in spatial coordinates. 
 ```{r load_spatial_coord, eval = TRUE, echo = TRUE}
-spatial_coordinates <- read.csv(spatial_coordinates, header = TRUE, skip = 1)
-colnames(spatial_coordinates) <- c("barcodes", "x", "y")
-head(spatial_coordinates)
+spatial_coordinates_brain <- read.csv(spatial_coordinates_brain,
+  header = TRUE,
+  skip = 1)
+colnames(spatial_coordinates_brain) <- c("barcodes", "x", "y")
+spatial_coordinates_embryo <- read.csv(spatial_coordinates_embryo,
+  header = TRUE,
+  skip = 1)
+colnames(spatial_coordinates_embryo) <- c("barcodes", "x", "y")
+
+str(spatial_coordinates_brain)
+str(spatial_coordinates_embryo)
+
 ```
 Note the use of `skip = 1`. This may not be required depending on how your data is formatted. 
 
 Reading in count data
 ```{r load_counts_not_sparse, eval = TRUE, echo = TRUE}
-counts <- count <- read.table(counts, header = TRUE, row.names = 1)
-counts[1:5, 1:5]
+counts_brain <- read.table(counts_brain, header = TRUE, row.names = 1)
+counts_embryo <- read.table(counts_embryo, header = TRUE, row.names = 1)
+counts_brain[1:5, 1:5]
 ```
 
-In some cases, you might come across count matrixes that will be saved in sparse format. 
-```{ r load_sparse, eval = TRUE, echo = FALSE}
+
+
+## Building a Vesalius Assay 
+
+The first step in the Vesalius Pipeline is to build a [vesalius_assay object](). This object is used throughout
+the vesalius workflow and stores data after every round of computation. 
+
+To build a `vesalius_assay` :
+
+```{r build_vesalius_assay, eval = TRUE, echo = TRUE}
+vesalius_brain <- build_vesalius_assay(coordinates = spatial_coordinates_brain,
+  counts = counts_brain,
+  assay = "Spatial_transcriptomics_brain")
+
+vesalius_embryo <- build_vesalius_assay(coordinates = spatial_coordinates_embryo,
+  counts = counts_embryo,
+  assay = "Spatial_transcriptomics_embryo")
+
+vesalius_brain
+vesalius_embryo
 
 ```
+
+### See also - Vesalius assays
+`vesalius_assay` objects require as minimal input the spatial coordinates. 
+
+- **To add custom counts** see [add_counts](). For more information, refer to (modifying objects vignette)[].
+
+## Generating embeddings
+
+The next step is to generate pixels tiles from spatial coordinates and latent space 
+embedding that will be used to populate each tile with a grey scale color value. 
+
+```{r generrate_embedding, eval = TRUE, echo = TRUE}
+vesalius_brain <- generate_embeddings(vesalius_brain,
+    dim_reduction = "PCA",
+    tensor_resolution = 0.5)
+vesalius_embryo <- generate_embeddings(vesalius_embryo,
+    dim_reduction = "PCA",
+    tensor_resolution = 0.5)
+vesalius_brain
+vesalius_embryo
+```
+Here, we will use Principal Component Analysis (PCA) to reduce data dimensionality and produce our latent space.
+We will also reduce the dimension of the image tensor. Effectively, we are reducing the size of the image
+by combining neighboring spatial indices if they fall within the local area. Reducing the image
+resolution ensure faster run times. 
+
+In addition to merging spatial indices, we adjust the count matrix by taking the average count values
+for all spatial indices that have been merged together. Note that the names become a combination of 
+the original spatial_indices.
+
+For example:
+
+```{r get_merged, eval = TRUE, echo = TRUE}
+head(grep(pattern = "_et_",
+  x = unique(get_tiles(vesalius_brain)$barcodes),
+  value = TRUE))
+```
+
+### See also - Generating embeddings
+
+The `generate_embeddings` function generates tiles from spatial indices, pre-processes the count matrix
+(Finding variable features and normalisation)
+, and generates latent space embeddings used in the vesalius image stack. 
+
+- **To add custom counts** see [add_counts](). For more information, refer to (modifying objects vignette)[].
+- **To add custom embeddings** see [add_embeddings](). For more information, refer to (modifying objects vignette)[].
+- **To only generate tiles** see[generate_tiles]()
+- **To run multiple embeddings**, see [handling multiple embeddings or counts]()
+
+
+## Image processing 
+
+The core concept of Vesalius is to provide spatial domains by utilizing image processing techniques.
+In contrast to other methods, Vesalius does not provide spatially aware latent space by default. 
+It utilises Principal Component Analsyis (as well as UMAP or SVD/LSI) to generate a reduced
+dimesnionaility space. 
+
+We find that Principal Components (PC) contain subtle spatial information already embedded within them.
+We can viszualise this by looking at the grey scale embeddings for each PC. 
+
+```{r grey_scale_raw, eval = TRUE, echo = TRUE}
+pca_embedding_brain <- vector("list",  30)
+pca_embedding_embryo <- vector("list",  30)
+for (i in seq(1, 30)){
+    pca_embedding_brain[[i]] <- image_plot(vesalius_brain,
+        embedding = "last",
+        dimensions = i)
+    pca_embedding_embryo[[i]] <- image_plot(vesalius_embryo,
+        embedding = "last",
+        dimensions = i)
+}
+```
+
+For the mouse brain:
+
+```{r plot_grey_raw_brain, eval = TRUE, echo = TRUE, fig.width = 20, fir.height =  20}
+print(ggarrange(plotlist = pca_embedding_brain), ncol = 5)
+```
+
+For the mouse embryo:
+```{r plot_grey_raw_embryo, eval = TRUE, echo = TRUE, fig.width = 20, fir.height =  20}
+print(ggarrange(plotlist = pca_embedding_embryo), ncol = 5)
+```
+
+We can see that many of these PCs contain spatially relevant information even though the latent
+space was not produced in an explitely spatially aware manner. By using image processing, 
+we can further highlight these regions and better utilise them during spatial domain isolation. 
+
+```{r image_process, eval = TRUE, echo = TRUE}
+vesalius_brain <- regularise_image(vesalius_brain,
+    dimensions = seq(1, 30))
+vesalius_brain <- equalize_image(vesalius_brain,
+    dimensions = seq(1, 30),
+    sleft = 5, sright = 5)
+vesalius_brain <- smooth_image(vesalius_brain,
+    dimensions = seq(1, 30),
+    method = c("iso", "box"),
+    sigma = 2,
+    box = 10,
+    iter = 10)
+
+vesalius_embryo <- regularise_image(vesalius_embryo,
+    dimensions = seq(1, 30))
+vesalius_embryo <- equalize_image(vesalius_embryo,
+    dimensions = seq(1, 30),
+    sleft = 5, sright = 5)
+vesalius_embryo <- smooth_image(vesalius_embryo,
+    dimensions = seq(1, 30),
+    method = c("iso", "box"),
+    sigma = 2,
+    box = 10,
+    iter = 10)
+
+```
+
+We can viszualise each PC in the image tensor after image processing.
+
+```{r grey_scale_processed, eval = TRUE, echo = TRUE}
+pca_embedding_brain <- vector("list",  30)
+pca_embedding_embryo <- vector("list",  30)
+for (i in seq(1, 30)){
+    pca_embedding_brain[[i]] <- image_plot(vesalius_brain,
+        embedding = "last",
+        dimensions = i)
+    pca_embedding_embryo[[i]] <- image_plot(vesalius_embryo,
+        embedding = "last",
+        dimensions = i)
+}
+```
+
+For example, in the mous brain, we can cleary see that PC17 contains information related to the CA2 field - 
+a field that is often lost during standard analysis. 
+```{r plot_grey_pro_brain, eval = TRUE, echo = TRUE, fig.width = 20, fir.height =  20}
+print(ggarrange(plotlist = pca_embedding_brain), ncol = 5)
+```
+
+For the mouse embryo:
+```{r plot_grey_pro_embryo, eval = TRUE, echo = TRUE, fig.width = 20, fir.height =  20}
+print(ggarrange(plotlist = pca_embedding_embryo), ncol = 5)
+```
+
+In vesalius, each PC is handled independantly in the form of a grey scale image. We can use
+this image stack to generate isolated spatial domains and recover subtle expression patterns. 
+The selection of image processing parameters is dependant on the data set used and on
+the biological question at hand. You might want to have more or less territory granularity.
+However, the ability to visualize PCs greatly aids is selecting the parameters that fits your needs. 
+
+### See also - image processing
+Image prcessing is iteratively applied to the active embedding. 
+
+- **Understanding active embeddings in vesalius** see [the user guide]()
+- **Selecting different PCs** see [the user guide]()
+
+
+
+## Image segmentation & Territory Isolation
+
+The isolation of territories is achieved by a combination of image segmentation and 2D isolation 
+of image segments. By default, we use *kmeans* for image segmentation. This produces a series of 
+image segments that can then be further isolated if they are sperated in 2D space. 
+
+```{r image_seg, eval = TRUE, echo = TRUE}
+vesalius_brain <- segment_image(vesalius_brain,
+    dimensions = seq(1, 30),
+    method = "kmeans",
+    col_resolution = 25)
+vesalius_brain <- isolate_territories(vesalius_brain)
+
+vesalius_embryo <- segment_image(vesalius_embryo,
+    dimensions = seq(1, 30),
+    method = "kmeans",
+    col_resolution = 13)
+vesalius_embryo <- isolate_territories(vesalius_embryo)
+```
+
+In this instance, we elected to use all images in the image stack (i.e `dimensions = seq(1,30)`).
+In the context of vesalius, the `col_resolution` argument represents the number of clusters to 
+parse to `kmeans` however this does not define the final number of territories. These segments 
+will be subdivided into small segments based on the distribution in space. 
+
+Conceptually, this plays a similar role as "granularity" resolution in louvain or leiden clustering. 
+
+### See also - Image segmentation & Territory Isolation
+By default, vesalius uses kmeans clustering as it provides a simple and effective way to segment 
+images. 
+
+- **Using louvain based segmentation** see the [image_segmentation function]()
+- **Using leiden based segmentation** see the [image_segmentation function]()
+
+## Visualization of territories
+
+As mentionned above we distinguish image segements and territories. We can vizualise these 
+differences with the vesalius plotting functions.
+
+```{r viz_territories, eval = TRUE, echo = TRUE, fig.width = 16, fig.height = 14}
+brain_segments <- territory_plot(vesalius_brain,
+  trial = "Segment",
+  cex_pt = 0.25) +
+  labs(title = "Brain Segments")
+brain_territories <- territory_plot(vesalius_brain,
+  trial = "Territory",
+  cex_pt = 0.25) +
+  labs(title = "Brain Territories")
+embryo_segments <- territory_plot(vesalius_embryo,
+  trial = "Segment",
+  cex_pt = 0.25) +
+  labs(title = "Embryo Segments")
+embryo_territories <- territory_plot(vesalius_embryo,
+  trial = "Territory",
+  cex_pt = 0.25) +
+  labs(title = "Embryo Territories")
+
+
+all <- (brain_segments + brain_territories) /
+  (embryo_segments + embryo_territories)
+
+```
+
+We can see how image segments and territories differ when compareing their plots. While
+segments are defined by the value parsed to `col_resolution` during image segmentation, 
+the final number of territories will depend on how the images were processed, the value parsed to 
+`col_resolution` and the *capture radius* defined in [isolate_territories](). In short, this 
+parameters defines the maximum distance between color segments for them to be pooled
+into the same territory. 
+
+
+## Differential Gene Expression
+
+The advantage of uniform territories is that it enables the comparison of spatial territories
+rather than comparing cell clusters. 
