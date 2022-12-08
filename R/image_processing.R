@@ -396,6 +396,7 @@ regularise_image <- function(vesalius_assay,
     # Will add the imager denoising function as well
     # regularisation is essentially denoising anyway
     #--------------------------------------------------------------------------#
+    message_switch("reg", verbose)
     images <- future_lapply(images, regularise,
       lambda,
       niter,

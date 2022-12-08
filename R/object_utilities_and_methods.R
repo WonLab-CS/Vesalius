@@ -39,6 +39,7 @@ adjust_counts <- function(coordinates, counts, verbose = TRUE) {
     tmp_bar <- strsplit(coord_bar, "_et_")
 
     empty <- future_lapply(tmp_bar, function(tmp_bar, counts) {
+        tmp_bar <- which(colnames(counts) %in% tmp_bar)
         return(Matrix::rowMeans(counts[, tmp_bar]))
     }, counts = counts, future.seed = TRUE)
 
@@ -361,9 +362,10 @@ get_markers <- function(vesalius_assay, trial = "last") {
     }
 }
 
-#' get last embedding
+#' get active embedding
 #' @param vesalius_assay a vesalius_assay object
 #' @return character string with name of last embedding used
+#' @export
 get_active_embedding_tag <- function(vesalius_assay) {
     last <- comment(get_embeddings(vesalius_assay, active = FALSE))
     return(last)
@@ -372,6 +374,7 @@ get_active_embedding_tag <- function(vesalius_assay) {
 #' get last count matrix used
 #' @param vesalius_assay a vesalius_assay object
 #' @return character string with name of last embedding used
+#' @export
 get_active_count_tag <- function(vesalius_assay) {
     last <- comment(get_counts(vesalius_assay, type = "all"))
     return(last)

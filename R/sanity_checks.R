@@ -20,7 +20,7 @@ check_inputs <- function(counts,
     adjust_coordinates,
     verbose) {
     #--------------------------------------------------------------------------#
-    #we can check the validity of the coordinates
+    # we can check the validity of the coordinates
     #--------------------------------------------------------------------------#
     coordinates <- check_coordinates(coordinates,
         assay,
@@ -30,11 +30,14 @@ check_inputs <- function(counts,
     # next let's check counts if they are present
     # if they are we also check if the barcodes between the counts and the 
     # coordinates match
+    # We will filter out any barcode that doesn't line up
+    # essentially only use the intersection between barcodes 
     #--------------------------------------------------------------------------#
     if (!is.null(counts)) {
         counts <- check_counts(counts, assay, verbose)
         loc <- check_barcodes(colnames(counts), coordinates$barcodes)
         counts <- counts[, loc]
+        coordinates <- coordinates[coordinates$barcodes %in% loc,]
         counts <- list(counts)
         names(counts) <- "raw"
         comment(counts) <- "raw"
@@ -59,15 +62,15 @@ check_barcodes <- function(counts, coordinates) {
     if (sum(duplicated(counts)) > 0) {
         stop("Duplicated colnames in count matrix!")
     }
-    loc <- counts %in% coordinates
-    if (sum(loc) == 0) {
+    loc <- intersect(counts, coordinates)
+    if (length(loc) == 0) {
         stop("Barcodes in count matrix and coordinates do no match")
     }
-    if (sum(loc) != length(counts)) {
+    if (length(loc) != length(counts)) {
         # Might want to remove this warning 
         # useful for me but could be annoying ofr the user
         warning("Unshared barcodes between counts and coordinates \n
-            Count matrix will be filtered to match coordinates")
+            Using barcode intersection!")
     }
     return(loc)
 
@@ -425,7 +428,7 @@ check_group_value <- function(territories, group) {
     present <- unique(territories$trial)
     group_sub <- group[group %in% present]
     if (length(group_sub) == 0) {
-        stop(paste(group, "is not present in the select trial!"))
+        stop(paste("Territory", group, "is not present in the selected trial!"))
     } else if (length(group_sub) < length(group)) {
         warning(paste("Only group territory(ies)",
             paste(group_sub, collaspe = " "),

@@ -2,7 +2,7 @@
 % Please edit documentation in R/object_utilities_and_methods.R
 \name{get_active_embedding_tag}
 \alias{get_active_embedding_tag}
-\title{get last embedding}
+\title{get active embedding}
 \usage{
 get_active_embedding_tag(vesalius_assay)
 }
@@ -13,5 +13,5 @@ get_active_embedding_tag(vesalius_assay)
 character string with name of last embedding used
 }
 \description{
-get last embedding
+get active embedding
 }

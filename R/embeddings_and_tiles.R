@@ -119,7 +119,7 @@ generate_embeddings <- function(vesalius_assay,
     } else {
       tiles <- get_tiles(vesalius_assay)
       counts <- get_counts(vesalius_assay, type = use_count)
-      counts <- adjust_counts(tiles, counts, verbose)
+      #counts <- adjust_counts(tiles, counts, verbose)
     }
     #--------------------------------------------------------------------------#
     # Now we can start creating colour embeddings
@@ -219,12 +219,12 @@ generate_tiles <- function(vesalius_assay,
   env <- identical(.GlobalEnv, parent.frame()) && verbose
   simple_bar(env)
   #----------------------------------------------------------------------#
-  # getting out relevant data
-  # Could be a good idea to add some sanity checks here
+  # Checking if tiles have been computed 
   #----------------------------------------------------------------------#
   status <- any(search_log(vesalius_assay,
     "generate_tiles",
     return_assay = FALSE))
+  
   #----------------------------------------------------------------------#
   # we do the tile check here - if we don't the tiles will be computed on
   # pixels and that will take ages and will lead to nonsense. 
@@ -239,6 +239,7 @@ generate_tiles <- function(vesalius_assay,
     return(vesalius_assay)
   }
   assay <- get_assay_names(vesalius_assay)
+  coordinates <- get_tiles(vesalius_assay)
   message_switch("in_assay",
     verbose = verbose,
     assay = assay,
@@ -250,11 +251,10 @@ generate_tiles <- function(vesalius_assay,
   if (filter_grid != 0 && filter_grid != 1) {
     message_switch("distance_beads", verbose)
     coordinates <- filter_grid(coordinates = coordinates,
-    filter_grid = filter_grid)
+      filter_grid = filter_grid)
   }
   #----------------------------------------------------------------------#
   # Reduce resolution
-  # could be updated to use KNN
   #----------------------------------------------------------------------#
   if (tensor_resolution < 1) {
     message_switch("tensor_res", verbose)

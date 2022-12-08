@@ -120,9 +120,9 @@ spatial_coordinates_brain <- read.csv(spatial_coordinates_brain,
   header = TRUE,
   skip = 1)
 colnames(spatial_coordinates_brain) <- c("barcodes", "x", "y")
+
 spatial_coordinates_embryo <- read.csv(spatial_coordinates_embryo,
-  header = TRUE,
-  skip = 1)
+  header = TRUE)
 colnames(spatial_coordinates_embryo) <- c("barcodes", "x", "y")
 
 str(spatial_coordinates_brain)
@@ -183,12 +183,12 @@ vesalius_embryo
 ```
 Here, we will use Principal Component Analysis (PCA) to reduce data dimensionality and produce our latent space.
 We will also reduce the dimension of the image tensor. Effectively, we are reducing the size of the image
-by combining neighboring spatial indices if they fall within the local area. Reducing the image
-resolution ensure faster run times. 
+by combining neighboring spatial indices if they fall within the same local area. Reducing the image
+resolution ensures lower run times. 
 
 In addition to merging spatial indices, we adjust the count matrix by taking the average count values
-for all spatial indices that have been merged together. Note that the names become a combination of 
-the original spatial_indices.
+for all spatial indices that have been merged together. Note that the spatial index names become a combination of 
+the original spatial indices.
 
 For example:
 
@@ -207,7 +207,7 @@ The `generate_embeddings` function generates tiles from spatial indices, pre-pro
 - **To add custom counts** see [add_counts](). For more information, refer to (modifying objects vignette)[].
 - **To add custom embeddings** see [add_embeddings](). For more information, refer to (modifying objects vignette)[].
 - **To only generate tiles** see[generate_tiles]()
-- **To run multiple embeddings**, see [handling multiple embeddings or counts]()
+- **To run multiple embeddings**, see [user guide]()
 
 
 ## Image processing 
