@@ -235,12 +235,12 @@ for (i in seq(1, 30)){
 
 For the mouse brain:
 
-```{r plot_grey_raw_brain, eval = TRUE, echo = TRUE, fig.width = 20, fir.height =  20}
+```{r plot_grey_raw_brain, eval = TRUE, echo = TRUE, fig.width = 20, fig.height =  20}
 print(ggarrange(plotlist = pca_embedding_brain), ncol = 5)
 ```
 
 For the mouse embryo:
-```{r plot_grey_raw_embryo, eval = TRUE, echo = TRUE, fig.width = 20, fir.height =  20}
+```{r plot_grey_raw_embryo, eval = TRUE, echo = TRUE, fig.width = 20, fig.height =  20}
 print(ggarrange(plotlist = pca_embedding_embryo), ncol = 5)
 ```
 
@@ -292,12 +292,12 @@ for (i in seq(1, 30)){
 
 For example, in the mous brain, we can cleary see that PC17 contains information related to the CA2 field - 
 a field that is often lost during standard analysis. 
-```{r plot_grey_pro_brain, eval = TRUE, echo = TRUE, fig.width = 20, fir.height =  20}
+```{r plot_grey_pro_brain, eval = TRUE, echo = TRUE, fig.width = 20, fig.height =  20}
 print(ggarrange(plotlist = pca_embedding_brain), ncol = 5)
 ```
 
 For the mouse embryo:
-```{r plot_grey_pro_embryo, eval = TRUE, echo = TRUE, fig.width = 20, fir.height =  20}
+```{r plot_grey_pro_embryo, eval = TRUE, echo = TRUE, fig.width = 20, fig.height =  20}
 print(ggarrange(plotlist = pca_embedding_embryo), ncol = 5)
 ```
 
