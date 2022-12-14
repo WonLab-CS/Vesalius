@@ -6,6 +6,14 @@ Welcome to the Vesalius GitHub page!
 <img src="man/figures/banner.png" />
 
 
+# NEWS
+Vesalius 2.0 is comming soon! 
+
+To use the Vesalius version used in the [Molecular Systems Biology publication](https://www.embopress.org/doi/full/10.15252/msb.202211080)
+publication, please refere to the [frozen release version](https://github.com/patrickCNMartin/Vesalius/releases/tag/Release_1.0.1)
+
+
+
 ## What is Vesalius ?
 Vesalius is an R package to decipher tissue anatomy by embracing various
 image analysis techniques for high-resolution ST data. Vesalius identifies
