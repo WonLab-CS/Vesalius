@@ -774,7 +774,8 @@ isolate_territories <- function(vesalius_assay,
     # it's a bit messy - we might need to consider to do a whole sanity check
     # of inout data and see if that makes sense - this will include checking log
     #--------------------------------------------------------------------------#
-    ter <- check_segments(vesalius_assay, trial)
+    ter <- check_segments(vesalius_assay, trial) %>%
+      na.exclude()
     #--------------------------------------------------------------------------#
     # Compute real capture Radius
     #--------------------------------------------------------------------------#
@@ -867,7 +868,8 @@ distance_pooling <- function(img, capture_radius, min_spatial_index) {
     # Select center point of each tile for only one channel
     # Dont need to run it for all channels
     #--------------------------------------------------------------------------#
-    img_copy <- img  %>% distinct(barcodes, .keep_all = TRUE)
+    img_copy <- img  %>%
+      distinct(barcodes, .keep_all = TRUE) 
     if (nrow(img_copy) < 1) { return(NULL) }
     #--------------------------------------------------------------------------#
     # Compute distances

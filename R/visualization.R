@@ -69,7 +69,9 @@ image_plot <- function(vesalius_assay,
     # First get image data from vesalius object
     #--------------------------------------------------------------------------#
     coordinates <- check_tiles(vesalius_assay)
-    # need to check this -
+    #--------------------------------------------------------------------------#
+    # get last embedding
+    #--------------------------------------------------------------------------#
     tile_colour <- check_embedding_selection(vesalius_assay,
       embedding,
       dimensions)[, dimensions]
@@ -78,7 +80,11 @@ image_plot <- function(vesalius_assay,
     } else {
       embed_name <- embedding
     }
-    #### format needs to be reworked here
+    #--------------------------------------------------------------------------#
+    # reformat to a data frame for easy use with ggplot
+    # rebalence colors - min-max norm colors jjust in case 
+    # and reformats to clean data frame for hex color generation
+    #--------------------------------------------------------------------------#
     tile_colour <- as.data.frame(tile_colour)
     tile_colour$barcodes <- rownames(tile_colour)
     coordinates <- right_join(coordinates, tile_colour, by = "barcodes") %>%
@@ -87,8 +93,7 @@ image_plot <- function(vesalius_assay,
       length(dimensions),
       method = "minmax")
     #--------------------------------------------------------------------------#
-    # Generate plots
-    # Ceck to see how you can avoid the hard coding of the dimensions
+    # Generate colors and plots
     #--------------------------------------------------------------------------#
     if (length(dimensions) == 3) {
       cols <- rgb(coordinates$R, coordinates$G, coordinates$B)

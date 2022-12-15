@@ -96,6 +96,7 @@ check_counts <- function(counts, assay, verbose) {
     return(counts)
 }
 
+
 #' check if coordinates are of the correct type and format and
 #' adjust coordinate value to remove white edge space
 #' @param coordinates coordinate data 

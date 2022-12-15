@@ -118,6 +118,8 @@ message_switch <- function(type, verbose = TRUE, ...) {
             " Force setting normalized counts as raw counts\n")),
         "add_counts" = cat(paste(t,
             " Adding counts to", args$assay, "\n")),
+        "raw_count" = cat(paste(t,
+            " Raw count matrix already present. Adding", args$count_type, "tag\n")),
         "add_embeds" = cat(paste(t,
             " Adding embeddings to", args$assay, "\n"))
         )

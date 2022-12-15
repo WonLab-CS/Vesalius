@@ -43,8 +43,16 @@ add_counts <- function(vesalius_assay,
     message_switch("add_counts", verbose, assay = assay)
     #--------------------------------------------------------------------------#
     # First lets check count validity
+    # check if raw counts are already present 
     #--------------------------------------------------------------------------#
     counts <- check_counts(counts, assay, verbose)
+    raw <- tryCatch(expr = get_counts(vesalius_assay, type = "raw"),
+      error = function(cond) {
+          return(FALSE)
+      },
+      finally = {
+        TRUE
+      })
     #--------------------------------------------------------------------------#
     # we can do the same thing on raw counts if required
     #--------------------------------------------------------------------------#
@@ -65,10 +73,15 @@ add_counts <- function(vesalius_assay,
     counts <- adjust_counts(tiles, counts, verbose)
     raw_counts <- adjust_counts(tiles, raw_counts, verbose)
     #--------------------------------------------------------------------------#
-    # creating count lost and updating vesalius assay object
+    # creating count list and updating vesalius assay object
     #--------------------------------------------------------------------------#
     counts <- list(raw_counts, counts)
-    names(counts) <- c("raw", count_type)
+    if (raw) {
+      message_switch("raw_count", verbose, count_type = count_type)
+      names(counts) <- c(paste0("raw_", count_type), count_type)
+    } else {
+      names(counts) <- c("raw", count_type)
+    }
     vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
       data = counts,
       slot = "counts",

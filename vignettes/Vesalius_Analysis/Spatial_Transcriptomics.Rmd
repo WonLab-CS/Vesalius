@@ -150,11 +150,13 @@ To build a `vesalius_assay` :
 ```{r build_vesalius_assay, eval = TRUE, echo = TRUE}
 vesalius_brain <- build_vesalius_assay(coordinates = spatial_coordinates_brain,
   counts = counts_brain,
-  assay = "Spatial_transcriptomics_brain")
+  assay = "Spatial_transcriptomics_brain",
+  verbose = FALSE)
 
 vesalius_embryo <- build_vesalius_assay(coordinates = spatial_coordinates_embryo,
   counts = counts_embryo,
-  assay = "Spatial_transcriptomics_embryo")
+  assay = "Spatial_transcriptomics_embryo",
+  verbose = FALSE)
 
 vesalius_brain
 vesalius_embryo
@@ -174,10 +176,12 @@ embedding that will be used to populate each tile with a grey scale color value.
 ```{r generrate_embedding, eval = TRUE, echo = TRUE}
 vesalius_brain <- generate_embeddings(vesalius_brain,
     dim_reduction = "PCA",
-    tensor_resolution = 0.5)
+    tensor_resolution = 0.5,
+    verbose = FALSE)
 vesalius_embryo <- generate_embeddings(vesalius_embryo,
     dim_reduction = "PCA",
-    tensor_resolution = 0.5)
+    tensor_resolution = 0.5,
+    verbose = FALSE)
 vesalius_brain
 vesalius_embryo
 ```
@@ -250,28 +254,34 @@ we can further highlight these regions and better utilise them during spatial do
 
 ```{r image_process, eval = TRUE, echo = TRUE}
 vesalius_brain <- regularise_image(vesalius_brain,
-    dimensions = seq(1, 30))
+    dimensions = seq(1, 30),
+    verbose = FALSE)
 vesalius_brain <- equalize_image(vesalius_brain,
     dimensions = seq(1, 30),
-    sleft = 5, sright = 5)
+    sleft = 5, sright = 5,
+    verbose = FALSE)
 vesalius_brain <- smooth_image(vesalius_brain,
     dimensions = seq(1, 30),
     method = c("iso", "box"),
     sigma = 2,
     box = 10,
-    iter = 10)
+    iter = 10,
+    verbose = FALSE)
 
 vesalius_embryo <- regularise_image(vesalius_embryo,
-    dimensions = seq(1, 30))
+    dimensions = seq(1, 30),
+    verbose = FALSE)
 vesalius_embryo <- equalize_image(vesalius_embryo,
     dimensions = seq(1, 30),
-    sleft = 5, sright = 5)
+    sleft = 5, sright = 5,
+    verbose = FALSE)
 vesalius_embryo <- smooth_image(vesalius_embryo,
     dimensions = seq(1, 30),
     method = c("iso", "box"),
     sigma = 2,
     box = 10,
-    iter = 10)
+    iter = 10,
+    verbose = FALSE)
 
 ```
 
@@ -325,14 +335,16 @@ image segments that can then be further isolated if they are sperated in 2D spac
 vesalius_brain <- segment_image(vesalius_brain,
     dimensions = seq(1, 30),
     method = "kmeans",
-    col_resolution = 25)
-vesalius_brain <- isolate_territories(vesalius_brain)
+    col_resolution = 25,
+    verbose = FALSE)
+vesalius_brain <- isolate_territories(vesalius_brain, verbose = FALSE)
 
 vesalius_embryo <- segment_image(vesalius_embryo,
     dimensions = seq(1, 30),
     method = "kmeans",
-    col_resolution = 13)
-vesalius_embryo <- isolate_territories(vesalius_embryo)
+    col_resolution = 13,
+    verbose = FALSE)
+vesalius_embryo <- isolate_territories(vesalius_embryo, verbose = FALSE)
 ```
 
 In this instance, we elected to use all images in the image stack (i.e `dimensions = seq(1,30)`).
@@ -376,6 +388,7 @@ embryo_territories <- territory_plot(vesalius_embryo,
 all <- (brain_segments + brain_territories) /
   (embryo_segments + embryo_territories)
 
+print(all)
 ```
 
 We can see how image segments and territories differ when compareing their plots. While
