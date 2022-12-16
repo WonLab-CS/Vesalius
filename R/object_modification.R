@@ -114,15 +114,21 @@ add_counts <- function(vesalius_assay,
 #' used to generate images.
 #' 
 #' The embedding matrix should be in the form of a matrix with columns being
-#' the latent space dimensiions and rows representing the barcodes present
-#' in the data set.
+#' the latent space dimensiions and rows representing the spatial indices
+#' present in the data set.
 #' 
-#' Rownames should also be present and should represent the barcode name. 
+#' The intersection between spatial indices present in the tiles and
+#' custom embeddings will be used.
+#' This intersection will be applied to the custom embeddings and filter
+#' out all tiles that are not present in the tiles. The tiles will not
+#' be filtered.
+#' 
+#' Rownames should also be present and should represent the barcode name.
 #' These rownames are use to match the latent space embedding to its tile
-#' in the image. 
+#' in the image.
 #' 
-#' @return a vesalius_assay object 
-#' @export 
+#' @return a vesalius_assay object
+#' @export
 add_embeddings <- function(vesalius_assay,
     embeddings,
     embedding_type = "custom_embedding",
@@ -132,8 +138,13 @@ add_embeddings <- function(vesalius_assay,
     message_switch("add_embeds", verbose, assay = assay)
     #--------------------------------------------------------------------------#
     # First we check the embedding matrix to see if it is what is expected
+    # filter out any barcode that does not line up with tiles
+    # NOTE: Here we don't filter out tiles as we do when adding counts/tiles
     #--------------------------------------------------------------------------#
     embeddings <- check_embeddings(embeddings)
+    locs <- check_barcodes(rownames(embeddings),
+      unique(get_tiles(vesalius_assay)$barcodes))
+    embeddings <- embeddings[locs, ]
     #--------------------------------------------------------------------------#
     # We can update the active slot which hold the default embedding that 
     # should be used 

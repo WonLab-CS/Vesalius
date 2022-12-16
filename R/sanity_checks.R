@@ -28,16 +28,16 @@ check_inputs <- function(counts,
         verbose)
     #--------------------------------------------------------------------------#
     # next let's check counts if they are present
-    # if they are we also check if the barcodes between the counts and the 
+    # if they are we also check if the barcodes between the counts and the
     # coordinates match
     # We will filter out any barcode that doesn't line up
-    # essentially only use the intersection between barcodes 
+    # essentially only use the intersection between barcodes
     #--------------------------------------------------------------------------#
     if (!is.null(counts)) {
         counts <- check_counts(counts, assay, verbose)
         loc <- check_barcodes(colnames(counts), coordinates$barcodes)
         counts <- counts[, loc]
-        coordinates <- coordinates[coordinates$barcodes %in% loc,]
+        coordinates <- coordinates[coordinates$barcodes %in% loc, ]
         counts <- list(counts)
         names(counts) <- "raw"
         comment(counts) <- "raw"
@@ -60,16 +60,16 @@ check_inputs <- function(counts,
 #' @return overlapping location between counts and coordinates
 check_barcodes <- function(counts, coordinates) {
     if (sum(duplicated(counts)) > 0) {
-        stop("Duplicated colnames in count matrix!")
+        stop("Duplicated colnames in matrix!")
     }
     loc <- intersect(counts, coordinates)
     if (length(loc) == 0) {
-        stop("Barcodes in count matrix and coordinates do no match")
+        stop("Barcodes in matrix and coordinates do no match")
     }
     if (length(loc) != length(counts)) {
         # Might want to remove this warning 
         # useful for me but could be annoying ofr the user
-        warning("Unshared barcodes between counts and coordinates \n
+        warning("Unshared barcodes between matrix and coordinates \n
             Using barcode intersection!")
     }
     return(loc)
