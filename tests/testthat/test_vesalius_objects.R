@@ -19,7 +19,8 @@ test_that("Vesalius build single assay", {
 
     # checking that you can build partial objects
     # coordinates must always be parsed
-    expect_s4_class(build_vesalius_assay(coordinates))
+    expect_s4_class(build_vesalius_assay(coordinates),
+        "vesalius_assay")
     expect_error(build_vesalius_assay())
     expect_error(build_vesalius_assay(counts = counts))
 
@@ -33,12 +34,14 @@ test_that("Adding counts to vesalius_assay", {
     ## When no counts are present
     expect_s4_class(add_counts(vesalius,
         counts = counts,
-        raw = counts))
+        raw = counts),
+        "vesalius_assay")
     expect_error(add_counts(vesalius,
         counts = counts))
     expect_s4_class(add_counts(vesalius,
         counts = counts,
-        force = TRUE))
+        force = TRUE),
+        "vesalius_assay")
     ## checking that active count matrix is being tagged
     tmp <- add_counts(vesalius,
         counts = counts,
@@ -63,19 +66,22 @@ test_that("Adding counts to vesalius_assay with counts", {
     ## When no counts are present
     expect_s4_class(add_counts(vesalius,
         counts = counts,
-        raw = counts))
+        raw = counts),
+        "vesalius_assay")
     expect_error(add_counts(vesalius,
         counts = counts))
     expect_s4_class(add_counts(vesalius,
         counts = counts,
-        force = TRUE))
+        force = TRUE),
+        "vesalius_assay")
     ## checking that active count matrix is being tagged
     tmp <- add_counts(vesalius,
         counts = counts,
         raw = counts)
     expect_identical(comment(tmp@counts), "custom_counts")
-    expect_true(grepl(pattern = "raw_custom_counts",
-        x = names(tmp@counts)))
+    expect_true(grep(pattern = "raw_custom_counts",
+        x = names(tmp@counts),
+        value = TRUE) == "raw_custom_counts")
 })
 
 test_that("Adding custom embeddings", {
@@ -91,8 +97,10 @@ test_that("Adding custom embeddings", {
     # Adding rownames
     rownames(embeds) <- unique(vesalius@tiles$barcodes)
     # expect valid object now that you have rownames
-    expect_s4_class(add_embeddings(vesalius, emebds))
+    expect_s4_class(add_embeddings(vesalius, embeds),
+        "vesalius_assay")
     # We expect the same thing even if it is truncated
-    expect_s4_class(add_embeddings(vesalius, emebds[-(1:20), ]))
+    expect_warning(add_embeddings(vesalius, embeds[-(1:20), ]))
     # Add sanity checks to make sure that barcodes overlap
 })
+

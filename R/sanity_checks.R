@@ -53,21 +53,25 @@ check_inputs <- function(counts,
 }
 
 #' checking overlap between barcodes in counts and coordinates
-#' @param counts character vector containing barcode names in count matrix
+#' @param mat_barcodes character vector containing barcode names in matrix
+#' (count matrix or embedding matrix)
 #' @param coordinates character vector containing barcode names in tile
 #' data frame
+#' @param throw logical if warning should be thrown or not
 #' @details Will throw in a warning if the overlap is not perfect.
 #' @return overlapping location between counts and coordinates
-check_barcodes <- function(counts, coordinates) {
-    if (sum(duplicated(counts)) > 0) {
+check_barcodes <- function(mat_barcodes, coordinates, throw = TRUE) {
+    if (sum(duplicated(mat_barcodes)) > 0) {
         stop("Duplicated colnames in matrix!")
     }
-    loc <- intersect(counts, coordinates)
+    coordinates <- unlist(strsplit(coordinates, "_et_"))
+    loc <- intersect(mat_barcodes, coordinates)
     if (length(loc) == 0) {
-        stop("Barcodes in matrix and coordinates do no match")
+        stop("Barcodes in matrix and coordinates do no match!")
     }
-    if (length(loc) != length(counts)) {
-        # Might want to remove this warning 
+    if ((length(loc) != length(mat_barcodes) ||
+        length(loc) != length(coordinates)) && throw) {
+        # Might want to remove this warning
         # useful for me but could be annoying ofr the user
         warning("Unshared barcodes between matrix and coordinates \n
             Using barcode intersection!")
@@ -211,6 +215,47 @@ check_embed_methods <- function(embed) {
     }
 }
 
+
+#' check tensor compression 
+#' @param locs rle output of coordinate compression
+#' @details Here we just want to check if the output is reasonable or not
+#' Essentially if you end up with very little barcodes, this could mean
+#' that the user compressed to much.
+#' Set warning if compression is set to less 10% of total points
+#' @return rle out of coordinate compression
+check_tensor_compression <- function(locs) {
+    if (length(locs$values) < 0.1 * sum(locs$length)) {
+        warning("Tensor resolution has been reduced as to only retain
+        less than 10% of original spatial coordinates")
+    }
+    #-------------------------------------------------------------------------#
+    # Essentially throw error if you have a single coordinate left
+    # keeping it with the < 2 just in case we decide that we want to be 
+    # more restrictive and only allow a in of 10 coordinates for example 
+    #-------------------------------------------------------------------------# 
+    if (length(locs$values) < 2) {
+        stop("Tensor compression yielded too few coordinates!
+            Consider increasing the tensor_resolution.")
+    }
+    return(locs)
+}
+
+#' check features
+#' @param counts a seurat object
+#' @details If the user use custom counts, we want to check
+#' if variable features have been computed or not. Dim reduction
+#' requires a list if features toi be provided or variable features
+#' to be computed.
+#' @return a list of features
+#' @importFrom Seurat VariableFeatures
+check_features <- function(counts) {
+    if (length(Seurat::VariableFeatures(counts)) == 0) {
+        features <- rownames(GetAssayData(counts, slot = "counts"))
+    } else {
+        features <- Seurat::VariableFeatures(counts)
+    }
+    return(features)
+}
 
 
 #' check embedding selection

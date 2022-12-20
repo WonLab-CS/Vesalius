@@ -8,6 +8,10 @@ raw_norm(counts, use_count = "raw")
 }
 \arguments{
 \item{counts}{seurat object containing counts}
+
+\item{use_count}{string describing name that needs to be added to
+list element. This list will be appended to the count slot in
+the vesalius_assay.}
 }
 \value{
 list with seurat object used later and raw counts to be stored in
@@ -15,4 +19,9 @@ the vesalius objects
 }
 \description{
 no normalisation applied simply return raw counts
+}
+\details{
+Here, either the user doesn't want to normalise the data or
+they provide their custom count matrix. In this case, we parse it 
+as "raw" to avoid writing another function and add the custom name.
 }

@@ -4,13 +4,17 @@
 \alias{adjust_counts}
 \title{adjust count}
 \usage{
-adjust_counts(coordinates, counts, verbose = TRUE)
+adjust_counts(coordinates, counts, throw = TRUE, verbose = TRUE)
 }
 \arguments{
 \item{coordinates}{data frame containing coordinates after reducing 
 resolution and compressing cooridnates}
 
 \item{counts}{count matrix}
+
+\item{throw}{logical - throwing warning message for unshared barcodes}
+
+\item{verbose}{logical if progress messaged should be outputed.}
 }
 \value{
 a count matrix with adjusted count values

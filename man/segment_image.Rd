@@ -28,9 +28,6 @@ segmentation. Select from "kmeans", "louvain", or "leiden".}
 (see details)}
 
 \item{verbose}{logical - progress message output.}
-
-\item{use_center}{logical - If TRUE, only the center pixel value will be used
-during segmentation. If FALSE, all pixels will be used (see details)}
 }
 \value{
 a vesalius_assay object

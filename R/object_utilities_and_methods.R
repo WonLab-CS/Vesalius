@@ -11,7 +11,9 @@
 #' or after filtering stray beads
 #' @param coordinates data frame containing coordinates after reducing 
 #' resolution and compressing cooridnates
-#' @param counts count matrix 
+#' @param counts count matrix
+#' @param throw logical - throwing warning message for unshared barcodes
+#' @param verbose logical if progress messaged should be outputed.
 #' @details This function will check the coordinate file to 
 #' see if any barcodes have been merged together. If so,
 #' the counts will be adjusted by taking the average count value accross 
@@ -19,7 +21,7 @@
 #' @return a count matrix with adjusted count values 
 #' @importFrom Matrix Matrix rowMeans
 #' @importFrom future.apply future_lapply
-adjust_counts <- function(coordinates, counts, verbose = TRUE) {
+adjust_counts <- function(coordinates, counts, throw = TRUE, verbose = TRUE) {
     message_switch("adj_counts", verbose)
     #--------------------------------------------------------------------------#
     # First get all barcode names and compare which ones are missing
@@ -28,7 +30,7 @@ adjust_counts <- function(coordinates, counts, verbose = TRUE) {
     coord_bar <- coord_bar_uni[
       sapply(strsplit(coord_bar_uni, "_et_"), length) > 1]
     if (length(coord_bar) == 0) {
-      loc <- check_barcodes(colnames(counts), coord_bar_uni)
+      loc <- check_barcodes(colnames(counts), coord_bar_uni, throw)
       return(counts[, loc])
     }
 
@@ -269,7 +271,7 @@ get_assay_names <- function(vesalius_assay) {
 #' @rdname get_counts
 #' @export
 #' @importFrom methods slot
-#' @importFrom utils tail
+#' @importFrom utils tail head
 get_counts <- function(vesalius_assay, type = "raw") {
     counts <- slot(vesalius_assay, "counts")
     #--------------------------------------------------------------------------#
@@ -286,7 +288,7 @@ get_counts <- function(vesalius_assay, type = "raw") {
         } else if (length(loc) > 1) {
             warning(paste("More than 1 count matrix called", type,
                 "Vesalius will return first instance"))
-            counts <- counts[[head(loc,1)]]
+            counts <- counts[[head(loc, 1)]]
         } else {
             counts <- counts[[loc]]
         }
@@ -308,6 +310,8 @@ get_tiles <- function(vesalius_assay) {
 
 #' get embeddings from vesalius_assay
 #' @param vesalius_assay a vesalius_assay
+#' @param active logical if active embedding should be return 
+#' or full embedding list.
 #' @return embedding matrix
 #' @rdname get_embeddings
 #' @export
@@ -382,7 +386,7 @@ get_active_count_tag <- function(vesalius_assay) {
 
 #' add active embedding tag
 #' @param vesalius_assay a vesalius assay object
-#' @param embeddings embedding
+#' @param embedding embedding
 #' @return commented list with active embedding tag
 #' @importFrom dplyr %>%
 #' @importFrom utils tail

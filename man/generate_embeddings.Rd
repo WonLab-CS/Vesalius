@@ -22,12 +22,15 @@ generate_embeddings(
 \arguments{
 \item{vesalius_assay}{vesalius_assay object.}
 
-\item{dim_reduction}{character string describing which dimensionality
+\item{dim_reduction}{string describing which dimensionality
 reduction method should be used. One of the following:
 "PCA", "PCA_L", "UMAP", "LSI", "LSI_UMAP".}
 
-\item{normalisation}{character string describing which normalisation 
+\item{normalisation}{string describing which normalisation 
 method to use. One of the following "log_norm", "SCT", "TFIDF", "raw".}
+
+\item{use_count}{string describing which counts should be used for the 
+generating emebddings. Default = "raw". See details.}
 
 \item{dimensions}{numeric describing the number of Principle Components or
 Latent space dimension to use. Default dimensions = 30}
@@ -55,35 +58,36 @@ as it usually captures sequencing depth (technical variation)}
 \item{verbose}{logical output progress message or not. Default = TRUE}
 }
 \value{
-vesalius_object or vesalius_assay 
- (depending on which was used as input)
+vesalius_assay
 }
 \description{
 Generate image embddings from spatial omics data.
 }
 \details{
 The core principle behind vesalius is to convert spatial omics
-data into an image. \code{build_vesalius_embeddings} allows you to convert
+data into an image. \code{generate_embeddings} allows you to convert
 your omics data into a stack of gray scale images.
 The stack hight will be equal to the number of dimenions you
-selected excluding UMAP type as only 3 are availbale.
+selected excluding UMAP type as only 3 dimesnions are availbale.
 
-The algorithm is broadly to many spatial omics assays. As such, you can use
-the \code{\link{build_vesalius_assay}} function to create a single object
-that will contain all your different assays.
-You can select a different normalisation method
-and dim_reudction method for each (see examples).
+If tiles have not yet been generated (see \code{\link{generate_tiles}}),
+pixel will be generated from the spatial coordinates provided. 
+If tiles are already present, `generate_embeddings` will skip the
+tile creation step. 
 
-This function will first create image arrays by expanding punctual 
-coordinates into tiles. Then, it will pre-process your data 
-based on the normalisation method you  selected
+The algorithm is broadly applicable to many spatial omics assays.
+Vesalius provides a 3 nornalization methods log_norm, SCTransform,
+and TF-IDF.
 
-Next, it will reduce dimesnionality and convert the latent space into a grey 
-scale color palette for each dimension.
+The `use_count` argument specifies which count matrix should be used
+for normalization. This argument is only necessary if you use a custom
+normalised count matrix. In this case, set this argument to the name
+you gave your count matrix (see \code{\link{add_counts}}) and
+`generate_embeddings` will skip the normalization and use your custom
+count matrix to generate image embeddings. 
 
-Every time you use this function on the same object, all previous trials 
-will be retained and logged. You can later decide which method combination 
-you would like to use. All other functions use the last entry as default.
+Note that it is also possible to add custom embeddings by using the 
+\code{\link{add_embeddings}} function.
 }
 \examples{
 \dontrun{
@@ -91,9 +95,10 @@ data(vesalius)
 # First we build a simple object
 ves <- build_vesalius_object(coordinates, counts)
 # We can do a simple run 
-ves <- build_vesalius_embeddings(ves)
-# maybe we want to try a different method 
+ves <- generate_embeddings(ves)
+# maybe we want to try a different method
 # both will be stored in the object
-ves <- build_vesalius_embeddings(ves, dim_reduction = "UMAP")
+ves <- generate_embeddings(ves, dim_reduction = "UMAP")
+
 }
 }

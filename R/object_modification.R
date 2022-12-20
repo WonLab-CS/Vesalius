@@ -46,13 +46,11 @@ add_counts <- function(vesalius_assay,
     # check if raw counts are already present 
     #--------------------------------------------------------------------------#
     counts <- check_counts(counts, assay, verbose)
-    raw <- tryCatch(expr = get_counts(vesalius_assay, type = "raw"),
-      error = function(cond) {
-          return(FALSE)
-      },
-      finally = {
-        TRUE
-      })
+    raw <-  ifelse(is(
+        try(get_counts(vesalius_assay, type = "raw"), silent = TRUE),
+        "try-error"),
+      yes = FALSE,
+      no = TRUE)
     #--------------------------------------------------------------------------#
     # we can do the same thing on raw counts if required
     #--------------------------------------------------------------------------#

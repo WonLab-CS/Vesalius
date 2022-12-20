@@ -9,7 +9,7 @@ add_active_embedding_tag(vesalius_assay, embedding)
 \arguments{
 \item{vesalius_assay}{a vesalius assay object}
 
-\item{embeddings}{embedding}
+\item{embedding}{embedding}
 }
 \value{
 commented list with active embedding tag

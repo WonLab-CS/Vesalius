@@ -8,6 +8,9 @@ get_embeddings(vesalius_assay, active = TRUE)
 }
 \arguments{
 \item{vesalius_assay}{a vesalius_assay}
+
+\item{active}{logical if active embedding should be return 
+or full embedding list.}
 }
 \value{
 embedding matrix

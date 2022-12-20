@@ -5,7 +5,7 @@
 \title{Internal regularise function.
 performs total variance regularisation}
 \usage{
-regularise(img, lambda = 1, niter = 100, normalise = TRUE)
+regularise(img, lambda = 1, niter = 100)
 }
 \arguments{
 \item{img}{image array - generally a matrix}

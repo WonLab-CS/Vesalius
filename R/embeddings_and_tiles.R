@@ -9,11 +9,13 @@
 #'
 #' Generate image embddings from spatial omics data.
 #' @param vesalius_assay vesalius_assay object.
-#' @param dim_reduction character string describing which dimensionality
+#' @param dim_reduction string describing which dimensionality
 #' reduction method should be used. One of the following:
 #' "PCA", "PCA_L", "UMAP", "LSI", "LSI_UMAP".
-#' @param normalisation character string describing which normalisation 
+#' @param normalisation string describing which normalisation 
 #' method to use. One of the following "log_norm", "SCT", "TFIDF", "raw".
+#' @param use_count string describing which counts should be used for the 
+#' generating emebddings. Default = "raw". See details.
 #' @param dimensions numeric describing the number of Principle Components or
 #' Latent space dimension to use. Default dimensions = 30
 #' @param tensor_resolution numeric (range 0 - 1) describing the compression
@@ -32,41 +34,44 @@
 #' as it usually captures sequencing depth (technical variation)
 #' @param verbose logical output progress message or not. Default = TRUE
 #' @details The core principle behind vesalius is to convert spatial omics
-#' data into an image. \code{build_vesalius_embeddings} allows you to convert
+#' data into an image. \code{generate_embeddings} allows you to convert
 #' your omics data into a stack of gray scale images.
 #' The stack hight will be equal to the number of dimenions you
-#' selected excluding UMAP type as only 3 are availbale.
+#' selected excluding UMAP type as only 3 dimesnions are availbale.
 #'
-#' The algorithm is broadly to many spatial omics assays. As such, you can use
-#' the \code{\link{build_vesalius_assay}} function to create a single object
-#' that will contain all your different assays.
-#' You can select a different normalisation method
-#' and dim_reudction method for each (see examples).
+#' If tiles have not yet been generated (see \code{\link{generate_tiles}}),
+#' pixel will be generated from the spatial coordinates provided. 
+#' If tiles are already present, `generate_embeddings` will skip the
+#' tile creation step. 
+#'
+#' The algorithm is broadly applicable to many spatial omics assays.
+#' Vesalius provides a 3 nornalization methods log_norm, SCTransform,
+#' and TF-IDF.
 #' 
-#' This function will first create image arrays by expanding punctual 
-#' coordinates into tiles. Then, it will pre-process your data 
-#' based on the normalisation method you  selected
+#' The `use_count` argument specifies which count matrix should be used
+#' for normalization. This argument is only necessary if you use a custom
+#' normalised count matrix. In this case, set this argument to the name
+#' you gave your count matrix (see \code{\link{add_counts}}) and
+#' `generate_embeddings` will skip the normalization and use your custom
+#' count matrix to generate image embeddings. 
 #' 
-#' Next, it will reduce dimesnionality and convert the latent space into a grey 
-#' scale color palette for each dimension.
-#' 
-#' Every time you use this function on the same object, all previous trials 
-#' will be retained and logged. You can later decide which method combination 
-#' you would like to use. All other functions use the last entry as default. 
+#' Note that it is also possible to add custom embeddings by using the 
+#' \code{\link{add_embeddings}} function. 
 #'
 #'
-#' @return vesalius_object or vesalius_assay 
-#'  (depending on which was used as input)
+#'
+#' @return vesalius_assay
 #' @examples
 #' \dontrun{
 #' data(vesalius)
 #' # First we build a simple object
 #' ves <- build_vesalius_object(coordinates, counts)
 #' # We can do a simple run 
-#' ves <- build_vesalius_embeddings(ves)
-#' # maybe we want to try a different method 
+#' ves <- generate_embeddings(ves)
+#' # maybe we want to try a different method
 #' # both will be stored in the object
-#' ves <- build_vesalius_embeddings(ves, dim_reduction = "UMAP")
+#' ves <- generate_embeddings(ves, dim_reduction = "UMAP")
+#' 
 #'}
 #' @export
 
@@ -117,9 +122,7 @@ generate_embeddings <- function(vesalius_assay,
         verbose = verbose)
       counts <- get_counts(vesalius_assay, type = use_count)
     } else {
-      tiles <- get_tiles(vesalius_assay)
       counts <- get_counts(vesalius_assay, type = use_count)
-      #counts <- adjust_counts(tiles, counts, verbose)
     }
     #--------------------------------------------------------------------------#
     # Now we can start creating colour embeddings
@@ -134,7 +137,7 @@ generate_embeddings <- function(vesalius_assay,
     counts <- process_counts(counts,
       assay = assay,
       method = normalisation,
-      use_counts = use_counts,
+      use_count = use_count,
       nfeatures = nfeatures,
       min_cutoff = min_cutoff,
       verbose = verbose)
@@ -255,8 +258,9 @@ generate_tiles <- function(vesalius_assay,
   }
   #----------------------------------------------------------------------#
   # Reduce resolution
+  # Might be worth creating dedicated sanity check functions for this
   #----------------------------------------------------------------------#
-  if (tensor_resolution < 1) {
+  if (tensor_resolution < 1 && tensor_resolution > 0) {
     message_switch("tensor_res", verbose)
     coordinates <- reduce_tensor_resolution(coordinates = coordinates,
       tensor_resolution = tensor_resolution)
@@ -286,7 +290,10 @@ generate_tiles <- function(vesalius_assay,
   counts <- get_counts(vesalius_assay, type = "all")
   if (length(counts) > 0) {
     for (i in seq_along(counts)) {
-      counts[[i]] <- adjust_counts(tiles, counts[[i]], verbose = FALSE)
+      counts[[i]] <- adjust_counts(tiles,
+        counts[[i]],
+        throw = FALSE,
+        verbose = FALSE)
     }
     vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
       data = counts,
@@ -374,6 +381,7 @@ reduce_tensor_resolution <- function(coordinates, tensor_resolution = 1) {
   tag <- paste0(coordinates$x, "_", coordinates$y)
 
   locs <- rle(sort(tag))
+  locs <- check_tensor_compression(locs)
   dup <- locs$values[which(locs$length > 1)]
   #----------------------------------------------------------------------------#
   # creating new merged labels
@@ -575,16 +583,24 @@ convexify <- function(xside, yside, indx, indy) {
 #' pre-processed in the vesaliusObject or vesalius_assay
 #' @param method character string describing which normalisation method to use.
 #' One of the following "log_norm", "SCT", "TFIDF", "raw".
+#' @param use_count string describing which counts should be used for the 
+#' generating emebddings. Default = "raw".
 #' @param nfeatures numeric describing the number of variable features to use.
 #' @param min_cutoff only used when dimensionality reduction method is
 #' LSI or LSI_UMAP cutoff for feature to be included in the 
 #' VariableFeatures for the object.
 #' @param verbose logical - progress messages outputed or not
+#' @details The `use_count` argument specifies which count matrix should be used
+#' for normalization. This argument is only necessary if you use a custom
+#' normalised count matrix. In this case, set this argument to the name
+#' you gave your count matrix (see \code{\link{add_counts}}) and
+#' `generate_embeddings` will skip the normalization and use your custom
+#' count matrix to generate image embeddings. 
 #' @importFrom Seurat CreateSeuratObject
 process_counts <- function(counts,
   assay,
   method = "log_norm",
-  use_counts = "raw",
+  use_count = "raw",
   nfeatures = 2000,
   min_cutoff = "q5",
   verbose = TRUE) {
@@ -597,7 +613,7 @@ process_counts <- function(counts,
     # rememmber that if we do decide to change things
     # we have to change things in the embbeddings as well
     #--------------------------------------------------------------------------
-    counts <- Seurat::CreateSeuratObject(counts)
+    counts <- suppressWarnings(Seurat::CreateSeuratObject(counts))
     counts <- switch(method,
                     "log_norm" = log_norm(counts, nfeatures),
                     "SCTransform" = int_sctransform(counts, nfeatures),
@@ -608,8 +624,14 @@ process_counts <- function(counts,
 
 #' raw norm
 #' 
-#' no normalisation applied simply return raw counts 
-#' @param counts seurat object containing counts 
+#' no normalisation applied simply return raw counts
+#' @param counts seurat object containing counts
+#' @param use_count string describing name that needs to be added to
+#' list element. This list will be appended to the count slot in
+#' the vesalius_assay. 
+#' @details Here, either the user doesn't want to normalise the data or
+#' they provide their custom count matrix. In this case, we parse it 
+#' as "raw" to avoid writing another function and add the custom name. 
 #' @return list with seurat object used later and raw counts to be stored in
 #' the vesalius objects 
 #' @importFrom Seurat GetAssayData
@@ -652,16 +674,14 @@ log_norm <- function(counts, nfeatures) {
 #' 
 #' SCTransform pre-processing from Seurat
 #' @param counts seurat object containing counts
-#' @param assay seurat assay to use here we jjust use the spatial one
-#' but we could just use default RNA
 #' @param nfeatures number of top variable features to select
 #' @return list with seurat object used later and normalised counts to be stored
 #' in a vesalius object
 #' @importFrom Seurat SCTransform
 #' @importFrom Seurat GetAssayData
 int_sctransform <- function(counts, nfeatures) {
-    counts <- Seurat::SCTransform(counts,
-      variable.features.n = nfeatures, verbose = FALSE)
+    counts <- suppressWarnings(Seurat::SCTransform(counts,
+      variable.features.n = nfeatures, verbose = FALSE))
     norm_counts <- list(GetAssayData(counts, slot = "data"))
     names(norm_counts) <- "SCTransform"
     return(list("SO" = counts, "norm" = norm_counts))
@@ -748,10 +768,14 @@ embed_pca <- function(counts,
   verbose = TRUE) {
     #--------------------------------------------------------------------------#
     # First run PCA
-    # Progress message pca_tensor() => Prog.R
+    # Parsing feature names just in case no var features have been 
     #--------------------------------------------------------------------------#
     message_switch("pca_tensor", verbose)
-    counts <- Seurat::RunPCA(counts, npcs = dimensions, verbose = FALSE)
+    features <- check_features(counts)
+    counts <- Seurat::RunPCA(counts,
+      npcs = dimensions,
+      features = features,
+      verbose = FALSE)
 
     # Progress message embed_rgb_tensor() => Prog.R
     message_switch("pca_rgb_tensor", verbose)
@@ -792,7 +816,11 @@ embed_pcal <- function(counts,
     # Progress message pca_tensor() => Prog.R
     #--------------------------------------------------------------------------#
     message_switch("pca_tensor", verbose)
-    counts <- Seurat::RunPCA(counts, npcs = dimensions, verbose = FALSE)
+    features <- check_features(counts)
+    counts <- Seurat::RunPCA(counts,
+      npcs = dimensions,
+      features = features,
+      verbose = FALSE)
 
     #--------------------------------------------------------------------------#
     # get laodings and create matrix describing if there are any count values
@@ -841,12 +869,16 @@ embed_umap <- function(counts, dimensions, verbose) {
   # Progress message pca_tensor() => Prog.R
   #----------------------------------------------------------------------------#
   message_switch("pca_tensor", verbose)
-  counts <- Seurat::RunPCA(counts, npcs = dimensions, verbose = FALSE)
+  features <- check_features(counts)
+  counts <- Seurat::RunPCA(counts,
+    npcs = dimensions,
+    features = features,
+    verbose = FALSE)
   message_switch("umap_rgb_tensor", verbose)
-  counts <- Seurat::RunUMAP(counts,
+  counts <- suppressWarnings(Seurat::RunUMAP(counts,
     dims = seq_len(dimensions),
     n.components = 3L,
-    verbose = FALSE)
+    verbose = FALSE))
   #----------------------------------------------------------------------------#
   # Normalise
   #----------------------------------------------------------------------------#
@@ -875,7 +907,11 @@ embed_lsi <- function(counts,
   # Run partial singular value decomposition(SVD) on TF-IDF normalized matrix
   #--------------------------------------------------------------------------#
   message_switch("svd_tensor", verbose)
-  svd <- Signac::RunSVD(counts, n = dimensions + 1, verbose = FALSE)
+  features <- check_features(counts)
+  svd <- Signac::RunSVD(counts,
+    n = dimensions + 1,
+    features = features,
+    verbose = FALSE)
 
   #--------------------------------------------------------------------------#
   # Getting embedding values and normalize
@@ -915,21 +951,25 @@ embed_lsi_umap <- function(counts,
   # Run partial singular value decomposition(SVD) on TF-IDF normalized matrix
   #--------------------------------------------------------------------------#
   message_switch("svd_tensor", verbose)
-  svd <- Signac::RunSVD(counts, n = dimensions + 1, verbose = FALSE)
+  features <- check_features(counts)
+  svd <- Signac::RunSVD(counts,
+    n = dimensions + 1,
+    features = features,
+    verbose = FALSE)
 
   message_switch("umap_rgb_tensor", verbose)
   if (remove_lsi_1) {
-    reduc <-  Seurat::RunUMAP(svd,
+    reduc <-  suppressWarnings(Seurat::RunUMAP(svd,
       reduction = "lsi",
       dims = seq(2, dimensions + 1),
       n.components = 3L,
-      verbose = FALSE)
+      verbose = FALSE))
   } else {
-    reduc <- Seurat::RunUMAP(svd,
+    reduc <- suppressWarnings(Seurat::RunUMAP(svd,
         reduction = "lsi",
         dims = seq(1, dimensions),
         n.components = 3L,
-        verbose = FALSE)
+        verbose = FALSE))
   }
 
   #--------------------------------------------------------------------------#

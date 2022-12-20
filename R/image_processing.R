@@ -430,18 +430,16 @@ regularise_image <- function(vesalius_assay,
 #' @importFrom imager as.cimg
 regularise <- function(img,
   lambda = 1,
-  niter = 100,
-  normalise = TRUE) {
+  niter = 100) {
     #--------------------------------------------------------------------------#
-    # might need to change the normalise part
-    # it doesn't seem it works well
-    # or at all for that matter
     # Also not parsing any of the other tvR methods for denoise 
     # They don't work that well - we will see if it worth adding or not
+    # This could do with some in depth optimization 
+    # Beyond the scope of current dev cycle 
+    # Force norm in all cases. 
     #--------------------------------------------------------------------------#
     img <- tvR::denoise2(as.matrix(img), lambda = lambda, niter = niter,
            method = "TVL2.FiniteDifference", normalize = FALSE)
-  
     img <- (img - min(img)) / (max(img) - min(img))
     return(suppressWarnings(imager::as.cimg(img)))
 }
@@ -460,8 +458,6 @@ regularise <- function(img,
 #' segmentation. Select from "kmeans", "louvain", or "leiden".
 #' @param col_resolution numeric colour resolution used for segmentation. 
 #' (see details)
-#' @param use_center logical - If TRUE, only the center pixel value will be used
-#' during segmentation. If FALSE, all pixels will be used (see details)
 #' @param verbose logical - progress message output.
 #' @details Applying image segmentation ensures a reduction in colour
 #' complexity.

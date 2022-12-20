@@ -10,9 +10,6 @@ int_sctransform(counts, nfeatures)
 \item{counts}{seurat object containing counts}
 
 \item{nfeatures}{number of top variable features to select}
-
-\item{assay}{seurat assay to use here we jjust use the spatial one
-but we could just use default RNA}
 }
 \value{
 list with seurat object used later and normalised counts to be stored

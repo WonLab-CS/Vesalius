@@ -10,9 +10,9 @@ rebalence_colors(coordinates, dimensions, method = "minmax")
 \item{coordinates}{data frame containing barcodes, x/y coord, origin,
 and color value.}
 
-\item{method}{character string: min max or truncate}
+\item{dimensions}{number dimensions select for plotting}
 
-\item{dims}{number dimensions select for plotting}
+\item{method}{character string: min max or truncate}
 }
 \value{
 data frame with [0,1] bound values

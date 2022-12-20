@@ -8,7 +8,7 @@ process_counts(
   counts,
   assay,
   method = "log_norm",
-  use_counts = "raw",
+  use_count = "raw",
   nfeatures = 2000,
   min_cutoff = "q5",
   verbose = TRUE
@@ -23,6 +23,9 @@ pre-processed in the vesaliusObject or vesalius_assay}
 \item{method}{character string describing which normalisation method to use.
 One of the following "log_norm", "SCT", "TFIDF", "raw".}
 
+\item{use_count}{string describing which counts should be used for the 
+generating emebddings. Default = "raw".}
+
 \item{nfeatures}{numeric describing the number of variable features to use.}
 
 \item{min_cutoff}{only used when dimensionality reduction method is
@@ -33,4 +36,12 @@ VariableFeatures for the object.}
 }
 \description{
 pre-process count matrices
+}
+\details{
+The `use_count` argument specifies which count matrix should be used
+for normalization. This argument is only necessary if you use a custom
+normalised count matrix. In this case, set this argument to the name
+you gave your count matrix (see \code{\link{add_counts}}) and
+`generate_embeddings` will skip the normalization and use your custom
+count matrix to generate image embeddings.
 }

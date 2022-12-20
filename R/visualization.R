@@ -120,7 +120,7 @@ image_plot <- function(vesalius_assay,
 #' rebalence colors
 #' @param coordinates data frame containing barcodes, x/y coord, origin,
 #' and color value. 
-#' @param dims number dimensions select for plotting
+#' @param dimensions number dimensions select for plotting
 #' @param method character string: min max or truncate
 #' @details This function is use to re-bound values between 0 and 1. 
 #' Some image processing steps may lead to negative values being introduced.
