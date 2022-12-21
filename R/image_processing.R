@@ -99,6 +99,8 @@ smooth_image <- function(vesalius_assay,
         embed = embedding,
         dims = dimensions,
         verbose = verbose)
+      method <- check_smoothing_kernel(method)
+      across_levels <- check_smoothing_level(across_levels)
     } else {
       stop("Unsupported format to smooth_image function")
     }
@@ -258,7 +260,7 @@ internal_smooth <- function(image,
 equalize_image <- function(vesalius_assay,
   dimensions = seq(1, 3),
   embedding = "last",
-  type = "BalanceSimplest",
+  method = "BalanceSimplest",
   N = 1,
   smax = 1,
   sleft = 1,
@@ -277,6 +279,7 @@ equalize_image <- function(vesalius_assay,
         embed = embedding,
         dims = dimensions,
         verbose = verbose)
+      method <- check_eq_method(method)
     } else {
       stop("Unsupported format to equalize_image function")
     }
@@ -287,7 +290,7 @@ equalize_image <- function(vesalius_assay,
     # optimized for real images.
     #--------------------------------------------------------------------------#
 
-    images <- switch(type,
+    images <- switch(method,
       "EqualizePiecewise" = future_lapply(images,
         imagerExtra::EqualizePiecewise, N,
         future.seed = TRUE),
@@ -510,7 +513,8 @@ segment_image <- function(vesalius_assay,
   # Parsing vesalius object so we can recontruct it internally and not need to
   # rebuild intermediates and shift between formats...
   #----------------------------------------------------------------------------#
-  segments <- switch(method[1L],
+  method <- check_segmentation_method(method)
+  segments <- switch(method,
     "kmeans" = kmeans_segmentation(vesalius_assay,
       col_resolution = col_resolution,
       dimensions = dimensions,
@@ -586,8 +590,7 @@ kmeans_segmentation <- function(vesalius_assay,
     iter.max = 100,
     nstart = 10))
   clusters <- km$cluster
-  kcenters <- km$centers
-  
+  #kcenters <- km$centers
   match_loc <- match(coord$barcodes, names(clusters))
   clusters <- data.frame(coord, "Segment" = clusters[match_loc])
   new_trial <- create_trial_tag(colnames(vesalius_assay@territories),
@@ -770,12 +773,14 @@ isolate_territories <- function(vesalius_assay,
     # it's a bit messy - we might need to consider to do a whole sanity check
     # of inout data and see if that makes sense - this will include checking log
     #--------------------------------------------------------------------------#
-    ter <- check_segments(vesalius_assay, trial) %>%
+    ter <- check_segment_trial(vesalius_assay, trial) %>%
       na.exclude()
     #--------------------------------------------------------------------------#
     # Compute real capture Radius
+    # Only one method for now so this is not necessary 
+    # keep it for later
     #--------------------------------------------------------------------------#
-
+    method <- check_isolation_method(method)
     if (method[1L] == "distance") {
       capture_radius <- sqrt(((max(ter$x) - min(ter$x))^2 +
         (max(ter$y) - min(ter$y))^2)) * capture_radius

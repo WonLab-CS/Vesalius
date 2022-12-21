@@ -91,9 +91,13 @@ format_c_to_ves <- function(cimg,
   verbose = TRUE) {
   #--------------------------------------------------------------------------#
   # Get stuff out
+  # Only need to push the embed selection warning once. It will have been 
+  # thrown in the 1st conversion. Makes unit test throw a little tantrum
+  # They don't like when more than one warning is pushed
   #--------------------------------------------------------------------------#
   tiles <- check_tiles(vesalius_assay)
-  embeddings <- check_embedding_selection(vesalius_assay, embed, dims)
+  embeddings <- suppressWarnings(check_embedding_selection(
+      vesalius_assay, embed, dims))
   #--------------------------------------------------------------------------#
   # Always going to be a gray scale image.
   # Colour are only used when during viz

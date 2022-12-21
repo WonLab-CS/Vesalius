@@ -215,6 +215,76 @@ check_embed_methods <- function(embed) {
     }
 }
 
+#' check if smoothing method is present in availble options
+#' @param method smoothing method selected by user
+#' @return smoothing method string or error
+check_smoothing_kernel <- function(method) {
+    if (any(!method %in% c("iso", "box", "median"))) {
+        stop("Smoothing method provided do not match available options \n
+            Select from: \n
+            iso, box, median or a combination of these 3 options")
+    } else {
+        return(method)
+    }
+}
+
+#' check if across level options are valid for smoothing
+#' @param method string - across level option
+#' @return acroos level option or error
+check_smoothing_level <- function(method) {
+    if (any(!method %in% c("min", "max", "mean"))) {
+        stop("Smoothing across levels method provided do not match available options \n
+            Select from: \n
+            min, max, mean")
+    } else {
+        return(method)
+    }
+}
+
+#' check if eq method are avilable 
+#' @param method string - eq method
+#' @return eq method
+check_eq_method <- function(method) {
+    if (any(!method %in% c("EqualizePiecewise",
+        "BalanceSimplest",
+        "SPE",
+        "EqualizeDP",
+        "EqualizeADP",
+        "ECDF"))) {
+        stop("Equalization method provided do not match available options \n
+            Select from: \n
+            EqualizePiecewise, BalanceSimplest, SPE, 
+            EqualizeDP, EqualizeADP, or ECDF")
+    } else {
+        return(method)
+    }
+}
+
+#' check if segmentation options are valid for segmentation
+#' @param method string - segmentation method
+#' @return segmentation method
+check_segmentation_method <- function(method) {
+    if (any(!method %in% c("kmeans", "louvain", "leiden"))) {
+        stop("Segmentation method provided do not match available options \n
+            Select from: \n
+            kmeans, louvain, leiden")
+    } else {
+        return(method)
+    }
+}
+
+#' check territory isolation method is available 
+#' @param method string - territory isolation method
+#' @return territory isolation method
+check_isolation_method <- function(method) {
+    if (any(!method %in% c("distance"))) {
+        stop("Isolation method provided do not match available options \n
+            Select from: \n
+            distance")
+    } else {
+        return(method)
+    }
+}
 
 #' check tensor compression 
 #' @param locs rle output of coordinate compression
@@ -322,10 +392,12 @@ check_tiles <- function(vesalius_assay) {
 #' Default is last that will take the last entry. This function
 #' will also reformat to only include the necessay information.
 #' @return data frame contain selected trial
-#' @importFrom infix %||%
-check_territories <- function(vesalius_assay, trial) {
-    territories <- vesalius_assay@territories %||%
+check_territory_trial <- function(vesalius_assay, trial) {
+    if (sum(dim(vesalius_assay@territories)) == 0){
         stop("No territories have been computed!")
+    } else {
+        territories <- vesalius_assay@territories
+    }
     if (trial == "last") {
       trial <- colnames(territories)[ncol(territories)]
     } else if (length(grep(x = colnames(vesalius_assay@territories),
@@ -353,11 +425,13 @@ check_territories <- function(vesalius_assay, trial) {
 #' Default is last that will take the last entry. This function
 #' will also reformat to only include the necessay information.
 #' @return data frame contain selected trial
-#' @importFrom infix %||%
 #' @importFrom utils tail
-check_segments <- function(vesalius_assay, trial = "last") {
-    territories <- vesalius_assay@territories %||%
-        stop("No image segments have been computed yet!")
+check_segment_trial <- function(vesalius_assay, trial = "last") {
+    if (sum(dim(vesalius_assay@territories)) == 0){
+        stop("No segments have been computed yet!")
+    } else {
+        territories <- vesalius_assay@territories
+    }
     if (!any(grepl(x = colnames(territories), pattern = "Segment"))) {
         stop("No image segments have been computed yet!")
     }

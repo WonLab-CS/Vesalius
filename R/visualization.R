@@ -209,7 +209,7 @@ territory_plot <- function(vesalius_assay,
     # Not a prority for custom plotting functions
     # SANITY check here and format
     #--------------------------------------------------------------------------#
-    territories <- check_territories(vesalius_assay, trial)
+    territories <- check_territory_trial(vesalius_assay, trial)
     legend <- sapply(strsplit(trial, "_"), "[[", 1)
     #--------------------------------------------------------------------------#
     # Changing label order because factor can suck ass sometimes
@@ -400,7 +400,7 @@ view_gene_expression <- function(vesalius_assay,
     # First lets get the norm method out and the associated counts
     #--------------------------------------------------------------------------#
     counts <- check_norm(vesalius_assay, norm_method)
-    territories <- check_territories(vesalius_assay, trial) %>%
+    territories <- check_territory_trial(vesalius_assay, trial) %>%
       dispatch_territory(territory_1, territory_2, cells)
     #--------------------------------------------------------------------------#
     # Getting genes

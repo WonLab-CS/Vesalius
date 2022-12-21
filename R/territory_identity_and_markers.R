@@ -101,7 +101,7 @@ identify_markers <- function(vesalius_assay,
     #--------------------------------------------------------------------------#
     # Next let's get the territory data
     #--------------------------------------------------------------------------#
-    ter <- check_territories(vesalius_assay, trial)
+    ter <- check_territory_trial(vesalius_assay, trial)
     seed <- check_group_value(ter, seed)
     query <- check_group_value(ter, query)
     #--------------------------------------------------------------------------#

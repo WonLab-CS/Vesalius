@@ -642,8 +642,11 @@ raw_norm <- function(counts, use_count = "raw") {
     # or play around with parameters not provided by vesalius
     # they can do that and just always call norm
     # We are using this just for formating at the moment
+    # We have to be a bit hacky with the Seurat object
     #--------------------------------------------------------------------------#
     norm_counts <- list(Seurat::GetAssayData(counts, slot = "counts"))
+    counts@assays$RNA@scale.data <- as.matrix(Seurat::GetAssayData(counts,
+      slot = "counts"))
     names(norm_counts) <- use_count
     return(list("SO" = counts, "norm" = norm_counts))
 }

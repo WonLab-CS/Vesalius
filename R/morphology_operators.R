@@ -62,12 +62,15 @@ territory_morphing <- function(vesalius_assay,
     # lets make a few checks
     # for now we will assume that either segments or territories can be used
     # TOADD methods to access parameters associated with each trial run
+    # check territoriy values and trial
+    # build image data frame with tile info
     #------------------------------------------------------------------------#
     territory <- territory %||%
       stop("No specified territory for territory morphing!")
     adjusted_territory_values <- min(territory)
-
-    ter <- check_territories(vesalius_assay, trial)
+    ter <- check_territory_trial(vesalius_assay, trial)
+    buffer <- ter
+    territory <- check_group_value(ter, territory)
     ter <- filter(ter, trial %in% territory) %>%
                left_join(get_tiles(vesalius_assay), by = "barcodes") %>%
                mutate(value = 1) %>%
@@ -76,9 +79,6 @@ territory_morphing <- function(vesalius_assay,
     message_switch("morph", verbose)
     #------------------------------------------------------------------------#
     # getting last name if any to create new column
-    # Later it would be good to write these sections as utility functions
-    # they often do the same thing and it make things cleaner
-    # not high priority - for now we need to make it work
     #------------------------------------------------------------------------#
     new_trial <- create_trial_tag(colnames(get_territories(vesalius_assay)),
       "Morphology")
@@ -108,11 +108,14 @@ territory_morphing <- function(vesalius_assay,
     ter <- ter %>% as.data.frame()
     ter <- inner_join(ter, get_tiles(vesalius_assay), by = c("x", "y")) %>%
       filter(origin == 1)
+    buffer <- data.frame(get_territories(vesalius_assay),"trial" = buffer$trial)
     buffer$trial[buffer$barcodes %in% ter$barcodes] <- adjusted_territory_values
     colnames(buffer) <-  new_trial
-
+    #------------------------------------------------------------------------#
+    # rebuild vesalius assay
+    #------------------------------------------------------------------------#
     vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
-    data = ter,
+    data = buffer,
     slot = "territories",
     append = TRUE)
     commit <- create_commit_log(arg_match = as.list(match.call()),
@@ -143,8 +146,8 @@ extend_boundary <- function(territories, morphology_factor) {
   xmax <- max(territories$x) + max(abs(morphology_factor)) * 2
   territories <- territories %>% 
     select(c("x", "y", "value")) %>%
-    rbind(., c(xmin, ymin, 1), c(xmax, ymax, 1)) %>%
-    suppressWarnings(as.cimg())
+    rbind(., c(xmin, ymin, 1), c(xmax, ymax, 1))
+  territories <- suppressWarnings(as.cimg(territories))
   return(territories)
 }
 
@@ -224,9 +227,10 @@ layer_territory <- function(vesalius_assay,
       territory <- min(territory)
   }
 
-  ter <- check_territories(vesalius_assay, trial)
+  ter <- check_territory_trial(vesalius_assay, trial)
+  territory <- check_group_value(ter, territory)
   buffer <- ter
-  ter <- right_join(ter, get_tiles(vesalius), by = "barcodes") %>%
+  ter <- right_join(ter, get_tiles(vesalius_assay), by = "barcodes") %>%
     filter(trial %in% territory) %>%
     mutate(value = 1) %>%
     select(c("barcodes", "x.y", "y.y", "value", "origin", "trial"))
@@ -255,9 +259,7 @@ layer_territory <- function(vesalius_assay,
     grad <- ter  %>%
       detect_edges() %>%
       grow(1) %>%
-      suppressWarnings(as.cimg()) %>%
-      as.data.frame() %>%
-      filter(value > 0)
+      as.data.frame()
     #------------------------------------------------------------------------#
     # getting barcodes from territory
     #------------------------------------------------------------------------#
@@ -305,12 +307,14 @@ layer_territory <- function(vesalius_assay,
       }
     }
   }
+  buffer <- data.frame(get_territories(vesalius_assay), buffer$trial)
   #--------------------------------------------------------------------------#
   # rename new column
+  #--------------------------------------------------------------------------#
   colnames(buffer) <-  new_trial
 
   vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
-    data = ter,
+    data = buffer,
     slot = "territories",
     append = TRUE)
     commit <- create_commit_log(arg_match = as.list(match.call()),
