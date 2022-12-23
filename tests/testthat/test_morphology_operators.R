@@ -67,8 +67,9 @@ test_that("terriotry layering works as expected", {
         "vesalius_assay")
     # checking if different depths work
     tmp <- layer_territory(vesalius,
+        trial = "Territory",
         layer_depth = 2,
-        territory = 6)
+        territory = 8)
     expect_s4_class(tmp,
         "vesalius_assay")
     expect_identical(unique(get_territories(tmp)$Layer), c("out", "1", "2"))

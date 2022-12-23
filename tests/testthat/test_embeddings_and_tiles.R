@@ -41,7 +41,7 @@ test_that("Vesalius reduce tensor resolution works", {
         filter_grid = 1,
         filter_threshold = 1))
     expect_error(generate_tiles(vesalius,
-        tensor_resolution = 0.01,
+        tensor_resolution = 0.000001,
         filter_grid = 1,
         filter_threshold = 1))
 
@@ -70,9 +70,11 @@ test_that("Adjusting counts when counts added manually", {
      # generating base object
     vesalius <- build_vesalius_assay(coordinates, counts)
     # Adding tiles when tiles have been created
+    expect_s4_class(add_counts(vesalius, counts, counts),
+        "vesalius_assay")
     vesalius <- add_counts(vesalius, counts, counts)
-    vesalius <- generate_tiles(vesalius,
-        tensor_resolution = 0.4)
+    expect_s4_class(generate_tiles(vesalius,
+        tensor_resolution = 0.7))
 
 })
 # Loading data from the packages
