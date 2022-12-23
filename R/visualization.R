@@ -419,10 +419,9 @@ view_gene_expression <- function(vesalius_assay,
     for (i in seq_along(genes)) {
       gene <- rownames(counts) == genes[i]
       if (sum(gene) == 0) {
-        warning(paste(genes[i], "is not present in count matrix.
+        stop(paste(genes[i], "is not present in count matrix.
           Returning NULL"), immediate. = TRUE)
-        gene_list[[i]] <- NULL
-        next()
+        
       }
       gene <- counts[gene, ]
       gene <- data.frame(names(gene), gene)

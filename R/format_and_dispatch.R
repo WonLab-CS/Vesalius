@@ -119,21 +119,21 @@ format_c_to_ves <- function(cimg,
 #' format counts for DESeq
 #' @param seed seed count matrix
 #' @param query query count matrix
+#' @details Always adding a pseudocount of 1 
 #' @return DESeq2 object
 #' @importFrom DESeq2 DESeqDataSetFromMatrix
 format_counts_for_deseq2 <- function(seed, query) {
   seed_tag <- colnames(seed)
   query_tag <- colnames(query)
-  merged <- rbind(seed, query)
+  merged <- cbind(seed, query)
   seed_query_info <- data.frame(row.names = c(seed_tag, query_tag))
   seed_query_info[seed_tag, "group"] <- "seed"
   seed_query_info[query_tag, "group"] <- "query"
   seed_query_info[, "group"] <- factor(x = seed_query_info[, "group"])
   deseq <- DESeq2::DESeqDataSetFromMatrix(
-    countData = merged,
+    countData = merged + 1,
     colData = seed_query_info,
-    design = ~ group
-  )
+    design = ~ group)
   return(deseq)
 }
 
@@ -146,7 +146,7 @@ format_counts_for_edger <- function(seed, query) {
   merged <- cbind(seed, query)
   rownames(merged) <- rownames(seed)
   group <- c(rep("seed", ncol(seed)), rep("query", ncol(query)))
-  merged <- edgeR::DGEList(counts = merged, group = group)
+  merged <- suppressWarnings(edgeR::DGEList(counts = merged, group = group))
   return(merged)
 }
 
@@ -204,9 +204,9 @@ dispatch_territory <- function(territories, ter_1, ter_2, cells) {
         territories$trial[!territories$trial %in% c(ter_1, ter_2)] <- "other"
     }
     if (!is.null(cells)) {
-        territories$trial[territories$trial %in% ter_1 &&
+        territories$trial[territories$trial %in% ter_1 &
             territories$barcodes %in% cells] <- paste0(ter_1, collapse = " ")
-        territories$trial[territories$trial %in% ter_2 &&
+        territories$trial[territories$trial %in% ter_2 &
             territories$barcodes %in% cells] <- paste0(ter_2, collapse = " ")
     }
     return(territories)
@@ -222,6 +222,10 @@ dispatch_territory <- function(territories, ter_1, ter_2, cells) {
 #' in query group
 #' @param cells cell barcodes
 #' @param verbose logical if progress messages should be outputed
+#' @details This function generates groups for DEG analysis. It creates 
+#' different groups depending on what is being parse to both seed and query. 
+#' This could probably be cleaned up and simplified. Always need to return 
+#' a list though.
 #' @return list with seed group and seed id as well as query group and query id 
 dispatch_deg_group <- function(ter, seed, query, cells, verbose) {
     if (is.null(seed) && is.null(query)) {
@@ -244,35 +248,47 @@ dispatch_deg_group <- function(ter, seed, query, cells, verbose) {
         # Get initial seed territory
         #----------------------------------------------------------------------#
         seed_id <- paste0(seed, collapse = " ")
-        seed <- list(ter[ter$trial %in% seed, "barcodes"])
+        seed <- ter[ter$trial %in% seed, "barcodes"]
         #----------------------------------------------------------------------#
         # Filter query based on seed
         #----------------------------------------------------------------------#
         query_id <- "remaining"
-        query <- list(ter[!ter$barcodes %in% seed, "barcodes"])
+        query <- ter[!ter$barcodes %in% seed, "barcodes"]
+        #----------------------------------------------------------------------#
+        # reformat 
+        #----------------------------------------------------------------------#
+        seed <- list(seed)
+        query <- list(query)
     } else if (is.null(seed) && !is.null(query)) {
         #----------------------------------------------------------------------#
         # if only query we compare query to everything else
         # Get initial query territory
         #----------------------------------------------------------------------#
         query_id <- paste0(query, collapse = " ")
-        query <- list(ter[ter$trial %in% query, "barcodes"])
+        query <- ter[ter$trial %in% query, "barcodes"]
         #----------------------------------------------------------------------#
         # Filter seed based on query
         #----------------------------------------------------------------------#
         seed_id <- "remaning"
-        seed <- list(ter[!ter$barcodes %in% query, "barcodes"])
+        seed <- ter[!ter$barcodes %in% query, "barcodes"]
+        #----------------------------------------------------------------------#
+        # reformat 
+        #----------------------------------------------------------------------#
+        seed <- list(seed)
+        query <- list(query)
     } else {
         #----------------------------------------------------------------------#
         # if get both filter based on both
         #----------------------------------------------------------------------#
         seed_id <- paste0(seed, collapse = " ")
-        seed <- list(ter[ter$trial %in% seed, "barcodes"])
-        #----------------------------------------------------------------------#
-        # Filter query based on seed
-        #----------------------------------------------------------------------#
+        seed <- ter[ter$trial %in% seed, "barcodes"]
         query_id <- paste0(query, collapse = " ")
-        query <- list(ter[ter$trial %in% query, "barcodes"])
+        query <- ter[ter$trial %in% query, "barcodes"]
+        #----------------------------------------------------------------------#
+        # reformat 
+        #----------------------------------------------------------------------#
+        seed <- list(seed)
+        query <- list(query)
     }
     if (!is.null(cells)) {
       seed <-  mapply(check_cells, territory_barcodes = seed,

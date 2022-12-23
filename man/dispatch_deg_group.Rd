@@ -26,3 +26,9 @@ list with seed group and seed id as well as query group and query id
 \description{
 dispatch barcodes to seed and query groups
 }
+\details{
+This function generates groups for DEG analysis. It creates 
+different groups depending on what is being parse to both seed and query. 
+This could probably be cleaned up and simplified. Always need to return 
+a list though.
+}

@@ -17,3 +17,6 @@ DESeq2 object
 \description{
 format counts for DESeq
 }
+\details{
+Always adding a pseudocount of 1
+}

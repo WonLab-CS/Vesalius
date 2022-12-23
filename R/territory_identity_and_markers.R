@@ -94,10 +94,16 @@ identify_markers <- function(vesalius_assay,
   ...) {
     simple_bar(verbose)
     args <- list(...)
+    if (!is(vesalius_assay, "vesalius_assay")) {
+      stop("Unsupported format to identify_markers function \n
+      Please use a vesalius_assay object")
+    }
     #--------------------------------------------------------------------------#
     # First lets get the norm method out and the associated counts
+    # qand check if DEG method is present 
     #--------------------------------------------------------------------------#
     counts <- check_norm(vesalius_assay, norm_method, method, verbose)
+    method <- check_deg_method(method)
     #--------------------------------------------------------------------------#
     # Next let's get the territory data
     #--------------------------------------------------------------------------#
@@ -108,12 +114,14 @@ identify_markers <- function(vesalius_assay,
     # Getting and setting territory categories
     #--------------------------------------------------------------------------#
     buffer <- dispatch_deg_group(ter, seed, query, cells, verbose)
-    if (is.null(buffer$seed) || is.null(buffer$query)) {
-      return(NULL)
+    if (is.null(buffer$seed[[1L]]) || is.null(buffer$query[[1L]])) {
+      return(vesalius_assay)
     }
     #--------------------------------------------------------------------------#
     # buffer will contain seed group(s) and query group(s) as well ids for each
     # group. We can loop over each to get Differentially expressed genes
+    # The loop is here because we assume that if both seed and query are null
+    # the user wants to compare everytyhing to everything.
     #--------------------------------------------------------------------------#
     message_switch("in_assay", verbose,
       comp_type = "Computing DEGs",
@@ -140,7 +148,7 @@ identify_markers <- function(vesalius_assay,
     }
     deg <- do.call("rbind", deg)
     deg <- list(deg)
-    names(deg) <- "DEG"
+    names(deg) <- tail(create_trial_tag(names(vesalius_assay@DEG), "DEG"), 1)
     vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
     data = deg,
     slot = "DEG",
@@ -191,6 +199,13 @@ vesalius_deg <- function(seed,
     #--------------------------------------------------------------------------#
     seed <- check_min_spatial_index(seed, min_spatial_index, seed_id)
     query <- check_min_spatial_index(query, min_spatial_index, query_id)
+
+    #--------------------------------------------------------------------------#
+    # return NULL if either one is NULL
+    #--------------------------------------------------------------------------#
+    if (is.null(seed) || is.null(query)) {
+      return(NULL)
+    }
     #--------------------------------------------------------------------------#
     # testing diff gene expression
     #--------------------------------------------------------------------------#
@@ -246,7 +261,7 @@ vesalius_deg_wilcox <- function(seed, seed_id, query, query_id, params) {
 vesalius_deg_ttest <- function(seed, seed_id, query, query_id, params) {
   buffer <- get_deg_metrics(seed, query, params)
   pvals <- sapply(seq_len(nrow(buffer$seed)), function(idx, seed, query) {
-    return(t.test(seed[idx, ], query[idx, ])$p.value)
+    return(suppressWarnings(t.test(seed[idx, ], query[idx, ])$p.value))
   }, seed = buffer$seed, query = buffer$query)
   deg <- data.frame("genes" = buffer$genes,
     "p_value" = pvals,
@@ -271,13 +286,10 @@ vesalius_deg_ttest <- function(seed, seed_id, query, query_id, params) {
 #' @importFrom stats p.adjust
 vesalius_deg_chisq <- function(seed, seed_id, query, query_id, params) {
   buffer <- get_deg_metrics(seed, query, params)
+  buffer <- check_binary_nature(buffer)
   pvals <- sapply(seq_len(nrow(buffer$seed)), function(idx, seed, query) {
     dat <- cbind(table(seed[idx, ]), table(query[, idx]))
-    if (!identical(dim(dat),c(2,2))){
-      warning("Count data is not binary! 
-        Contingency table for Chi-squared test not in 2 x 2 format")
-    }
-    return(chisq.test(dat)$p.value)
+    return(suppressWarnings(chisq.test(dat)$p.value))
   }, seed = buffer$seed, query = buffer$query)
   deg <- data.frame("genes" = buffer$genes,
     "p_value" = pvals,
@@ -302,13 +314,11 @@ vesalius_deg_chisq <- function(seed, seed_id, query, query_id, params) {
 #' @importFrom stats p.adjust
 vesalius_deg_fisher <- function(seed, seed_id, query, query_id, params) {
   buffer <- get_deg_metrics(seed, query, params)
+  buffer <- check_binary_nature(buffer)
   pvals <- sapply(seq_len(nrow(buffer$seed)), function(idx, seed, query) {
-    dat <- cbind(table(seed[idx, ]), table(query[, idx]))
-    if (!identical(dim(dat),c(2,2))) {
-      stop("Count data is not binary! 
-        Cannot create 2 x 2 contingency table for fisher's exact test")
-    }
-    return(fisher.test(dat)$p.value)
+    dat <- cbind(table(seed[idx, ]), table(query[idx, ]))
+    return(suppressWarnings(fisher.test(dat,
+      simulate.p.value = TRUE)$p.value))
   }, seed = buffer$seed, query = buffer$query)
   deg <- data.frame("genes" = buffer$genes,
     "p_value" = pvals,
@@ -347,12 +357,14 @@ vesalius_deg_deseq2 <- function(seed, seed_id, query, query_id, params) {
     test = "LRT",
     useT = TRUE,
     minmu = 1e-6,
-    minReplicatesForReplace = Inf)
+    minReplicatesForReplace = Inf,
+    fitType = "local",
+    reduced = ~1,
+    quiet = TRUE)
   deg <- DESeq2::results(
     object = deg,
     contrast = c("group", "seed", "query"),
-    alpha = params$pval
-  )
+    alpha = params$pval)
   deg <- data.frame("genes" = rownames(deg),
     "p_value" = deg$pvalue,
     "p_value_adj" = deg$padj,
@@ -393,9 +405,16 @@ vesalius_deg_edger <- function(seed,
   #--------------------------------------------------------------------------#
   # run edgeR - not sure if I could optimise these paramters
   # recommaned default - not much is said about single cell
-  # TODO look into best paramters for edgeR for single cell data 
+  # TODO look into best paramters for edgeR for single cell data
+  # at the moment running try - some subset dont work not sure why
+  # error is not informative. will skip territories if that occurs
   #--------------------------------------------------------------------------#
-  deg <- edgeR::calcNormFactors(deg)
+  deg <- try(edgeR::calcNormFactors(deg), silent = TRUE)
+  if (is(deg, "try-error")) {
+    warning(paste("Error in edgeR for", seed_id, "VS", query_id, "\n",
+      "Skipping territories and returning NULL"))
+    return(NULL)
+  }
   design <- stats::model.matrix(~deg@.Data[[2]]$group)
   deg <- edgeR::estimateDisp(deg, design)
   if (type == "QLF") {
@@ -440,13 +459,13 @@ vesalius_deg_logit <- function(seed, seed_id, query, query_id, params) {
   pvals <- sapply(seq_len(nrow(merged[[1L]])), function(idx, merged) {
     model_data <- cbind("gene" = merged$merged[idx, ], merged$seed_query_info)
     gene_model <- as.formula("group ~ gene")
-    gene_model <- glm(formula = gene_model,
+    gene_model <- suppressWarnings(glm(formula = gene_model,
       data = model_data,
-      family = "binomial")
+      family = "binomial"))
     null_model <- as.formula("group ~ 1")
-    null_model <- glm(formula = null_model,
+    null_model <- suppressWarnings(glm(formula = null_model,
       data = model_data,
-      family = "binomial")
+      family = "binomial"))
     return(lrtest(gene_model, null_model)$Pr[2])
   }, merged = merged)
    deg <- data.frame("genes" = buffer$genes,

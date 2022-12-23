@@ -286,6 +286,25 @@ check_isolation_method <- function(method) {
     }
 }
 
+#' check if DEG method is one of the available options
+#' @param method string - DEG method
+#' @return DEG method or error
+check_deg_method <- function(method) {
+    if (any(!method %in% c("wilcox",
+        "t.test",
+        "chisq",
+        "fisher.exact",
+        "DESeq2",
+        "QLF",
+        "LRT",
+        "logit"))) {
+        stop("Territory identity  method provided do not match available options \n
+            Select from: \n
+            wilcox, t.test, chisq, fisher.exact, DESeq2, QLF, LRT, or logit")
+    } else {
+        return(method)
+    }
+}
 #' check tensor compression 
 #' @param locs rle output of coordinate compression
 #' @details Here we just want to check if the output is reasonable or not
@@ -490,7 +509,7 @@ check_norm <- function(vesalius_assay,
             "Using first trial"))
         trial <- trial[1L]
     }
-    if (!is.null(method[1L]) && method[1L] %in% c("DEseq2", "QLF", "LRT")) {
+    if (!is.null(method[1L]) && method[1L] %in% c("DESeq2", "QLF", "LRT")) {
         message_switch("norm_check", verbose, method = method)
         if (norm_method == "empty") {
             stop("No raw counts provided! 
@@ -518,7 +537,8 @@ check_norm <- function(vesalius_assay,
 check_cells <- function(territory_barcodes, ter, cell_barcodes, verbose) {
     common <- intersect(territory_barcodes, cell_barcodes)
     if (length(common) == 0) {
-        message_switch("no_cell", verbose, ter = ter)
+        warning(paste0("No cells of interest are present in ", ter,
+            "\n Returning NULL\n"))
         common <- NULL
     }
     return(common)
@@ -531,7 +551,7 @@ check_cells <- function(territory_barcodes, ter, cell_barcodes, verbose) {
 #' @param id string - id of group 
 check_min_spatial_index <- function(group, min_spatial_index, id) {
     if (is.null(dim(group)) || dim(group)[2L] < min_spatial_index) {
-        stop(paste0("Territory ", id, " does not contain enough cells.\n
+        warning(paste0("Territory ", id, " does not contain enough cells.\n
         Territory will be skipped"), call. = FALSE)
         return(NULL)
     } else {
@@ -544,17 +564,52 @@ check_min_spatial_index <- function(group, min_spatial_index, id) {
 #' @param group vector indicating which territories should be selected
 #' from territory data frame.
 #' @return a vector of territories that are present in territory data frame
+#' @importFrom infix %||%
 check_group_value <- function(territories, group) {
+    #-------------------------------------------------------------------------#
+    # If NULL is parsed as group - return NULL 
+    #-------------------------------------------------------------------------#
+    if (is.null(group)){
+        return(NULL)
+    }
     present <- unique(territories$trial)
     group_sub <- group[group %in% present]
     if (length(group_sub) == 0) {
         stop(paste("Territory", group, "is not present in the selected trial!"))
     } else if (length(group_sub) < length(group)) {
-        warning(paste("Only group territory(ies)",
-            paste(group_sub, collaspe = " "),
-            "is (are) present in the selected trial. Only those will be used"))
+        tmp <- paste(group_sub, collapse = " ")
+        warning(paste("Only group territory(ies)", tmp,
+            "is (are) present in the selected trial. \n
+            Vesalius will discard the other!"))
         return(group_sub)
     } else {
         return(group_sub)
     }
 }
+
+#' check binary nature
+#' @param buffer list containing output of get_deg_metrics
+#' @param test string - test type of scope
+#' @details For now we do this check but might be depreciated in the future.
+#' @return buffer list
+check_binary_nature <- function(buffer) {
+    seed <- apply(buffer$seed, 1, table)
+    query <- apply(buffer$query, 1, table)
+    #-------------------------------------------------------------------------#
+    # first we check if there are more than 2 values 
+    # don't need to check those value after 
+    #-------------------------------------------------------------------------#
+    seed <- sapply(seed, function(x) {
+        return(length(x) > 2)
+    })
+    query <- sapply(query, function(x) {
+        return(length(x) > 2)
+    })
+    
+    if (sum(seed) > 0 || sum(query) > 0) {
+        stop("Count data is not binary! 
+            Cannot create 2 x 2 contingency table")
+    }
+    return(buffer)
+}
+

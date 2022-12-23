@@ -195,51 +195,6 @@ search_log <- function(vesalius_assay,
     }
 }
 
-#' apply function to slots in object
-#' @param x S4 class object
-#' @param func closure - function to be applied to slot
-#' @param ... any other argument to parse to func
-#' @importFrom methods slot slotNames
-slot_apply <- function(x, func, ...) {
-    cl <- class(x)
-    result <- list()
-    for (i in slotNames(cl)) {
-        result[[i]] <- func(slot(x, i), ...)
-    }
-    return(result)
-}
-
-#' get specific slot out of object if nested in list
-#' @param object list containing S4 class objects
-#' @param slot_name string name of slot to extract
-#' @importFrom methods slot
-slot_get <- function(object, slot_name) {
-    out <- list()
-    for (i in seq_along(object)) {
-        out[[i]] <- slot(object[[i]], slot_name)
-    }
-    return(out)
-}
-
-
-
-#' assing value to slot in object if nested in list
-#' @param object list containing S4 class objects
-#' @param sl string - slot name 
-#' @param input data that should be assign to slot in S4 object
-#' @importFrom methods slot slot<-
-slot_assign <- function(object, sl, input) {
-    for (i in sl) {
-        if (length(slot(object, i)) != 0) {
-          slot(object, i) <- c(slot(object, i), input)
-        } else {
-          slot(object, i) <- input
-        }
-    }
-    return(object)
-}
-
-
 
 #' create a trail tag name 
 #' @param trials character vector containing names of trials 
@@ -344,8 +299,10 @@ get_territories <- function(vesalius_assay) {
 #' @rdname get_markers
 #' @export
 get_markers <- function(vesalius_assay, trial = "last") {
-    deg <- vesalius_assay@DEG %||%
-        stop("No DEGs have been computed!")
+    if (length(vesalius_assay@DEG) == 0) {
+         stop("No DEGs have been computed!")
+    }
+    deg <- vesalius_assay@DEG
     if (trial == "last") {
         trial <- tail(names(deg), 1)
         return(deg[[trial]])

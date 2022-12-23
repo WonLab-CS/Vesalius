@@ -65,6 +65,10 @@ territory_morphing <- function(vesalius_assay,
     # check territoriy values and trial
     # build image data frame with tile info
     #------------------------------------------------------------------------#
+    if (!is(vesalius_assay, "vesalius_assay")) {
+      stop("Unsupported format to territory morphing function \n
+      Please use a vesalius_assay object")
+    }
     territory <- territory %||%
       stop("No specified territory for territory morphing!")
     adjusted_territory_values <- min(territory)
@@ -207,6 +211,10 @@ layer_territory <- function(vesalius_assay,
   morphology_factor = 0,
   verbose = TRUE) {
   simple_bar(verbose)
+  if (!is(vesalius_assay, "vesalius_assay")) {
+      stop("Unsupported format to layer_territory function \n
+      Please use a vesalius_assay object")
+    }
   #--------------------------------------------------------------------------#
   # This might be a bit messier but i'm just going to make a call to
   # territoryMorphing function

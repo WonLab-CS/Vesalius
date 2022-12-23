@@ -12,6 +12,12 @@ test_that("Vesalius build single assay", {
     expect_s4_class(build_vesalius_assay(coordinates,
        as.matrix(counts)),
         "vesalius_assay")
+    expect_s4_class(build_vesalius_assay(as.matrix(coordinates),
+       counts),
+        "vesalius_assay")
+    tmp <- coordinates
+    colnames(tmp) <- LETTERS[1:3]
+    expect_error(build_vesalius_assay(tmp, counts))
     # checking normal builds with unsuported formats
     expect_error(build_vesalius_assay(coordinates, "counts"))
     expect_error(build_vesalius_assay(coordinates, 2))
@@ -24,8 +30,16 @@ test_that("Vesalius build single assay", {
     expect_error(build_vesalius_assay())
     expect_error(build_vesalius_assay(counts = counts))
 
-    ## Check barcode matching 
-
+    # checking coordinates options 
+    expect_s4_class(build_vesalius_assay(coordinates,
+        adjust_coordinates = "norm"),
+        "vesalius_assay")
+    expect_error(build_vesalius_assay(coordinates,
+        adjust_coordinates = "funky"))
+    
+    #testing output
+    tmp <- build_vesalius_assay(coordinates, counts)
+    expect_output(show(tmp))
 })
 
 test_that("Adding counts to vesalius_assay", {
@@ -96,9 +110,15 @@ test_that("Adding custom embeddings", {
     expect_error(add_embeddings(vesalius, embeds))
     # Adding rownames
     rownames(embeds) <- unique(vesalius@tiles$barcodes)
+
     # expect valid object now that you have rownames
     expect_s4_class(add_embeddings(vesalius, embeds),
         "vesalius_assay")
+    expect_s4_class(add_embeddings(vesalius, as.data.frame(embeds)),
+        "vesalius_assay")
+    # adding duplicated colnames
+    colnames(embeds) <- rep("A", 30)
+    #expect_error(add_embeddings(vesalius, embeds))
     # We expect the same thing even if it is truncated
     expect_warning(add_embeddings(vesalius, embeds[-(1:20), ]))
     # Add sanity checks to make sure that barcodes overlap

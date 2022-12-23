@@ -16,6 +16,8 @@ test_that("Vesalius assay work as expected with reg", {
     # expect s4 if you make call to another embedding
     expect_s4_class(regularise_image(vesalius, embedding = "PCA"),
         "vesalius_assay")
+    # expect error if unkown input to embedding
+    expect_error(smooth_image(vesalius, embedding = "funky"))
     # expect warning if more than one embedding contain the same name
     tmp <- generate_embeddings(vesalius)
     expect_warning(regularise_image(tmp, embedding = "PCA"))
@@ -44,6 +46,8 @@ test_that("Vesalius assay work as expected with smooth", {
     # expect s4 if you make call to another embedding
     expect_s4_class(smooth_image(vesalius, embedding = "PCA"),
         "vesalius_assay")
+    # expect error if unkown input to embedding
+    expect_error(smooth_image(vesalius, embedding = "funky"))
     # expect warning if more than one embedding contain the same name
     tmp <- generate_embeddings(vesalius)
     expect_warning(smooth_image(tmp, embedding = "PCA"))
@@ -90,6 +94,11 @@ test_that("smoothing works as expected", {
         sigma = seq(1, 3),
         across_levels = "mean"),
         "vesalius_assay")
+    # expect error if incorrect input to across levels
+    expect_error(smooth_image(vesalius, method = c("iso", "box"),
+        box = seq(3, 12),
+        sigma = seq(1, 3),
+        across_levels = "funky"))
 })
 
 test_that("Vesalius assay work as expected with eq", {
@@ -103,6 +112,8 @@ test_that("Vesalius assay work as expected with eq", {
     # expect s4 if you make call to another embedding
     expect_s4_class(equalize_image(vesalius, embedding = "PCA"),
         "vesalius_assay")
+    # expect error if unkown input to embedding
+    expect_error(smooth_image(vesalius, embedding = "funky"))
     # expect warning if more than one embedding contain the same name
     tmp <- generate_embeddings(vesalius)
     expect_warning(equalize_image(tmp, embedding = "PCA"))
@@ -139,6 +150,8 @@ test_that("Vesalius assay work as expected in image seg", {
     # expect s4 if you make call to another embedding
     expect_s4_class(segment_image(vesalius, embedding = "PCA"),
         "vesalius_assay")
+    # expect error if unkown input to embedding
+    expect_error(smooth_image(vesalius, embedding = "funky"))
     # expect warning if more than one embedding contain the same name
     tmp <- generate_embeddings(vesalius)
     expect_warning(segment_image(tmp, embedding = "PCA"))
@@ -171,4 +184,12 @@ test_that("Vesalius assay works as expect with isolate ter", {
     expect_error(isolate_territories(vesalius))
     tmp <- segment_image(vesalius)
     expect_s4_class(isolate_territories(tmp), "vesalius_assay")
+    tmp <- segment_image(tmp)
+    #expect warning if more than one trial exists and same name
+    expect_warning(isolate_territories(tmp, trial = "Segment"))
+    expect_error(isolate_territories(tmp, trial = "funky"))
+    # expect error if input to method is not available 
+    expect_error(isolate_territories(tmp, method = "funky"))
+    tmp <- isolate_territories(tmp)
+    expect_output(show(tmp))
 })
