@@ -4,13 +4,7 @@
 \alias{format_ves_to_c}
 \title{convert vesalius_assay to cimg images}
 \usage{
-format_ves_to_c(
-  vesalius_assay,
-  dims,
-  embed = "last",
-  correct_background = TRUE,
-  verbose = TRUE
-)
+format_ves_to_c(vesalius_assay, dims, embed = "last", verbose = TRUE)
 }
 \arguments{
 \item{vesalius_assay}{a vesalius_Assay object}
@@ -20,9 +14,6 @@ embeddings.}
 
 \item{embed}{character indicating which embedding should be selected.
 Default uses last embedding produced}
-
-\item{correct_background}{logical indicating if image background should be
-corrected to reflect median color value or left as black}
 
 \item{verbose}{logical if progress message should be outputed}
 }

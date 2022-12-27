@@ -846,7 +846,7 @@ embed_pcal <- function(counts,
       }, mat = mat, pca = pca[, p], future.seed = TRUE)
       bars <- unlist(bars)
 
-      colour_matrix[, p] <- norm_pixel(bars,"minmax")
+      colour_matrix[, p] <- norm_pixel(bars, "minmax")
     }
     colour_matrix <- list(as.matrix(colour_matrix))
     names(colour_matrix) <- "PCA_L"

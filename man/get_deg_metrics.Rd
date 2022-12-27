@@ -21,4 +21,5 @@ Computes basic metrics such as fold change
 and percent of cells containing each gene. This functions 
 is used to filter out genes so we don't run differential 
 expression on all genes.
+importFrom pwr pwr.2p2n.test
 }

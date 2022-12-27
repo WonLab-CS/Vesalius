@@ -10,17 +10,15 @@
 #' embeddings.
 #' @param embed character indicating which embedding should be selected.
 #' Default uses last embedding produced
-#' @param correct_background logical indicating if image background should be
-#' corrected to reflect median color value or left as black
 #' @param verbose logical if progress message should be outputed
 #' @return list of cimg images
 #' @importFrom dplyr right_join select
 #' @importFrom stats median na.exclude
 #' @importFrom imager as.cimg
+#' @importFrom future.apply future_lapply
 format_ves_to_c <- function(vesalius_assay,
   dims,
   embed = "last",
-  correct_background = TRUE,
   verbose = TRUE) {
     #--------------------------------------------------------------------------#
     # For this function we will not create a "method". There are too many
@@ -35,45 +33,38 @@ format_ves_to_c <- function(vesalius_assay,
     # it is always applied to each "channel" separately - it will be so
     # much easier to just consider everything as gray scale for this
     #--------------------------------------------------------------------------#
-    image_list <- list()
     message_switch("vtc", verbose)
-    for (i in seq_along(dims)) {
-      #------------------------------------------------------------------------#
-      # First we create a cimg data frame template from embedding values
-      #------------------------------------------------------------------------#
-      embeds <- embeddings[, dims[i]]
-      embeds <- data.frame(names(embeds), embeds)
-      colnames(embeds) <- c("barcodes", as.character(dims[i]))
-      cimg <- right_join(tiles, embeds, by = "barcodes")
-      colnames(cimg) <- c("barcodes", "x", "y", "origin", "value")
-      cimg <- na.exclude(cimg)
-      x <- max(cimg$x)
-      y <- max(cimg$y)
-      #------------------------------------------------------------------------#
-      # now we can convert that data frame to a cimg and correct background if
-      # required. Note that we are going back and forth between formats
-      # This is done so we can fill in the borders and empty space in the array
-      # Also need to be done step by step. Using pipe does not work
-      #------------------------------------------------------------------------#
-      if (correct_background) {
-        cimg_tmp <- cimg %>%
-          select(c("x", "y", "value"))
-        cimg_tmp <- suppressWarnings(as.cimg(cimg_tmp, x = x, y = y))
-        cimg_tmp <- as.data.frame(cimg_tmp)
-        non_img <- paste0(cimg_tmp$x, "_", cimg_tmp$y)
-        in_img <- paste0(cimg$x, "_", cimg$y)
-        # Median value for background - Other metrics??
-        cimg_tmp[!non_img %in% in_img, "value"] <- median(cimg$value)
-        image_list[[i]] <- suppressWarnings(
-          as.cimg(cimg_tmp[, c("x", "y", "value")], x = x, y = y))
-      } else {
-        image_list[[i]] <- suppressWarnings(
-          as.cimg(cimg[, c("x", "y", "value")], x = x, y = y))
-      }
-  }
-  return(image_list)
+    image_list <- future_lapply(seq_along(dims), future_ves_to_cimg,
+      embeddings,
+      dims,
+      tiles,
+      future.seed = TRUE)
+    return(image_list)
 }
 
+#' convert ves embedding to image 
+#' @param i index of embedding to use
+#' @param embeddings matrix - embedding matrix
+#' @param dims dimensions to use
+#' @param tiles tile data frame used to reconstruct images
+#' @details using this as a way to run this section in parallel
+#' way to slow otherwise.
+#' @return cimg object of embedding
+#' @importFrom dplyr right_join select
+#' @importFrom stats median na.exclude
+#' @importFrom imager as.cimg index.coord
+future_ves_to_cimg <- function(i, embeddings, dims, tiles) {
+  embeds <- embeddings[, dims[i]]
+  embeds <- data.frame(names(embeds), embeds)
+  colnames(embeds) <- c("barcodes", as.character(dims[i]))
+  cimg <- right_join(tiles, embeds, by = "barcodes")
+  colnames(cimg) <- c("barcodes", "x", "y", "origin", "value")
+  cimg <- na.exclude(cimg)
+  im <- as.cimg(array(median(cimg$value), c(max(cimg$x), max(cimg$y))))
+  ind <- imager:::index.coord(im, cimg[, c("x", "y"), drop = FALSE])
+  im[ind] <- cimg[["value"]]
+  return(im)
+}
 
 #' convert cimg list to vesalius object embedding
 #' @param cimg cimg image list

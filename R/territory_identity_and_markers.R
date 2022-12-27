@@ -243,6 +243,7 @@ vesalius_deg_wilcox <- function(seed, seed_id, query, query_id, params) {
     "seed_pct" = buffer$seed_pct,
     "query_pct" = buffer$query_pct,
     "fold_change" = buffer$fc,
+    "effect_size" = buffer$effect_size,
     "seed" = rep(seed_id, length(pvals)),
     "query" = rep(query_id, length(pvals)))
   deg <- filter(deg, p_value_adj <= params$pval)
@@ -269,6 +270,7 @@ vesalius_deg_ttest <- function(seed, seed_id, query, query_id, params) {
     "seed_pct" = buffer$seed_pct,
     "query_pct" = buffer$query_pct,
     "fold_change" = buffer$fc,
+    "effect_size" = buffer$effect_size,
     "seed" = rep(seed_id, length(pvals)),
     "query" = rep(query_id, length(pvals)))
   deg <- filter(deg, p_value_adj <= params$pval)
@@ -297,6 +299,7 @@ vesalius_deg_chisq <- function(seed, seed_id, query, query_id, params) {
     "seed_pct" = buffer$seed_pct,
     "query_pct" = buffer$query_pct,
     "fold_change" = buffer$fc,
+    "effect_size" = buffer$effect_size,
     "seed" = rep(seed_id, length(pvals)),
     "query" = rep(query_id, length(pvals)))
   deg <- filter(deg, p_value_adj <= params$pval)
@@ -326,6 +329,7 @@ vesalius_deg_fisher <- function(seed, seed_id, query, query_id, params) {
     "seed_pct" = buffer$seed_pct,
     "query_pct" = buffer$query_pct,
     "fold_change" = buffer$fc,
+    "effect_size" = buffer$effect_size,
     "seed" = rep(seed_id, length(pvals)),
     "query" = rep(query_id, length(pvals)))
   deg <- filter(deg, p_value_adj <= params$pval)
@@ -371,6 +375,7 @@ vesalius_deg_deseq2 <- function(seed, seed_id, query, query_id, params) {
     "seed_pct" = buffer$seed_pct,
     "query_pct" = buffer$query_pct,
     "fold_change" = deg$log2FoldChange,
+    "effect_size" = buffer$effect_size,
     "seed" = rep(seed_id, nrow(deg)),
     "query" = rep(query_id, nrow(deg)))
   deg <- filter(deg, p_value_adj <= params$pval)
@@ -431,6 +436,7 @@ vesalius_deg_edger <- function(seed,
     "seed_pct" = buffer$seed_pct,
     "query_pct" = buffer$query_pct,
     "fold_change" = deg$logFC,
+    "effect_size" = buffer$effect_size,
     "seed" = rep(seed_id, nrow(deg)),
     "query" = rep(query_id, nrow(deg)))
   deg <- filter(deg, p_value_adj <= params$pval)
@@ -474,6 +480,7 @@ vesalius_deg_logit <- function(seed, seed_id, query, query_id, params) {
     "seed_pct" = buffer$seed_pct,
     "query_pct" = buffer$query_pct,
     "fold_change" = buffer$fc,
+    "effect_size" = buffer$effect_size,
     "seed" = rep(seed_id, length(pvals)),
     "query" = rep(query_id, length(pvals)))
   deg <- filter(deg, p_value_adj <= params$pval)
@@ -488,7 +495,9 @@ vesalius_deg_logit <- function(seed, seed_id, query, query_id, params) {
 #' @details Computes basic metrics such as fold change 
 #' and percent of cells containing each gene. This functions 
 #' is used to filter out genes so we don't run differential 
-#' expression on all genes.
+#' expression on all genes. We also compute an effct size estimate 
+#' by running a power analysis with 2 uneven groups 
+#' importFrom pwr pwr.2p2n.test
 get_deg_metrics <- function(seed, query, params) {
   #--------------------------------------------------------------------------#
   # this asumes that we receive normalised counts
@@ -497,6 +506,11 @@ get_deg_metrics <- function(seed, query, params) {
   seed_pct <- rowSums(seed > 0) / ncol(seed)
   query_pct <- rowSums(query > 0) / ncol(query)
   fc <- rowMeans(seed) - rowMeans(query)
+  effect_size <- pwr::pwr.2p2n.test(h = NULL,
+    n1 = ncol(seed),
+    n2 = ncol(query),
+    sig.level = params$pval,
+    power = 0.8)$h
   #--------------------------------------------------------------------------#
   # Dropping genes that don't fit the logFC and pct criteria
   # this can be handle by edgeR as well but let's stay consistent here
@@ -512,6 +526,7 @@ get_deg_metrics <- function(seed, query, params) {
       "query" = query[keep, ],
       "seed_pct" = seed_pct[keep],
       "query_pct" = query_pct[keep],
-      "fc" = fc[keep]))
+      "fc" = fc[keep],
+      "effect_size" = rep(effect_size, sum(keep))))
 
 }

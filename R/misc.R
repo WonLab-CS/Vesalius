@@ -46,7 +46,7 @@ detect_edges <- function(img) {
 #' @param type string "minmax" or "quantileNorm"
 #' @details how pixels should be normalised 
 #' At the moment only miman is used. Quantile needs to be tested.
-norm_pixel <- function(embeds, type = c("minmax", "quantileNorm")) {
+norm_pixel <- function(embeds, type = c("minmax", "quantile_norm")) {
     #--------------------------------------------------------------------------#
     # Normalise pixels values
     # at the moment i am only using min max but just in case
@@ -54,7 +54,7 @@ norm_pixel <- function(embeds, type = c("minmax", "quantileNorm")) {
     #--------------------------------------------------------------------------#
     embeds <- switch(type[1L],
                      "minmax" = min_max(embeds),
-                     "quantileNorm" = quantile_norm(embeds))
+                     "quantile_norm" = quantile_norm(embeds))
     return(embeds)
 }
 
@@ -66,16 +66,3 @@ min_max <- function(x) {
   return((x - min(x)) / (max(x) - min(x)))
 }
 
-#' quantile normalisation 
-#' @param x numeric vector
-#' @return quatile normalised vector 
-quantile_norm <- function(x) {
-  x_rank <- apply(x, 2, rank, ties.method = "min")
-  x <- data.frame(apply(x, 2, sort))
-  x_mean <- apply(x, 1, mean)
-  x_final <- apply(x_rank, 2, function(idx, m) {
-    return(m[idx])
-  }, x_mean)
-  rownames(x_final) <- rownames(x)
-  return(x_final)
-}

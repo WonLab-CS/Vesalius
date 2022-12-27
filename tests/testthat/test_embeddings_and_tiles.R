@@ -74,7 +74,8 @@ test_that("Adjusting counts when counts added manually", {
         "vesalius_assay")
     vesalius <- add_counts(vesalius, counts, counts)
     expect_s4_class(generate_tiles(vesalius,
-        tensor_resolution = 0.7))
+        tensor_resolution = 0.7),
+        "vesalius_assay")
 
 })
 # Loading data from the packages

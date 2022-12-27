@@ -49,7 +49,8 @@ Imports:
     dplyr,
     edgeR,
     ggplot2,
-    igraph
+    igraph,
+    pwr
 Suggests:
     knitr,
     RUnit,

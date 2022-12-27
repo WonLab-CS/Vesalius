@@ -313,20 +313,21 @@ check_deg_method <- function(method) {
 #' Set warning if compression is set to less 10% of total points
 #' @return rle out of coordinate compression
 check_tensor_compression <- function(locs) {
-    if (length(locs$values) < 0.1 * sum(locs$length) && 
-        !length(locs$values) < 2) {
-        warning("Tensor resolution has been reduced as to only retain
-        less than 10% of original spatial coordinates")
-    }
     #-------------------------------------------------------------------------#
     # Essentially throw error if you have a single coordinate left
     # keeping it with the < 2 just in case we decide that we want to be 
     # more restrictive and only allow a in of 10 coordinates for example 
     #-------------------------------------------------------------------------# 
     if (length(locs$values) < 2) {
-        stop("Tensor compression yielded too few coordinates!
+        stop("Tensor compression yielded a single coordinate!
             Consider increasing the tensor_resolution.")
     }
+    if (length(locs$values) < 0.1 * sum(locs$length) && 
+        !length(locs$values) < 2) {
+        warning("Tensor resolution has been reduced as to only retain
+        less than 10% of original spatial coordinates")
+    }
+    
     return(locs)
 }
 
