@@ -307,7 +307,7 @@ get_markers <- function(vesalius_assay, trial = "last") {
         trial <- tail(names(deg), 1)
         return(deg[[trial]])
     } else {
-        in_deg <- grep(pattern = trial, x = names(deg))
+        in_deg <- grep(pattern = paste0("^", trial, "$"), x = names(deg))
         if (length(in_deg) == 0) {
             stop(paste(deparse(substitute(trial)),
                 ": Unknown embedding selected!"))

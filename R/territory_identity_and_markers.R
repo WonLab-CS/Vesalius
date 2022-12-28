@@ -404,7 +404,7 @@ vesalius_deg_edger <- function(seed,
   seed <- buffer$seed
   query <- buffer$query
   #--------------------------------------------------------------------------#
-  # Formatting to edgeR specifications 
+  # Formatting to edgeR specifications
   #--------------------------------------------------------------------------#
   deg <- format_counts_for_edger(seed, query)
   #--------------------------------------------------------------------------#
@@ -414,12 +414,7 @@ vesalius_deg_edger <- function(seed,
   # at the moment running try - some subset dont work not sure why
   # error is not informative. will skip territories if that occurs
   #--------------------------------------------------------------------------#
-  deg <- try(edgeR::calcNormFactors(deg), silent = TRUE)
-  if (is(deg, "try-error")) {
-    warning(paste("Error in edgeR for", seed_id, "VS", query_id, "\n",
-      "Skipping territories and returning NULL"))
-    return(NULL)
-  }
+  deg <- edgeR::calcNormFactors(deg)
   design <- stats::model.matrix(~deg@.Data[[2]]$group)
   deg <- edgeR::estimateDisp(deg, design)
   if (type == "QLF") {
@@ -430,6 +425,8 @@ vesalius_deg_edger <- function(seed,
     mod_fit <- edgeR::glmLRT(fit)
   }
   deg <- edgeR::topTags(mod_fit, n = nrow(seed))@.Data[[1]]
+  ori_ord <- match(buffer$genes, rownames(deg))
+  deg <- deg[ori_ord, ]
   deg <- data.frame("genes" = rownames(deg),
     "p_value" = deg$PValue,
     "p_value_adj" = deg$FDR,

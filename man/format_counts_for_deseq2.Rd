@@ -18,5 +18,7 @@ DESeq2 object
 format counts for DESeq
 }
 \details{
-Always adding a pseudocount of 1
+Always adding a pseudocount of 1 to avoid issues
+with 0 counts. We also force coercion to int since DESeq does
+not handle numerics nor does it do internal coersion.
 }

@@ -369,20 +369,24 @@ check_embedding_selection <- function(vesalius_assay, embed, dims) {
     if (embed == "last") {
         embeddings <- vesalius_assay@active
     } else {
-        in_col <- grep(pattern = embed, x = names(vesalius_assay@embeddings))
+        in_col <- grep(pattern = paste0("^", embed, "$"),
+            x = names(vesalius_assay@embeddings))
         if (length(in_col) == 0) {
             stop(paste(deparse(substitute(embed)),
                 ": Unknown embedding selected!"))
         } else if (length(in_col) > 1) {
             trial <- grep(x = names(vesalius_assay@embeddings),
-                pattern = embed,
+                pattern = paste0("^", embed, "$"),
                 value = TRUE)
             warning(paste("More than one trial contains that name: \n",
                 paste(trial, collapse = " ", sep = " "),
                 "\nUsing first trial"))
             embeddings <- vesalius_assay@embeddings[[trial[1L]]]
         } else {
-            embeddings <- vesalius_assay@embeddings[[in_col]]
+            trial <- grep(x = names(vesalius_assay@embeddings),
+                pattern = paste0("^", embed, "$"),
+                value = TRUE)
+            embeddings <- vesalius_assay@embeddings[[trial]]
         }
     }
     #--------------------------------------------------------------------------#
@@ -425,14 +429,18 @@ check_territory_trial <- function(vesalius_assay, trial) {
         pattern = trial)) == 0) {
       stop(paste(deparse(substitute(trial)), "is not in territory data frame"))
     } else if (length(grep(x = colnames(vesalius_assay@territories),
-        pattern = trial)) > 1) {
+        pattern = paste0("^", trial, "$"))) > 1) {
         trial <- grep(x = colnames(vesalius_assay@territories),
-            pattern = trial,
+            pattern = paste0("^", trial, "$"),
             value = TRUE)
         warning(paste("More than one trial contains that name: \n",
             paste(trial, collapse = " ", sep = " "),
             "\nUsing first trial"))
         trial <- trial[1L]
+    } else {
+        trial <- grep(x = colnames(vesalius_assay@territories),
+            pattern = paste0("^", trial, "$"),
+            value = TRUE)
     }
     territories <- territories[, c("barcodes", "x", "y", trial)]
     colnames(territories) <- c("barcodes", "x", "y", "trial")
@@ -464,14 +472,18 @@ check_segment_trial <- function(vesalius_assay, trial = "last") {
             paste(deparse(substitute(trial)), "is not in territory data frame")
         )
     } else if (length(grep(x = colnames(vesalius_assay@territories),
-        pattern = trial)) > 1) {
+        pattern = paste0("^", trial, "$"))) > 1) {
         trial <- grep(x = colnames(vesalius_assay@territories),
-            pattern = trial,
+            pattern = paste0("^", trial, "$"),
             value = TRUE)
         warning(paste("More than one trial contains that name: \n",
             paste(trial, collapse = " ", sep = " "),
             "\nUsing first trial"))
         trial <- trial[1L]
+    } else {
+        trial <- grep(x = colnames(vesalius_assay@territories),
+            pattern = paste0("^", trial, "$"),
+            value = TRUE)
     }
     territories <- territories[, c("barcodes", "x", "y", trial)]
     colnames(territories) <- c("barcodes", "x", "y", "segment")
@@ -499,17 +511,22 @@ check_norm <- function(vesalius_assay,
         stop("Cannot find any counts in vesalius assay!")
     }
     if (norm_method == "last") {
-        norm_method <- get_active_count_tag(vesalius_assay)
+        trial <- get_active_count_tag(vesalius_assay)
     } else if (length(grep(norm_method, names(counts))) == 0) {
         stop(
             paste0(deparse(substitute(norm_method)), "is not in count list!")
         )
-    } else if (length(grep(norm_method, names(counts))) > 1) {
-        trial <- grep(norm_method, names(counts), value = TRUE)
+    } else if (length(grep(paste0("^", norm_method, "$"),
+        names(counts))) > 1) {
+        trial <- grep(paste0("^", norm_method, "$"),
+            names(counts), value = TRUE)
         warning(paste("More than one trial contains that name: \n",
             paste(trial, collapse = " ", sep = " "),
             "Using first trial"))
         trial <- trial[1L]
+    } else {
+        trial <-  trial <- grep(paste0("^", norm_method, "$"),
+            names(counts), value = TRUE)
     }
     if (!is.null(method[1L]) && method[1L] %in% c("DESeq2", "QLF", "LRT")) {
         message_switch("norm_check", verbose, method = method)
@@ -521,7 +538,7 @@ check_norm <- function(vesalius_assay,
         counts <- counts[["raw"]]
         counts <- as.matrix(counts)
     } else {
-        counts <- as.matrix(counts[[norm_method]])
+        counts <- as.matrix(counts[[trial]])
     }
     return(counts)
 }
@@ -607,7 +624,6 @@ check_binary_nature <- function(buffer) {
     query <- sapply(query, function(x) {
         return(length(x) > 2)
     })
-    
     if (sum(seed) > 0 || sum(query) > 0) {
         stop("Count data is not binary! 
             Cannot create 2 x 2 contingency table")
@@ -615,3 +631,18 @@ check_binary_nature <- function(buffer) {
     return(buffer)
 }
 
+
+#'check_for_zero_counts 
+#' check which barcodes contain all 0 counts and filter
+#' @param counts count matrix 
+#' @return trimmed count matrix
+check_for_zero_counts <- function(counts) {
+    zeros <- apply(counts, 2, sum) == 0
+    if (sum(zeros) > 0) {
+        warning(paste("Trimming count matrix!",
+        sum(zeros),
+        "spatial indices do not contain any counts for selected genes"))
+    }
+    counts <- counts[, !zeros]
+    return(counts)
+}

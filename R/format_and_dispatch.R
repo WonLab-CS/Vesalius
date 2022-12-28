@@ -110,19 +110,22 @@ format_c_to_ves <- function(cimg,
 #' format counts for DESeq
 #' @param seed seed count matrix
 #' @param query query count matrix
-#' @details Always adding a pseudocount of 1 
+#' @details Always adding a pseudocount of 1 to avoid issues
+#' with 0 counts. We also force coercion to int since DESeq does
+#' not handle numerics nor does it do internal coersion. 
 #' @return DESeq2 object
 #' @importFrom DESeq2 DESeqDataSetFromMatrix
 format_counts_for_deseq2 <- function(seed, query) {
   seed_tag <- colnames(seed)
   query_tag <- colnames(query)
-  merged <- cbind(seed, query)
+  merged <- cbind(seed, query) + 1
+  mode(merged) <- "integer"
   seed_query_info <- data.frame(row.names = c(seed_tag, query_tag))
   seed_query_info[seed_tag, "group"] <- "seed"
   seed_query_info[query_tag, "group"] <- "query"
   seed_query_info[, "group"] <- factor(x = seed_query_info[, "group"])
   deseq <- DESeq2::DESeqDataSetFromMatrix(
-    countData = merged + 1,
+    countData = merged,
     colData = seed_query_info,
     design = ~ group)
   return(deseq)
@@ -134,6 +137,8 @@ format_counts_for_deseq2 <- function(seed, query) {
 #' @return DGEList object from edgeR
 #' @importFrom edgeR DGEList
 format_counts_for_edger <- function(seed, query) {
+  seed <- check_for_zero_counts(seed)
+  query <- check_for_zero_counts(query)
   merged <- cbind(seed, query)
   rownames(merged) <- rownames(seed)
   group <- c(rep("seed", ncol(seed)), rep("query", ncol(query)))
