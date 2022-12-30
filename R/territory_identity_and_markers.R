@@ -237,13 +237,16 @@ vesalius_deg_wilcox <- function(seed, seed_id, query, query_id, params) {
   pvals <- sapply(seq_len(nrow(buffer$seed)), function(idx, seed, query) {
     return(suppressWarnings(wilcox.test(seed[idx, ], query[idx, ])$p.value))
   }, seed = buffer$seed, query = buffer$query)
+  effect_size <- sapply(pvals, compute_effect_size,
+    seed = ncol(buffer$seed),
+    query = ncol(buffer$query))
   deg <- data.frame("genes" = buffer$genes,
     "p_value" = pvals,
     "p_value_adj" = p.adjust(pvals),
     "seed_pct" = buffer$seed_pct,
     "query_pct" = buffer$query_pct,
     "fold_change" = buffer$fc,
-    "effect_size" = buffer$effect_size,
+    "effect_size" = effect_size,
     "seed" = rep(seed_id, length(pvals)),
     "query" = rep(query_id, length(pvals)))
   deg <- filter(deg, p_value_adj <= params$pval)
@@ -264,13 +267,16 @@ vesalius_deg_ttest <- function(seed, seed_id, query, query_id, params) {
   pvals <- sapply(seq_len(nrow(buffer$seed)), function(idx, seed, query) {
     return(suppressWarnings(t.test(seed[idx, ], query[idx, ])$p.value))
   }, seed = buffer$seed, query = buffer$query)
+  effect_size <- sapply(pvals, compute_effect_size,
+    seed = ncol(buffer$seed),
+    query = ncol(buffer$query))
   deg <- data.frame("genes" = buffer$genes,
     "p_value" = pvals,
     "p_value_adj" = p.adjust(pvals),
     "seed_pct" = buffer$seed_pct,
     "query_pct" = buffer$query_pct,
     "fold_change" = buffer$fc,
-    "effect_size" = buffer$effect_size,
+    "effect_size" = effect_size,
     "seed" = rep(seed_id, length(pvals)),
     "query" = rep(query_id, length(pvals)))
   deg <- filter(deg, p_value_adj <= params$pval)
@@ -293,13 +299,16 @@ vesalius_deg_chisq <- function(seed, seed_id, query, query_id, params) {
     dat <- cbind(table(seed[idx, ]), table(query[, idx]))
     return(suppressWarnings(chisq.test(dat)$p.value))
   }, seed = buffer$seed, query = buffer$query)
+  effect_size <- sapply(pvals, compute_effect_size,
+    seed = ncol(buffer$seed),
+    query = ncol(buffer$query))
   deg <- data.frame("genes" = buffer$genes,
     "p_value" = pvals,
     "p_value_adj" = p.adjust(pvals),
     "seed_pct" = buffer$seed_pct,
     "query_pct" = buffer$query_pct,
     "fold_change" = buffer$fc,
-    "effect_size" = buffer$effect_size,
+    "effect_size" = effect_size,
     "seed" = rep(seed_id, length(pvals)),
     "query" = rep(query_id, length(pvals)))
   deg <- filter(deg, p_value_adj <= params$pval)
@@ -323,13 +332,16 @@ vesalius_deg_fisher <- function(seed, seed_id, query, query_id, params) {
     return(suppressWarnings(fisher.test(dat,
       simulate.p.value = TRUE)$p.value))
   }, seed = buffer$seed, query = buffer$query)
+  effect_size <- sapply(pvals, compute_effect_size,
+    seed = ncol(buffer$seed),
+    query = ncol(buffer$query))
   deg <- data.frame("genes" = buffer$genes,
     "p_value" = pvals,
     "p_value_adj" = p.adjust(pvals),
     "seed_pct" = buffer$seed_pct,
     "query_pct" = buffer$query_pct,
     "fold_change" = buffer$fc,
-    "effect_size" = buffer$effect_size,
+    "effect_size" = effect_size,
     "seed" = rep(seed_id, length(pvals)),
     "query" = rep(query_id, length(pvals)))
   deg <- filter(deg, p_value_adj <= params$pval)
@@ -369,13 +381,16 @@ vesalius_deg_deseq2 <- function(seed, seed_id, query, query_id, params) {
     object = deg,
     contrast = c("group", "seed", "query"),
     alpha = params$pval)
+  effect_size <- sapply(deg$pvalue, compute_effect_size,
+    seed = ncol(buffer$seed),
+    query = ncol(buffer$query))
   deg <- data.frame("genes" = rownames(deg),
     "p_value" = deg$pvalue,
     "p_value_adj" = deg$padj,
     "seed_pct" = buffer$seed_pct,
     "query_pct" = buffer$query_pct,
     "fold_change" = deg$log2FoldChange,
-    "effect_size" = buffer$effect_size,
+    "effect_size" = effect_size,
     "seed" = rep(seed_id, nrow(deg)),
     "query" = rep(query_id, nrow(deg)))
   deg <- filter(deg, p_value_adj <= params$pval)
@@ -427,13 +442,16 @@ vesalius_deg_edger <- function(seed,
   deg <- edgeR::topTags(mod_fit, n = nrow(seed))@.Data[[1]]
   ori_ord <- match(buffer$genes, rownames(deg))
   deg <- deg[ori_ord, ]
+  effect_size <- sapply(deg$PValue, compute_effect_size,
+    seed = ncol(buffer$seed),
+    query = ncol(buffer$query))
   deg <- data.frame("genes" = rownames(deg),
     "p_value" = deg$PValue,
     "p_value_adj" = deg$FDR,
     "seed_pct" = buffer$seed_pct,
     "query_pct" = buffer$query_pct,
     "fold_change" = deg$logFC,
-    "effect_size" = buffer$effect_size,
+    "effect_size" = effect_size,
     "seed" = rep(seed_id, nrow(deg)),
     "query" = rep(query_id, nrow(deg)))
   deg <- filter(deg, p_value_adj <= params$pval)
@@ -471,13 +489,16 @@ vesalius_deg_logit <- function(seed, seed_id, query, query_id, params) {
       family = "binomial"))
     return(lrtest(gene_model, null_model)$Pr[2])
   }, merged = merged)
-   deg <- data.frame("genes" = buffer$genes,
+  effect_size <- sapply(pvals, compute_effect_size,
+    seed = ncol(buffer$seed),
+    query = ncol(buffer$query))
+  deg <- data.frame("genes" = buffer$genes,
     "p_value" = pvals,
     "p_value_adj" = p.adjust(pvals),
     "seed_pct" = buffer$seed_pct,
     "query_pct" = buffer$query_pct,
     "fold_change" = buffer$fc,
-    "effect_size" = buffer$effect_size,
+    "effect_size" = effect_size,
     "seed" = rep(seed_id, length(pvals)),
     "query" = rep(query_id, length(pvals)))
   deg <- filter(deg, p_value_adj <= params$pval)
@@ -503,11 +524,7 @@ get_deg_metrics <- function(seed, query, params) {
   seed_pct <- rowSums(seed > 0) / ncol(seed)
   query_pct <- rowSums(query > 0) / ncol(query)
   fc <- rowMeans(seed) - rowMeans(query)
-  effect_size <- pwr::pwr.2p2n.test(h = NULL,
-    n1 = ncol(seed),
-    n2 = ncol(query),
-    sig.level = params$pval,
-    power = 0.8)$h
+  
   #--------------------------------------------------------------------------#
   # Dropping genes that don't fit the logFC and pct criteria
   # this can be handle by edgeR as well but let's stay consistent here
@@ -523,7 +540,25 @@ get_deg_metrics <- function(seed, query, params) {
       "query" = query[keep, ],
       "seed_pct" = seed_pct[keep],
       "query_pct" = query_pct[keep],
-      "fc" = fc[keep],
-      "effect_size" = rep(effect_size, sum(keep))))
+      "fc" = fc[keep]))
 
+}
+
+#' compute_effect_size
+#' @param pval pvalue for a given gene
+#' @param seed number of cells in seed
+#' @param query number of cells in query
+#' @details If pval is 0 we convert that to a very small number
+#' pwr does not take 0 as input values.
+#' @return efect size estimate for an unbalenced 
+#' power analysis.
+#' importFrom pwr pwr.2p2n.test
+compute_effect_size <- function(pval, seed, query) {
+  pval <- ifelse(pval == 0, 1e-100, pval)
+  effect_size <- pwr::pwr.2p2n.test(h = NULL,
+    n1 = seed,
+    n2 = query,
+    sig.level = pval,
+    power = 0.8)$h
+  return(effect_size)
 }

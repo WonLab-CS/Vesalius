@@ -428,12 +428,6 @@ view_gene_expression <- function(vesalius_assay,
       colnames(gene) <- c("barcodes", "gene")
       gene <- left_join(gene, territories, by = c("barcodes")) %>%
         na.exclude()
-      if (norm) {
-        gene$gene <- min_max(gene$gene)
-        type <- "Norm. Expression"
-      } else {
-        type <- "Expression"
-      }
       gene_list[[i]] <- gene
     }
     #--------------------------------------------------------------------------#
@@ -446,10 +440,21 @@ view_gene_expression <- function(vesalius_assay,
       other <- filter(gene_list[[i]], trial == "other") %>% droplevels()
       territory <- filter(gene_list[[i]], trial != "other") %>% droplevels()
 
+      
       if (as_layer) {
           territory <- territory %>%
             group_by(trial) %>%
-            mutate(gene = mean(gene))
+            mutate(gene = mean(gene)) %>%
+            ungroup()
+      }
+      #------------------------------------------------------------------------#
+      # checking if layer and normalising post layering if layering required 
+      #------------------------------------------------------------------------#
+      if (norm) {
+        territory$gene <- min_max(territory$gene)
+        type <- "Norm. Expression"
+      } else {
+        type <- "Expression"
       }
       #------------------------------------------------------------------------#
       # Create background
