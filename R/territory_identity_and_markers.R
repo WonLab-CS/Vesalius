@@ -554,7 +554,8 @@ get_deg_metrics <- function(seed, query, params) {
 #' power analysis.
 #' importFrom pwr pwr.2p2n.test
 compute_effect_size <- function(pval, seed, query) {
-  pval <- ifelse(pval == 0, 1e-100, pval)
+  pval <- max(c(pval, 1e-100))
+  pval <- min(c(pval, 0.8))
   effect_size <- pwr::pwr.2p2n.test(h = NULL,
     n1 = seed,
     n2 = query,
