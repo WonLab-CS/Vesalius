@@ -550,10 +550,15 @@ get_deg_metrics <- function(seed, query, params) {
 #' @param query number of cells in query
 #' @details If pval is 0 we convert that to a very small number
 #' pwr does not take 0 as input values.
+#' DESeq might reutn NA pvals - just skip the effect size and 
+#' return NA
 #' @return efect size estimate for an unbalenced 
 #' power analysis.
 #' importFrom pwr pwr.2p2n.test
 compute_effect_size <- function(pval, seed, query) {
+  if (is.na(pval)) {
+      return(NA)
+  }
   pval <- max(c(pval, 1e-100))
   pval <- min(c(pval, 0.8))
   effect_size <- pwr::pwr.2p2n.test(h = NULL,

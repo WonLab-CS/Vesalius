@@ -274,17 +274,20 @@ vesalius_brain <- smooth_image(vesalius_brain,
 vesalius_embryo <- regularise_image(vesalius_embryo,
    embedding = "PCA",
    dimensions = seq(1, 30),
-   lambda = 10)
+   lambda = 10,
+   verbose = FALSE)
 vesalius_embryo <- equalize_image(vesalius_embryo,
     dimensions = seq(1, 30),
-    sleft = 1, sright = 1)
+    sleft = 1, sright = 1,
+    verbose = FALSE)
 vesalius_embryo <- smooth_image(vesalius_embryo,
     dimensions = seq(1, 30),
     method = c("iso", "box"),
     sigma = 1,
     box = 10,
     across_levels = "min",
-    iter = 10)
+    iter = 10,
+    verbose = FALSE)
 
 ```
 
@@ -412,21 +415,23 @@ We can start by getting all genes that are differentially expressed in each terr
 vesalius_brain <- identify_markers(vesalius_brain,
   trial = "Territory", # Using PCA territories here
   method = "DESeq2",
-  seed =  NULL, # Default setting
-  query = NULL # Default setting 
+  seed =  NULL,
+  query = NULL
 )
 
 vesalius_embryo <- identify_markers(vesalius_embryo,
   trial = "Territory", # Using PCA territories here
   method = "DESeq2",
-  seed =  NULL, # Default setting
-  query = NULL # Default setting 
+  seed =  NULL,
+  query = NULL
 )
 
 deg_brain <- get_markers(vesalius_brain)
 write.csv(deg_brain, file = paste0(output_data, "DEG_SSv2_brain.csv"))
 deg_embryo <- get_markers(vesalius_embryo)
 write.csv(deg_embryo, file = paste0(output_data, "DEG_SSv2_embryo.csv"))
+
+head(deg_brain)
 ```
 Using these tables, we can ivestigate differntial gene expression and find which genes 
 are more highly expressed in a given territory comapred to everything else. If you want
@@ -457,12 +462,13 @@ brain_split
 In this case, we can compare territory 18 and territory 3 (medial habenula compartments).
 
 ```{r comp_med_hab, eval = TRUE, ehco = TRUE}
-vesalius_brain <- identify_markers(ves_st,
+vesalius_brain <- identify_markers(vesalius_brain,
     trial = "Territory",
     method = "DESeq2",
     seed = 18,
     query = 3)
 med_comp <- get_markers(vesalius_brain)
+head(med_comp)
 ```
 
 ### See also - using different DEG methods
