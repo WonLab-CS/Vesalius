@@ -9,6 +9,7 @@
 #' check input checks the validity of input data to build_vesalius_assay
 #' @param counts count matrix
 #' @param coordinates coordinate file
+#' @param image connection to image or image array
 #' @param assay string with assay name
 #' @param adjust_coordinates string describing how coordinates should be
 #' adjusted (origin or norm)
@@ -16,6 +17,7 @@
 #' @return list containing checked counts, coordinates and assay
 check_inputs <- function(counts,
     coordinates,
+    image,
     assay,
     adjust_coordinates,
     verbose) {
@@ -45,11 +47,42 @@ check_inputs <- function(counts,
         counts <- list()
         comment(counts) <- "empty"
     }
-    
+    #--------------------------------------------------------------------------#
+    # checking image 
+    #--------------------------------------------------------------------------#
+    image <- check_image(image)
     #--------------------------------------------------------------------------#
     # Finally we return the objects hat will populate the vesalius_assay
     #--------------------------------------------------------------------------#
-    return(list("counts" = counts, "coordinates" = coordinates))
+    return(list("counts" = counts,
+        "coordinates" = coordinates,
+        "image" = image))
+}
+
+#' check image input 
+#' check if input image is in correct format
+#' @param image input
+#' @return list of images
+#' @importFrom imager load.image
+check_image <- function(image) {
+    if (!is.null(image) && is(image, "character")) {
+        image <- list(imager::load.image(image))
+    } else if (!is.null(image) && is(image, "array")) {
+        dims <- length(dim(image))
+        if (dims == 0 || dims > 4) {
+            stop("Image array dimesnions should be between 2 and 4 \n
+            2 = matrix | 3 = array | 4 = cimg array like")
+        }
+        # Might not need to to do that if Im using a different package
+        image <- list(suppressWarnings(as.cimg(image)))
+    } else if (!is.null(image) && is(image, "list")) {
+        image <- lapply(image, check_image)
+    } else if (!is.null(image) && is(image, "cimg")) {
+        image <- list(image)
+    } else {
+        image <- list()
+    }
+    return(image)
 }
 
 #' checking overlap between barcodes in counts and coordinates
@@ -186,7 +219,7 @@ check_embeddings <- function(embeddings) {
 #' @return norm method string or error
 check_norm_methods <- function(norm, use_counts = NULL) {
     if (any(!norm %in% c("log_norm", "SCTransform", "TFIDF", "raw"))) {
-        stop("Normalisation method provided do not match available options \n
+        stop("Normalisation method provided does not match available options \n
             Select from: \n
             log_norm, SCTransform, TFIDF, or raw")
     }
@@ -207,7 +240,7 @@ check_norm_methods <- function(norm, use_counts = NULL) {
 #' @return embedding method string or error
 check_embed_methods <- function(embed) {
     if (any(!embed %in% c("PCA", "PCA_L", "UMAP", "LSI", "LSI_UMAP"))) {
-        stop("Embedding method provided do not match available options \n
+        stop("Embedding method provided does not match available options \n
             Select from: \n
             PCA, PCA_L, UMAP, LSI, LSI_UMAP")
     } else {
@@ -220,7 +253,7 @@ check_embed_methods <- function(embed) {
 #' @return smoothing method string or error
 check_smoothing_kernel <- function(method) {
     if (any(!method %in% c("iso", "box", "median"))) {
-        stop("Smoothing method provided do not match available options \n
+        stop("Smoothing method provided does not match available options \n
             Select from: \n
             iso, box, median or a combination of these 3 options")
     } else {
@@ -233,7 +266,7 @@ check_smoothing_kernel <- function(method) {
 #' @return acroos level option or error
 check_smoothing_level <- function(method) {
     if (any(!method %in% c("min", "max", "mean"))) {
-        stop("Smoothing across levels method provided do not match available options \n
+        stop("Smoothing across levels method provided does not match available options \n
             Select from: \n
             min, max, mean")
     } else {
@@ -251,7 +284,7 @@ check_eq_method <- function(method) {
         "EqualizeDP",
         "EqualizeADP",
         "ECDF"))) {
-        stop("Equalization method provided do not match available options \n
+        stop("Equalization method provided does not match available options \n
             Select from: \n
             EqualizePiecewise, BalanceSimplest, SPE, 
             EqualizeDP, EqualizeADP, or ECDF")
@@ -265,7 +298,7 @@ check_eq_method <- function(method) {
 #' @return segmentation method
 check_segmentation_method <- function(method) {
     if (any(!method %in% c("kmeans", "louvain", "leiden"))) {
-        stop("Segmentation method provided do not match available options \n
+        stop("Segmentation method provided does not match available options \n
             Select from: \n
             kmeans, louvain, leiden")
     } else {
@@ -278,7 +311,7 @@ check_segmentation_method <- function(method) {
 #' @return territory isolation method
 check_isolation_method <- function(method) {
     if (any(!method %in% c("distance"))) {
-        stop("Isolation method provided do not match available options \n
+        stop("Isolation method provided does not match available options \n
             Select from: \n
             distance")
     } else {
@@ -298,7 +331,7 @@ check_deg_method <- function(method) {
         "QLF",
         "LRT",
         "logit"))) {
-        stop("Territory identity  method provided do not match available options \n
+        stop("Territory identity method provided does not match available options\n
             Select from: \n
             wilcox, t.test, chisq, fisher.exact, DESeq2, QLF, LRT, or logit")
     } else {
@@ -418,7 +451,7 @@ check_tiles <- function(vesalius_assay) {
 #' will also reformat to only include the necessay information.
 #' @return data frame contain selected trial
 check_territory_trial <- function(vesalius_assay, trial) {
-    if (sum(dim(vesalius_assay@territories)) == 0){
+    if (sum(dim(vesalius_assay@territories)) == 0) {
         stop("No territories have been computed!")
     } else {
         territories <- vesalius_assay@territories
@@ -456,7 +489,7 @@ check_territory_trial <- function(vesalius_assay, trial) {
 #' @return data frame contain selected trial
 #' @importFrom utils tail
 check_segment_trial <- function(vesalius_assay, trial = "last") {
-    if (sum(dim(vesalius_assay@territories)) == 0){
+    if (sum(dim(vesalius_assay@territories)) == 0) {
         stop("No segments have been computed yet!")
     } else {
         territories <- vesalius_assay@territories
@@ -586,9 +619,9 @@ check_min_spatial_index <- function(group, min_spatial_index, id) {
 #' @importFrom infix %||%
 check_group_value <- function(territories, group) {
     #-------------------------------------------------------------------------#
-    # If NULL is parsed as group - return NULL 
+    # If NULL is parsed as group - return NULL
     #-------------------------------------------------------------------------#
-    if (is.null(group)){
+    if (is.null(group)) {
         return(NULL)
     }
     present <- unique(territories$trial)
@@ -645,4 +678,29 @@ check_for_zero_counts <- function(counts) {
     }
     counts <- counts[, !zeros]
     return(counts)
+}
+
+
+check_template_source <- function(vesalius_assay, from, dimensions) {
+    if (from == "last") {
+        stop("Please specifiy by name what should 
+        be use to build image template.
+        Tou can select from:
+        territory, segment, embedding, or active embedding")
+    }
+    type <- regmatches(from,
+        regexpr("Segment|Territory", from))
+    if (length(type) == 0) {
+        from <- ifelse(from == "active", "last", from)
+        template <- check_embedding_selection(vesalius_assay,
+            embed = from,
+            dims = dimensions)[,dimensions]
+        type <- "Embedding"
+    } else {
+        template <- switch(type,
+            "Segment" = check_segment_trial(vesalius_assay, from),
+            "Territory" = check_territory_trial(vesalius_assay, from))
+    }
+    comment(template) <- type
+    return(template)
 }

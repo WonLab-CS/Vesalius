@@ -4,12 +4,14 @@
 \alias{check_inputs}
 \title{check input checks the validity of input data to build_vesalius_assay}
 \usage{
-check_inputs(counts, coordinates, assay, adjust_coordinates, verbose)
+check_inputs(counts, coordinates, image, assay, adjust_coordinates, verbose)
 }
 \arguments{
 \item{counts}{count matrix}
 
 \item{coordinates}{coordinate file}
+
+\item{image}{connection to image or image array}
 
 \item{assay}{string with assay name}
 

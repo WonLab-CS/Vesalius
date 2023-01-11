@@ -92,17 +92,24 @@ setMethod("show",
         simple_bar(TRUE)
         cat(paste(object@assay, "as vesalius assay containing:\n\n"))
         #---------------------------------------------------------------------#
+        # get image 
+        #---------------------------------------------------------------------#
+        img <- length(object@image)
+        if (img > 0) {
+            cat(paste(img, "image(s)\n"))
+        } 
+        #---------------------------------------------------------------------#
         # Get log modifications
         #---------------------------------------------------------------------#
         log <- length(object@log)
         cat(paste(log, "modifications applied to base object. \n"))
         #---------------------------------------------------------------------#
-        # check and show tiles 
+        # check and show tiles
         #---------------------------------------------------------------------#
         tiles  <- get_tiles(object)
         if (!is.null(tiles)) {
             cat("\n")
-            if (any(colnames(tiles) == "origin")){
+            if (any(colnames(tiles) == "origin")) {
                 n_indices <- sum(tiles$origin)
                 cat(paste(n_indices,
                     "spatial indices used to form pixel tiles. \n"))
@@ -172,6 +179,7 @@ setMethod("show",
 #' Default is NULL. See details.
 #' @param counts matrix, sparse matrix containing counts.
 #' Default is NULL. See details.
+#' @param image connection string or image array
 #' @param assay character vector containing names of the assays
 #' (see details).
 #' @param adjust_coordinates character of one of the following
@@ -216,6 +224,7 @@ setMethod("show",
 
 build_vesalius_assay <- function(coordinates,
     counts = NULL,
+    image = NULL,
     assay = "spatial_omics",
     adjust_coordinates = "origin",
     verbose = TRUE) {
@@ -228,6 +237,7 @@ build_vesalius_assay <- function(coordinates,
     #--------------------------------------------------------------------------#
     input <- check_inputs(counts,
         coordinates,
+        image,
         assay,
         adjust_coordinates,
         verbose)
@@ -237,7 +247,8 @@ build_vesalius_assay <- function(coordinates,
     vesalius_assay <- new("vesalius_assay",
         assay = assay,
         counts = input$counts,
-        tiles = input$coordinates
+        tiles = input$coordinates,
+        image = input$image
         )
     commit <- create_commit_log(arg_match = as.list(match.call()),
       default = formals(build_vesalius_assay))

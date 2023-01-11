@@ -7,6 +7,7 @@
 build_vesalius_assay(
   coordinates,
   counts = NULL,
+  image = NULL,
   assay = "spatial_omics",
   adjust_coordinates = "origin",
   verbose = TRUE
@@ -19,6 +20,8 @@ Default is NULL. See details.}
 
 \item{counts}{matrix, sparse matrix containing counts.
 Default is NULL. See details.}
+
+\item{image}{connection string or image array}
 
 \item{assay}{character vector containing names of the assays
 (see details).}
