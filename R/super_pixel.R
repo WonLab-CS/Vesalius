@@ -52,4 +52,3 @@ closet_grid_point <- function(coordinates, grid) {
         "center" = grid[distance, 3])
     return(coordinates)
 }
-
