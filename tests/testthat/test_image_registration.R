@@ -24,9 +24,9 @@ test_that("vesalius assay with image", {
 })
 
 
-vesalius <- build_vesalius_assay(coordinates, counts)
+vesalius <- build_vesalius_assay(coordinates, counts, image_file)
 vesalius <- generate_embeddings(vesalius)
-vesalius <- smooth_image(vesalius, iter = 15)
+vesalius <- smooth_image(vesalius, sigma = 5, iter = 15)
 vesalius <- segment_image(vesalius, col_resolution = 3)
 vesalius <- isolate_territories(vesalius)
 
@@ -41,3 +41,12 @@ test_that("generate a image template", {
     expect_true(is(vesalius:::generate_image_template(vesalius, "active"),
         "cimg"))
 })
+
+test_that("Register source to image", {
+    test <- register_image(vesalius)
+    img <- load.image(image_file)
+    
+    img_v <- vesalius:::generate_image_template(vesalius, "active")
+    
+})
+

@@ -50,7 +50,8 @@ Imports:
     edgeR,
     ggplot2,
     igraph,
-    pwr
+    pwr,
+    RNiftyReg
 Suggests:
     knitr,
     RUnit,

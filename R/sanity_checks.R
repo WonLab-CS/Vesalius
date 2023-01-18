@@ -50,7 +50,7 @@ check_inputs <- function(counts,
     #--------------------------------------------------------------------------#
     # checking image 
     #--------------------------------------------------------------------------#
-    image <- check_image(image)
+    image <- check_image_input(image)
     #--------------------------------------------------------------------------#
     # Finally we return the objects hat will populate the vesalius_assay
     #--------------------------------------------------------------------------#
@@ -64,7 +64,7 @@ check_inputs <- function(counts,
 #' @param image input
 #' @return list of images
 #' @importFrom imager load.image
-check_image <- function(image) {
+check_image_input <- function(image) {
     if (!is.null(image) && is(image, "character")) {
         image <- list(imager::load.image(image))
     } else if (!is.null(image) && is(image, "array")) {
@@ -211,6 +211,18 @@ check_embeddings <- function(embeddings) {
         rownames(embeddings) <- barcodes
     }
     return(embeddings)
+}
+
+#' check if image is present
+#' @param vesalius_assay vesalius assay object
+#' @return microscopy image
+check_image <- function(vesalius_assay) {
+    image <- vesalius@image
+    if (length(image) == 0) {
+        stop("No image have been added to the vesalius_assay")
+    }
+    image <- image[[1L]][, , , 1:3]
+    return(image)
 }
 
 #' check if norm method is present in availble options

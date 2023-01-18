@@ -1030,8 +1030,8 @@ generate_image_template <- function(vesalius_assay,
     #-------------------------------------------------------------------------#
     # Color value based on sum across latent space dimensions
     #-------------------------------------------------------------------------#
-    value <- apply(image, 1, sum)
-    value <- min_max(value)
+    value <- apply(image, 1, mean)
+    #value <- min_max(value)
     image <- data.frame("barcodes" = names(value), "value" = value)
     image <- right_join(tiles, image, by = "barcodes") %>%
       select(c("barcodes", "x", "y", "value"))
@@ -1044,3 +1044,30 @@ generate_image_template <- function(vesalius_assay,
   img[ind] <- image[["value"]]
   return(img)
 }
+
+
+#' register_image
+#' register microscopy image to vesalius image
+#' @param vesalius_assay a vesalius_Assay object
+#' @param source character string - name of source image
+#' @param dimensions numeric integer - number of dimension that should
+#' be used if either source is an embedding.
+#' @param verbose logical - should progressed message be rpint to the
+#' console.
+#' @return a vesalius_assay object
+#' @importFrom RNiftyReg niftyreg
+#' @export
+register_image <- function(vesalius_assay,
+  source = "Territory",
+  dimensions = seq(1, 3),
+  verbose) {
+    target <- check_image(vesalius_assay)
+    source <- generate_image_template(vesalius_assay,
+    from = source,
+    dimensions = dimensions)
+    registered <- RNiftyReg::niftyreg(source = source,
+      target = target,
+      scope = "nonlinear")
+    return(registered)
+}
+

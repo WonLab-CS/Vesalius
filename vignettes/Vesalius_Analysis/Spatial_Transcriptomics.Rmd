@@ -22,6 +22,9 @@ You will find through out this article subsection with the prefix "See also".
 These sections will highlight link towards documentation that will enable you to go beyond 
 what we did with vesalius for this analysis. 
 
+You will also find a *Code Block* section that contains the entire analysis in a single block of 
+code to facilitate copy/pasting. 
+
 
 # Introduction 
 
@@ -74,6 +77,7 @@ library(patchwork)
 library(ggpubr)
 library(future)
 library(Matrix)
+library(tidyverse)
 set.seed(1514)
 
 # Using Multi core !!! See note below !!!
@@ -545,6 +549,47 @@ object that can directly be plotted.
 - **Visualization of multiple genes** - see [view_gene_expression function](https://patrickcnmartin.github.io/Vesalius/reference/view_gene_expression)
 - **Understaing ggarrange** - see [ggpubr page](https://cran.r-project.org/web/packages/ggpubr/ggpubr.pdf)
 
+# Functional Analsyis
+
+This section does not contain any code related to the vesalius package but demonstrate the approach we took
+for gene functional analysis.
+
+```{r loading_func_lib, eval = TRUE , echo = TRUE}
+library(DOSE)
+library(pathview)
+library(clusterProfiler)
+library(gprofiler2)
+```
+
+Since we already have the data frames we can use these directly. Note that DEG data frame were saved as `.csv`.
+
+
+```{r gprofiler2, eval = TRUE, echo = TRUE}
+top_brain <- split(deg_brain, deg_brain$seed)
+brain_gost <- lapply(top_brain, function(x) {
+    over <- gost(x$genes,
+      organism = "mmusculus",
+      significant = TRUE)
+    under <- gost(x$genes,
+      organism = "mmusculus",
+      significant = TRUE,
+      measure_underrepresentation = TRUE)
+    return(list("over" = over, "under" = under))
+})
+
+top_embryo <- split(deg_embryo, deg_embryo$seed)
+embryo_gost <- lapply(top_embryo, function(x) {
+    over <- gost(x$genes,
+      organism = "mmusculus",
+      significant = TRUE)
+    under <- gost(x$genes,
+      organism = "mmusculus",
+      significant = TRUE,
+      measure_underrepresentation = TRUE)
+    return(list("over" = over, "under" = under))
+})
+
+```
 # Conclusion
 
 Here, we present a Vesalius workflow using 2 high resolution spatial transcriptomic data sets.

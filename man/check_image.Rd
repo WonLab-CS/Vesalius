@@ -2,18 +2,16 @@
 % Please edit documentation in R/sanity_checks.R
 \name{check_image}
 \alias{check_image}
-\title{check image input 
-check if input image is in correct format}
+\title{check if image is present}
 \usage{
-check_image(image)
+check_image(vesalius_assay)
 }
 \arguments{
-\item{image}{input}
+\item{vesalius_assay}{vesalius assay object}
 }
 \value{
-list of images
+microscopy image
 }
 \description{
-check image input 
-check if input image is in correct format
+check if image is present
 }
