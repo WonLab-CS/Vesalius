@@ -1,7 +1,7 @@
 Package: vesalius
 Type: Package
 Title: Vesalius: Dissecting Tissue Anatomy from Spatial Transcriptomic Data
-Version: 2.0.0
+Version: 2.0.1
 Author: Patrick C.N. Martin
 Maintainer: Patrick C.N. Martin <patrick.martin@cshs.org>
 Description: We present Vesalius to decipher tissue anatomy by embracing various
@@ -24,6 +24,7 @@ Collate: image_processing.R
     object_utilities_and_methods.R
     sanity_checks.R
     object_modification.R
+    super_pixel.R
 Depends: R (>= 4.0.0)
 Imports:
     grDevices,
