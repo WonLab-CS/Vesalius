@@ -236,6 +236,7 @@ layer_territory <- function(vesalius_assay,
   }
 
   ter <- check_territory_trial(vesalius_assay, trial)
+  territory %||% stop("Please specify a territory to layer!")
   territory <- check_group_value(ter, territory)
   buffer <- ter
   ter <- right_join(ter, get_tiles(vesalius_assay), by = "barcodes") %>%

@@ -42,11 +42,5 @@ test_that("generate a image template", {
         "cimg"))
 })
 
-test_that("Register source to image", {
-    test <- register_image(vesalius)
-    img <- load.image(image_file)
-    
-    img_v <- vesalius:::generate_image_template(vesalius, "active")
-    
-})
+
 

@@ -4,12 +4,12 @@
 \alias{closet_grid_point}
 \title{closest grid point}
 \usage{
-closet_grid_point(grid, coordinates, dist)
+closet_grid_point(coordinates, grid)
 }
 \arguments{
-\item{grid}{grid matrix containing coordinate paiur of grid point centers}
-
 \item{coordinates}{data frame with spatial indices}
+
+\item{grid}{grid matrix containing coordinate paiur of grid point centers}
 }
 \value{
 closest coordinates to grid mid point

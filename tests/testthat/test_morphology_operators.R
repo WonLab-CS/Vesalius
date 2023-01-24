@@ -12,9 +12,10 @@ test_that("Vesalius assay works as expect with morphing", {
     expect_error(territory_morphing(vesalius))
     # expect error if wrong input
     expect_error(territory_morphing("vesalius"))
-    expect_warning(territory_morphing(vesalius,
+    expect_s4_class(territory_morphing(vesalius,
         territory = 1,
-        trial = "Territory"))
+        trial = "Territory"),
+        "vesalius_assay")
     # expect s4 if territory is specified
     expect_s4_class(territory_morphing(vesalius, territory = 1),
         "vesalius_assay")

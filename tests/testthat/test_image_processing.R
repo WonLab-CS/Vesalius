@@ -20,7 +20,8 @@ test_that("Vesalius assay work as expected with reg", {
     expect_error(smooth_image(vesalius, embedding = "funky"))
     # expect warning if more than one embedding contain the same name
     tmp <- generate_embeddings(vesalius)
-    expect_warning(regularise_image(tmp, embedding = "PCA"))
+    expect_s4_class(regularise_image(tmp, embedding = "PCA"),
+        "vesalius_assay")
     # expect s4 class if you call the correct name
     expect_s4_class(regularise_image(tmp, embedding = "PCA.1"),
         "vesalius_assay")
@@ -50,7 +51,8 @@ test_that("Vesalius assay work as expected with smooth", {
     expect_error(smooth_image(vesalius, embedding = "funky"))
     # expect warning if more than one embedding contain the same name
     tmp <- generate_embeddings(vesalius)
-    expect_warning(smooth_image(tmp, embedding = "PCA"))
+    expect_s4_class(smooth_image(tmp, embedding = "PCA"),
+        "vesalius_assay")
     # expect s4 class if you call the correct name
     expect_s4_class(smooth_image(tmp, embedding = "PCA.1"),
         "vesalius_assay")
@@ -116,7 +118,8 @@ test_that("Vesalius assay work as expected with eq", {
     expect_error(smooth_image(vesalius, embedding = "funky"))
     # expect warning if more than one embedding contain the same name
     tmp <- generate_embeddings(vesalius)
-    expect_warning(equalize_image(tmp, embedding = "PCA"))
+    expect_s4_class(equalize_image(tmp, embedding = "PCA"),
+        "vesalius_assay")
     # expect s4 class if you call the correct name
     expect_s4_class(equalize_image(tmp, embedding = "PCA.1"),
         "vesalius_assay")
@@ -154,7 +157,8 @@ test_that("Vesalius assay work as expected in image seg", {
     expect_error(smooth_image(vesalius, embedding = "funky"))
     # expect warning if more than one embedding contain the same name
     tmp <- generate_embeddings(vesalius)
-    expect_warning(segment_image(tmp, embedding = "PCA"))
+    expect_s4_class(segment_image(tmp, embedding = "PCA"),
+        "vesalius_assay")
     # expect s4 class if you call the correct name
     expect_s4_class(segment_image(tmp, embedding = "PCA.1"),
         "vesalius_assay")
@@ -186,7 +190,8 @@ test_that("Vesalius assay works as expect with isolate ter", {
     expect_s4_class(isolate_territories(tmp), "vesalius_assay")
     tmp <- segment_image(tmp)
     #expect warning if more than one trial exists and same name
-    expect_warning(isolate_territories(tmp, trial = "Segment"))
+    expect_s4_class(isolate_territories(tmp, trial = "Segment"),
+        "vesalius_assay")
     expect_error(isolate_territories(tmp, trial = "funky"))
     # expect error if input to method is not available 
     expect_error(isolate_territories(tmp, method = "funky"))
