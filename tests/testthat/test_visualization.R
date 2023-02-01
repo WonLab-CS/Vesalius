@@ -16,6 +16,11 @@ test_that("image plot", {
     expect_true(is(image_plot(vesalius, embedding = "PCA"), "gg"))
     expect_error(image_plot(vesalius, dimensions = 1:4))
     expect_error(image_plot(vesalius, dimensions = 1:2))
+    tmp <- segment_image(vesalius, dimensions = seq(1, 30),
+        method = "louvain",
+        col_resolution = 0.01)
+    # related to minmax misc function - could be test elsewhere as well.
+    expect_warning(image_plot(vesalius, dimensions = 1))
 })
 
 test_that("territory plot", {

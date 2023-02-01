@@ -81,7 +81,7 @@ library(tidyverse)
 set.seed(1514)
 
 # Using Multi core !!! See note below !!!
-plan(multicore, workers = 4)
+plan(multicore, workers = 10)
 
 
 # Input data directory Brain
@@ -183,11 +183,13 @@ embedding that will be used to populate each tile with a grey scale color value.
 ```{r generrate_embedding, eval = TRUE, echo = TRUE}
 vesalius_brain <- generate_embeddings(vesalius_brain,
     dim_reduction = "PCA",
-    tensor_resolution = 0.5,
+    dimensions = 50,
+    tensor_resolution = 1,
     verbose = FALSE)
 vesalius_embryo <- generate_embeddings(vesalius_embryo,
     dim_reduction = "PCA",
-    tensor_resolution = 0.5,
+    dimensions = 50,
+    tensor_resolution = 1,
     verbose = FALSE)
 vesalius_brain
 vesalius_embryo
@@ -261,14 +263,14 @@ we can further highlight these regions and better utilise them during spatial do
 
 ```{r image_process, eval = TRUE, echo = TRUE}
 vesalius_brain <- regularise_image(vesalius_brain,
-    dimensions = seq(1, 30),
+    dimensions = seq(1, 50),
     verbose = FALSE)
 vesalius_brain <- equalize_image(vesalius_brain,
-    dimensions = seq(1, 30),
+    dimensions = seq(1, 50),
     sleft = 5, sright = 5,
     verbose = FALSE)
 vesalius_brain <- smooth_image(vesalius_brain,
-    dimensions = seq(1, 30),
+    dimensions = seq(1, 50),
     method = c("iso", "box"),
     sigma = 2,
     box = 10,
@@ -277,15 +279,15 @@ vesalius_brain <- smooth_image(vesalius_brain,
 
 vesalius_embryo <- regularise_image(vesalius_embryo,
    embedding = "PCA",
-   dimensions = seq(1, 30),
+   dimensions = seq(1, 50),
    lambda = 10,
    verbose = FALSE)
 vesalius_embryo <- equalize_image(vesalius_embryo,
-    dimensions = seq(1, 30),
+    dimensions = seq(1, 50),
     sleft = 1, sright = 1,
     verbose = FALSE)
 vesalius_embryo <- smooth_image(vesalius_embryo,
-    dimensions = seq(1, 30),
+    dimensions = seq(1, 50),
     method = c("iso", "box"),
     sigma = 1,
     box = 10,

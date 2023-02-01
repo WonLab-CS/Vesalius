@@ -6,7 +6,7 @@ image_file <- file.path(system.file("extdata", package = "vesalius"),
     "dentate.png")
 
 test_that("vesalius assay with image", {
-    img <- load.image(image_file)
+    img <- imager::load.image(image_file)
     expect_s4_class(build_vesalius_assay(coordinates, counts, img),
         "vesalius_assay")
     img <- image_file

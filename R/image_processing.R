@@ -531,12 +531,12 @@ segment_image <- function(vesalius_assay,
       embedding = embedding,
       verbose = verbose))
 
-  #vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
-  #  data = segments$segments,
-  #  slot = "active",
-  #  append = FALSE)
   vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
-    data = segments,
+    data = segments$active,
+    slot = "active",
+    append = FALSE)
+  vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
+    data = segments$segments,
     slot = "territories",
     append = TRUE)
   vesalius_assay <- add_active_embedding_tag(vesalius_assay, embedding)
@@ -590,17 +590,35 @@ kmeans_segmentation <- function(vesalius_assay,
     iter.max = 100,
     nstart = 10))
   clusters <- km$cluster
-  #kcenters <- km$centers
+  kcenters <- km$centers
   match_loc <- match(coord$barcodes, names(clusters))
   clusters <- data.frame(coord, "Segment" = clusters[match_loc])
+  active <- assign_centers(vesalius_assay, clusters, kcenters, dimensions)
   new_trial <- create_trial_tag(colnames(vesalius_assay@territories),
     "Segment") %>%
     tail(1)
   colnames(clusters) <- gsub("Segment", new_trial, colnames(clusters))
-  return(clusters)
+  return(list("segments" = clusters, "active" = active))
 }
 
+#' assign centroid values to active embedding 
+#' @param vesalius_assay a vesalius assy object 
+#' @param clusters data.frame containing cluster values
+#' @param kcenters matrix containing centroid values for each dimension
+#' @param dimensions vector (nummeric / int) describin which latent space
+#' dimensiuons shouls be used. 
+#' @return matrix for the active embedding usiong color segementation 
 
+assign_centers <- function(vesalius_assay,
+  clusters,
+  kcenters,
+  dimensions) {
+  active <- vesalius_assay@active
+  for (d in dimensions) {
+      active[, d] <- kcenters[clusters$Segment, d]
+  }
+  return(active)
+}
 
 #' leiden segmentation
 #'
@@ -629,15 +647,35 @@ leiden_segmentation <- function(vesalius_assay,
     resolution_parameter = col_resolution)
   cluster <- data.frame("cluster" = clusters$membership,
     "barcodes" = clusters$names)
-
-  
   match_loc <- match(coord$barcodes, cluster$barcodes)
   clusters <- data.frame(coord, "Segment" = cluster$cluster[match_loc])
+  active <- create_pseudo_centroids(vesalius_assay,
+    clusters,
+    dimensions)
   new_trial <- create_trial_tag(colnames(vesalius_assay@territories),
     "Segment") %>%
     tail(1)
   colnames(clusters) <- gsub("Segment", new_trial, colnames(clusters))
-  return(clusters)
+  return(list("segments" = cluster, "active" = active))
+}
+
+
+#' create centroid vlues for louvain and leiden 
+#' @param vesalius_assay  vesalius assay object
+#' @param clusters data frame containing clusters/segments 
+#' @param dimensions vector (nummeric / int) describin which latent space
+#' dimensiuons shouls be used.
+#' @return matrix for the active embedding usiong color segementation 
+create_pseudo_centroids <- function(vesalius_assay, clusters, dimensions) {
+  active <- vesalius_assay@active
+  for (d in dimensions) {
+    for (clust in unique(clusters$Segment)) {
+        loc <- match(rownames(active),
+          clusters$barcodes[clusters$Segment == clust])
+        active[loc, d] <- mean(active[loc, d])
+    }
+  }
+  return(active)
 }
 
 #' louvain segmentation
@@ -670,11 +708,14 @@ louvain_segmentation <- function(vesalius_assay,
 
   match_loc <- match(coord$barcodes, cluster$barcodes)
   clusters <- data.frame(coord, "Segment" = cluster$cluster[match_loc])
+  active <- create_pseudo_centroids(vesalius_assay,
+    clusters,
+    dimensions)
   new_trial <- create_trial_tag(colnames(vesalius_assay@territories),
     "Segment") %>%
     tail(1)
   colnames(clusters) <- gsub("Segment", new_trial, colnames(clusters))
-  return(clusters)
+  return(list("segments" = cluster, "active" = active))
 }
 
 #' compute and greate nearest neighbor graph
@@ -1067,7 +1108,7 @@ register_image <- function(vesalius_assay,
     dimensions = dimensions)
     registered <- RNiftyReg::niftyreg(source = source,
       target = target,
-      scope = "nonlinear")
+      scope = "affine")
     return(registered)
 }
 
