@@ -47,19 +47,26 @@ format_ves_to_c <- function(vesalius_assay,
 #' @param embeddings matrix - embedding matrix
 #' @param dims dimensions to use
 #' @param tiles tile data frame used to reconstruct images
+#' @param full_image logical - should the background be returned as well
 #' @details using this as a way to run this section in parallel
-#' way to slow otherwise.
+#' way to slow otherwise. The back ground represents all pixels that are not 
+#' part of the Spatial data but constiture the "rest" of the pixels in the image.
+#' This tends to happen when you have a non rectangular assay that needs to be fitted
+#' into a n * p or n * p * d array.  
 #' @return cimg object of embedding
 #' @importFrom dplyr right_join select
 #' @importFrom stats median na.exclude
 #' @importFrom imager as.cimg index.coord
-future_ves_to_cimg <- function(i, embeddings, dims, tiles) {
+future_ves_to_cimg <- function(i, embeddings, dims, tiles, full_image = TRUE) {
   embeds <- embeddings[, dims[i]]
   embeds <- data.frame(names(embeds), embeds)
   colnames(embeds) <- c("barcodes", as.character(dims[i]))
   cimg <- right_join(tiles, embeds, by = "barcodes")
   colnames(cimg) <- c("barcodes", "x", "y", "origin", "value")
   cimg <- na.exclude(cimg)
+  if (!full_image) {
+    return(cimg)
+  }
   im <- as.cimg(array(median(cimg$value), c(max(cimg$x), max(cimg$y))))
   ind <- imager:::index.coord(im, cimg[, c("x", "y"), drop = FALSE])
   im[ind] <- cimg[["value"]]

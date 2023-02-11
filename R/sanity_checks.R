@@ -331,6 +331,19 @@ check_isolation_method <- function(method) {
     }
 }
 
+#' check dimension selection method 
+#' @param method string - dimensions selecion 
+#' @return territory isolation method
+check_dim_selection_method <- function(method) {
+    if (any(!method %in% c("batty"))) {
+        stop("Dimension selection method provided does not match available options \n
+            Select from: \n
+            batty")
+    } else {
+        return(method)
+    }
+}
+
 #' check if DEG method is one of the available options
 #' @param method string - DEG method
 #' @return DEG method or error
@@ -350,6 +363,9 @@ check_deg_method <- function(method) {
         return(method)
     }
 }
+
+
+
 #' check tensor compression 
 #' @param locs rle output of coordinate compression
 #' @details Here we just want to check if the output is reasonable or not
@@ -411,6 +427,9 @@ check_embedding_selection <- function(vesalius_assay, embed, dims) {
     #--------------------------------------------------------------------------#
     # Lets check if we have all the right embeddings
     #--------------------------------------------------------------------------#
+    if (sum(dim(vesalius_assay@active)) == 0) {
+            stop("No embeddings have been computed!")
+    }
     if (embed == "last") {
         embeddings <- vesalius_assay@active
     } else {

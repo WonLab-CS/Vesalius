@@ -316,6 +316,74 @@ generate_tiles <- function(vesalius_assay,
   return(vesalius_assay)
 }
 
+#' select latent space dimensions
+#' @param vesalius_assay a vesalius_assay object
+#' @param method character string describing which method should be use to 
+#' select latent space dimensions
+#' @param threshold numeric - information content threshold
+#' @details Since each latent space dimension is represented as an image, 
+#' we can compute the information content of each image. If an image drops below
+#' a certain threhsold, we assume that it mainly contains noise and will not
+#' be uesful for territtory selection.
+#' 
+#' Currently, we compute the information content using entropy.
+#' 
+#' Vesalius will always compute information content on the active embedding.
+#' Since the active embedding can be subjected to image processing steps,
+#' we recommend selecting dimensions after image processing and prior to 
+#' image segmentation. 
+#' @returns a numeric vector of suggested dimensions to use for analysis.
+#' @importFrom future.apply future_sapply
+#' @export
+#' @examples
+#' \dontrun{
+#' data(vesalius)
+#' # First we build a simple object
+#' ves <- build_vesalius_object(coordinates, counts)
+#' # We can do a simple run 
+#' ves <- generate_embeddings(ves)
+#' ves <- smooth_image(ves, iter = 5, sigma = 3)
+#' embeds <- select_dimensions(ves)
+#' 
+#'}
+select_dimensions <- function(vesalius_assay,
+  method = "batty",
+  threshold = 0.05,
+  verbose = TRUE) {
+    simple_bar(verbose)
+    #--------------------------------------------------------------------------#
+    # check method and convert active
+    #--------------------------------------------------------------------------#
+    method <- check_dim_selection_method(method)
+    tiles <- check_tiles(vesalius_assay)
+    active <- get_embeddings(vesalius_assay, active = TRUE)
+    message_switch("vtc", verbose)
+    active <- future_lapply(seq_len(ncol(active)),
+      FUN = future_ves_to_cimg,
+      embeddings = active,
+      dims = seq_len(ncol(active)),
+      tiles = tiles,
+      full_image = FALSE,
+      future.seed = TRUE)
+    #--------------------------------------------------------------------------#
+    # Calculate information content of image
+    # Using a switch for now. I might add more methods later 
+    #--------------------------------------------------------------------------#
+    message_switch("info", verbose, method = method)
+    information_content <- switch(EXPR = method,
+      "batty" = sapply(active, image_entropy))#, future.seed = TRUE))
+    #--------------------------------------------------------------------------#
+    # No need to update the object for now 
+    # I could add this to meta paramters or something? 
+    # Remebering paramters or something along those lines
+    #--------------------------------------------------------------------------#
+    simple_bar(verbose)
+    return(information_content)
+}
+
+
+
+
 
 #------------------------/ Filtering  Beads /----------------------------------#
 #' filter grid
@@ -985,4 +1053,13 @@ embed_lsi_umap <- function(counts,
   colour_matrix <- list(as.matrix(colour_matrix))
   names(colour_matrix) <- "LSI_UMAP"
   return(colour_matrix)
+}
+
+#------------------------/ Selecting Dimensions /-----------------------------#
+#' compute information content of image using entropy 
+#' @param active data frame containing pixel values as cimg df
+#' @returns image entropy
+image_entropy <- function(active) {
+  #SpatEntropy Methods
+  return(0)
 }

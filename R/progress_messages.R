@@ -98,7 +98,9 @@ message_switch <- function(type, verbose = TRUE, ...) {
         "raw_count" = cat(paste(t,
             " Raw count matrix already present. Adding", args$count_type, "tag\n")),
         "add_embeds" = cat(paste(t,
-            " Adding embeddings to", args$assay, "\n"))
+            " Adding embeddings to", args$assay, "\n")),
+        "info" = cat(paste(t,
+            " Computing Information Content using", args$method, "\n"))
         )
     } else {
         return(NULL)

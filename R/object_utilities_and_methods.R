@@ -272,6 +272,9 @@ get_tiles <- function(vesalius_assay) {
 #' @export
 #' @importFrom methods slot
 get_embeddings <- function(vesalius_assay, active = TRUE) {
+    if (sum(dim(vesalius_assay@active)) == 0) {
+            stop("No embeddings have been computed!")
+        }
     if (active) {
         tiles <- slot(vesalius_assay, "active")
     } else {

@@ -4,7 +4,7 @@
 \alias{future_ves_to_cimg}
 \title{convert ves embedding to image}
 \usage{
-future_ves_to_cimg(i, embeddings, dims, tiles)
+future_ves_to_cimg(i, embeddings, dims, tiles, full_image = TRUE)
 }
 \arguments{
 \item{i}{index of embedding to use}
@@ -14,6 +14,8 @@ future_ves_to_cimg(i, embeddings, dims, tiles)
 \item{dims}{dimensions to use}
 
 \item{tiles}{tile data frame used to reconstruct images}
+
+\item{full_image}{logical - should the background be returned as well}
 }
 \value{
 cimg object of embedding
@@ -23,5 +25,8 @@ convert ves embedding to image
 }
 \details{
 using this as a way to run this section in parallel
-way to slow otherwise.
+way to slow otherwise. The back ground represents all pixels that are not 
+part of the Spatial data but constiture the "rest" of the pixels in the image.
+This tends to happen when you have a non rectangular assay that needs to be fitted
+into a n * p or n * p * d array.
 }
