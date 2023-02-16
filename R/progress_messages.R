@@ -100,7 +100,13 @@ message_switch <- function(type, verbose = TRUE, ...) {
         "add_embeds" = cat(paste(t,
             " Adding embeddings to", args$assay, "\n")),
         "info" = cat(paste(t,
-            " Computing Information Content using", args$method, "\n"))
+            " Computing Information Content using", args$method, "\n")),
+        "unpack_path" = cat(paste(t,
+            " Unpacking territory edge\n")),
+        "edge_detect" = cat(paste(t,
+            " No edge in", args$nulls, " - Skipping\n")),
+        "fft" = cat(paste(t,
+            " Computing Fourier Transform\n"))
         )
     } else {
         return(NULL)

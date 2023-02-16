@@ -371,7 +371,15 @@ select_dimensions <- function(vesalius_assay,
     #--------------------------------------------------------------------------#
     message_switch("info", verbose, method = method)
     information_content <- switch(EXPR = method,
-      "batty" = sapply(active, image_entropy))#, future.seed = TRUE))
+      "altieri" = sapply(active, ves_altieri),
+      "batty" = sapply(active, ves_batty),
+      "contagion" = sapply(active, ves_contagion),
+      "karlstrom" = sapply(active, ves_karlstrom),
+      "leibovici" = sapply(active, ves_leibovici),
+      "oneill" = sapply(active, ves_oneil),
+      "parredw" = sapply(active, ves_parredw),
+      "shannon" = sapply(active, ves_shannon),
+      "shannonZ" = sapply(active, ves_shannonZ))#, future.seed = TRUE))
     #--------------------------------------------------------------------------#
     # No need to update the object for now 
     # I could add this to meta paramters or something? 
@@ -615,12 +623,14 @@ rasterise <- function(filtered) {
 #' @param yside vector of y coordinates
 #' @param indx central point x coordinate 
 #' @param indy central point y coordinate
+#' @param order logical - if TRUE return order only and not the
+#' coordinates 
 #' @details For rasterisation, the shape of the polygon must be as
 #' convex as possible. To ensure that all points are in some sense 
 #' in a convex form we order them based on their polar coordinate 
 #' angle. 
 #' @return a data frame of ordered x and y coordinates.
-convexify <- function(xside, yside, indx, indy) {
+convexify <- function(xside, yside, indx, indy, order = FALSE) {
   #----------------------------------------------------------------------------#
   # Converting everything to an angle - from there we can just go clock wise
   # and order the point based on angle
@@ -634,8 +644,14 @@ convexify <- function(xside, yside, indx, indy) {
     if (x >= 0 & y < 0) angle <- 360 - (atan(abs(y) / abs(x)) * (180 / pi))
     return(angle)
   }, x = x, y = y, SIMPLIFY = TRUE)
-  convex <- data.frame("x" = xside[order(angle, decreasing = FALSE)],
+  if (order) {
+    convex <- data.frame("x" = order(angle, decreasing = FALSE),
+    "y" = order(angle, decreasing = FALSE))
+  } else {
+    convex <- data.frame("x" = xside[order(angle, decreasing = FALSE)],
     "y" = yside[order(angle, decreasing = FALSE)])
+  }
+  
   return(convex)
 }
 
@@ -1056,10 +1072,123 @@ embed_lsi_umap <- function(counts,
 }
 
 #------------------------/ Selecting Dimensions /-----------------------------#
-#' compute information content of image using entropy 
+#' compute Altieri spatial entropy
 #' @param active data frame containing pixel values as cimg df
 #' @returns image entropy
-image_entropy <- function(active) {
-  #SpatEntropy Methods
-  return(0)
+#' @importFrom SpatEntropy altieri
+#' @importFrom spatstat.geom ppp owin
+ves_altieri <- function(active) {
+  x_range <- c(min(active$x), max(active$x))
+  y_range <- c(min(active$y), max(active$y))
+  ppp_obj <- spatstat.geom::ppp(x =  active$x,
+    y = active$y,
+    window = spatstat.geom::owin(x_range, y_range),
+    marks = active$value)
+  entropy <- SpatEntropy::altieri(ppp_obj)
+  return(entropy$RES)
+}
+
+#' compute batty spatial entropy
+#' @param active data frame containing pixel values as cimg df
+#' @returns image entropy
+#' @importFrom SpatEntropy batty
+#' @importFrom spatstat.geom ppp owin
+ves_batty <- function(active) {
+  x_range <- c(min(active$x), max(active$x))
+  y_range <- c(min(active$y), max(active$y))
+  ppp_obj <- spatstat.geom::ppp(x =  active$x,
+    y = active$y,
+    window = spatstat.geom::owin(x_range, y_range))
+  entropy <- SpatEntropy::batty(ppp_obj, partition = 100)
+  return(entropy$batty)
+}
+
+#' compute relative contagion index 
+#' @param active data frame containing pixel values as cimg df
+#' @returns contagion index
+#' @importFrom SpatEntropy contagion
+ves_contagion <- function(active) {
+  dat <- as.matrix(imager::as.cimg(active[, c("x", "y", "value")]))
+  entropy <- SpatEntropy::contagion(dat)
+  return(entropy$contagion)
+}
+
+#' compute karlstrom entropy
+#' @param active data frame containing pixel values as cimg df
+#' @returns entropy
+#' @importFrom SpatEntropy karlstrom
+ves_karlstrom <- function(active) {
+  x_range <- c(min(active$x), max(active$x))
+  y_range <- c(min(active$y), max(active$y))
+  ppp_obj <- spatstat.geom::ppp(x =  active$x,
+    y = active$y,
+    window = spatstat.geom::owin(x_range, y_range))
+  entropy <- SpatEntropy::karlstrom(ppp_obj, neigh = 6, partition = 100)
+  return(entropy$karlstrom)
+}
+
+#' compute leibovici entropy
+#' @param active data frame containing pixel values as cimg df
+#' @returns entropy 
+#' @importFrom SpatEntropy leibovici
+ves_leibovici <- function(active) {
+  x_range <- c(min(active$x), max(active$x))
+  y_range <- c(min(active$y), max(active$y))
+  ccdist <- 0.05 * mean(c(x_range[2] - x_range[1],
+    y_range[2] - y_range[1]))
+  ppp_obj <- spatstat.geom::ppp(x =  active$x,
+    y = active$y,
+    window = spatstat.geom::owin(x_range, y_range))
+  entropy <- SpatEntropy::leibovici(ppp_obj, ccdist = ccdist, partition = 100)
+  return(entropy$leib)
+}
+
+#' compute oneil entropy
+#' @param active data frame containing pixel values as cimg df
+#' @returns image entropy
+#' @importFrom SpatEntropy oneill
+ves_oneil <- function(active) {
+  dat <- as.matrix(imager::as.cimg(active[, c("x", "y", "value")]))
+  entropy <- SpatEntropy::oneill(dat)
+  return(entropy$oneill)
+}
+
+#' compute parredw entropy
+#' @param active data frame containing pixel values as cimg df
+#' @returns image entropy
+#' @importFrom SpatEntropy parredw
+ves_parredw <- function(active) {
+  dat <- as.matrix(imager::as.cimg(active[, c("x", "y", "value")]))
+  entropy <- SpatEntropy::parredw(dat)
+  return(entropy$parredw) 
+}
+
+#' compute shannow entropy
+#' @param active data frame containing pixel values as cimg df
+#' @returns image entropy
+#' @importFrom SpatEntropy shannon
+ves_shannon <- function(active) {
+  x_range <- c(min(active$x), max(active$x))
+  y_range <- c(min(active$y), max(active$y))
+  ppp_obj <- spatstat.geom::ppp(x =  active$x,
+    y = active$y,
+    marks = active$value,
+    window = spatstat.geom::owin(x_range, y_range))
+  entropy <- SpatEntropy::shannon(ppp_obj)
+  return(entropy$shann)
+}
+
+#' compute shannonZ entropy
+#' @param active data frame containing pixel values as cimg df
+#' @returns image entropy
+#' @importFrom SpatEntropy shannonZ
+ves_shannonZ <- function(active) {
+  x_range <- c(min(active$x), max(active$x))
+  y_range <- c(min(active$y), max(active$y))
+  ppp_obj <- spatstat.geom::ppp(x =  active$x,
+    y = active$y,
+    marks = active$value,
+    window = spatstat.geom::owin(x_range, y_range))
+  entropy <- SpatEntropy::shannonZ(ppp_obj)
+  return(entropy$shannZ)
 }

@@ -4,7 +4,7 @@
 \alias{convexify}
 \title{convexify}
 \usage{
-convexify(xside, yside, indx, indy)
+convexify(xside, yside, indx, indy, order = FALSE)
 }
 \arguments{
 \item{xside}{vector of x coordinates}
@@ -14,6 +14,9 @@ convexify(xside, yside, indx, indy)
 \item{indx}{central point x coordinate}
 
 \item{indy}{central point y coordinate}
+
+\item{order}{logical - if TRUE return order only and not the
+coordinates}
 }
 \value{
 a data frame of ordered x and y coordinates.

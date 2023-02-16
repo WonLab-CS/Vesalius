@@ -335,10 +335,19 @@ check_isolation_method <- function(method) {
 #' @param method string - dimensions selecion 
 #' @return territory isolation method
 check_dim_selection_method <- function(method) {
-    if (any(!method %in% c("batty"))) {
+    if (any(!method %in% c("altieri",
+        "batty",
+        "contagion",
+        "karlstrom",
+        "leibovici",
+        "oneill",
+        "parredw",
+        "shannon",
+        "shannonZ"))) {
         stop("Dimension selection method provided does not match available options \n
             Select from: \n
-            batty")
+            altieri, batty, contagion, karlstrom, leibovici, oneill, parredw,
+            shannon, shannonZ")
     } else {
         return(method)
     }

@@ -6,7 +6,7 @@
 \usage{
 select_dimensions(
   vesalius_assay,
-  method = "entropy",
+  method = "batty",
   threshold = 0.05,
   verbose = TRUE
 )
