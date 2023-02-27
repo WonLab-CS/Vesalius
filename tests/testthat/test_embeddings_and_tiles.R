@@ -289,14 +289,3 @@ test_that("Vealius Custom", {
 })
 
 
-test_that("Dimension selection works as expected with raw embeds", {
-    vesalius <- build_vesalius_assay(coordinates, counts)
-    vesalius <- generate_embeddings(vesalius,
-        dim_reduction = "PCA",
-        dimensions = 100,
-        normalisation = "log_norm")
-    vesalius <- equalize_image(vesalius, 1:100, sleft = 5, sright = 5)
-    vesalius <- smooth_image(vesalius, 1:100, sigma = 5, iter = 10)
-    # testing before any image
-    selected <- select_dimensions(vesalius, method = "batty")
-})

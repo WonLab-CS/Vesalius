@@ -50,8 +50,8 @@ we suggest first looking at values between 3 and 20.
 In the case of **leiden** and **louvain** clustering, the
 \code{col_resolution} is the granularity of the clustering.
 In this case, we suggest using values between 0.01 and 1 to start with.
-We recommned uisng **louvain** clustering over **leiden** in 
-this context. 
+We recommned uisng **louvain** clustering over **leiden** in
+this context.
 
 The optimal \code{col_resolution} will depend on your interest and 
 biological question at hand. You might be interested in more or less

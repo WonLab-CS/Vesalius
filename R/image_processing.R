@@ -476,13 +476,13 @@ regularise <- function(img,
 #' In the case of **leiden** and **louvain** clustering, the
 #' \code{col_resolution} is the granularity of the clustering.
 #' In this case, we suggest using values between 0.01 and 1 to start with.
-#' We recommned uisng **louvain** clustering over **leiden** in 
-#' this context. 
-#' 
+#' We recommned uisng **louvain** clustering over **leiden** in
+#' this context.
+#'
 #' The optimal \code{col_resolution} will depend on your interest and 
 #' biological question at hand. You might be interested in more or less
 #' granular territories. Along with smoothing, the number of segments is
-#' one way to control this granularity. 
+#' one way to control this granularity.
 #
 #' @return a vesalius_assay object
 #' @examples
@@ -1033,82 +1033,4 @@ distance_pooling <- function(img, capture_radius, min_spatial_index) {
       return(all_ters)
 }
 
-
-#' create a registration template image
-#' @param vesalius_assay a vesalius_assay object
-#' @param from character string defining what should be used to create
-#' the image template
-#' @param dimensions numeric vector defining which dimensions should be used
-#' if calling en embedding
-#' @details creating a template gray image that we will use for image registration
-#' The point here is to make sure that we have something can use to compared the
-#' the image to a microscopy image
-#' @return a cimg object
-generate_image_template <- function(vesalius_assay,
-  from = "Territory",
-  dimensions = seq(1:3)) {
-  #---------------------------------------------------------------------------#
-  # check if source for image template is availbale
-  #---------------------------------------------------------------------------#
-  tiles <- get_tiles(vesalius_assay)
-  image <- check_template_source(vesalius_assay, from, dimensions)
-  type <- comment(image)
-
-  if (type != "Embedding") {
-    #-------------------------------------------------------------------------#
-    # Creating evenly space color values from segments
-    #-------------------------------------------------------------------------#
-    value <- suppressWarnings(as.numeric(image[, 4]))
-    value[is.na(value)] <- max(value[!is.na(value)]) + 1
-    value <- (value / max(value)) * 255
-    image[, 4] <- value
-    colnames(image) <- c("barcodes", "x", "y", "value")
-    image <- right_join(tiles, image, by = "barcodes") %>%
-    select(c("barcodes", "x.x", "y.x", "value"))
-    colnames(image) <- c("barcodes", "x", "y", "value")
-    image <- na.exclude(image)
-  } else {
-    #-------------------------------------------------------------------------#
-    # Color value based on sum across latent space dimensions
-    #-------------------------------------------------------------------------#
-    value <- apply(image, 1, mean)
-    #value <- min_max(value)
-    image <- data.frame("barcodes" = names(value), "value" = value)
-    image <- right_join(tiles, image, by = "barcodes") %>%
-      select(c("barcodes", "x", "y", "value"))
-  }
-  #---------------------------------------------------------------------------#
-  # rebuild image with median colored background
-  #---------------------------------------------------------------------------#
-  img <- as.cimg(array(median(image$value), c(max(image$x), max(image$y))))
-  ind <- imager:::index.coord(img, image[, c("x", "y"), drop = FALSE])
-  img[ind] <- image[["value"]]
-  return(img)
-}
-
-
-#' register_image
-#' register microscopy image to vesalius image
-#' @param vesalius_assay a vesalius_Assay object
-#' @param source character string - name of source image
-#' @param dimensions numeric integer - number of dimension that should
-#' be used if either source is an embedding.
-#' @param verbose logical - should progressed message be rpint to the
-#' console.
-#' @return a vesalius_assay object
-#' @importFrom RNiftyReg niftyreg
-#' @export
-register_image <- function(vesalius_assay,
-  source = "Territory",
-  dimensions = seq(1, 3),
-  verbose) {
-    target <- check_image(vesalius_assay)
-    source <- generate_image_template(vesalius_assay,
-    from = source,
-    dimensions = dimensions)
-    registered <- RNiftyReg::niftyreg(source = source,
-      target = target,
-      scope = "affine")
-    return(registered)
-}
 

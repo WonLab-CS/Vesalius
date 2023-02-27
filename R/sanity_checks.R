@@ -343,11 +343,12 @@ check_dim_selection_method <- function(method) {
         "oneill",
         "parredw",
         "shannon",
-        "shannonZ"))) {
+        "shannonZ",
+        "moran"))) {
         stop("Dimension selection method provided does not match available options \n
             Select from: \n
             altieri, batty, contagion, karlstrom, leibovici, oneill, parredw,
-            shannon, shannonZ")
+            shannon, shannonZ, moran")
     } else {
         return(method)
     }

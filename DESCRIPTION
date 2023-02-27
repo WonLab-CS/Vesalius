@@ -24,8 +24,6 @@ Collate: image_processing.R
     object_utilities_and_methods.R
     sanity_checks.R
     object_modification.R
-    super_pixel.R
-    fft.R
 Depends: R (>= 4.0.0)
 Imports:
     grDevices,
@@ -52,8 +50,7 @@ Imports:
     edgeR,
     ggplot2,
     igraph,
-    pwr,
-    RNiftyReg
+    pwr
 Suggests:
     knitr,
     RUnit,
