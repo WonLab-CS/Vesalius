@@ -163,6 +163,8 @@ rebalence_colors <- function(coordinates, dimensions, method = "minmax") {
 #' @param split logical - If TRUE, territories will be plotted in
 #' separate panels
 #' @param randomise logical - If TRUE, colour palette will be randomised.
+#' @param highlight numeric vector describing which territories should be 
+#' highlighted.
 #' @param cex numeric describing font size multiplier.
 #' @param cex_pt numeric describing point size multiplier.
 #' @details Territory plots show all territories in false colour after they
@@ -199,6 +201,7 @@ rebalence_colors <- function(coordinates, dimensions, method = "minmax") {
 territory_plot <- function(vesalius_assay,
   trial = "last",
   split = FALSE,
+  highlight = NULL,
   randomise = TRUE,
   cex = 10,
   cex_pt = 1) {
@@ -210,6 +213,10 @@ territory_plot <- function(vesalius_assay,
     # SANITY check here and format
     #--------------------------------------------------------------------------#
     territories <- check_territory_trial(vesalius_assay, trial)
+    if (!is.null(highlight)){
+        highlight <- check_group_value(territories, highlight)
+    }
+    
     legend <- sapply(strsplit(trial, "_"), "[[", 1)
     #--------------------------------------------------------------------------#
     # Changing label order because factor can suck ass sometimes
@@ -226,9 +233,10 @@ territory_plot <- function(vesalius_assay,
     # to use this palette instead - Sorry Hadely
     #--------------------------------------------------------------------------#
     ter_col <- create_palette(territories, randomise)
+    ter_alpha <- create_alpha(territories, highlight)
     if (split) {
       ter_plot <- ggplot(territories, aes(x, y, col = trial)) +
-          geom_point(size = cex_pt, alpha = 0.65) +
+          geom_point(size = cex_pt, alpha = ter_alpha) +
           facet_wrap(~trial) +
           theme_classic() +
           scale_color_manual(values = ter_col) +
@@ -243,7 +251,7 @@ territory_plot <- function(vesalius_assay,
             x = "X coordinates", y = "Y coordinates")
     } else {
       ter_plot <- ggplot(territories, aes(x, y, col = trial)) +
-          geom_point(size = cex_pt, alpha = 0.65) +
+          geom_point(size = cex_pt, alpha = ter_alpha) +
           theme_classic() +
           scale_color_manual(values = ter_col) +
           theme(legend.text = element_text(size = cex * 1.2),
@@ -294,6 +302,24 @@ create_palette <- function(territories, randomise) {
         ter_col <- ter_pal(ter_col)
   }
   return(ter_col)
+}
+
+#' create alpha value if territories need to be highlighted
+#' @param territories vesalius territories taken from a vesalius_assay
+#' @param highlight numeric vector describing which territories should 
+#' be highlighted
+#' @details If highlight is null, will return the same alpha values 
+#' for all territories
+#' @return vector of alpha values
+create_alpha <- function(territories, highlight) {
+  if (!is.null(highlight)){
+    ter_col <- rep(0.25, length(levels(territories$trial)))
+    loc <- as.character(levels(territories$trial)) %in% highlight
+    ter_col[loc] <- 1
+  } else {
+    ter_col <- rep(0.65, length(levels(territories$trial)))
+  }
+  return(ter_col[as.integer(territories$trial)])
 }
 
 #' view_gene_expression

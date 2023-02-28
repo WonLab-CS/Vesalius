@@ -8,6 +8,7 @@ territory_plot(
   vesalius_assay,
   trial = "last",
   split = FALSE,
+  highlight = NULL,
   randomise = TRUE,
   cex = 10,
   cex_pt = 1
@@ -21,6 +22,9 @@ to use. Default is "last" which is the last segmentation trial used.}
 
 \item{split}{logical - If TRUE, territories will be plotted in
 separate panels}
+
+\item{highlight}{numeric vector describing which territories should be 
+highlighted.}
 
 \item{randomise}{logical - If TRUE, colour palette will be randomised.}
 
