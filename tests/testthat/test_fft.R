@@ -1,17 +1,65 @@
 # load vesalius data 
 # We will assume that the embeddings have been produced 
-library(anndata)
-spat_data <- read_h5ad("/common/wonklab/CosMX/PembroRT_cosmx_RUBY.h5ad")
-sc_data <- read_h5ad("/common/wonklab/CosMX/")
-data(vesalius)
-vesalius <- build_vesalius_assay(coordinates, counts) %>%
+#library(anndata)
+#spat_data <- read_h5ad("/common/wonklab/CosMX/PembroRT_cosmx_RUBY.h5ad")
+#sc_data <- read_h5ad("/common/wonklab/CosMX/")
+#data(vesalius)
+
+#-----------------------------------------------------------------------------#
+# Loading Libraries and setting seed
+#-----------------------------------------------------------------------------#
+library(vesalius, lib.loc = "/common/martinp4/R")
+library(pwr, lib.loc = "/common/martinp4/R")
+library(gsignal, lib.loc = "/common/martinp4/R")
+library(dplyr)
+library(future)
+library(Matrix)
+set.seed(1547)
+
+
+#-----------------------------------------------------------------------------#
+# create output directories
+#-----------------------------------------------------------------------------#
+input <- "/common/martinp4/SSv2"
+
+
+#-----------------------------------------------------------------------------#
+# Set future global for multicore processing
+#-----------------------------------------------------------------------------#
+plan(multicore, workers = 4)
+max_size <- 1000 * 1024^2
+options(future.globals.maxSize = max_size)
+
+#-----------------------------------------------------------------------------#
+# Generate Brain Images
+#-----------------------------------------------------------------------------#
+coordinates <- list.files(path = input,
+    pattern = "location|coord|Locations", full.names = TRUE)
+counts <- list.files(path = input,
+    pattern = "expression", full.names = TRUE)
+tag <- list.files(path = input,
+    pattern = "expression", full.names = FALSE)
+tag <- gsub(".digital_expression.txt.gz|_expression_matrix.mtx.gz|.sparse_expression.txt",
+    "", tag)
+f = 50
+coord <- read.csv(coordinates[f], header = FALSE, skip = 1)
+colnames(coord) <- c("barcodes", "xcoord", "ycoord")
+count_mat <- read.table(counts[f], header = TRUE, row.names = 1)
+
+vesalius <- build_vesalius_assay(coord, count_mat) %>%
     generate_embeddings(tensor_resolution = 0.3) %>%
     regularise_image(dimensions = 1:30, lambda = 5) %>%
     equalize_image(dimensions = 1:30, sleft = 5, sright = 5) %>%
     smooth_image(dimensions = 1:30, sigma = 5, iter = 10) %>%
     segment_image(dimensions = 1:30, col_resolution = 12) %>%
     isolate_territories()
-vesalius_query <- build_vesalius_assay(coordinates, counts) %>%
+
+
+f = 43
+coord <- read.csv(coordinates[f], header = FALSE, skip = 1)
+colnames(coord) <- c("barcodes", "xcoord", "ycoord")
+count_mat <- read.table(counts[f], header = TRUE, row.names = 1)
+vesalius_query <- build_vesalius_assay(coord, count_mat) %>%
     generate_embeddings(tensor_resolution = 0.3) %>%
     regularise_image(dimensions = 1:30, lambda = 5) %>%
     equalize_image(dimensions = 1:30, sleft = 5, sright = 5) %>%
@@ -21,45 +69,20 @@ vesalius_query <- build_vesalius_assay(coordinates, counts) %>%
 
 test <- integrate_territories(vesalius, vesalius_query, method = "coherence")
 
-testx <- test$x
-colnames(testx) <- paste("s_", colnames(testx))
-rownames(testx) <- paste("q_", rownames(testx))
-testy <- test$y
-colnames(testy) <- paste("s_", colnames(testy))
-rownames(testy) <- paste("q_", rownames(testy))
-test_b <- testx + testy
-pdf("sim.pdf", width = 10, height = 10)
-test_b %>% 
-  as.data.frame() %>%
-  rownames_to_column("q_id") %>%
-  pivot_longer(-c(q_id), names_to = "samples", values_to = "counts") %>%
-  ggplot(aes(x=samples, y=q_id, fill=counts)) + 
-  geom_tile() +
-  scale_fill_viridis_c()
-dev.off()
-# pdf("path_seed.pdf")
-# partials <- 50000
-# tmp <- test[[1]]
-# x <- lapply(tmp, function(x, partials) {
-#     partials <- min(partials, length(x$x))
-#     return(Re(fft(x$x[1:partials], inverse = TRUE))/ (length(x$x)))
-# }, partials)
-# y <- lapply(tmp, function(y, partials) {
-#     partials <- min(partials, length(y$y))
-#     return(Re(fft(y$y[1:partials], inverse = TRUE))/ (length(y$y)))
-# }, partials)
-# range_x <- c(min(sapply(x, min)), max(sapply(x, max)))
-# range_y <- c(min(sapply(y, min)), max(sapply(y, max)))
-# plot(0, type = "n", xlim = range_x, ylim = range_y)
-# for (i in seq_along(tmp)) {
-#     lines(x[[i]], y[[i]], pch = 19, col = rainbow(length(tmp))[i])
-# }
-# dev.off()
+coherence_x <- test$sim$x
+coherence_y <- test$sim$y
+colnames(coherence_x) <- paste0("seed_", colnames(coherence_x))
+rownames(coherence_x) <- paste0("query_", rownames(coherence_x))
 
-# cor <- test$cor
-# cov <- test$cov
+colnames(coherence_y) <- paste0("seed_", colnames(coherence_y))
+rownames(coherence_y) <- paste0("query_", rownames(coherence_y))
 
-# pdf("cor.pdf")
-# image(cor)
-# image(cov)
-# dev.off()
+seed <- lapply(test$seed, function(path) {
+    return(list("x" = fft(path$x),
+      "y" = fft(path$y)))
+})
+
+query <- lapply(test$query, function(path) {
+    return(list("x" = fft(path$x),
+      "y" = fft(path$y)))
+})

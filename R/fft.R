@@ -10,7 +10,8 @@ integrate_territories <- function(seed_assay,
     seed_trial = "last",
     query_trial = "last",
     start = "convex",
-    method = "index",
+    method = "coherence",
+    global = TRUE,
     partials = 500,
     threshold = 0.7,
     weight = rep(0.33, 3),
@@ -28,12 +29,12 @@ integrate_territories <- function(seed_assay,
         tiles = seed_tiles,
         start = start,
         verbose = verbose) %>%
-        normalize_path()
+        normalize_path(global = global)
     query_path <- unpack_territory_path(trial = query_assay,
         tiles = query_tiles,
         start = start,
         verbose = verbose) %>%
-        normalize_path()
+        normalize_path(global = global)
 
     #-------------------------------------------------------------------------#
     # get signal similarity using path signal as in
@@ -45,7 +46,9 @@ integrate_territories <- function(seed_assay,
         threshold = threshold,
         weight = weight)
     simple_bar(verbose)
-    return(similarity)
+    return(list("sim" = similarity,
+        "seed" = seed_path,
+        "query" = query_path))
 }
 
 #' retrieve the points contained in the edge of each territory
@@ -113,10 +116,22 @@ unpack_territory_path <- function(trial,
 #' normalise coordinates of territory edge
 #' @param path data frame of coordinates corresponding to 
 #' the x and y coordinates of the edge of each territory.
+#' @param global logical - using global mion max values or local.
 #' @returns list of nromalised x and y coordinates
-normalize_path <- function(path) {
-    ranges <- get_ranges(path)
-    normed <- lapply(path, function(path, ranges){
+normalize_path <- function(path, global = TRUE) {
+    if (global) {
+        ranges <- get_ranges(path)
+    } else {
+        ranges <- NULL
+    }
+    normed <- lapply(path, function(path, ranges = NULL) {
+        if (is.null(ranges)) {
+            ranges <- list()
+            ranges$x_max <- max(path$x)
+            ranges$x_min <- min(path$x)
+            ranges$y_max <- max(path$y)
+            ranges$y_min <- min(path$y)
+        }
         x <- (ranges$x_max - path$x) / (ranges$x_max - ranges$x_min)
         y <- (ranges$y_max - path$y) / (ranges$y_max - ranges$y_min)
         return(list("x" = x, "y" = y))
