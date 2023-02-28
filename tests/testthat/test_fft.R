@@ -67,7 +67,11 @@ vesalius_query <- build_vesalius_assay(coord, count_mat) %>%
     segment_image(dimensions = 1:30, col_resolution = 12) %>%
     isolate_territories()
 
-test <- integrate_territories(vesalius, vesalius_query, method = "coherence")
+test <- integrate_territories(vesalius,
+    vesalius_query,
+    global = TRUE,
+    method = "coherence",
+    start = "connected")
 
 coherence_x <- test$sim$x
 coherence_y <- test$sim$y

@@ -80,10 +80,13 @@ unpack_territory_path <- function(trial,
             detect_edges() %>%
             grow(1) %>%
             as.data.frame()
-        edge <- inner_join(edge, ter, by = c("x", "y"))
+        edge <- inner_join(edge, ter, by = c("x", "y")) %>%
+            select("barcodes") %>% unique()
+        edge <- tiles %>% filter(barcodes %in% edge$barcodes & origin == 1)
         trial_split[[i]] <- edge
 
     }
+
     #-------------------------------------------------------------------------#
     # next we remove NULLs - this happens when no edge can be deteced 
     #-------------------------------------------------------------------------#
@@ -109,9 +112,30 @@ unpack_territory_path <- function(trial,
                 order = TRUE)
             trial <- trial[ord$x, ]
             return(trial)
-        }))
+        }),
+        "connected" = lapply(trial_split, connected_points))
     return(trial)
 }
+
+#' create path from neighboring points 
+#' @param trail data frame containign x and y path
+#' @return order x y coordinates
+#' @importFrom RANN nn2
+#' 
+connected_points <- function(trial) {
+    knn <- RANN::nn2(trial[, c("x","y")], k = nrow(trial))$nn.idx
+    ord <- rep(0, nrow(knn))
+    ord[1] <- 1
+    for (i in seq(2, nrow(knn))) {
+        if (i == 2) {
+            ord[2] <- knn[(i - 1), 2]
+        } else {
+            ord[i] <- knn[ord[(i - 1)], min(which(!knn[ord[(i - 1)], ] %in% ord))]
+        }
+    }
+    return(trial[ord, ])
+}
+
 
 #' normalise coordinates of territory edge
 #' @param path data frame of coordinates corresponding to 
