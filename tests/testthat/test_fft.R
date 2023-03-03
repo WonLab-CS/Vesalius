@@ -27,7 +27,7 @@ input <- "/common/martinp4/SSv2"
 # Set future global for multicore processing
 #-----------------------------------------------------------------------------#
 plan(multicore, workers = 4)
-max_size <- 1000 * 1024^2
+max_size <- 10000 * 1024^2
 options(future.globals.maxSize = max_size)
 
 #-----------------------------------------------------------------------------#
@@ -46,47 +46,65 @@ coord <- read.csv(coordinates[f], header = FALSE, skip = 1)
 colnames(coord) <- c("barcodes", "xcoord", "ycoord")
 count_mat <- read.table(counts[f], header = TRUE, row.names = 1)
 
+# vesalius <- build_vesalius_assay(coord, count_mat) %>%
+#     generate_embeddings(tensor_resolution = 0.3) %>%
+#     regularise_image(dimensions = 1:30, lambda = 5) %>%
+#     equalize_image(dimensions = 1:30, sleft = 5, sright = 5) %>%
+#     smooth_image(dimensions = 1:30, sigma = 5, iter = 10) %>%
+#     segment_image(dimensions = 1:30, col_resolution = 12) %>%
+#     isolate_territories()
+
 vesalius <- build_vesalius_assay(coord, count_mat) %>%
     generate_embeddings(tensor_resolution = 0.3) %>%
     regularise_image(dimensions = 1:30, lambda = 5) %>%
     equalize_image(dimensions = 1:30, sleft = 5, sright = 5) %>%
-    smooth_image(dimensions = 1:30, sigma = 5, iter = 10) %>%
-    segment_image(dimensions = 1:30, col_resolution = 12) %>%
-    isolate_territories()
+    smooth_image(dimensions = 1:30, method =c("iso", "box"), sigma = 2, box = 10, iter = 10) %>%
+    segment_image(dimensions = 1:30, col_resolution = 15) %>%
+    isolate_territories(min_spatial_index = 50)
 
 
 f = 43
 coord <- read.csv(coordinates[f], header = FALSE, skip = 1)
 colnames(coord) <- c("barcodes", "xcoord", "ycoord")
 count_mat <- read.table(counts[f], header = TRUE, row.names = 1)
+# vesalius_query <- build_vesalius_assay(coord, count_mat) %>%
+#     generate_embeddings(tensor_resolution = 0.3) %>%
+#     regularise_image(dimensions = 1:30, lambda = 5) %>%
+#     equalize_image(dimensions = 1:30, sleft = 5, sright = 5) %>%
+#     smooth_image(dimensions = 1:30, sigma = 5, iter = 10) %>%
+#     segment_image(dimensions = 1:30, col_resolution = 12) %>%
+#     isolate_territories()
+
 vesalius_query <- build_vesalius_assay(coord, count_mat) %>%
     generate_embeddings(tensor_resolution = 0.3) %>%
     regularise_image(dimensions = 1:30, lambda = 5) %>%
     equalize_image(dimensions = 1:30, sleft = 5, sright = 5) %>%
-    smooth_image(dimensions = 1:30, sigma = 5, iter = 10) %>%
-    segment_image(dimensions = 1:30, col_resolution = 12) %>%
-    isolate_territories()
+    smooth_image(dimensions = 1:30, method =c("iso", "box"), sigma = 2, box = 10, iter = 10) %>%
+    segment_image(dimensions = 1:30, col_resolution = 15) %>%
+    isolate_territories(min_spatial_index = 50)
 
-test <- integrate_territories(vesalius,
+test <- integrate_by_territory(vesalius,
     vesalius_query,
-    global = TRUE,
     method = "coherence",
-    start = "connected")
+    use_counts = TRUE,
+    use_norm = "log_norm")
 
-coherence_x <- test$sim$x
-coherence_y <- test$sim$y
-colnames(coherence_x) <- paste0("seed_", colnames(coherence_x))
-rownames(coherence_x) <- paste0("query_", rownames(coherence_x))
 
-colnames(coherence_y) <- paste0("seed_", colnames(coherence_y))
-rownames(coherence_y) <- paste0("query_", rownames(coherence_y))
 
-seed <- lapply(test$seed, function(path) {
-    return(list("x" = fft(path$x),
-      "y" = fft(path$y)))
-})
+# coherence_x <- test$sim$x
+# coherence_y <- test$sim$y
+# colnames(coherence_x) <- paste0("seed_", colnames(coherence_x))
+# rownames(coherence_x) <- paste0("query_", rownames(coherence_x))
 
-query <- lapply(test$query, function(path) {
-    return(list("x" = fft(path$x),
-      "y" = fft(path$y)))
-})
+# colnames(coherence_y) <- paste0("seed_", colnames(coherence_y))
+# rownames(coherence_y) <- paste0("query_", rownames(coherence_y))
+
+# seed <- lapply(test$seed, function(path) {
+#     return(list("x" = fft(path$x),
+#       "y" = fft(path$y)))
+# })
+
+# query <- lapply(test$query, function(path) {
+#     return(list("x" = fft(path$x),
+#       "y" = fft(path$y)))
+# })

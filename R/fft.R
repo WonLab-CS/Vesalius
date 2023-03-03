@@ -51,6 +51,65 @@ integrate_territories <- function(seed_assay,
         "query" = query_path))
 }
 
+
+#' @export
+integrate_by_territory <- function(seed_assay,
+    query_assay,
+    seed_trial = "last",
+    query_trial = "last",
+    method = "coherence",
+    use_counts = TRUE,
+    use_norm = "raw",
+    verbose = TRUE) {
+    simple_bar(verbose)
+    #-------------------------------------------------------------------------#
+    # Get counts 
+    #-------------------------------------------------------------------------#
+    if (use_counts) {
+        seed_counts <- get_counts(seed_assay, type = use_norm)
+        query_counts <- get_counts(query_assay, type = use_norm)
+        seed_genes <- intersect(rownames(seed_counts), rownames(query_counts))
+        seed_counts <- seed_counts[seed_genes, ]
+        query_counts <- query_counts[seed_genes, ]
+    } else {
+        seed_counts <- t(get_embeddings(seed_assay))
+        query_counts <- t(get_embeddings(query_assay))
+    }
+    
+    #-------------------------------------------------------------------------#
+    # get territory information
+    #-------------------------------------------------------------------------#
+    seed_assay <- vesalius:::check_territory_trial(seed_assay, seed_trial)
+    query_assay <- vesalius:::check_territory_trial(query_assay, query_trial)
+    #-------------------------------------------------------------------------#
+    # Get variable features - place holder for now 
+    #-------------------------------------------------------------------------#
+    seed_signals <- territory_signal(seed_counts, seed_assay)
+    query_signals <- territory_signal(query_counts, query_assay)
+    #-------------------------------------------------------------------------#
+    # Comapring signals 
+    #-------------------------------------------------------------------------#
+    sim <- signal_similiarity(seed_signals,
+        query_signals,
+        domain = method)
+    simple_bar
+    return(sim)
+}
+
+territory_signal <- function(counts, territories) {
+    territories <- split(territories, territories$trial)
+    for (i in seq_along(territories)) {
+        territories[[i]] <- as.vector(
+            apply(counts[, territories[[i]]$barcodes],
+            MARGIN = 1,
+            mean))
+    }
+    return(territories)
+}
+
+
+
+
 #' retrieve the points contained in the edge of each territory
 #' @param trial name of territory trial that should be selected
 #' @param tiles vesalius tiles 
@@ -207,8 +266,6 @@ signal_similiarity <- function(seed_path,
             partials,
             threshold,
             weight),
-        "dtw" = dynamic_time_warp(seed_path,
-            query_path),
         "coherence" = spectral_coherence(seed_path, query_path))
     return(sim)
 }
@@ -226,9 +283,83 @@ circular_xcorr <- function(seed, query) {
 
 }
 
+# #' calculate weighted index of similarity between 2 signals
+# #' @param seed_path list of x and y coordinates of seed territories
+# #' @param query_path list of x and y coordinates of query territories
+# #' @param partials int - number of FFT partials to use
+# #' @param threshold numeric time/freq threshold
+# #' @param weight vector of 3 numeric weights - weight used in index calcultion
+# #' @returns matrix of similarity indices between each territory
+# #' @importFrom stats fft
+# index <- function(seed_path,
+#     query_path,
+#     partials = 500,
+#     threshold = 0.7,
+#     weight = rep(0.3, 3)) {
+#     indexed_x <- matrix(0,
+#         ncol = length(seed_path),
+#         nrow = length(query_path))
+#     indexed_y <- matrix(0,
+#         ncol = length(seed_path),
+#         nrow = length(query_path))
+#     for (seed in seq_along(seed_path)){
+#         for (query in seq_along(query_path)){
+#             #-----------------------------------------------------------------#
+#             # Get partial max and subset paths
+#             #-----------------------------------------------------------------#
+#             seed_sub <- seed_path[[seed]]
+#             query_sub <- query_path[[query]]
+#             sub_path <- min(c(length(seed_sub$x), length(query_sub$x)))
+#             sub_path <- sort(sample(seq(1, sub_path),
+#                 sub_path,
+#                 replace = FALSE))
+#             seed_sub_x <- seed_sub$x[sub_path]
+#             query_sub_x <- query_sub$x[sub_path]
+#             seed_sub_y <- seed_sub$y[sub_path]
+#             query_sub_y <- query_sub$y[sub_path]
+#             #-----------------------------------------------------------------#
+#             # compute signal similarity
+#             #-----------------------------------------------------------------#
+#             partial_min <- min(c(length(sub_path), partials))
+#             thresh <- threshold * partial_min
+           
+#             time_stat_x <- max(seed_sub_x * query_sub_x)
+#             time_stat_y <- max(seed_sub_y * query_sub_y)
+
+#             time_shifted_x <- circular_xcorr(seed_sub_x, query_sub_x)
+#             time_shifted_x <- sum(time_shifted_x[time_shifted_x > thresh])
+#             time_shifted_y <- circular_xcorr(seed_sub_y, query_sub_y)
+#             time_shifted_y <- sum(time_shifted_y[time_shifted_y > thresh])
+
+#             freq_static_x <- max(Re(fft(seed_sub_x))[seq(1, partial_min)] *
+#                 Re(fft(query_sub_x))[seq(1, partial_min)])
+#             freq_static_y <- max(Re(fft(seed_sub_y))[seq(1, partial_min)] *
+#                 Re(fft(query_sub_y))[seq(1, partial_min)])
+
+#             freq_shifted_x <- Re(fft(seed_sub_x * query_sub_x))
+#             freq_shifted_x <- sum(freq_shifted_x[freq_shifted_x > thresh])
+#             freq_shifted_y <- Re(fft(seed_sub_y * query_sub_y))
+#             freq_shifted_y <- sum(freq_shifted_y[freq_shifted_y > thresh])
+#             indexed_x[query, seed] <- weight[1] * time_stat_x +
+#                 weight[1] * time_shifted_x +
+#                 weight[2] * freq_static_x +
+#                 weight[3] * freq_shifted_x
+#             indexed_y[query, seed] <- weight[1] * time_stat_y +
+#                 weight[1] * time_shifted_y +
+#                 weight[2] * freq_static_y +
+#                 weight[3] * freq_shifted_y
+#         }
+#     }
+#     colnames(indexed_x) <- names(seed_path)
+#     rownames(indexed_x) <- names(query_path)
+#     colnames(indexed_y) <- names(seed_path)
+#     rownames(indexed_y) <- names(query_path)
+#     return(list("x" = indexed_x, "y" = indexed_y))
+# }
+
 #' calculate weighted index of similarity between 2 signals
-#' @param seed_path list of x and y coordinates of seed territories
-#' @param query_path list of x and y coordinates of query territories
+#' @param seed_path gene signal of seed territories
+#' @param query_path gene signal of query territories
 #' @param partials int - number of FFT partials to use
 #' @param threshold numeric time/freq threshold
 #' @param weight vector of 3 numeric weights - weight used in index calcultion
@@ -239,10 +370,7 @@ index <- function(seed_path,
     partials = 500,
     threshold = 0.7,
     weight = rep(0.3, 3)) {
-    indexed_x <- matrix(0,
-        ncol = length(seed_path),
-        nrow = length(query_path))
-    indexed_y <- matrix(0,
+    indexed <- matrix(0,
         ncol = length(seed_path),
         nrow = length(query_path))
     for (seed in seq_along(seed_path)){
@@ -252,61 +380,40 @@ index <- function(seed_path,
             #-----------------------------------------------------------------#
             seed_sub <- seed_path[[seed]]
             query_sub <- query_path[[query]]
-            sub_path <- min(c(length(seed_sub$x), length(query_sub$x)))
-            sub_path <- sort(sample(seq(1, sub_path),
-                sub_path,
-                replace = FALSE))
-            seed_sub_x <- seed_sub$x[sub_path]
-            query_sub_x <- query_sub$x[sub_path]
-            seed_sub_y <- seed_sub$y[sub_path]
-            query_sub_y <- query_sub$y[sub_path]
             #-----------------------------------------------------------------#
             # compute signal similarity
             #-----------------------------------------------------------------#
-            partial_min <- min(c(length(sub_path), partials))
+            partial_min <- min(c(length(seed_sub), partials))
             thresh <- threshold * partial_min
            
-            time_stat_x <- max(seed_sub_x * query_sub_x)
-            time_stat_y <- max(seed_sub_y * query_sub_y)
+            time_stat <- max(seed_sub * query_sub)
+            
+            time_shifted <- circular_xcorr(seed_sub, query_sub)
+            time_shifted <- sum(time_shifted[time_shifted > thresh])
+            
+            freq_static <- max(Re(fft(seed_sub))[seq(1, partial_min)] *
+                Re(fft(query_sub))[seq(1, partial_min)])
 
-            time_shifted_x <- circular_xcorr(seed_sub_x, query_sub_x)
-            time_shifted_x <- sum(time_shifted_x[time_shifted_x > thresh])
-            time_shifted_y <- circular_xcorr(seed_sub_y, query_sub_y)
-            time_shifted_y <- sum(time_shifted_y[time_shifted_y > thresh])
-
-            freq_static_x <- max(Re(fft(seed_sub_x))[seq(1, partial_min)] *
-                Re(fft(query_sub_x))[seq(1, partial_min)])
-            freq_static_y <- max(Re(fft(seed_sub_y))[seq(1, partial_min)] *
-                Re(fft(query_sub_y))[seq(1, partial_min)])
-
-            freq_shifted_x <- Re(fft(seed_sub_x * query_sub_x))
-            freq_shifted_x <- sum(freq_shifted_x[freq_shifted_x > thresh])
-            freq_shifted_y <- Re(fft(seed_sub_y * query_sub_y))
-            freq_shifted_y <- sum(freq_shifted_y[freq_shifted_y > thresh])
-            indexed_x[query, seed] <- weight[1] * time_stat_x +
-                weight[1] * time_shifted_x +
-                weight[2] * freq_static_x +
-                weight[3] * freq_shifted_x
-            indexed_y[query, seed] <- weight[1] * time_stat_y +
-                weight[1] * time_shifted_y +
-                weight[2] * freq_static_y +
-                weight[3] * freq_shifted_y
+            freq_shifted <- Re(fft(seed_sub * query_sub))
+            freq_shifted <- sum(freq_shifted[freq_shifted > thresh])
+            
+            indexed[query, seed] <- weight[1] * time_stat +
+                weight[1] * time_shifted +
+                weight[2] * freq_static +
+                weight[3] * freq_shifted
+            
         }
     }
-    colnames(indexed_x) <- names(seed_path)
-    rownames(indexed_x) <- names(query_path)
-    colnames(indexed_y) <- names(seed_path)
-    rownames(indexed_y) <- names(query_path)
-    return(list("x" = indexed_x, "y" = indexed_y))
+    colnames(indexed) <- names(seed_path)
+    rownames(indexed) <- names(query_path)
+    
+    return(indexed)
 }
 
-# #' dynamic time warping for signal similarity
-# #' @param seed_path list of x and y coordinates of seed territories
-# #' @param query_path list of x and y coordinates of query territories
-# #' #' @returns matrix of dynamic time warping distance between each territory
-# #' @importFrom dtw dtw
-# dynamic_time_warp <- function(seed_path, query_path) {
-#     indexed_x <- matrix(0,
+
+
+# spectral_coherence <- function(seed_path, query_path) {
+#      indexed_x <- matrix(0,
 #         ncol = length(seed_path),
 #         nrow = length(query_path))
 #     indexed_y <- matrix(0,
@@ -314,25 +421,32 @@ index <- function(seed_path,
 #         nrow = length(query_path))
 #     for (seed in seq_along(seed_path)){
 #         for (query in seq_along(query_path)){
-#             indexed_x[query, seed] <- dtw::dtw(seed_path$x,
-#                 query_path$x)$distance
-#             indexed_y[query, seed] <- dtw::dtw(seed_path$y,
-#                 query_path$y)$distance
+#             #-----------------------------------------------------------------#
+#             # Get partial max and subset paths
+#             #-----------------------------------------------------------------#
+#             seed_sub <- seed_path[[seed]]
+#             query_sub <- query_path[[query]]
+#             sub_path <- min(c(length(seed_sub$x), length(query_sub$x)))
+#             sub_path <- sort(sample(seq(1, sub_path),
+#                 sub_path,
+#                 replace = FALSE))
+#             x <- cbind(seed_sub$x[sub_path], query_sub$x[sub_path])
+#             y <- cbind(seed_sub$y[sub_path], query_sub$y[sub_path])
+#             #-----------------------------------------------------------------#
+#             # coherence 
+#             #-----------------------------------------------------------------#
+#             indexed_x[query, seed] <- max(gsignal::mscohere(x)$coh)
+#             indexed_y[query, seed] <- max(gsignal::mscohere(y)$coh)
 #         }
 #     }
-#     colnames(indexed_x) <- names(seed)
-#     rownames(indexed_x) <- names(query)
-#     colnames(indexed_y) <- names(seed)
-#     rownames(indexed_y) <- names(query)
+#     colnames(indexed_x) <- names(seed_path)
+#     rownames(indexed_x) <- names(query_path)
+#     colnames(indexed_y) <- names(seed_path)
+#     rownames(indexed_y) <- names(query_path)
 #     return(list("x" = indexed_x, "y" = indexed_y))
 # }
-
-
 spectral_coherence <- function(seed_path, query_path) {
-     indexed_x <- matrix(0,
-        ncol = length(seed_path),
-        nrow = length(query_path))
-    indexed_y <- matrix(0,
+     coh <- matrix(0,
         ncol = length(seed_path),
         nrow = length(query_path))
     for (seed in seq_along(seed_path)){
@@ -342,22 +456,15 @@ spectral_coherence <- function(seed_path, query_path) {
             #-----------------------------------------------------------------#
             seed_sub <- seed_path[[seed]]
             query_sub <- query_path[[query]]
-            sub_path <- min(c(length(seed_sub$x), length(query_sub$x)))
-            sub_path <- sort(sample(seq(1, sub_path),
-                sub_path,
-                replace = FALSE))
-            x <- cbind(seed_sub$x[sub_path], query_sub$x[sub_path])
-            y <- cbind(seed_sub$y[sub_path], query_sub$y[sub_path])
+            signal <- cbind(seed_sub, query_sub)
             #-----------------------------------------------------------------#
             # coherence 
             #-----------------------------------------------------------------#
-            indexed_x[query, seed] <- max(gsignal::mscohere(x)$coh)
-            indexed_y[query, seed] <- max(gsignal::mscohere(y)$coh)
+            coh[query, seed] <- max(gsignal::mscohere(signal)$coh)
         }
     }
-    colnames(indexed_x) <- names(seed_path)
-    rownames(indexed_x) <- names(query_path)
-    colnames(indexed_y) <- names(seed_path)
-    rownames(indexed_y) <- names(query_path)
-    return(list("x" = indexed_x, "y" = indexed_y))
+    colnames(coh) <- names(seed_path)
+    rownames(coh) <- names(query_path)
+    
+    return(coh)
 }

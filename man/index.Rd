@@ -13,9 +13,9 @@ index(
 )
 }
 \arguments{
-\item{seed_path}{list of x and y coordinates of seed territories}
+\item{seed_path}{gene signal of seed territories}
 
-\item{query_path}{list of x and y coordinates of query territories}
+\item{query_path}{gene signal of query territories}
 
 \item{partials}{int - number of FFT partials to use}
 
