@@ -59,7 +59,7 @@ vesalius <- build_vesalius_assay(coord, count_mat) %>%
     regularise_image(dimensions = 1:30, lambda = 5) %>%
     equalize_image(dimensions = 1:30, sleft = 5, sright = 5) %>%
     smooth_image(dimensions = 1:30, method =c("iso", "box"), sigma = 2, box = 10, iter = 10) %>%
-    segment_image(dimensions = 1:30, col_resolution = 15) %>%
+    segment_image(dimensions = 1:30, col_resolution = 20) %>%
     isolate_territories(min_spatial_index = 50)
 
 
