@@ -12,6 +12,7 @@ integrate_by_territory <- function(seed_assay,
     seed_trial = "last",
     query_trial = "last",
     method = "coherence",
+    k = 5,
     use_counts = TRUE,
     use_norm = "raw",
     verbose = TRUE) {
@@ -46,8 +47,14 @@ integrate_by_territory <- function(seed_assay,
     sim <- signal_similiarity(seed_signals,
         query_signals,
         domain = method)
+    
+    seed_rank <- generate_territory_graph(seed_assay[seed_assay$trial !=
+        "isolated", ], k)
+    query_rank <- generate_territory_graph(query_assay[query_assay$trial !=
+        "isolated", ], k)
+    neighborhood_sim <- score_neighbor_graph(seed_rank, query_rank, sim)
     simple_bar
-    return(sim)
+    return(list("sim" = sim, "n_sim" = neighborhood_sim))
 }
 
 territory_signal <- function(counts, territories) {
@@ -228,28 +235,22 @@ index <- function(seed_path,
             #-----------------------------------------------------------------#
             partial_min <- min(c(length(seed_sub), partials))
             thresh <- threshold * partial_min
-           
             time_stat <- max(seed_sub * query_sub)
-            
             time_shifted <- circular_xcorr(seed_sub, query_sub)
             time_shifted <- sum(time_shifted[time_shifted > thresh])
-            
             freq_static <- max(Re(fft(seed_sub))[seq(1, partial_min)] *
                 Re(fft(query_sub))[seq(1, partial_min)])
 
             freq_shifted <- Re(fft(seed_sub * query_sub))
             freq_shifted <- sum(freq_shifted[freq_shifted > thresh])
-            
             indexed[query, seed] <- weight[1] * time_stat +
                 weight[1] * time_shifted +
                 weight[2] * freq_static +
                 weight[3] * freq_shifted
-            
         }
     }
     colnames(indexed) <- names(seed_path)
     rownames(indexed) <- names(query_path)
-    
     return(indexed)
 }
 
@@ -292,7 +293,6 @@ correlation <- function(seed_path, query_path, method) {
             #-----------------------------------------------------------------#
             seed_sub <- seed_path[[seed]]
             query_sub <- query_path[[query]]
-            
             #-----------------------------------------------------------------#
             # correlation  
             #-----------------------------------------------------------------#
@@ -302,4 +302,84 @@ correlation <- function(seed_path, query_path, method) {
     colnames(co) <- names(seed_path)
     rownames(co) <- names(query_path)
     return(co)
+}
+
+
+#' territory graph 
+#' @param territories territory coordinates 
+#' @param k number of neigbors to create graph 
+#' @return nearest neighbors matrix 
+#' 
+#' 
+
+generate_territory_graph <- function(territories, k) {
+    #-------------------------------------------------------------------------#
+    # Computing distance matrix between all points and initialising 
+    # rank matrix for nearest neighbors 
+    #-------------------------------------------------------------------------#
+    coordinates <- as.matrix(dist(territories[, c("x", "y")]))
+    territory_list <- unique(territories$trial)
+    if (k > length(territory_list)){
+        warning("Value for k nearest neighbors is to high.
+        Returning all possible neighbors")
+        k <- length(territory_list)
+    }
+    rank_matrix <- matrix(0, nrow = length(territory_list), ncol = k + 1)
+    rownames(rank_matrix) <- territory_list
+    colnames(rank_matrix) <- seq(0, k)
+    rank_matrix[, 1] <- territory_list
+    #-------------------------------------------------------------------------#
+    # For each territory, check which coordinates from a different 
+    # territory are the closest. Assign nearest neighbor of rank 1.
+    # repeat the process until k nearest neighbor are found 
+    #-------------------------------------------------------------------------#
+    for (i in seq_along(territory_list)) {
+        #---------------------------------------------------------------------#
+        # intialise buffer storing barcodes that have already be
+        # assgined to nearest neighbor territory 
+        #---------------------------------------------------------------------#
+        init_territory <- which(colnames(coordinates) %in%
+                territories$barcodes[territories$trial == territory_list[i]])
+        buffer <- colnames(coordinates)[init_territory]
+        for (j in seq(2, k + 1)) {
+            #-----------------------------------------------------------------#
+            # For clarity,  create variable for subsets
+            #-----------------------------------------------------------------#
+            not_in_buffer <- !rownames(coordinates) %in% buffer
+            # tmp <- sapply(init_territory,
+            #     function(ind, not, coord) {
+            #         m <- min(coord[not, ind])
+            #         tag <- which(coord[not, ind] == m)[1L]
+            #         names(m) <- rownames(coord[not, ])[tag]
+            #         return(m)
+            #     }, not = not_in_buffer,
+            #     coord = coordinates)
+            # tmp <- names(which(tmp == min(tmp))[1L])
+            tmp <- coordinates[not_in_buffer, init_territory]
+            tmp <- rownames(which(tmp == min(tmp), arr.ind = TRUE))[1L]
+            rank_matrix[i, j] <- territories$trial[territories$barcodes ==
+                tmp]
+            buffer <- c(buffer, territories$barcodes[territories$trial ==
+                rank_matrix[i, j]])
+        }
+    }
+    return(rank_matrix)
+}
+
+score_neighbor_graph <- function(seed_rank, query_rank, score_matrix) {
+    best_rank <- matrix(0, ncol = ncol(score_matrix),
+        nrow = nrow(score_matrix))
+    colnames(best_rank) <- colnames(score_matrix)
+    rownames(best_rank) <- rownames(score_matrix)
+    for (i in seq_len(ncol(score_matrix))) {
+        for (j in seq_len(nrow(score_matrix))) {
+            seed <- seed_rank[rownames(seed_rank) ==
+                colnames(score_matrix)[i], ]
+            query <- query_rank[rownames(query_rank) ==
+                rownames(score_matrix)[j], ]
+            score <- mean(score_matrix[query, seed])
+            best_rank[j, i] <- score
+        }
+    }
+    return(best_rank)
 }

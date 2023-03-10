@@ -13,7 +13,6 @@ library(pwr, lib.loc = "/common/martinp4/R")
 library(gsignal, lib.loc = "/common/martinp4/R")
 library(dplyr)
 library(future)
-library(Matrix)
 set.seed(1547)
 
 
@@ -41,7 +40,7 @@ tag <- list.files(path = input,
     pattern = "expression", full.names = FALSE)
 tag <- gsub(".digital_expression.txt.gz|_expression_matrix.mtx.gz|.sparse_expression.txt",
     "", tag)
-f = 50
+f = 51
 coord <- read.csv(coordinates[f], header = FALSE, skip = 1)
 colnames(coord) <- c("barcodes", "xcoord", "ycoord")
 count_mat <- read.table(counts[f], header = TRUE, row.names = 1)
@@ -63,7 +62,7 @@ vesalius <- build_vesalius_assay(coord, count_mat) %>%
     isolate_territories(min_spatial_index = 50)
 
 
-f = 43
+f = 44
 coord <- read.csv(coordinates[f], header = FALSE, skip = 1)
 colnames(coord) <- c("barcodes", "xcoord", "ycoord")
 count_mat <- read.table(counts[f], header = TRUE, row.names = 1)
@@ -108,3 +107,12 @@ test <- integrate_by_territory(vesalius,
 #     return(list("x" = fft(path$x),
 #       "y" = fft(path$y)))
 # })
+coh <- integrate_by_territory(vesalius,
+    vesalius,
+    method = "coherence",
+    use_counts = TRUE,
+    use_norm = "log_norm")
+territories <- vesalius:::check_territory_trial(vesalius, "last") %>%
+    filter(trial != "isolated")
+graph <- vesalius:::generate_territory_graph(territories, k = 5)
+score <- vesalius:::score_neighbor_graph(graph, graph,coh)
