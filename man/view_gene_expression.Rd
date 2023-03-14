@@ -14,7 +14,8 @@ view_gene_expression(
   cells = NULL,
   norm = TRUE,
   as_layer = FALSE,
-  cex = 10
+  cex = 10,
+  cex_pt = 1
 )
 }
 \arguments{
@@ -42,7 +43,9 @@ associated with cell types of interest (see details)}
 \item{as_layer}{logical indicating if expression should represented as
 a territory/ layer.}
 
-\item{cex}{numeric - font/point size modulator}
+\item{cex}{numeric - font size modulator}
+
+\item{cex_pt}{numeric point size}
 }
 \value{
 a ggplot object
