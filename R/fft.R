@@ -346,15 +346,6 @@ generate_territory_graph <- function(territories, k) {
             # For clarity,  create variable for subsets
             #-----------------------------------------------------------------#
             not_in_buffer <- !rownames(coordinates) %in% buffer
-            # tmp <- sapply(init_territory,
-            #     function(ind, not, coord) {
-            #         m <- min(coord[not, ind])
-            #         tag <- which(coord[not, ind] == m)[1L]
-            #         names(m) <- rownames(coord[not, ])[tag]
-            #         return(m)
-            #     }, not = not_in_buffer,
-            #     coord = coordinates)
-            # tmp <- names(which(tmp == min(tmp))[1L])
             tmp <- coordinates[not_in_buffer, init_territory]
             tmp <- rownames(which(tmp == min(tmp), arr.ind = TRUE))[1L]
             rank_matrix[i, j] <- territories$trial[territories$barcodes ==
@@ -371,15 +362,36 @@ score_neighbor_graph <- function(seed_rank, query_rank, score_matrix) {
         nrow = nrow(score_matrix))
     colnames(best_rank) <- colnames(score_matrix)
     rownames(best_rank) <- rownames(score_matrix)
+    ranked_score <- apply(score_matrix, 2, order, decreasing = TRUE)
+    rownames(ranked_score) <- rownames(score_matrix)
     for (i in seq_len(ncol(score_matrix))) {
         for (j in seq_len(nrow(score_matrix))) {
             seed <- seed_rank[rownames(seed_rank) ==
                 colnames(score_matrix)[i], ]
             query <- query_rank[rownames(query_rank) ==
                 rownames(score_matrix)[j], ]
-            score <- mean(score_matrix[query, seed])
+            score <- best_neighbor_match(ranked_score[query, seed])
             best_rank[j, i] <- score
         }
     }
     return(best_rank)
+}
+
+best_neighbor_match <- function(score) {
+    vec <- as.vector(score)
+    ord <- ((order(vec, decreasing = TRUE) - 1) %/% ncol(score)) + 1
+    index <- c()
+    selected <- c()
+    for (i in seq_along(ord)){
+        if (ord[i] %in% unique(ord) && !ord[i] %in% selected) {
+            index <- c(index, i)
+            selected <- c(selected, ord[i])
+        }
+    }
+    index <- (sort(vec, decreasing = TRUE))[index]
+    return(mean(index))
+}
+
+triangulate_territories <- function(seed, query, score_matrix) {
+    return(0)
 }

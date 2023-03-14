@@ -86,6 +86,7 @@ test <- integrate_by_territory(vesalius,
     vesalius_query,
     method = "coherence",
     use_counts = TRUE,
+    k = 5,
     use_norm = "log_norm")
 
 
