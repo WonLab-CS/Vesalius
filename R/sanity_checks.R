@@ -309,10 +309,10 @@ check_eq_method <- function(method) {
 #' @param method string - segmentation method
 #' @return segmentation method
 check_segmentation_method <- function(method) {
-    if (any(!method %in% c("kmeans", "louvain", "leiden"))) {
+    if (any(!method %in% c("kmeans", "louvain", "leiden", "slic"))) {
         stop("Segmentation method provided does not match available options \n
             Select from: \n
-            kmeans, louvain, leiden")
+            kmeans, louvain, leiden, slic")
     } else {
         return(method)
     }

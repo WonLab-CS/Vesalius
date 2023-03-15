@@ -458,7 +458,7 @@ regularise <- function(img,
 #' @param embedding character string describing which embedding should
 #' be used.
 #' @param method character string for which method should be used for
-#' segmentation. Select from "kmeans", "louvain", or "leiden".
+#' segmentation. Select from "kmeans", "louvain", "leiden" or "slic".
 #' @param col_resolution numeric colour resolution used for segmentation. 
 #' (see details)
 #' @param verbose logical - progress message output.
@@ -478,6 +478,13 @@ regularise <- function(img,
 #' In this case, we suggest using values between 0.01 and 1 to start with.
 #' We recommned uisng **louvain** clustering over **leiden** in
 #' this context.
+#' 
+#' In the case of slic, the col_resolution define the number of starting
+#' points used to generate super pixels. Depending on the number of
+#' points there are in the assay, we suggested using 10% of the total 
+#' number of points as starting point. 
+#' For example, if you have  1000 spatial indices, you can set 
+#' col_resolution to 100.
 #'
 #' The optimal \code{col_resolution} will depend on your interest and 
 #' biological question at hand. You might be interested in more or less
@@ -526,6 +533,11 @@ segment_image <- function(vesalius_assay,
       embedding = embedding,
       verbose = verbose),
     "louvain" = louvain_segmentation(vesalius_assay,
+      dimensions = dimensions,
+      col_resolution = col_resolution,
+      embedding = embedding,
+      verbose = verbose),
+    "slic" = slic_segmentation(vesalius_assay,
       dimensions = dimensions,
       col_resolution = col_resolution,
       embedding = embedding,
@@ -606,16 +618,23 @@ kmeans_segmentation <- function(vesalius_assay,
 #' @param clusters data.frame containing cluster values
 #' @param kcenters matrix containing centroid values for each dimension
 #' @param dimensions vector (nummeric / int) describin which latent space
+#' @param ratio if used in the context of super pixel - spatial ration
 #' dimensiuons shouls be used. 
 #' @return matrix for the active embedding usiong color segementation 
 
 assign_centers <- function(vesalius_assay,
   clusters,
   kcenters,
-  dimensions) {
+  dimensions,
+  ratio = NULL) {
+  #sp <- map(1:spectrum(images),~ km$centers[km$cluster,2+.]) %>% do.call(c,.) %>% as.cimg(dim=dim(images))
   active <- vesalius_assay@active
   for (d in dimensions) {
-      active[, d] <- kcenters[clusters$Segment, d]
+      tmp <- kcenters[clusters$Segment, d]
+      if (!is.null(ratio)) {
+        tmp <- tmp / ratio 
+      }
+      active[, d] <- tmp
   }
   return(active)
 }

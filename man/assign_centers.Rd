@@ -4,7 +4,7 @@
 \alias{assign_centers}
 \title{assign centroid values to active embedding}
 \usage{
-assign_centers(vesalius_assay, clusters, kcenters, dimensions)
+assign_centers(vesalius_assay, clusters, kcenters, dimensions, ratio = NULL)
 }
 \arguments{
 \item{vesalius_assay}{a vesalius assy object}
@@ -13,7 +13,9 @@ assign_centers(vesalius_assay, clusters, kcenters, dimensions)
 
 \item{kcenters}{matrix containing centroid values for each dimension}
 
-\item{dimensions}{vector (nummeric / int) describin which latent space
+\item{dimensions}{vector (nummeric / int) describin which latent space}
+
+\item{ratio}{if used in the context of super pixel - spatial ration
 dimensiuons shouls be used.}
 }
 \value{
