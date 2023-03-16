@@ -461,6 +461,9 @@ regularise <- function(img,
 #' segmentation. Select from "kmeans", "louvain", "leiden" or "slic".
 #' @param col_resolution numeric colour resolution used for segmentation. 
 #' (see details)
+#' @param compactness numeric - factor defining super pixel compaction.
+#' @param scaling numeric - scaling image ration during super pixel 
+#' segmentation.
 #' @param verbose logical - progress message output.
 #' @details Applying image segmentation ensures a reduction in colour
 #' complexity.
@@ -513,6 +516,9 @@ segment_image <- function(vesalius_assay,
   embedding = "last",
   method = "kmeans",
   col_resolution = 10,
+  compactness = 1,
+  scaling = 0.5,
+  threshold = "auto",
   verbose = TRUE) {
   simple_bar(verbose)
   message_switch("seg", verbose, method = method)
@@ -541,6 +547,9 @@ segment_image <- function(vesalius_assay,
       dimensions = dimensions,
       col_resolution = col_resolution,
       embedding = embedding,
+      compactness = compactness,
+      scaling = scaling,
+      threshold = threshold,
       verbose = verbose))
 
   vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
@@ -660,7 +669,10 @@ leiden_segmentation <- function(vesalius_assay,
     filter(origin == 1)
   embeddings <- check_embedding_selection(vesalius_assay,
     embedding,
-    dimensions)
+    dimensions)[,dimensions]
+  
+  loc <- match(coord$barcodes, rownames(embeddings))
+  embeddings <- cbind(coord[, c("x", "y")], embeddings[loc, ])
   graph <- compute_nearest_neighbor_graph(embeddings = embeddings)
   clusters <- igraph::cluster_leiden(graph,
     resolution_parameter = col_resolution)
@@ -718,7 +730,9 @@ louvain_segmentation <- function(vesalius_assay,
     filter(origin == 1)
   embeddings <- check_embedding_selection(vesalius_assay,
     embedding,
-    dimensions)
+    dimensions)[, dimensions]
+  loc <- match(coord$barcodes, rownames(embeddings))
+  embeddings <- cbind(coord[, c("x", "y")], embeddings[loc, ])
   graph <- compute_nearest_neighbor_graph(embeddings = embeddings)
   clusters <- igraph::cluster_louvain(graph, resolution = col_resolution)
   cluster <- data.frame("cluster" = clusters$membership,
@@ -1053,3 +1067,54 @@ distance_pooling <- function(img, capture_radius, min_spatial_index) {
 }
 
 
+#' @importFrom imager imsplit  threshold
+#' @importFrom dplyr inner_join
+select_similar <- function(img,
+  coordinates,
+  threshold = "auto") {
+  img <- img %>%
+    imsplit("cc")
+
+  pos <- lapply(img, function(x, threshold){
+      return(as.cimg(!threshold(x, threshold)))
+  }, threshold = threshold)
+  coordinates$Segment <- 0
+  for (i in seq_along(pos)){
+    tmp <- as.data.frame(pos[[i]]) %>%
+      filter(value == 1) %>%
+      inner_join(coordinates, by = c("x", "y"))
+
+      coordinates$Segment[coordinates$barcodes %in% tmp$barcodes &
+        coordinates$Segment == 0] <- i
+  }
+  return(coordinates)
+}
+
+#' @importFrom future.apply future_lapply
+connected_pixels <- function(clusters, embeddings, k = 6, threshold = 0.90) {
+    #-------------------------------------------------------------------------#
+    # First we need to get super pixel centers 
+    #-------------------------------------------------------------------------#
+    
+    center_pixels <- sort(unique(clusters$Segment))
+    centers <- future_lapply(center_pixels, function(center, segments){
+        x <- median(segments$x[segments$Segment == center])
+        y <- median(segments$y[segments$Segment == center])
+        df <- data.frame("x" = x, "y" = y)
+        rownames(df) <- center
+        return(df)
+    }, segments = clusters) %>% do.call("rbind", .)
+
+    knn <- RANN::nn2(centers, k = k + 1)$nn.idx
+    rownames(knn) <- rownames(centers)
+    graph <- populate_graph(knn)
+    graph$cor <- 0
+    for (i in seq_len(nrow(graph))) {
+        c1 <- apply(embeddings[clusters$barcodes[clusters$Segment == 
+          graph$e1[i]], ], 2, mean)
+        c2 <- apply(embeddings[clusters$barcodes[clusters$Segment == 
+        graph$e2[i]], ], 2, mean)
+        graph$cor[i] <- cor(c1, c2)
+    }
+    browser()
+}

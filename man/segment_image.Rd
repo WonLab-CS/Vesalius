@@ -10,6 +10,9 @@ segment_image(
   embedding = "last",
   method = "kmeans",
   col_resolution = 10,
+  compactness = 1,
+  scaling = 0.5,
+  threshold = "auto",
   verbose = TRUE
 )
 }
@@ -26,6 +29,11 @@ segmentation. Select from "kmeans", "louvain", "leiden" or "slic".}
 
 \item{col_resolution}{numeric colour resolution used for segmentation. 
 (see details)}
+
+\item{compactness}{numeric - factor defining super pixel compaction.}
+
+\item{scaling}{numeric - scaling image ration during super pixel 
+segmentation.}
 
 \item{verbose}{logical - progress message output.}
 }

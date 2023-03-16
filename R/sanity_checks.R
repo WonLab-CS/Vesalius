@@ -466,8 +466,8 @@ check_embedding_selection <- function(vesalius_assay, embed, dims) {
     #--------------------------------------------------------------------------#
     # Let's check if we have the right number of dims
     #--------------------------------------------------------------------------#
-    if (length(dims) > ncol(embeddings)) {
-      stop(paste0("To many dimesnions supplied! Only",
+    if (length(dims) > ncol(embeddings) || max(dims) > ncol(embeddings)) {
+      stop(paste0("To many dimesnions supplied or dimensions not present! Only",
         ncol(embeddings),
         " present"))
     }

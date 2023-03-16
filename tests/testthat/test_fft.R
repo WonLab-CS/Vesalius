@@ -57,11 +57,13 @@ vesalius <- build_vesalius_assay(coord, count_mat) %>%
     generate_embeddings(tensor_resolution = 0.3) %>%
     regularise_image(dimensions = 1:30, lambda = 5) %>%
     equalize_image(dimensions = 1:30, sleft = 5, sright = 5) %>%
-    smooth_image(dimensions = 1:30, method =c("iso", "box"), sigma = 2, box = 10, iter = 10) %>%
-    segment_image(dimensions = 1:30, col_resolution = 20) %>%
-    isolate_territories(min_spatial_index = 50)
-
-
+    #smooth_image(dimensions = 1:30, method =c("iso", "box"), sigma = 2, box = 10, iter = 10) %>%
+    segment_image(dimensions = 1:30, col_resolution = 1000, method = "slic",threshold = "85%") %>%
+    segment_image(dimensions = 1:30, col_resolution = 12, method = "kmeans") 
+pdf("test.pdf")
+image_plot(vesalius)
+territory_plot(vesalius)
+dev.off()
 f = 44
 coord <- read.csv(coordinates[f], header = FALSE, skip = 1)
 colnames(coord) <- c("barcodes", "xcoord", "ycoord")

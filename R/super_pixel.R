@@ -102,6 +102,8 @@ slic_segmentation <- function(vesalius_assay,
     col_resolution,
     embedding,
     compactness = 1,
+    scaling = 0.5,
+    threshold = "auto",
     verbose) {
     if (is(vesalius_assay, "vesalius_assay")) {
       assay <- get_assay_names(vesalius_assay)
@@ -113,11 +115,12 @@ slic_segmentation <- function(vesalius_assay,
       stop("Unsupported format to regularise_image function")
     }
     coord <- get_tiles(vesalius_assay) %>% filter(origin == 1)
-    sc_spat <- max(dim(images)[1:2]  * 0.28)
+    sc_spat <- max(dim(images)[1:2]  * scaling)
     sc_col <-  imsplit(images, "cc") %>% map_dbl(sd) %>% max()
 
     #Scaling ratio for pixel values
     ratio <- (sc_spat / sc_col) / (compactness * 10)
+    #browser()
     embeddings <- as.data.frame(images * ratio, wide = "c") %>% as.matrix
     #Generate initial centers from a grid
     # This will need to be updated to make sure 
@@ -129,23 +132,27 @@ slic_segmentation <- function(vesalius_assay,
         iter.max = 100,
         nstart = 10))
 
-    clusters <- as.cimg(km$cluster, dim = c(dim(images)[1:2], 1, 1)) %>%
-        as.data.frame() %>%
-        right_join(coord, by = c("x", "y"))
     
-    match_loc <- match(coord$barcodes, clusters$barcodes)
-    clusters <- data.frame(coord, "Segment" = clusters[match_loc, "value"])
     embeddings <- map(1:spectrum(images), ~ km$centers[km$cluster, 2 + .]) %>%
         do.call(c, .) %>%
         as.cimg(dim = dim(images))
-   
-    #Correct for ratio
     embeddings <- embeddings / ratio
-    embeddings <- format_c_to_ves(imsplit(embeddings,"cc"),
+    #clusters <- select_similar(embeddings, coordinates = coord)
+
+    #browser()
+    embeddings <- format_c_to_ves(imsplit(embeddings, "cc"),
       vesalius_assay,
       dimensions,
       embed = embedding,
       verbose = verbose)
+
+    clusters <- as.cimg(km$cluster, dim = c(dim(images)[1:2], 1, 1)) %>%
+        as.data.frame() %>%
+        right_join(coord, by = c("x", "y"))
+    match_loc <- match(coord$barcodes, clusters$barcodes)
+    clusters <- data.frame(coord, "Segment" = clusters[match_loc, "value"])
+
+    clusters <- connected_pixels(clusters, embeddings)
     new_trial <- create_trial_tag(colnames(vesalius_assay@territories),
         "Segment") %>%
     tail(1)
