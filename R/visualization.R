@@ -213,7 +213,7 @@ territory_plot <- function(vesalius_assay,
     # SANITY check here and format
     #--------------------------------------------------------------------------#
     territories <- check_territory_trial(vesalius_assay, trial)
-    if (any(territories$trial == 0)){
+    if (any(territories$trial == 0)) {
       territories$trial <- territories$trial + 1
     }
     if (!is.null(highlight)){

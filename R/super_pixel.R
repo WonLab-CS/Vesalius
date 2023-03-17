@@ -103,14 +103,15 @@ slic_segmentation <- function(vesalius_assay,
     embedding,
     compactness = 1,
     scaling = 0.5,
-    threshold = "auto",
+    k = 6,
+    threshold = 0.9,
     verbose) {
     if (is(vesalius_assay, "vesalius_assay")) {
       assay <- get_assay_names(vesalius_assay)
       images <- format_ves_to_c(vesalius_assay = vesalius_assay,
         embed = embedding,
         dims = dimensions,
-        verbose = verbose) %>% imappend("cc")
+        verbose = FALSE) %>% imappend("cc")
     } else {
       stop("Unsupported format to regularise_image function")
     }
@@ -131,8 +132,6 @@ slic_segmentation <- function(vesalius_assay,
         embeddings[index, ],
         iter.max = 100,
         nstart = 10))
-
-    
     embeddings <- map(1:spectrum(images), ~ km$centers[km$cluster, 2 + .]) %>%
         do.call(c, .) %>%
         as.cimg(dim = dim(images))
@@ -144,15 +143,16 @@ slic_segmentation <- function(vesalius_assay,
       vesalius_assay,
       dimensions,
       embed = embedding,
-      verbose = verbose)
+      verbose = FALSE)
 
     clusters <- as.cimg(km$cluster, dim = c(dim(images)[1:2], 1, 1)) %>%
         as.data.frame() %>%
         right_join(coord, by = c("x", "y"))
     match_loc <- match(coord$barcodes, clusters$barcodes)
     clusters <- data.frame(coord, "Segment" = clusters[match_loc, "value"])
+    clusters <- connected_pixels(clusters, embeddings, k, threshold, verbose)
+    
 
-    clusters <- connected_pixels(clusters, embeddings)
     new_trial <- create_trial_tag(colnames(vesalius_assay@territories),
         "Segment") %>%
     tail(1)

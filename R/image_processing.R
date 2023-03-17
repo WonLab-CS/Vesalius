@@ -464,6 +464,10 @@ regularise <- function(img,
 #' @param compactness numeric - factor defining super pixel compaction.
 #' @param scaling numeric - scaling image ration during super pixel 
 #' segmentation.
+#' @param k numeric - number of closest super pixel neighbors to consider
+#' when generating segments from super pixels
+#' @param threshold numeric [0,1] - correlation threshold between 
+#' nearest neighbors when generating segments from super pixels.
 #' @param verbose logical - progress message output.
 #' @details Applying image segmentation ensures a reduction in colour
 #' complexity.
@@ -518,7 +522,8 @@ segment_image <- function(vesalius_assay,
   col_resolution = 10,
   compactness = 1,
   scaling = 0.5,
-  threshold = "auto",
+  k = 6,
+  threshold = 0.9,
   verbose = TRUE) {
   simple_bar(verbose)
   message_switch("seg", verbose, method = method)
@@ -549,6 +554,7 @@ segment_image <- function(vesalius_assay,
       embedding = embedding,
       compactness = compactness,
       scaling = scaling,
+      k = k,
       threshold = threshold,
       verbose = verbose))
 
@@ -1067,35 +1073,46 @@ distance_pooling <- function(img, capture_radius, min_spatial_index) {
 }
 
 
-#' @importFrom imager imsplit  threshold
+#' @importFrom imager imsplit  threshold split_connected where
+#' @importFrom imagerExtra ThresholdML
 #' @importFrom dplyr inner_join
 select_similar <- function(img,
   coordinates,
-  threshold = "auto") {
+  threshold = 1) {
   img <- img %>%
     imsplit("cc")
 
   pos <- lapply(img, function(x, threshold){
-      return(as.cimg(!threshold(x, threshold)))
+      ret <- ThresholdML(x, threshold)
+      ret <- split_connected(ret)
+      return(ret)
   }, threshold = threshold)
-  coordinates$Segment <- 0
+  coordinates$Segment <- 1
+  count <- 2
   for (i in seq_along(pos)){
-    tmp <- as.data.frame(pos[[i]]) %>%
-      filter(value == 1) %>%
-      inner_join(coordinates, by = c("x", "y"))
-
-      coordinates$Segment[coordinates$barcodes %in% tmp$barcodes &
-        coordinates$Segment == 0] <- i
+    for (j in seq_along(pos[[i]])) {
+      tmp <- where(pos[[i]][[j]]) %>%
+        inner_join(coordinates, by = c("x", "y"))
+         coordinates$Segment[coordinates$barcodes %in% tmp$barcodes &
+          coordinates$Segment == 1] <- count
+        count <- count + 1
+    }
   }
+  all_ter <- unique(coordinates$Segment)
+  coordinates$Segment <- seq_along(all_ter)[match(coordinates$Segment, all_ter)]
   return(coordinates)
 }
 
 #' @importFrom future.apply future_lapply
-connected_pixels <- function(clusters, embeddings, k = 6, threshold = 0.90) {
+connected_pixels <- function(clusters,
+  embeddings,
+  k = 6,
+  threshold = 0.90,
+  verbose = TRUE) {
+    message_switch("connect_pixel", verbose)
     #-------------------------------------------------------------------------#
     # First we need to get super pixel centers 
     #-------------------------------------------------------------------------#
-    
     center_pixels <- sort(unique(clusters$Segment))
     centers <- future_lapply(center_pixels, function(center, segments){
         x <- median(segments$x[segments$Segment == center])
@@ -1104,17 +1121,71 @@ connected_pixels <- function(clusters, embeddings, k = 6, threshold = 0.90) {
         rownames(df) <- center
         return(df)
     }, segments = clusters) %>% do.call("rbind", .)
-
+    #-------------------------------------------------------------------------#
+    # Next we get the nearest neighbors
+    #-------------------------------------------------------------------------#
     knn <- RANN::nn2(centers, k = k + 1)$nn.idx
     rownames(knn) <- rownames(centers)
+    #-------------------------------------------------------------------------#
+    # Next we intialise a graph and then compute correlation
+    #-------------------------------------------------------------------------#
     graph <- populate_graph(knn)
     graph$cor <- 0
     for (i in seq_len(nrow(graph))) {
-        c1 <- apply(embeddings[clusters$barcodes[clusters$Segment == 
-          graph$e1[i]], ], 2, mean)
-        c2 <- apply(embeddings[clusters$barcodes[clusters$Segment == 
-        graph$e2[i]], ], 2, mean)
-        graph$cor[i] <- cor(c1, c2)
+        c1 <- embeddings[clusters$barcodes[clusters$Segment == graph$e1[i]], ]
+        if (!is.null(nrow(c1))) {
+            c1 <- apply(c1, 2, mean)
+        }
+        c2 <- embeddings[clusters$barcodes[clusters$Segment == graph$e2[i]], ]
+        if (!is.null(nrow(c2))) {
+            c2 <- apply(c2, 2, mean)
+        }
+        graph$cor[i] <- cor(c1, c2, method = "pearson")
     }
-    browser()
+    #-------------------------------------------------------------------------#
+    # Then we interatively pool pixels together under the a transitive 
+    # correlation assumption i.e if A cor B and B cor with C then A cor C
+    #-------------------------------------------------------------------------#
+    initial_pixels <- unique(graph$e1)
+    total_pool <- c()
+    segments <-  list()
+    count <- 1
+    while (length(initial_pixels > 0)) {
+        start_pixel <- sample(initial_pixels, size = 1)
+        pool <- graph$e2[graph$e1 == start_pixel & graph$cor >= threshold]
+        inter <- pool
+        total_pool <- c(total_pool, pool)
+        converge <- FALSE
+        #browser()
+        while (!converge) {
+            if (length(inter) == 1) {
+                segments[[count]] <- pool
+                initial_pixels <- initial_pixels[!initial_pixels %in% pool]
+                count <- count + 1
+                converge <- TRUE
+            } else {
+                new_pool <- unique(graph$e2[graph$e1 %in% inter &
+                  graph$cor >= threshold])
+                overlap <- new_pool %in% pool & !new_pool %in% total_pool
+                if (sum(overlap) != length(new_pool)) {
+                  pool <- unique(c(pool, new_pool[!overlap]))
+                  
+                  inter <- unique(new_pool[!overlap])
+                  converge <- FALSE
+                } else {
+                  segments[[count]] <- pool
+                  total_pool <- c(total_pool, pool)
+                  count <- count + 1
+                  initial_pixels <- initial_pixels[!initial_pixels %in% pool]
+                  converge <- TRUE
+                }
+            }
+        }
+    }
+    
+    for (seg in seq_along(segments)){
+        loc <- clusters$Segment %in% segments[[seg]]
+        clusters$Segment[loc] <- seg
+    }
+    return(clusters)
 }
