@@ -5,30 +5,83 @@
 #------------------------------/Super pixels/----------------------------------#
 
 #' select inital indices
-#' @param coordinates data frame containing spatial coordinates
-#' @param k numeric - number of intial coordinates
+#' @param coordinates data frame containing spatial coordinates of beads
+#' @param embeddings matrix containing embedding values - full pixel image
+#' @param n_centers numeric number of beads to select as super pixel centers
+#' @param max_iter numeric number of iteration before returning result if 
+#' no coveregnce.
 #' @return barcodes of starting coordinates
-#' @importFrom future.apply future_apply
+#' @importFrom RANN nn2
 select_initial_indices <- function(coordinates,
+    embeddings,
     n_centers = 500,
     max_iter = 500) {
     #-------------------------------------------------------------------------#
     # intialise background grid, active grod and get nearest neighbors
     # we assume that you will have at least 4 inital points
     #-------------------------------------------------------------------------#
-    background_grid <- rep(0, n_centers)
     knn <- RANN::nn2(coordinates[, c("x", "y")], k = nrow(coordinates))
-    active <- seq_len(nrow(coordinates))
-    radius <- srqt(max(knn$nn.dist)) 
+    radius <- max(knn$nn.dist)
     #-------------------------------------------------------------------------#
     # iterated a reduced space until you get the desired numbers of circles  
     #-------------------------------------------------------------------------#
-    iter <- TRUE
-    while (iter) {
+    convergence <- FALSE
+    iter <- 1
+    while (!convergence) {
+        #---------------------------------------------------------------------#
+        # intialize everything we need 
+        #---------------------------------------------------------------------#
+        background_grid <- c()
+        active <- seq_len(nrow(coordinates))
         nn_index <- knn$nn.idx
         nn_dist <- knn$nn.dist
-        # bubble packing
+        #---------------------------------------------------------------------#
+        # as long as their points present we repeat the process of selecting 
+        # point that are outisde the selection radius
+        #---------------------------------------------------------------------#
+        while (length(active) > 0) {
+            random_start <- active[sample(x =
+                seq(1, l = length(active)),
+                size = 1)]
+            if (random_start %in% background_grid) browser()
+            background_grid <- c(background_grid, random_start)
+            removing <- nn_index[random_start,
+                nn_dist[random_start, ] <= radius]
+            active <- active[!active %in% unique(removing)]
+        }
+        
+        if (length(background_grid) == n_centers) {
+            convergence <- TRUE
+        }
+        if (iter >= max_iter) {
+            convergence <- TRUE
+            warning("Max Iteration with not convergence!
+            Returning Approximation")
+        }
+        #---------------------------------------------------------------------#
+        # we change the radius based on how many points there were
+        # we assume that if there are 2 few barcodes then the radius is to 
+        # large 
+        # if there are too many barcodes then the radius is 2 small. 
+        #---------------------------------------------------------------------#
+        if (length(background_grid) < n_centers) {
+            radius <- radius - (radius / 2)
+        } else {
+            radius <- radius + (radius / 2)
+        }
+        iter <- iter + 1
     }
+    #-------------------------------------------------------------------------#
+    # Next we need to find what are the indices of these barcodes 
+    # within the full pixel image 
+    # could use right_join and the likes but no 
+    #-------------------------------------------------------------------------#
+    in_image <- paste0(embeddings[, "x"], "_", embeddings[, "y"])
+    in_background <- paste0(coordinates$x[background_grid],
+        "_",
+        coordinates$y[background_grid])
+    in_image <- which(in_image %in% in_background)
+    return(in_image)
 }
 
 
@@ -88,9 +141,10 @@ slic_segmentation <- function(vesalius_assay,
     col_resolution,
     embedding,
     compactness = 1,
-    scaling = 0.5,
+    scaling = 0.3,
     k = 6,
     threshold = 0.9,
+    max_iter = 5000,
     verbose) {
     if (is(vesalius_assay, "vesalius_assay")) {
       assay <- get_assay_names(vesalius_assay)
@@ -102,17 +156,22 @@ slic_segmentation <- function(vesalius_assay,
       stop("Unsupported format to regularise_image function")
     }
     coord <- get_tiles(vesalius_assay) %>% filter(origin == 1)
+    # max spatial distance 
     sc_spat <- max(dim(images)[1:2]  * scaling)
+    # max color distance between two pixels??
     sc_col <-  imsplit(images, "cc") %>% map_dbl(sd) %>% max()
 
     #Scaling ratio for pixel values
-    ratio <- (sc_spat / sc_col) / (compactness * 10)
-    #browser()
+    ratio <- (sc_spat / sc_col) / (compactness)
     embeddings <- as.data.frame(images * ratio, wide = "c") %>% as.matrix
     #Generate initial centers from a grid
-    # This will need to be updated to make sure 
+    # This will need to be updated to make sure
     # we only take center within the data set
-    index <- round(seq(1, nPix(images) / spectrum(images), l = col_resolution))
+    index <- select_initial_indices(coord,
+        embeddings,
+        n_centers = col_resolution,
+        max_iter = max_iter)
+
     #Run k-means - you should have read the mnual pages you silly goose
     km <- suppressWarnings(kmeans(embeddings,
         embeddings[index, ],
@@ -124,7 +183,7 @@ slic_segmentation <- function(vesalius_assay,
     embeddings <- embeddings / ratio
     #clusters <- select_similar(embeddings, coordinates = coord)
 
-    #browser()
+    
     embeddings <- format_c_to_ves(imsplit(embeddings, "cc"),
       vesalius_assay,
       dimensions,
@@ -136,7 +195,7 @@ slic_segmentation <- function(vesalius_assay,
         right_join(coord, by = c("x", "y"))
     match_loc <- match(coord$barcodes, clusters$barcodes)
     clusters <- data.frame(coord, "Segment" = clusters[match_loc, "value"])
-    clusters <- connected_pixels(clusters, embeddings, k, threshold, verbose)
+    #clusters <- connected_pixels(clusters, embeddings, k, threshold, verbose)
     
 
     new_trial <- create_trial_tag(colnames(vesalius_assay@territories),

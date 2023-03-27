@@ -4,12 +4,22 @@
 \alias{select_initial_indices}
 \title{select inital indices}
 \usage{
-select_initial_indices(coordinates, k = 500)
+select_initial_indices(
+  coordinates,
+  embeddings,
+  n_centers = 500,
+  max_iter = 500
+)
 }
 \arguments{
-\item{coordinates}{data frame containing spatial coordinates}
+\item{coordinates}{data frame containing spatial coordinates of beads}
 
-\item{k}{numeric - number of intial coordinates}
+\item{embeddings}{matrix containing embedding values - full pixel image}
+
+\item{n_centers}{numeric number of beads to select as super pixel centers}
+
+\item{max_iter}{numeric number of iteration before returning result if 
+no coveregnce.}
 }
 \value{
 barcodes of starting coordinates

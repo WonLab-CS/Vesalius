@@ -7,7 +7,7 @@ vesalius <- smooth_image(vesalius, embedding = "PCA", sigma = 5, iter = 5)
 vesalius <- segment_image(vesalius,
     method = "slic",
     dimensions = 1:3,
-    col_resolution = 200,
+    col_resolution = 50,
     compactness = 1,
     scaling = 0.2)
 
