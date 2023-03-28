@@ -119,3 +119,17 @@ territories <- vesalius:::check_territory_trial(vesalius, "last") %>%
     filter(trial != "isolated")
 graph <- vesalius:::generate_territory_graph(territories, k = 5)
 score <- vesalius:::score_neighbor_graph(graph, graph,coh)
+
+########
+data(vesalius)
+load("Scenes/super_pixel/jitter_ves.Rda")
+vesalius <- build_vesalius_assay(coordinates, counts)
+jitter_ves <- build_vesalius_assay(jitter_coord, jitter_counts)
+
+vesalius <- generate_embeddings(vesalius)
+vesalius <- smooth_image(vesalius, embedding = "PCA", sigma = 5, iter = 5)
+
+jitter_ves <- generate_embeddings(jitter_ves)
+jitter_ves <- smooth_image(jitter_ves, embedding = "PCA", sigma = 5, iter = 5)
+
+test <- integrate_assays(vesalius, jitter_ves, n_centers = 100)

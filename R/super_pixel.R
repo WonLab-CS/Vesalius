@@ -49,7 +49,6 @@ select_initial_indices <- function(coordinates,
                 nn_dist[random_start, ] <= radius]
             active <- active[!active %in% unique(removing)]
         }
-        
         if (length(background_grid) == n_centers) {
             convergence <- TRUE
         }
@@ -155,24 +154,45 @@ slic_segmentation <- function(vesalius_assay,
     } else {
       stop("Unsupported format to regularise_image function")
     }
+    #-------------------------------------------------------------------------#
+    # first we get tiles and get images 
+    # then we compute the a scaling metric - this is normally based on 
+    # empirical data (0.28 is one way) but it essentially a measure of the
+    # scaling value between pixel distance and color distance 
+    # we measure the max spread of colors as well
+    # all this serves as a way to scale the "spread" of the color values 
+    # to match the "spread" of the spatial coordinates
+    #-------------------------------------------------------------------------#
     coord <- get_tiles(vesalius_assay) %>% filter(origin == 1)
     # max spatial distance 
     sc_spat <- max(dim(images)[1:2]  * scaling)
     # max color distance between two pixels??
     sc_col <-  imsplit(images, "cc") %>% map_dbl(sd) %>% max()
-
-    #Scaling ratio for pixel values
+    #-------------------------------------------------------------------------#
+    # Scaling ratio for pixel values - this is what is going to effectively
+    # scale color value to match the scale of spatial value 
+    # the compactness will define how important the spatial component should 
+    # be. Now the way this works here is that we are modulating "color" value
+    # and not the pixel value. The higher the compactness the "higher" the 
+    # color values will be scaled up to match the spatial coordinates
+    #-------------------------------------------------------------------------# 
     ratio <- (sc_spat / sc_col) / (compactness)
     embeddings <- as.data.frame(images * ratio, wide = "c") %>% as.matrix
-    #Generate initial centers from a grid
+    #-------------------------------------------------------------------------#
+    # Generate initial centers from a grid
     # This will need to be updated to make sure
-    # we only take center within the data set
+    # At the moment this will take barcodes within the data set to use as 
+    # inital centers.
+    # It would be worth looking into using pixels instead. Mainly for low
+    # res data sets - we might want to have pixels between spatial indices 
+    #-------------------------------------------------------------------------#
     index <- select_initial_indices(coord,
         embeddings,
         n_centers = col_resolution,
         max_iter = max_iter)
-
-    #Run k-means - you should have read the mnual pages you silly goose
+    #-------------------------------------------------------------------------#
+    # Run k-means - you should have read the mnual pages you silly goose
+    #-------------------------------------------------------------------------#
     km <- suppressWarnings(kmeans(embeddings,
         embeddings[index, ],
         iter.max = 100,
@@ -180,10 +200,13 @@ slic_segmentation <- function(vesalius_assay,
     embeddings <- map(1:spectrum(images), ~ km$centers[km$cluster, 2 + .]) %>%
         do.call(c, .) %>%
         as.cimg(dim = dim(images))
+    #-------------------------------------------------------------------------#
+    # rescaling back to original values
+    # rebuilding everything 
+    # ON HOLD: combining super pixels into large scale segments
+    #-------------------------------------------------------------------------#
     embeddings <- embeddings / ratio
     #clusters <- select_similar(embeddings, coordinates = coord)
-
-    
     embeddings <- format_c_to_ves(imsplit(embeddings, "cc"),
       vesalius_assay,
       dimensions,
@@ -196,11 +219,93 @@ slic_segmentation <- function(vesalius_assay,
     match_loc <- match(coord$barcodes, clusters$barcodes)
     clusters <- data.frame(coord, "Segment" = clusters[match_loc, "value"])
     #clusters <- connected_pixels(clusters, embeddings, k, threshold, verbose)
-    
-
     new_trial <- create_trial_tag(colnames(vesalius_assay@territories),
         "Segment") %>%
     tail(1)
     colnames(clusters) <- gsub("Segment", new_trial, colnames(clusters))
     return(list("segments" = clusters, "active" = embeddings))
+}
+
+
+
+generate_slic_graph <- function(spix,
+    signals,
+    k = length(unique(spix$segment)),
+    scorering_method = "pearson") {
+    #-------------------------------------------------------------------------#
+    # first we estimate the pixel centers 
+    # we will use this as an estimate for nearest neighbor calculation 
+    #-------------------------------------------------------------------------#
+    center_pixels <- sort(unique(spix$segment))
+    centers <- future_lapply(center_pixels, function(center, segments){
+        x <- median(segments$x[segments$segment == center])
+        y <- median(segments$y[segments$segment == center])
+        df <- data.frame("x" = x, "y" = y)
+        rownames(df) <- center
+        return(df)
+    }, segments = spix) %>% do.call("rbind", .)
+    #-------------------------------------------------------------------------#
+    # Next we get the nearest neighbors
+    # If k is less than the number of super pixels we add one since
+    # RANN::nn2 includes "self"
+    #-------------------------------------------------------------------------#
+    # k <- ifelse(k < nrow(centers), k + 1, k)
+    #browser()
+    knn <- RANN::nn2(centers, k = k)$nn.idx
+    rownames(knn) <- rownames(centers)
+    #-------------------------------------------------------------------------#
+    # Next we intialise a graph and then compute correlation
+    #-------------------------------------------------------------------------#
+    graph <- populate_graph(knn)
+    graph <- score_graph(graph$e1,
+        graph$e2,
+        signal = signals,
+        centers = spix,
+        scorering_method = scorering_method)
+    return(graph)
+}
+
+
+score_graph <- function(g1,
+    g2,
+    signal,
+    centers,
+    scorering_method = "pearson") {
+    #-------------------------------------------------------------------------#
+    # assuming that if the input to signal is a list 
+    # we are comparing 2 data sets
+    #-------------------------------------------------------------------------#
+    if (is(signal, "list") && length(signal) == 2) {
+        seed_signal <- signal[[1]]
+        query_signal <- signal[[2]]
+    } else {
+        seed_signal <- query_signal <- signal
+    }
+    if (is(centers, "list") && length(centers) == 2) {
+        seed_centers <- centers[[1]]
+        query_centers <- centers[[2]]
+    } else {
+        seed_centers <- query_centers <- centers
+    }
+    #-------------------------------------------------------------------------#
+    # Create a score graph 
+    # and compute correlation between super pixels
+    #-------------------------------------------------------------------------#
+    graph <- data.frame("g1" = g1,
+        "g2" = g2,
+        "cor" = rep(0, length(g1)))
+    for (i in seq_len(nrow(graph))) {
+        c1 <- seed_signal[, seed_centers$barcodes[
+            seed_centers$segment == graph$g1[i]]]
+        if (!is.null(nrow(c1))) {
+            c1 <- apply(c1, 1, mean)
+        }
+        c2 <- query_signal[, query_centers$barcodes[
+            query_centers$segment == graph$g2[i]]]
+        if (!is.null(nrow(c2))) {
+            c2 <- apply(c2, 1, mean)
+        }
+        graph$cor[i] <- cor(c1, c2, method = scorering_method)
+    }
+    return(graph)
 }
