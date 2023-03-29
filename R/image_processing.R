@@ -522,8 +522,8 @@ segment_image <- function(vesalius_assay,
   col_resolution = 10,
   compactness = 1,
   scaling = 0.5,
-  k = 6,
   threshold = 0.9,
+  index_selection = "bubble",
   verbose = TRUE) {
   simple_bar(verbose)
   message_switch("seg", verbose, method = method)
@@ -552,9 +552,9 @@ segment_image <- function(vesalius_assay,
       dimensions = dimensions,
       col_resolution = col_resolution,
       embedding = embedding,
+      index_selection = index_selection,
       compactness = compactness,
       scaling = scaling,
-      k = k,
       threshold = threshold,
       verbose = verbose))
 

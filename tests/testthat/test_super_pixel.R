@@ -9,6 +9,7 @@ vesalius <- segment_image(vesalius,
     dimensions = 1:3,
     col_resolution = 50,
     compactness = 1,
+    index_selection = "bubble",
     scaling = 0.2)
 
 

@@ -12,8 +12,8 @@ segment_image(
   col_resolution = 10,
   compactness = 1,
   scaling = 0.5,
-  k = 6,
   threshold = 0.9,
+  index_selection = "bubble",
   verbose = TRUE
 )
 }
@@ -36,13 +36,13 @@ segmentation. Select from "kmeans", "louvain", "leiden" or "slic".}
 \item{scaling}{numeric - scaling image ration during super pixel 
 segmentation.}
 
-\item{k}{numeric - number of closest super pixel neighbors to consider
-when generating segments from super pixels}
-
 \item{threshold}{numeric [0,1] - correlation threshold between 
 nearest neighbors when generating segments from super pixels.}
 
 \item{verbose}{logical - progress message output.}
+
+\item{k}{numeric - number of closest super pixel neighbors to consider
+when generating segments from super pixels}
 }
 \value{
 a vesalius_assay object

@@ -20,7 +20,7 @@ integrate_assays <- function(seed_assay,
     compactness = 1,
     n_centers = 2000,
     threshold = 0.9,
-    k = 5,
+    k = "auto",
     use_counts = FALSE,
     use_norm = "raw",
     verbose = TRUE) {
@@ -63,23 +63,32 @@ integrate_assays <- function(seed_assay,
     # score the correlation between each vertex in seed/query graph
     #-------------------------------------------------------------------------#
     seed_centers <- check_segment_trial(seed_trial)
-    seed_graph <- generate_slic_graph(seed_centers, signals = seed_signal)
+    seed_graph <- generate_slic_graph(seed_centers,
+        signals = seed_signal,
+        k = k,
+        scoring_method = scoring_method)
     colnames(seed_graph) <- c("seed_1", "seed_2", "seed_score")
     query_centers <- check_segment_trial(query_trial)
-    query_graph <- generate_slic_graph(query_centers, signal = query_signal)
+    query_graph <- generate_slic_graph(query_centers,
+        signal = query_signal,
+        k = k,
+        scoring_method = scoring_method)
     colnames(query_graph) <- c("query_1", "query_2", "query_score")
     #-------------------------------------------------------------------------#
     # Now we can compute the same thing but between each graph
     #-------------------------------------------------------------------------#
     
-    spix_score <- score_graph(g1 = seed_graph$seed_1,
-        g2 = query_graph$query_2,
+    spix_score <- score_graph(
+        g1 = rep(unique(seed_graph$seed_1), times = n_centers),
+        g2 = rep(unique(query_graph$query_1), each = n_centers),
         signal = list(seed_signal, query_signal),
         centers = list(seed_centers, query_centers))
     colnames(spix_score) <- c("seed_spix", "query_spix", "spix_score")
-    spix_score <- data.frame(seed_graph, query_graph, spix_score)
+    
     simple_bar(verbose)
-    return(spix_score)
+    return(list("seed_score" = seed_graph,
+        "query_score" = query_graph,
+        "spix_score" = spix_score))
 }
 
 territory_signal <- function(counts, territories) {

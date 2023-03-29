@@ -7,6 +7,7 @@
 select_initial_indices(
   coordinates,
   embeddings,
+  type = "bubble",
   n_centers = 500,
   max_iter = 500
 )
