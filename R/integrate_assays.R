@@ -103,6 +103,104 @@ territory_signal <- function(counts, territories) {
 }
 
 
+generate_slic_graph <- function(spix,
+    signals,
+    k = "auto",
+    scoring_method = "pearson") {
+    #-------------------------------------------------------------------------#
+    # first we estimate the pixel centers 
+    # we will use this as an estimate for nearest neighbor calculation 
+    #-------------------------------------------------------------------------#
+    center_pixels <- sort(unique(spix$segment))
+    centers <- future_lapply(center_pixels, function(center, segments){
+        x <- median(segments$x[segments$segment == center])
+        y <- median(segments$y[segments$segment == center])
+        df <- data.frame("x" = x, "y" = y)
+        rownames(df) <- center
+        return(df)
+    }, segments = spix) %>% do.call("rbind", .)
+    #-------------------------------------------------------------------------#
+    # Next we get the nearest neighbors
+    # If we use the auto option we compute the nearest neighbors based on 
+    # delauney traingulation - not that this will results in an uneven number 
+    # of neighbors per point. 
+    #-------------------------------------------------------------------------#
+    if (k != "auto") {
+        k <- min(c(k, nrow(centers)))
+        knn <- RANN::nn2(centers, k = k)$nn.idx
+        rownames(knn) <- rownames(centers)
+        graph <- populate_graph(knn)
+    } else {
+        voronoi <- deldir::deldir(x = as.numeric(centers$x),
+            y = as.numeric(centers$y))$delsgs
+        center <- seq_len(nrow(centers))
+        graph <- lapply(center, function(idx, voronoi){
+            tri <- voronoi %>% filter(ind1 == idx | ind2 == idx)
+            tri <- unique(c(tri$ind1, tri$ind2))
+            graph <- data.frame("e1" = rep(idx, length(tri)),
+                "e2" = tri)
+            return(graph)
+        }, voronoi = voronoi) %>% do.call("rbind",.)
+    }
+    
+    #-------------------------------------------------------------------------#
+    # Next we score the graph to see whcih neighbors are similar in color
+    #-------------------------------------------------------------------------#
+    graph <- score_graph(graph$e1,
+        graph$e2,
+        signal = signals,
+        centers = spix,
+        scoring_method = scoring_method)
+    return(graph)
+}
+
+
+score_graph <- function(g1,
+    g2,
+    signal,
+    centers,
+    scoring_method = "pearson") {
+    #-------------------------------------------------------------------------#
+    # assuming that if the input to signal is a list 
+    # we are comparing 2 data sets
+    #-------------------------------------------------------------------------#
+    if (is(signal, "list") && length(signal) == 2) {
+        seed_signal <- signal[[1]]
+        query_signal <- signal[[2]]
+    } else {
+        seed_signal <- query_signal <- signal
+    }
+    if (is(centers, "list") && length(centers) == 2) {
+        seed_centers <- centers[[1]]
+        query_centers <- centers[[2]]
+    } else {
+        seed_centers <- query_centers <- centers
+    }
+    #-------------------------------------------------------------------------#
+    # Create a score graph 
+    # and compute correlation between super pixels
+    #-------------------------------------------------------------------------#
+    graph <- data.frame("g1" = g1,
+        "g2" = g2,
+        "cor" = rep(0, length(g1)))
+    for (i in seq_len(nrow(graph))) {
+        c1 <- seed_signal[, seed_centers$barcodes[
+            seed_centers$segment == graph$g1[i]]]
+        if (!is.null(nrow(c1))) {
+            c1 <- apply(c1, 1, mean)
+        }
+        c2 <- query_signal[, query_centers$barcodes[
+            query_centers$segment == graph$g2[i]]]
+        if (!is.null(nrow(c2))) {
+            c2 <- apply(c2, 1, mean)
+        }
+        graph$cor[i] <- cor(c1, c2, method = scoring_method)
+    }
+    return(graph)
+}
+
+
+
 
 # integrate_by_territory <- function(seed_assay,
 #     query_assay,
