@@ -10,6 +10,10 @@ segment_image(
   embedding = "last",
   method = "kmeans",
   col_resolution = 10,
+  compactness = 1,
+  scaling = 0.5,
+  threshold = 0.9,
+  index_selection = "bubble",
   verbose = TRUE
 )
 }
@@ -22,12 +26,23 @@ segment_image(
 be used.}
 
 \item{method}{character string for which method should be used for
-segmentation. Select from "kmeans", "louvain", or "leiden".}
+segmentation. Select from "kmeans", "louvain", "leiden" or "slic".}
 
 \item{col_resolution}{numeric colour resolution used for segmentation. 
 (see details)}
 
+\item{compactness}{numeric - factor defining super pixel compaction.}
+
+\item{scaling}{numeric - scaling image ration during super pixel 
+segmentation.}
+
+\item{threshold}{numeric [0,1] - correlation threshold between 
+nearest neighbors when generating segments from super pixels.}
+
 \item{verbose}{logical - progress message output.}
+
+\item{k}{numeric - number of closest super pixel neighbors to consider
+when generating segments from super pixels}
 }
 \value{
 a vesalius_assay object
@@ -52,6 +67,13 @@ In the case of **leiden** and **louvain** clustering, the
 In this case, we suggest using values between 0.01 and 1 to start with.
 We recommned uisng **louvain** clustering over **leiden** in
 this context.
+
+In the case of slic, the col_resolution define the number of starting
+points used to generate super pixels. Depending on the number of
+points there are in the assay, we suggested using 10% of the total 
+number of points as starting point. 
+For example, if you have  1000 spatial indices, you can set 
+col_resolution to 100.
 
 The optimal \code{col_resolution} will depend on your interest and 
 biological question at hand. You might be interested in more or less

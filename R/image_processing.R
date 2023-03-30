@@ -458,9 +458,16 @@ regularise <- function(img,
 #' @param embedding character string describing which embedding should
 #' be used.
 #' @param method character string for which method should be used for
-#' segmentation. Select from "kmeans", "louvain", or "leiden".
+#' segmentation. Select from "kmeans", "louvain", "leiden" or "slic".
 #' @param col_resolution numeric colour resolution used for segmentation. 
 #' (see details)
+#' @param compactness numeric - factor defining super pixel compaction.
+#' @param scaling numeric - scaling image ration during super pixel 
+#' segmentation.
+#' @param k numeric - number of closest super pixel neighbors to consider
+#' when generating segments from super pixels
+#' @param threshold numeric [0,1] - correlation threshold between 
+#' nearest neighbors when generating segments from super pixels.
 #' @param verbose logical - progress message output.
 #' @details Applying image segmentation ensures a reduction in colour
 #' complexity.
@@ -478,6 +485,13 @@ regularise <- function(img,
 #' In this case, we suggest using values between 0.01 and 1 to start with.
 #' We recommned uisng **louvain** clustering over **leiden** in
 #' this context.
+#' 
+#' In the case of slic, the col_resolution define the number of starting
+#' points used to generate super pixels. Depending on the number of
+#' points there are in the assay, we suggested using 10% of the total 
+#' number of points as starting point. 
+#' For example, if you have  1000 spatial indices, you can set 
+#' col_resolution to 100.
 #'
 #' The optimal \code{col_resolution} will depend on your interest and 
 #' biological question at hand. You might be interested in more or less
@@ -506,6 +520,10 @@ segment_image <- function(vesalius_assay,
   embedding = "last",
   method = "kmeans",
   col_resolution = 10,
+  compactness = 1,
+  scaling = 0.5,
+  threshold = 0.9,
+  index_selection = "bubble",
   verbose = TRUE) {
   simple_bar(verbose)
   message_switch("seg", verbose, method = method)
@@ -529,6 +547,15 @@ segment_image <- function(vesalius_assay,
       dimensions = dimensions,
       col_resolution = col_resolution,
       embedding = embedding,
+      verbose = verbose),
+    "slic" = slic_segmentation(vesalius_assay,
+      dimensions = dimensions,
+      col_resolution = col_resolution,
+      embedding = embedding,
+      index_selection = index_selection,
+      compactness = compactness,
+      scaling = scaling,
+      threshold = threshold,
       verbose = verbose))
 
   vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
@@ -606,16 +633,23 @@ kmeans_segmentation <- function(vesalius_assay,
 #' @param clusters data.frame containing cluster values
 #' @param kcenters matrix containing centroid values for each dimension
 #' @param dimensions vector (nummeric / int) describin which latent space
+#' @param ratio if used in the context of super pixel - spatial ration
 #' dimensiuons shouls be used. 
 #' @return matrix for the active embedding usiong color segementation 
 
 assign_centers <- function(vesalius_assay,
   clusters,
   kcenters,
-  dimensions) {
+  dimensions,
+  ratio = NULL) {
+  #sp <- map(1:spectrum(images),~ km$centers[km$cluster,2+.]) %>% do.call(c,.) %>% as.cimg(dim=dim(images))
   active <- vesalius_assay@active
   for (d in dimensions) {
-      active[, d] <- kcenters[clusters$Segment, d]
+      tmp <- kcenters[clusters$Segment, d]
+      if (!is.null(ratio)) {
+        tmp <- tmp / ratio 
+      }
+      active[, d] <- tmp
   }
   return(active)
 }
@@ -641,7 +675,10 @@ leiden_segmentation <- function(vesalius_assay,
     filter(origin == 1)
   embeddings <- check_embedding_selection(vesalius_assay,
     embedding,
-    dimensions)
+    dimensions)[,dimensions]
+  
+  loc <- match(coord$barcodes, rownames(embeddings))
+  embeddings <- cbind(coord[, c("x", "y")], embeddings[loc, ])
   graph <- compute_nearest_neighbor_graph(embeddings = embeddings)
   clusters <- igraph::cluster_leiden(graph,
     resolution_parameter = col_resolution)
@@ -699,7 +736,9 @@ louvain_segmentation <- function(vesalius_assay,
     filter(origin == 1)
   embeddings <- check_embedding_selection(vesalius_assay,
     embedding,
-    dimensions)
+    dimensions)[, dimensions]
+  loc <- match(coord$barcodes, rownames(embeddings))
+  embeddings <- cbind(coord[, c("x", "y")], embeddings[loc, ])
   graph <- compute_nearest_neighbor_graph(embeddings = embeddings)
   clusters <- igraph::cluster_louvain(graph, resolution = col_resolution)
   cluster <- data.frame("cluster" = clusters$membership,
@@ -1034,3 +1073,119 @@ distance_pooling <- function(img, capture_radius, min_spatial_index) {
 }
 
 
+#' @importFrom imager imsplit  threshold split_connected where
+#' @importFrom imagerExtra ThresholdML
+#' @importFrom dplyr inner_join
+select_similar <- function(img,
+  coordinates,
+  threshold = 1) {
+  img <- img %>%
+    imsplit("cc")
+
+  pos <- lapply(img, function(x, threshold){
+      ret <- ThresholdML(x, threshold)
+      ret <- split_connected(ret)
+      return(ret)
+  }, threshold = threshold)
+  coordinates$Segment <- 1
+  count <- 2
+  for (i in seq_along(pos)){
+    for (j in seq_along(pos[[i]])) {
+      tmp <- where(pos[[i]][[j]]) %>%
+        inner_join(coordinates, by = c("x", "y"))
+         coordinates$Segment[coordinates$barcodes %in% tmp$barcodes &
+          coordinates$Segment == 1] <- count
+        count <- count + 1
+    }
+  }
+  all_ter <- unique(coordinates$Segment)
+  coordinates$Segment <- seq_along(all_ter)[match(coordinates$Segment, all_ter)]
+  return(coordinates)
+}
+
+#' @importFrom future.apply future_lapply
+connected_pixels <- function(clusters,
+  embeddings,
+  k = 6,
+  threshold = 0.90,
+  verbose = TRUE) {
+    message_switch("connect_pixel", verbose)
+    #-------------------------------------------------------------------------#
+    # First we need to get super pixel centers 
+    #-------------------------------------------------------------------------#
+    center_pixels <- sort(unique(clusters$Segment))
+    centers <- future_lapply(center_pixels, function(center, segments){
+        x <- median(segments$x[segments$Segment == center])
+        y <- median(segments$y[segments$Segment == center])
+        df <- data.frame("x" = x, "y" = y)
+        rownames(df) <- center
+        return(df)
+    }, segments = clusters) %>% do.call("rbind", .)
+    #-------------------------------------------------------------------------#
+    # Next we get the nearest neighbors
+    #-------------------------------------------------------------------------#
+    knn <- RANN::nn2(centers, k = k + 1)$nn.idx
+    rownames(knn) <- rownames(centers)
+    #-------------------------------------------------------------------------#
+    # Next we intialise a graph and then compute correlation
+    #-------------------------------------------------------------------------#
+    graph <- populate_graph(knn)
+    graph$cor <- 0
+    for (i in seq_len(nrow(graph))) {
+        c1 <- embeddings[clusters$barcodes[clusters$Segment == graph$e1[i]], ]
+        if (!is.null(nrow(c1))) {
+            c1 <- apply(c1, 2, mean)
+        }
+        c2 <- embeddings[clusters$barcodes[clusters$Segment == graph$e2[i]], ]
+        if (!is.null(nrow(c2))) {
+            c2 <- apply(c2, 2, mean)
+        }
+        graph$cor[i] <- cor(c1, c2, method = "pearson")
+    }
+    #-------------------------------------------------------------------------#
+    # Then we interatively pool pixels together under the a transitive 
+    # correlation assumption i.e if A cor B and B cor with C then A cor C
+    #-------------------------------------------------------------------------#
+    initial_pixels <- unique(graph$e1)
+    total_pool <- c()
+    segments <-  list()
+    count <- 1
+    while (length(initial_pixels > 0)) {
+        start_pixel <- sample(initial_pixels, size = 1)
+        pool <- graph$e2[graph$e1 == start_pixel & graph$cor >= threshold]
+        inter <- pool
+        total_pool <- c(total_pool, pool)
+        converge <- FALSE
+        #browser()
+        while (!converge) {
+            if (length(inter) == 1) {
+                segments[[count]] <- pool
+                initial_pixels <- initial_pixels[!initial_pixels %in% pool]
+                count <- count + 1
+                converge <- TRUE
+            } else {
+                new_pool <- unique(graph$e2[graph$e1 %in% inter &
+                  graph$cor >= threshold])
+                overlap <- new_pool %in% pool & !new_pool %in% total_pool
+                if (sum(overlap) != length(new_pool)) {
+                  pool <- unique(c(pool, new_pool[!overlap]))
+                  
+                  inter <- unique(new_pool[!overlap])
+                  converge <- FALSE
+                } else {
+                  segments[[count]] <- pool
+                  total_pool <- c(total_pool, pool)
+                  count <- count + 1
+                  initial_pixels <- initial_pixels[!initial_pixels %in% pool]
+                  converge <- TRUE
+                }
+            }
+        }
+    }
+    
+    for (seg in seq_along(segments)){
+        loc <- clusters$Segment %in% segments[[seg]]
+        clusters$Segment[loc] <- seg
+    }
+    return(clusters)
+}

@@ -4,7 +4,7 @@
 \alias{norm_pixel}
 \title{pixel normalisation dispatch function}
 \usage{
-norm_pixel(embeds, type = c("minmax", "quantile_norm"))
+norm_pixel(embeds, type = c("minmax", "quantile_norm", "z_norm"))
 }
 \arguments{
 \item{embeds}{a embedding vector}

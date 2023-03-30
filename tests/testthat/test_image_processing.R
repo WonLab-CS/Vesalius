@@ -181,6 +181,9 @@ test_that("Image segmentation works as expected", {
     # expect s4 with leiden
     expect_s4_class(segment_image(vesalius, method = "leiden"),
         "vesalius_assay")
+    # expect s4 with slic
+    expect_s4_class(segment_image(vesalius, method = "slic"),
+        "vesalius_assay")
 })
 
 test_that("Vesalius assay works as expect with isolate ter", {

@@ -14,8 +14,10 @@ view_gene_expression(
   cells = NULL,
   norm = TRUE,
   as_layer = FALSE,
+  with_background = FALSE,
   cex = 10,
-  cex_pt = 1
+  cex_pt = 1,
+  alpha = 0.75
 )
 }
 \arguments{
@@ -46,6 +48,8 @@ a territory/ layer.}
 \item{cex}{numeric - font size modulator}
 
 \item{cex_pt}{numeric point size}
+
+\item{alpha}{point transparency}
 }
 \value{
 a ggplot object

@@ -106,7 +106,9 @@ message_switch <- function(type, verbose = TRUE, ...) {
         "edge_detect" = cat(paste(t,
             " No edge in", args$nulls, " - Skipping\n")),
         "fft" = cat(paste(t,
-            " Computing Fourier Transform\n"))
+            " Computing Fourier Transform\n")),
+        "connected_pixel" = cat(paste(t,
+            " Connecting Super Pixels\n"))
         )
     } else {
         return(NULL)
