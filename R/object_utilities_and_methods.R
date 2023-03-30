@@ -360,6 +360,11 @@ add_active_embedding_tag <- function(vesalius_assay, embedding) {
     return(vesalius_assay)
 }
 
+add_integration_tag <- function(vesalius_assay, integrated) {
+    comment(vesalius_assay@active) <- integrated
+    return(vesalius_assay)
+}
+
 #' add active count tag
 #' @param vesalius_assay a vesalius assay object
 #' @param norm requested count matrix

@@ -13,6 +13,10 @@ library(pwr, lib.loc = "/common/martinp4/R")
 library(gsignal, lib.loc = "/common/martinp4/R")
 library(dplyr)
 library(future)
+library(ggplot2)
+library(dplyr)
+library(patchwork)
+
 set.seed(1547)
 
 
@@ -91,6 +95,13 @@ test <- integrate_by_territory(vesalius,
     k = 5,
     use_norm = "log_norm")
 
+test <- integrate_assays(vesalius, vesalius_query, n_centers = 1000)
+
+g <- image_plot(test$seed)
+g1 <- image_plot(test$query)
+g2 <- image_plot(test$integrate)
+
+print(g + g1 + g2)
 
 
 # coherence_x <- test$sim$x
@@ -151,11 +162,13 @@ jitter_ves <- segment_image(jitter_ves,
     scaling = 0.2)
 
 
-test <- integrate_assays(vesalius, jitter_ves, n_centers = 100)
+test <- integrate_assays(vesalius, jitter_ves, n_centers = 50)
 
+g <- image_plot(test$seed)
+g1 <- image_plot(test$query)
+g2 <- image_plot(test$integrate)
 
-
-
+print(g + g1 + g2)
 # Running test for Vesalius objects
 # Loading data from the packages
 data(vesalius)

@@ -19,6 +19,8 @@ integrate_assays <- function(seed_assay,
     scaling = 0.2,
     compactness = 1,
     n_centers = 2000,
+    max_iter = 1000,
+    index_selection = "bubble",
     threshold = 0.9,
     k = "auto",
     use_counts = FALSE,
@@ -26,7 +28,7 @@ integrate_assays <- function(seed_assay,
     verbose = TRUE) {
     simple_bar(verbose)
     #-------------------------------------------------------------------------#
-    # compute slic for both assays 
+    # compute slic for both assays
     #-------------------------------------------------------------------------#
     if (use_slic) {
         seed_trial <- segment_image(seed_assay,
@@ -35,6 +37,7 @@ integrate_assays <- function(seed_assay,
             col_resolution = n_centers,
             compactness = compactness,
             scaling = scaling,
+            index_selection = index_selection,
             verbose = FALSE)
         query_trial <- segment_image(query_assay,
             method = "slic",
@@ -42,6 +45,7 @@ integrate_assays <- function(seed_assay,
             col_resolution = n_centers,
             compactness = compactness,
             scaling = scaling,
+            index_selection = index_selection,
             verbose = FALSE)
     }
     #-------------------------------------------------------------------------#
@@ -50,9 +54,9 @@ integrate_assays <- function(seed_assay,
     if (use_counts) {
         seed_signal <- get_counts(seed_assay, type = use_norm)
         query_signal <- get_counts(query_assay, type = use_norm)
-        seed_genes <- intersect(rownames(seed_counts), rownames(query_counts))
-        seed_signal <- seed_counts[seed_genes, ]
-        query_signal <- query_counts[seed_genes, ]
+        seed_genes <- intersect(rownames(seed_signal), rownames(query_signal))
+        seed_signal <- seed_signal[seed_genes, ]
+        query_signal <- query_signal[seed_genes, ]
     } else {
         seed_signal <- t(get_embeddings(seed_assay))
         query_signal <- t(get_embeddings(query_assay))
@@ -67,28 +71,36 @@ integrate_assays <- function(seed_assay,
         signals = seed_signal,
         k = k,
         scoring_method = scoring_method)
-    colnames(seed_graph) <- c("seed_1", "seed_2", "seed_score")
+    
     query_centers <- check_segment_trial(query_trial)
     query_graph <- generate_slic_graph(query_centers,
         signal = query_signal,
         k = k,
         scoring_method = scoring_method)
-    colnames(query_graph) <- c("query_1", "query_2", "query_score")
+    
     #-------------------------------------------------------------------------#
     # Now we can compute the same thing but between each graph
     #-------------------------------------------------------------------------#
     
     spix_score <- score_graph(
-        g1 = rep(unique(seed_graph$seed_1), times = n_centers),
-        g2 = rep(unique(query_graph$query_1), each = n_centers),
+        g1 = rep(unique(seed_graph$from), times = n_centers),
+        g2 = rep(unique(query_graph$to), each = n_centers),
         signal = list(seed_signal, query_signal),
         centers = list(seed_centers, query_centers))
-    colnames(spix_score) <- c("seed_spix", "query_spix", "spix_score")
     
+    best_match <- get_matching_vertex(spix_score)
+    integrate <- vesalius:::match_vertex_to_seed(best_match,
+        seed = seed_trial,
+        query = query_trial,
+        dims = dimensions)
     simple_bar(verbose)
     return(list("seed_score" = seed_graph,
         "query_score" = query_graph,
-        "spix_score" = spix_score))
+        "spix_score" = spix_score,
+        "best_match" = best_match,
+        "seed" = seed_trial,
+        "query" = query_trial,
+        "integrate" = integrate))
 }
 
 territory_signal <- function(counts, territories) {
@@ -151,6 +163,7 @@ generate_slic_graph <- function(spix,
         signal = signals,
         centers = spix,
         scoring_method = scoring_method)
+    
     return(graph)
 }
 
@@ -180,27 +193,69 @@ score_graph <- function(g1,
     # Create a score graph 
     # and compute correlation between super pixels
     #-------------------------------------------------------------------------#
-    graph <- data.frame("g1" = g1,
-        "g2" = g2,
-        "cor" = rep(0, length(g1)))
+    graph <- data.frame("from" = g1,
+        "to" = g2,
+        "score" = rep(0, length(g1)))
     for (i in seq_len(nrow(graph))) {
         c1 <- seed_signal[, seed_centers$barcodes[
-            seed_centers$segment == graph$g1[i]]]
+            seed_centers$segment == graph$from[i]]]
         if (!is.null(nrow(c1))) {
             c1 <- apply(c1, 1, mean)
         }
         c2 <- query_signal[, query_centers$barcodes[
-            query_centers$segment == graph$g2[i]]]
+            query_centers$segment == graph$to[i]]]
         if (!is.null(nrow(c2))) {
             c2 <- apply(c2, 1, mean)
         }
-        graph$cor[i] <- cor(c1, c2, method = scoring_method)
+        graph$score[i] <- cor(c1, c2, method = scoring_method)
     }
     return(graph)
 }
 
+get_matching_vertex  <- function(score) {
+    from <- split(score, score$from)
+    best_match <- lapply(from, function(f) {
+        return(f[f$score == max(f$score),])
+    }) %>% do.call("rbind", .)
+    return(best_match)
+}
 
+match_vertex_to_seed <- function(vertex_match, seed,
+    query,
+    segment = "last",
+    embedding = "last",
+    dims = seq(1,3)) {
+    seed_segements <- check_segment_trial(seed)
+    query_segements <- check_segment_trial(query)
+    query_embeds <- query@active
+    seed_embeds <- seed@active
+    for (i in seq_len(nrow(vertex_match))){
+        seed_spix <- seed_segements$barcodes[seed_segements$segment ==
+            vertex_match$from[i]]
+        query_spix <- query_segements$barcodes[query_segements$segment ==
+            vertex_match$to[i]]
+        query_spix_embedding <- query_embeds[query_spix, ]
+        if (!is.null(dim(query_spix_embedding))) {
+            query_spix_embedding <- apply(query_spix_embedding, 2, mean)
+        }
+        for (j in seq_along(seed_spix)) {
+            seed_embeds[seed_spix[j], dims] <- query_spix_embedding[dims]
+        }
+    }
+    vesalius_assay <- update_vesalius_assay(vesalius_assay = seed,
+      data = seed_embeds,
+      slot = "active",
+      append = FALSE)
+    vesalius_assay <- add_integration_tag(vesalius_assay,
+       "integrated")
+    return(vesalius_assay)
+}
 
+graph_path_length <- function(graph) {
+    graph <- igraph::graph_from_data_frame(graph, directed = FALSE)
+    path_length <- igraph::distances(graph)
+    return(path_length)
+}
 
 # integrate_by_territory <- function(seed_assay,
 #     query_assay,
