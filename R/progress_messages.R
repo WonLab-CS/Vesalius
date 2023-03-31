@@ -108,7 +108,15 @@ message_switch <- function(type, verbose = TRUE, ...) {
         "fft" = cat(paste(t,
             " Computing Fourier Transform\n")),
         "connected_pixel" = cat(paste(t,
-            " Connecting Super Pixels\n"))
+            " Connecting Super Pixels\n")),
+        "signal" = cat(paste(t,
+            " Extracting assay signal\n")),
+        "slic_graph" = cat(paste(t,
+            " Generate SLIC graph in", args$data, "\n")),
+        "score_graph" = cat(paste(t,
+            " Scoring graphs\n")),
+        "matching_graphs" = cat(paste(t,
+            " Matching and Mapping Graphs\n"))
         )
     } else {
         return(NULL)

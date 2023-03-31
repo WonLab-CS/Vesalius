@@ -29,7 +29,7 @@ input <- "/common/martinp4/SSv2"
 #-----------------------------------------------------------------------------#
 # Set future global for multicore processing
 #-----------------------------------------------------------------------------#
-plan(multicore, workers = 4)
+plan(multicore, workers = 5)
 max_size <- 10000 * 1024^2
 options(future.globals.maxSize = max_size)
 
@@ -61,7 +61,7 @@ vesalius <- build_vesalius_assay(coord, count_mat) %>%
     generate_embeddings(tensor_resolution = 0.3) %>%
     regularise_image(dimensions = 1:30, lambda = 5) %>%
     equalize_image(dimensions = 1:30, sleft = 5, sright = 5) %>%
-    #smooth_image(dimensions = 1:30, method =c("iso", "box"), sigma = 2, box = 10, iter = 10) %>%
+    smooth_image(dimensions = 1:30, method =c("iso", "box"), sigma = 2, box = 10, iter = 10) %>%
     segment_image(dimensions = 1:30, col_resolution = 1000, method = "slic",threshold = "85%") %>%
     segment_image(dimensions = 1:30, col_resolution = 12, method = "kmeans") 
 pdf("test.pdf")
@@ -95,14 +95,20 @@ test <- integrate_by_territory(vesalius,
     k = 5,
     use_norm = "log_norm")
 
-test <- integrate_assays(vesalius, vesalius_query, n_centers = 1000)
+test <- integrate_assays(vesalius,
+    vesalius_query,
+    n_centers = 500,
+    compactness = 10,
+    index_selection = "random",
+    use_counts = TRUE)
 
 g <- image_plot(test$seed)
 g1 <- image_plot(test$query)
 g2 <- image_plot(test$integrate)
 
+pdf("test.pdf", width = 20, height = 8)
 print(g + g1 + g2)
-
+dev.off()
 
 # coherence_x <- test$sim$x
 # coherence_y <- test$sim$y
@@ -147,7 +153,7 @@ vesalius <- segment_image(vesalius,
     dimensions = 1:3,
     col_resolution = 50,
     compactness = 1,
-    index_selection = "bubble",
+    index_selection = "random",
     scaling = 0.2)
 
 
@@ -162,7 +168,11 @@ jitter_ves <- segment_image(jitter_ves,
     scaling = 0.2)
 
 
-test <- integrate_assays(vesalius, jitter_ves, n_centers = 50)
+test <- integrate_assays(vesalius,
+    jitter_ves,
+    compactness = 10,
+    index_selection = "random",
+    n_centers = 50)
 
 g <- image_plot(test$seed)
 g1 <- image_plot(test$query)
@@ -181,7 +191,7 @@ vesalius <- segment_image(vesalius,
     col_resolution = 50,
     compactness = 1,
     index_selection = "bubble",
-    scaling = 0.2)
+    scaling = 0.5)
 
 
 vesalius <- segment_image(vesalius, method = "kmeans", col_resolution = 10)

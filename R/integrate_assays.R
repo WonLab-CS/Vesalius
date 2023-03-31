@@ -30,6 +30,7 @@ integrate_assays <- function(seed_assay,
     #-------------------------------------------------------------------------#
     # compute slic for both assays
     #-------------------------------------------------------------------------#
+    message_switch("seg" , verbose = verbose, method = "slic")
     if (use_slic) {
         seed_trial <- segment_image(seed_assay,
             method = "slic",
@@ -51,6 +52,7 @@ integrate_assays <- function(seed_assay,
     #-------------------------------------------------------------------------#
     # get signal either as counts or as embedding values
     #-------------------------------------------------------------------------#
+    message_switch("signal", verbose = verbose)
     if (use_counts) {
         seed_signal <- get_counts(seed_assay, type = use_norm)
         query_signal <- get_counts(query_assay, type = use_norm)
@@ -66,12 +68,13 @@ integrate_assays <- function(seed_assay,
     # we also generate a graph and score this graph. 
     # score the correlation between each vertex in seed/query graph
     #-------------------------------------------------------------------------#
+    message_switch("slic_graph", verbose = verbose, data = "seed")
     seed_centers <- check_segment_trial(seed_trial)
     seed_graph <- generate_slic_graph(seed_centers,
         signals = seed_signal,
         k = k,
         scoring_method = scoring_method)
-    
+    message_switch("slic_graph", verbose = verbose, data = "query")
     query_centers <- check_segment_trial(query_trial)
     query_graph <- generate_slic_graph(query_centers,
         signal = query_signal,
@@ -80,14 +83,19 @@ integrate_assays <- function(seed_assay,
     
     #-------------------------------------------------------------------------#
     # Now we can compute the same thing but between each graph
+    # For now - we check the number of centeres in case of mismatch
+    # for now I am getting mismatch even with random sampling which 
+    # does not make any sense but to check and fix
     #-------------------------------------------------------------------------#
-    
+    q_centers <- length(unique(query_graph$from))
+    s_centers <- length(unique(seed_graph$from))
+    message_switch("score_graph", verbose = verbose)
     spix_score <- score_graph(
-        g1 = rep(unique(seed_graph$from), times = n_centers),
-        g2 = rep(unique(query_graph$to), each = n_centers),
+        g1 = rep(unique(seed_graph$from), times = q_centers),
+        g2 = rep(unique(query_graph$to), each = s_centers),
         signal = list(seed_signal, query_signal),
         centers = list(seed_centers, query_centers))
-    
+    message_switch("matching_graphs", verbose = verbose)
     best_match <- get_matching_vertex(spix_score)
     integrate <- vesalius:::match_vertex_to_seed(best_match,
         seed = seed_trial,
@@ -167,7 +175,7 @@ generate_slic_graph <- function(spix,
     return(graph)
 }
 
-
+#' importFrom future.apply future_lapply
 score_graph <- function(g1,
     g2,
     signal,
@@ -196,6 +204,31 @@ score_graph <- function(g1,
     graph <- data.frame("from" = g1,
         "to" = g2,
         "score" = rep(0, length(g1)))
+    # graph <- future_lapply(seq_len(nrow(graph)), function(i,
+    #     graph,
+    #     seed_signal,
+    #     query_signal,
+    #     seed_centers,
+    #     query_centers) {
+        
+    #     c1 <- seed_signal[, seed_centers$barcodes[
+    #         seed_centers$segment == graph$from[i]]]
+    #     if (!is.null(nrow(c1))) {
+    #         c1 <- apply(c1, 1, mean)
+    #     }
+    #     c2 <- query_signal[, query_centers$barcodes[
+    #         query_centers$segment == graph$to[i]]]
+    #     if (!is.null(nrow(c2))) {
+    #         c2 <- apply(c2, 1, mean)
+    #     }
+    #     graph$score[i] <- cor(c1, c2, method = scoring_method)
+    #     return(graph)
+    # }, graph = graph,
+    #     seed_signal,
+    #     query_signal,
+    #     seed_centers,
+    #     query_centers)
+    # graph <- do.call("rbind", graph)
     for (i in seq_len(nrow(graph))) {
         c1 <- seed_signal[, seed_centers$barcodes[
             seed_centers$segment == graph$from[i]]]

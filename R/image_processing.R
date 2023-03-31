@@ -816,12 +816,13 @@ slic_segmentation <- function(vesalius_assay,
     # to match the "spread" of the spatial coordinates
     #-------------------------------------------------------------------------#
     coord <- get_tiles(vesalius_assay) %>% filter(origin == 1)
-    tiles <- get_tiles(vesalius_assay)
+    
+    #tiles <- get_tiles(vesalius_assay)
     embeddings <- check_embedding_selection(vesalius_assay,
       embedding,
       dimensions)[, dimensions]
     # max spatial distance 
-    sc_spat <- max(c(max(tiles$x), max(tiles$x))  * scaling)
+    sc_spat <- max(c(max(coord$x), max(coord$x))  * scaling)
     # max color distance between two pixels??
     sc_col <-  apply(embeddings, 2, sd) %>% max()
     #-------------------------------------------------------------------------#
@@ -836,7 +837,7 @@ slic_segmentation <- function(vesalius_assay,
     embeddings <- as.data.frame(embeddings * ratio)
     embeddings$barcodes <- rownames(embeddings)
     embeddings <- embeddings %>%
-        right_join(tiles, by = "barcodes") %>%
+        right_join(coord, by = "barcodes") %>%
         select(-c("barcodes", "origin")) %>%
         as.matrix()
     colnames(embeddings) <- c(paste0("dim_", dimensions), "x", "y")
@@ -848,8 +849,8 @@ slic_segmentation <- function(vesalius_assay,
     # It would be worth looking into using pixels instead. Mainly for low
     # res data sets - we might want to have pixels between spatial indices 
     #-------------------------------------------------------------------------#
-    index <- select_initial_indices(get_tiles(vesalius_assay),
-        embeddings,
+    index <- select_initial_indices(coord,
+        #embeddings,
         type = index_selection,
         n_centers = col_resolution,
         max_iter = max_iter)
@@ -860,7 +861,8 @@ slic_segmentation <- function(vesalius_assay,
     km <- suppressWarnings(kmeans(embeddings,
         embeddings[index, ],
         iter.max = 100))
-    centroids <- map(seq_along(dimensions), ~ km$centers[km$cluster, 2 + .]) %>%
+    centroids <- map(seq(1, l = ncol(embeddings) - 2),
+        ~ km$centers[km$cluster, .]) %>%
         do.call("cbind", .)
     centroids <- centroids / ratio
     clusters <- cbind(embeddings[, c("x", "y")], km$cluster) %>%
@@ -875,7 +877,9 @@ slic_segmentation <- function(vesalius_assay,
     # rebuilding everything 
     # ON HOLD: combining super pixels into large scale segments
     #-------------------------------------------------------------------------#
+    
     embeddings[, seq(1, ncol(embeddings) - 2)] <- centroids
+
     embeddings <- lapply(seq_len(ncol(centroids)), function(i, embed) {
         ret <- as.data.frame(embed[, c("x", "y", paste0("dim_", i))])
         colnames(ret) <- c("x", "y", "value")
@@ -910,49 +914,57 @@ select_initial_indices <- function(coordinates,
     n_centers = 500,
     max_iter = 500) {
     indices <- switch(type,
-        "linear" = uniform_sampling(coordinates,
-            embeddings,
-            n_centers),
+        # "linear" = uniform_sampling(coordinates,
+        #     embeddings,
+        #     n_centers),
         "bubble" = bubble_stack(coordinates,
-            embeddings,
+            #embeddings,
             n_centers,
             max_iter),
-        "pixel" = pixel_sampling(coordinates,
-            embeddings,
-            n_centers))
+        # "pixel" = pixel_sampling(coordinates,
+        #     embeddings,
+        #     n_centers),
+        "random" = random_sampling(coordinates,
+          n_centers = n_centers))
     return(indices)
 }
 
-linear_sampling <- function(coordinates,
-    embeddings,
-    n_centers = 500) {
-    coordinates <- coordinates[order(coordinates$x, decreasing = FALSE),]
-    coordinates <- split(coordinates, coordinates$x) %>%
-        lapply(., function(df) {return(df[order(df$y, decreasing = FALSE),])})
-    coordinates <- do.call("rbind", coordinates)
-    coordinates <- coordinates[seq(1, nrow(coordinates), l = n_centers),]
+# linear_sampling <- function(coordinates,
+#     embeddings,
+#     n_centers = 500) {
+#     coordinates <- coordinates[order(coordinates$x, decreasing = FALSE),]
+#     coordinates <- split(coordinates, coordinates$x) %>%
+#         lapply(., function(df) {return(df[order(df$y, decreasing = FALSE),])})
+#     coordinates <- do.call("rbind", coordinates)
+#     coordinates <- coordinates[seq(1, nrow(coordinates), l = n_centers), ]
 
-    in_image <- paste0(embeddings[, "x"], "_", embeddings[, "y"])
-    in_background <- paste0(coordinates$x, "_", coordinates$y)
-    in_image <- which(in_image %in% in_background)
-    return(in_image)
+#     in_image <- paste0(embeddings[, "x"], "_", embeddings[, "y"])
+#     in_background <- paste0(coordinates$x, "_", coordinates$y)
+#     in_image <- which(in_image %in% in_background)
+#     return(in_image)
+# }
+
+random_sampling <- function(coordinates, n_centers) {
+    #idx <- which(coordinates$origin == 1)
+    return(sample(seq_len(nrow(coordinates)),
+      size = n_centers, replace = FALSE))
 }
 
 #' importFrom imager nPix
-pixel_sampling <- function(coordinates, embeddings, n_centers) {
-  images <- coordinates[, c("x", "y")]
-  images$value <- coordinates$origin
-  images <- suppressWarnings(as.cimg(images))
-  ind <- round(seq(1, nPix(images) / spectrum(images), l = n_centers))
-  images <- as.data.frame(images)[ind, ]
-  in_background <- paste0(images[, "x"], "_", images[, "y"])
-  in_image <- paste0(embeddings[,"x"], "_", embeddings[,"y"])
-  in_image <- which(in_image %in% in_background)
-  return(in_image)
-} 
+# pixel_sampling <- function(coordinates, embeddings, n_centers) {
+#   images <- coordinates[, c("x", "y")]
+#   images$value <- coordinates$origin
+#   images <- suppressWarnings(as.cimg(images))
+#   ind <- round(seq(1, nPix(images) / spectrum(images), l = n_centers))
+#   images <- as.data.frame(images)[ind, ]
+#   in_background <- paste0(images[, "x"], "_", images[, "y"])
+#   in_image <- paste0(embeddings[,"x"], "_", embeddings[,"y"])
+#   in_image <- which(in_image %in% in_background)
+#   return(in_image)
+# } 
 
 bubble_stack <- function(coordinates,
-    embeddings,
+    #embeddings,
     n_centers = 500,
     max_iter = 500) {
     coordinates <- coordinates %>% filter(origin == 1)
@@ -1018,12 +1030,12 @@ bubble_stack <- function(coordinates,
     # within the full pixel image 
     # could use right_join and the likes but no 
     #-------------------------------------------------------------------------#
-    in_image <- paste0(embeddings[, "x"], "_", embeddings[, "y"])
-    in_background <- paste0(coordinates$x[background_grid],
-        "_",
-        coordinates$y[background_grid])
-    in_image <- which(in_image %in% in_background)
-    return(in_image)
+    # in_image <- paste0(embeddings[, "x"], "_", embeddings[, "y"])
+    # in_background <- paste0(coordinates$x[background_grid],
+    #     "_",
+    #     coordinates$y[background_grid])
+    # in_image <- which(in_image %in% in_background)
+    return(background_grid)
 }
 
 
