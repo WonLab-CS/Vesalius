@@ -97,8 +97,8 @@ test <- integrate_by_territory(vesalius,
 
 test <- integrate_assays(vesalius,
     vesalius_query,
-    n_centers = 500,
-    compactness = 10,
+    n_centers = 100,
+    compactness = 100,
     index_selection = "random",
     use_counts = TRUE)
 
@@ -106,7 +106,7 @@ g <- image_plot(test$seed)
 g1 <- image_plot(test$query)
 g2 <- image_plot(test$integrate)
 
-pdf("test.pdf", width = 20, height = 8)
+pdf("test_counts.pdf", width = 20, height = 8)
 print(g + g1 + g2)
 dev.off()
 

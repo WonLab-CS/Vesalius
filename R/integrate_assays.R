@@ -229,15 +229,19 @@ score_graph <- function(g1,
     #     seed_centers,
     #     query_centers)
     # graph <- do.call("rbind", graph)
+    cat("\n")
     for (i in seq_len(nrow(graph))) {
+        cat(paste0(i, "\r"))
         c1 <- seed_signal[, seed_centers$barcodes[
             seed_centers$segment == graph$from[i]]]
         if (!is.null(nrow(c1))) {
+            #c1 <- as.vector(c1[1, ])
             c1 <- apply(c1, 1, mean)
         }
         c2 <- query_signal[, query_centers$barcodes[
             query_centers$segment == graph$to[i]]]
         if (!is.null(nrow(c2))) {
+            #c2 <- as.vector(c2[1, ])
             c2 <- apply(c2, 1, mean)
         }
         graph$score[i] <- cor(c1, c2, method = scoring_method)
@@ -248,7 +252,7 @@ score_graph <- function(g1,
 get_matching_vertex  <- function(score) {
     from <- split(score, score$from)
     best_match <- lapply(from, function(f) {
-        return(f[f$score == max(f$score),])
+        return(f[f$score == max(f$score), ])
     }) %>% do.call("rbind", .)
     return(best_match)
 }
@@ -257,7 +261,7 @@ match_vertex_to_seed <- function(vertex_match, seed,
     query,
     segment = "last",
     embedding = "last",
-    dims = seq(1,3)) {
+    dims = seq(1, 3)) {
     seed_segements <- check_segment_trial(seed)
     query_segements <- check_segment_trial(query)
     query_embeds <- query@active
