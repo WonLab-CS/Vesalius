@@ -367,15 +367,20 @@ filter_grid <- function(coordinates, filter_grid) {
 #' Each barcode that overlap with each other are marged together. Their 
 #' respective counts will also be merged together. This allows us to 
 #' retain all barcodes for downstream analysis. 
+#' 
+#' 
+#' TO DO: replace the tensor resolution reduction with super pixels 
 #' @return a data frame with barcodes, x and coordinates
 #' @importFrom dplyr %>% distinct
-reduce_tensor_resolution <- function(coordinates, tensor_resolution = 1) {
+reduce_tensor_resolution <- function(coordinates,
+  tensor_resolution = 1) {
   #----------------------------------------------------------------------------#
   # we will reduce number of points this way
   # this should keep all barcodes - with overlapping coordinates
   #----------------------------------------------------------------------------#
   coordinates$x <- round(coordinates$x * tensor_resolution) + 1
   coordinates$y <- round(coordinates$y * tensor_resolution) + 1
+  
   #----------------------------------------------------------------------------#
   # Now we get coordinate tags - we use this to find all the merge locations
   # sorting and using rle to ensure that we actually merge them
@@ -826,7 +831,6 @@ embed_pcal <- function(counts,
   verbose = TRUE) {
     #--------------------------------------------------------------------------#
     # First run PCA
-    # Progress message pca_tensor() => Prog.R
     #--------------------------------------------------------------------------#
     message_switch("pca_tensor", verbose)
     features <- check_features(counts)

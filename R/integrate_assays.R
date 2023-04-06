@@ -49,6 +49,7 @@ integrate_assays <- function(seed_assay,
             index_selection = index_selection,
             verbose = FALSE)
     }
+    #integrated <- generate_common_embeddings(seed_trial, query_trial)
     #-------------------------------------------------------------------------#
     # get signal either as counts or as embedding values
     #-------------------------------------------------------------------------#
@@ -109,6 +110,7 @@ integrate_assays <- function(seed_assay,
         "seed" = seed_trial,
         "query" = query_trial,
         "integrate" = integrate))
+    
 }
 
 territory_signal <- function(counts, territories) {
@@ -122,6 +124,50 @@ territory_signal <- function(counts, territories) {
     return(territories)
 }
 
+# #' @details NOTE this is for transcriptome only! 
+# generate_common_embeddings <- function(seed,
+#     query,
+#     dim_reduction = "PCA",
+#     dimensions = 30,
+#     nfeatures = 2000,
+#     verbose = TRUE) {
+#     #-------------------------------------------------------------------------#
+#     # First we need to get the new super pixel coordinate set
+#     # Now we replace the coordinates with super pixel centers 
+#     # Note I am using median and not centroid values from spix
+#     # might need to parse this to meta data??
+#     #-------------------------------------------------------------------------#
+#     seed_spix <- check_segment_trial(seed) %>%
+#         get_super_pixel_centers(assay = "seed")
+#     seed_counts <- get_counts(seed)
+#     colnames(seed_counts) <- paste0("seed_", colnames(seed_counts))
+#     seed_counts <- adjust_counts(seed_spix,
+#         counts = seed_counts,
+#         throw = FALSE,
+#         verbose = FALSE)
+    
+#     query_spix <- check_segment_trial(query) %>%
+#         get_super_pixel_centers(assay = "query")
+#     query_counts <- get_counts(query)
+#     colnames(query_counts) <- paste0("query_", colnames(query_counts))
+#     query_counts <- adjust_counts(query_spix,
+#         counts = query_counts,
+#         throw = FALSE,
+#         verbose = FALSE)
+    
+#     integrated_counts <- cbind(seed_counts, query_counts)
+#     integrate_coordinates <- rbind(seed_spix, query_spix)
+#     #-------------------------------------------------------------------------#
+#     # next we create and process the count values
+#     #-------------------------------------------------------------------------#
+#     integrated_assay <- build_vesalius_assay(integrate_coordinates,
+#         counts = integrated_counts,
+#         assay = "integrated_assay",
+#         verbose = FALSE)
+#     integrated_assay <- generate_embeddings(integrated_assay)
+#     return(integrated_assay)
+    
+# }
 
 generate_slic_graph <- function(spix,
     signals,
@@ -131,14 +177,7 @@ generate_slic_graph <- function(spix,
     # first we estimate the pixel centers 
     # we will use this as an estimate for nearest neighbor calculation 
     #-------------------------------------------------------------------------#
-    center_pixels <- sort(unique(spix$segment))
-    centers <- future_lapply(center_pixels, function(center, segments){
-        x <- median(segments$x[segments$segment == center])
-        y <- median(segments$y[segments$segment == center])
-        df <- data.frame("x" = x, "y" = y)
-        rownames(df) <- center
-        return(df)
-    }, segments = spix) %>% do.call("rbind", .)
+    centers <- get_super_pixel_centers(spix) %>% select(c("x", "y"))
     #-------------------------------------------------------------------------#
     # Next we get the nearest neighbors
     # If we use the auto option we compute the nearest neighbors based on 
@@ -160,9 +199,9 @@ generate_slic_graph <- function(spix,
             graph <- data.frame("e1" = rep(idx, length(tri)),
                 "e2" = tri)
             return(graph)
-        }, voronoi = voronoi) %>% do.call("rbind",.)
+        }, voronoi = voronoi) %>%
+            do.call("rbind", .)
     }
-    
     #-------------------------------------------------------------------------#
     # Next we score the graph to see whcih neighbors are similar in color
     #-------------------------------------------------------------------------#
@@ -171,8 +210,29 @@ generate_slic_graph <- function(spix,
         signal = signals,
         centers = spix,
         scoring_method = scoring_method)
-    
     return(graph)
+}
+
+
+get_super_pixel_centers <- function(spix) {
+    center_pixels <- sort(unique(spix$segment))
+    centers <- future_lapply(center_pixels, function(center, segments, assay) {
+        x <- median(segments$x[segments$segment == center])
+        y <- median(segments$y[segments$segment == center])
+        # if (length(segments$barcodes[segments$segment == center]) > 0) {
+        #     barcodes <- paste0(assay, "_",
+        #         segments$barcodes[segments$segment == center])
+        #     barcodes <- paste0(barcodes,
+        #         sep = "_et_", collapse = "")
+        # } else {
+        #     barcodes <- segments$barcodes
+        # }
+        df <- data.frame("x" = x,
+            "y" = y)
+        rownames(df) <- center
+        return(df)
+    }, segments = spix, assay = assay) %>% do.call("rbind", .)
+    return(centers)
 }
 
 #' importFrom future.apply future_lapply
@@ -182,7 +242,7 @@ score_graph <- function(g1,
     centers,
     scoring_method = "pearson") {
     #-------------------------------------------------------------------------#
-    # assuming that if the input to signal is a list 
+    # assuming that if the input to signal is a list
     # we are comparing 2 data sets
     #-------------------------------------------------------------------------#
     if (is(signal, "list") && length(signal) == 2) {

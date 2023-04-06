@@ -97,8 +97,8 @@ test <- integrate_by_territory(vesalius,
 
 test <- integrate_assays(vesalius,
     vesalius_query,
-    n_centers = 100,
-    compactness = 100,
+    n_centers = 200,
+    compactness = 20,
     index_selection = "random",
     use_counts = TRUE)
 
@@ -147,31 +147,32 @@ vesalius <- build_vesalius_assay(coordinates, counts)
 jitter_ves <- build_vesalius_assay(jitter_coord, jitter_counts)
 
 vesalius <- generate_embeddings(vesalius)
-vesalius <- smooth_image(vesalius, embedding = "PCA", sigma = 5, iter = 5)
-vesalius <- segment_image(vesalius,
-    method = "slic",
-    dimensions = 1:3,
-    col_resolution = 50,
-    compactness = 1,
-    index_selection = "random",
-    scaling = 0.2)
+# vesalius <- smooth_image(vesalius, embedding = "PCA", sigma = 5, iter = 5)
+# vesalius <- segment_image(vesalius,
+#     method = "slic",
+#     dimensions = 1:3,
+#     col_resolution = 50,
+#     compactness = 1,
+#     index_selection = "random",
+#     scaling = 0.2)
 
 
 jitter_ves <- generate_embeddings(jitter_ves)
-jitter_ves <- smooth_image(jitter_ves, embedding = "PCA", sigma = 5, iter = 5)
-jitter_ves <- segment_image(jitter_ves,
-    method = "slic",
-    dimensions = 1:3,
-    col_resolution = 50,
-    compactness = 1,
-    index_selection = "bubble",
-    scaling = 0.2)
+# jitter_ves <- smooth_image(jitter_ves, embedding = "PCA", sigma = 5, iter = 5)
+# jitter_ves <- segment_image(jitter_ves,
+#     method = "slic",
+#     dimensions = 1:3,
+#     col_resolution = 50,
+#     compactness = 1,
+#     index_selection = "bubble",
+#     scaling = 0.2)
 
 
 test <- integrate_assays(vesalius,
     jitter_ves,
     compactness = 10,
     index_selection = "random",
+    use_counts = TRUE,
     n_centers = 50)
 
 g <- image_plot(test$seed)
