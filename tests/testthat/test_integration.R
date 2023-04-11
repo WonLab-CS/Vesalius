@@ -97,10 +97,10 @@ test <- integrate_by_territory(vesalius,
 
 test <- integrate_assays(vesalius,
     vesalius_query,
-    n_centers = 200,
+    n_centers = 500,
     compactness = 20,
     index_selection = "random",
-    use_counts = TRUE)
+    signal = "features")
 
 g <- image_plot(test$seed)
 g1 <- image_plot(test$query)
@@ -172,7 +172,7 @@ test <- integrate_assays(vesalius,
     jitter_ves,
     compactness = 10,
     index_selection = "random",
-    use_counts = TRUE,
+    signal = "features",
     n_centers = 50)
 
 g <- image_plot(test$seed)

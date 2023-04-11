@@ -148,6 +148,15 @@ generate_embeddings <- function(vesalius_assay,
     vesalius_assay <- add_active_count_tag(vesalius_assay,
       norm = ifelse(use_count == "raw", normalisation, use_count))
     #--------------------------------------------------------------------------#
+    # Adding variable features to meta 
+    #--------------------------------------------------------------------------#
+    features <- list(check_features(counts$SO))
+    names(features) <- "variable_features"
+    vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
+      data = features,
+      slot = "meta",
+      append = TRUE)
+    #--------------------------------------------------------------------------#
     # Embeddings - get embedding method and convert latent space
     # to color space.
     #--------------------------------------------------------------------------#
@@ -380,7 +389,6 @@ reduce_tensor_resolution <- function(coordinates,
   #----------------------------------------------------------------------------#
   coordinates$x <- round(coordinates$x * tensor_resolution) + 1
   coordinates$y <- round(coordinates$y * tensor_resolution) + 1
-  
   #----------------------------------------------------------------------------#
   # Now we get coordinate tags - we use this to find all the merge locations
   # sorting and using rle to ensure that we actually merge them
@@ -874,8 +882,8 @@ embed_pcal <- function(counts,
 #' @param dimensions number of PCs to use for the UMAP projections 
 #' @param verbose logical if progress messages should be outputed 
 #' @details Note that while you can select any number of dimensions
-#' the number of UMAP dimensions will always be 3. 
-#' @return normalised UMAP projection matrix 
+#' the number of UMAP dimensions will always be 3.
+#' @return normalised UMAP projection matrix
 #' @importFrom Seurat RunPCA
 #' @importFrom Seurat RunUMAP
 #' @importFrom Seurat FetchData

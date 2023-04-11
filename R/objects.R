@@ -48,6 +48,7 @@ setClass("vesalius_assay",
         DEG = "DEG",
         counts  = "list",
         image = "list",
+        meta = "list",
         log = "list"),
     validity = function(object) {
         if (!is(object@assay, "character")) {
@@ -72,6 +73,9 @@ setClass("vesalius_assay",
             stop("Unsupported Count Format")
         }
         if (!is(object@image, "list")) {
+            stop("Unsupported image Format")
+        }
+        if (!is(object@meta, "list")) {
             stop("Unsupported image Format")
         }
         if (!is(object@log, "list")) {

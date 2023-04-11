@@ -14,7 +14,6 @@ integrate_assays <- function(seed_assay,
     seed_trial = "last",
     query_trial = "last",
     scoring_method = "pearson",
-    use_slic = TRUE,
     dimensions = seq(1, 30),
     scaling = 0.2,
     compactness = 1,
@@ -23,47 +22,53 @@ integrate_assays <- function(seed_assay,
     index_selection = "bubble",
     threshold = 0.9,
     k = "auto",
-    use_counts = FALSE,
+    signal = "features",
     use_norm = "raw",
     verbose = TRUE) {
     simple_bar(verbose)
     #-------------------------------------------------------------------------#
     # compute slic for both assays
     #-------------------------------------------------------------------------#
-    message_switch("seg" , verbose = verbose, method = "slic")
-    if (use_slic) {
-        seed_trial <- segment_image(seed_assay,
-            method = "slic",
-            dimensions = dimensions,
-            col_resolution = n_centers,
-            compactness = compactness,
-            scaling = scaling,
-            index_selection = index_selection,
-            verbose = FALSE)
-        query_trial <- segment_image(query_assay,
-            method = "slic",
-            dimensions = dimensions,
-            col_resolution = n_centers,
-            compactness = compactness,
-            scaling = scaling,
-            index_selection = index_selection,
-            verbose = FALSE)
-    }
+    message_switch("seg", verbose = verbose, method = "slic")
+    seed_trial <- segment_image(seed_assay,
+        method = "slic",
+        dimensions = dimensions,
+        col_resolution = n_centers,
+        compactness = compactness,
+        scaling = scaling,
+        index_selection = index_selection,
+        verbose = FALSE)
+    query_trial <- segment_image(query_assay,
+        method = "slic",
+        dimensions = dimensions,
+        col_resolution = n_centers,
+        compactness = compactness,
+        scaling = scaling,
+        index_selection = index_selection,
+        verbose = FALSE)
+    
     #integrated <- generate_common_embeddings(seed_trial, query_trial)
     #-------------------------------------------------------------------------#
     # get signal either as counts or as embedding values
     #-------------------------------------------------------------------------#
     message_switch("signal", verbose = verbose)
-    if (use_counts) {
-        seed_signal <- get_counts(seed_assay, type = use_norm)
-        query_signal <- get_counts(query_assay, type = use_norm)
-        seed_genes <- intersect(rownames(seed_signal), rownames(query_signal))
-        seed_signal <- seed_signal[seed_genes, ]
-        query_signal <- query_signal[seed_genes, ]
+    seed_signal <- check_signal(signal, seed_trial, type = use_norm)
+    query_signal <- check_signal(signal, query_trial, type = use_norm)
+    if (grepl(pattern = "embeddings", x = signal)) {
+        seed_signal <- t(get_embeddings(seed_trial))
+        query_signal <- t(get_embeddings(query_trial))
     } else {
-        seed_signal <- t(get_embeddings(seed_assay))
-        query_signal <- t(get_embeddings(query_assay))
+        seed_counts <- get_counts(seed_trial, type = use_norm)
+        query_counts <- get_counts(query_trial, type = use_norm)
+        seed_genes <- intersect(seed_signal, query_signal)
+        if (length(seed_genes) == 0) {
+            stop("No common features between seed and query data sets!")
+        }
+        seed_signal <- seed_counts[seed_genes, ]
+        query_signal <- query_counts[seed_genes, ]
     }
+
+    
     #-------------------------------------------------------------------------#
     # Get estimated super pixel centers
     # we also generate a graph and score this graph. 
@@ -216,22 +221,14 @@ generate_slic_graph <- function(spix,
 
 get_super_pixel_centers <- function(spix) {
     center_pixels <- sort(unique(spix$segment))
-    centers <- future_lapply(center_pixels, function(center, segments, assay) {
+    centers <- future_lapply(center_pixels, function(center, segments) {
         x <- median(segments$x[segments$segment == center])
         y <- median(segments$y[segments$segment == center])
-        # if (length(segments$barcodes[segments$segment == center]) > 0) {
-        #     barcodes <- paste0(assay, "_",
-        #         segments$barcodes[segments$segment == center])
-        #     barcodes <- paste0(barcodes,
-        #         sep = "_et_", collapse = "")
-        # } else {
-        #     barcodes <- segments$barcodes
-        # }
         df <- data.frame("x" = x,
             "y" = y)
         rownames(df) <- center
         return(df)
-    }, segments = spix, assay = assay) %>% do.call("rbind", .)
+    }, segments = spix) %>% do.call("rbind", .)
     return(centers)
 }
 

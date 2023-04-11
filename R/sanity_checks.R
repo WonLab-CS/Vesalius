@@ -745,3 +745,25 @@ check_template_source <- function(vesalius_assay, from, dimensions) {
     comment(template) <- type
     return(template)
 }
+
+
+check_signal <- function(signal, assay, type) {
+    if (any(signal %in% c("features", "counts"))) {
+        signal <- switch(EXPR = signal,
+            "features" = assay@meta$variable_features,
+            "counts" = rownames(get_counts(assay, type)))
+        return(signal)
+    } else if (any(signal %in% rownames(get_counts(assay, type)))) {
+        int <- intersect(signal, rownames(get_counts(assay, type)))
+        if (length(int) == 0) {
+            stop("Selected features are not present in count matrix!")
+        } else {
+            return(int)
+        }
+    } else if (signal == "embeddings") {
+        return(signal)
+    } else {
+        stop("Unknown signal type! Select from:
+        features, counts, embeddings or vector of feature names")
+    }
+}
