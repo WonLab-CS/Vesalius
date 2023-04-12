@@ -180,6 +180,18 @@ g1 <- image_plot(test$query)
 g2 <- image_plot(test$integrate)
 
 print(g + g1 + g2)
+
+
+seed_score <- igraph::graph_from_data_frame(test$seed_score, directed = FALSE)
+E(seed_score)$weight <- test$seed_score$score
+
+query_score <- igraph::graph_from_data_frame(test$query_score, directed = FALSE)
+E(seed_score)$weight <- test$query_score$score
+
+iso <- igraph::isomorphisms(graph1 = seed_score, graph2 = query_score)
+
+
+
 # Running test for Vesalius objects
 # Loading data from the packages
 data(vesalius)

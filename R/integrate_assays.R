@@ -75,17 +75,22 @@ integrate_assays <- function(seed_assay,
     # score the correlation between each vertex in seed/query graph
     #-------------------------------------------------------------------------#
     message_switch("slic_graph", verbose = verbose, data = "seed")
-    seed_centers <- check_segment_trial(seed_trial)
-    seed_graph <- generate_slic_graph(seed_centers,
-        signals = seed_signal,
+    seed_spix <- check_segment_trial(seed_trial)
+    seed_graph <- generate_slic_graph(seed_spix,
         k = k,
-        scoring_method = scoring_method)
+        scoring_method = scoring_method) %>%
+        score_graph(., signal = seed_signal,
+            centers = seed_spix,
+            scoring_method = scoring_method)
+    
     message_switch("slic_graph", verbose = verbose, data = "query")
-    query_centers <- check_segment_trial(query_trial)
-    query_graph <- generate_slic_graph(query_centers,
-        signal = query_signal,
+    query_spix <- check_segment_trial(query_trial)
+    query_graph <- generate_slic_graph(query_spix,
         k = k,
-        scoring_method = scoring_method)
+        scoring_method = scoring_method) %>%
+        score_graph(., signal = query_signal,
+            centers = query_spix,
+            scoring_method = scoring_method)
     
     #-------------------------------------------------------------------------#
     # Now we can compute the same thing but between each graph
@@ -95,18 +100,23 @@ integrate_assays <- function(seed_assay,
     #-------------------------------------------------------------------------#
     q_centers <- length(unique(query_graph$from))
     s_centers <- length(unique(seed_graph$from))
+    integrated_graph <- data.frame(
+        "from" = rep(unique(seed_graph$from), each = q_centers),
+        "to" = rep(unique(query_graph$from), times = s_centers))
     message_switch("score_graph", verbose = verbose)
-    spix_score <- score_graph(
-        g1 = rep(unique(seed_graph$from), times = q_centers),
-        g2 = rep(unique(query_graph$to), each = s_centers),
+    
+    spix_score <- score_graph(integrated_graph,
         signal = list(seed_signal, query_signal),
-        centers = list(seed_centers, query_centers))
+        centers = list(seed_spix, query_spix))
+
+    aligned <- align_graph(seed_graph, query_graph, spix_score)
+    browser()
     message_switch("matching_graphs", verbose = verbose)
-    best_match <- get_matching_vertex(spix_score)
-    integrate <- vesalius:::match_vertex_to_seed(best_match,
-        seed = seed_trial,
-        query = query_trial,
-        dims = dimensions)
+    # best_match <- get_matching_vertex(spix_score)
+    # integrate <- vesalius:::match_vertex_to_seed(best_match,
+    #     seed = seed_trial,
+    #     query = query_trial,
+    #     dims = dimensions)
     simple_bar(verbose)
     return(list("seed_score" = seed_graph,
         "query_score" = query_graph,
@@ -115,7 +125,6 @@ integrate_assays <- function(seed_assay,
         "seed" = seed_trial,
         "query" = query_trial,
         "integrate" = integrate))
-    
 }
 
 territory_signal <- function(counts, territories) {
@@ -129,53 +138,8 @@ territory_signal <- function(counts, territories) {
     return(territories)
 }
 
-# #' @details NOTE this is for transcriptome only! 
-# generate_common_embeddings <- function(seed,
-#     query,
-#     dim_reduction = "PCA",
-#     dimensions = 30,
-#     nfeatures = 2000,
-#     verbose = TRUE) {
-#     #-------------------------------------------------------------------------#
-#     # First we need to get the new super pixel coordinate set
-#     # Now we replace the coordinates with super pixel centers 
-#     # Note I am using median and not centroid values from spix
-#     # might need to parse this to meta data??
-#     #-------------------------------------------------------------------------#
-#     seed_spix <- check_segment_trial(seed) %>%
-#         get_super_pixel_centers(assay = "seed")
-#     seed_counts <- get_counts(seed)
-#     colnames(seed_counts) <- paste0("seed_", colnames(seed_counts))
-#     seed_counts <- adjust_counts(seed_spix,
-#         counts = seed_counts,
-#         throw = FALSE,
-#         verbose = FALSE)
-    
-#     query_spix <- check_segment_trial(query) %>%
-#         get_super_pixel_centers(assay = "query")
-#     query_counts <- get_counts(query)
-#     colnames(query_counts) <- paste0("query_", colnames(query_counts))
-#     query_counts <- adjust_counts(query_spix,
-#         counts = query_counts,
-#         throw = FALSE,
-#         verbose = FALSE)
-    
-#     integrated_counts <- cbind(seed_counts, query_counts)
-#     integrate_coordinates <- rbind(seed_spix, query_spix)
-#     #-------------------------------------------------------------------------#
-#     # next we create and process the count values
-#     #-------------------------------------------------------------------------#
-#     integrated_assay <- build_vesalius_assay(integrate_coordinates,
-#         counts = integrated_counts,
-#         assay = "integrated_assay",
-#         verbose = FALSE)
-#     integrated_assay <- generate_embeddings(integrated_assay)
-#     return(integrated_assay)
-    
-# }
 
 generate_slic_graph <- function(spix,
-    signals,
     k = "auto",
     scoring_method = "pearson") {
     #-------------------------------------------------------------------------#
@@ -201,20 +165,12 @@ generate_slic_graph <- function(spix,
         graph <- lapply(center, function(idx, voronoi){
             tri <- voronoi %>% filter(ind1 == idx | ind2 == idx)
             tri <- unique(c(tri$ind1, tri$ind2))
-            graph <- data.frame("e1" = rep(idx, length(tri)),
-                "e2" = tri)
+            graph <- data.frame("from" = rep(idx, length(tri)),
+                "to" = tri)
             return(graph)
         }, voronoi = voronoi) %>%
             do.call("rbind", .)
     }
-    #-------------------------------------------------------------------------#
-    # Next we score the graph to see whcih neighbors are similar in color
-    #-------------------------------------------------------------------------#
-    graph <- score_graph(graph$e1,
-        graph$e2,
-        signal = signals,
-        centers = spix,
-        scoring_method = scoring_method)
     return(graph)
 }
 
@@ -233,11 +189,10 @@ get_super_pixel_centers <- function(spix) {
 }
 
 #' importFrom future.apply future_lapply
-score_graph <- function(g1,
-    g2,
+score_graph <- function(graph,
     signal,
     centers,
-    scoring_method = "pearson") {
+    scoring_method = "spearman") {
     #-------------------------------------------------------------------------#
     # assuming that if the input to signal is a list
     # we are comparing 2 data sets
@@ -258,47 +213,19 @@ score_graph <- function(g1,
     # Create a score graph 
     # and compute correlation between super pixels
     #-------------------------------------------------------------------------#
-    graph <- data.frame("from" = g1,
-        "to" = g2,
-        "score" = rep(0, length(g1)))
-    # graph <- future_lapply(seq_len(nrow(graph)), function(i,
-    #     graph,
-    #     seed_signal,
-    #     query_signal,
-    #     seed_centers,
-    #     query_centers) {
-        
-    #     c1 <- seed_signal[, seed_centers$barcodes[
-    #         seed_centers$segment == graph$from[i]]]
-    #     if (!is.null(nrow(c1))) {
-    #         c1 <- apply(c1, 1, mean)
-    #     }
-    #     c2 <- query_signal[, query_centers$barcodes[
-    #         query_centers$segment == graph$to[i]]]
-    #     if (!is.null(nrow(c2))) {
-    #         c2 <- apply(c2, 1, mean)
-    #     }
-    #     graph$score[i] <- cor(c1, c2, method = scoring_method)
-    #     return(graph)
-    # }, graph = graph,
-    #     seed_signal,
-    #     query_signal,
-    #     seed_centers,
-    #     query_centers)
-    # graph <- do.call("rbind", graph)
+    graph <- data.frame(graph,
+        "score" = rep(0, nrow(graph)))
     cat("\n")
     for (i in seq_len(nrow(graph))) {
         cat(paste0(i, "\r"))
         c1 <- seed_signal[, seed_centers$barcodes[
             seed_centers$segment == graph$from[i]]]
         if (!is.null(nrow(c1))) {
-            #c1 <- as.vector(c1[1, ])
             c1 <- apply(c1, 1, mean)
         }
         c2 <- query_signal[, query_centers$barcodes[
             query_centers$segment == graph$to[i]]]
         if (!is.null(nrow(c2))) {
-            #c2 <- as.vector(c2[1, ])
             c2 <- apply(c2, 1, mean)
         }
         graph$score[i] <- cor(c1, c2, method = scoring_method)
@@ -306,7 +233,33 @@ score_graph <- function(g1,
     return(graph)
 }
 
-get_matching_vertex  <- function(score) {
+
+align_graph <- function(seed_graph,
+    query_graph,
+    scores,
+    depth = 1,
+    threshold = 0.8) {
+    best_match <- get_best_vertex(scores)
+    seed_paths <- graph_path_length(seed_graph)
+    query_paths <- graph_path_length(query_graph)
+    best_match$neighborhood <- 0
+    for (i in seq_len(nrow(best_match))) {
+        seed_neighbors <- seed_paths[, as.character(best_match$from[i])]
+        seed_neighbors <- names(seed_neighbors)[seed_neighbors <= depth &
+            seed_neighbors != 0]
+        query_neighbors <- query_paths[, as.character(best_match$to[i])]
+        query_neighbors <- names(query_neighbors)[query_neighbors <= depth &
+            query_neighbors != 0]
+        neighborhood <- scores[scores$from %in% seed_neighbors, ] %>%
+            get_best_vertex()
+        overlap <- sum(neighborhood$to %in% query_neighbors) /
+            length(query_neighbors)
+        best_match$neighborhood[i] <- overlap
+    }
+    return(best_match)
+}
+
+get_best_vertex  <- function(score) {
     from <- split(score, score$from)
     best_match <- lapply(from, function(f) {
         return(f[f$score == max(f$score), ])
@@ -345,9 +298,11 @@ match_vertex_to_seed <- function(vertex_match, seed,
     return(vesalius_assay)
 }
 
+#'@importFrom igraph graph_from_data_frame E distances
 graph_path_length <- function(graph) {
-    graph <- igraph::graph_from_data_frame(graph, directed = FALSE)
-    path_length <- igraph::distances(graph)
+    gr <- igraph::graph_from_data_frame(graph, directed = FALSE)
+    E(gr)$weight <- graph$score
+    path_length <- igraph::distances(gr)
     return(path_length)
 }
 
