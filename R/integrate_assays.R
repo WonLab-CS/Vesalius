@@ -23,28 +23,27 @@ integrate_assays <- function(seed_assay,
     threshold = 0.9,
     k = "auto",
     signal = "features",
-    use_norm = "raw",
     verbose = TRUE) {
     simple_bar(verbose)
     #-------------------------------------------------------------------------#
     # compute slic for both assays
     #-------------------------------------------------------------------------#
     message_switch("seg", verbose = verbose, method = "slic")
-    seed_trial <- segment_image(seed_assay,
-        method = "slic",
+    seed_trial <- slic_segmentation(seed_assay,
         dimensions = dimensions,
         col_resolution = n_centers,
+        embedding = "last",
+        index_selection = index_selection,
         compactness = compactness,
         scaling = scaling,
-        index_selection = index_selection,
         verbose = FALSE)
-    query_trial <- segment_image(query_assay,
-        method = "slic",
+    query_trial <- slic_segmentation(query_assay,
         dimensions = dimensions,
         col_resolution = n_centers,
+        embedding = "last",
+        index_selection = index_selection,
         compactness = compactness,
         scaling = scaling,
-        index_selection = index_selection,
         verbose = FALSE)
     
     #integrated <- generate_common_embeddings(seed_trial, query_trial)
@@ -52,14 +51,14 @@ integrate_assays <- function(seed_assay,
     # get signal either as counts or as embedding values
     #-------------------------------------------------------------------------#
     message_switch("signal", verbose = verbose)
-    seed_signal <- check_signal(signal, seed_trial, type = use_norm)
-    query_signal <- check_signal(signal, query_trial, type = use_norm)
+    seed_signal <- check_signal(signal, seed_assay, type = "raw")
+    query_signal <- check_signal(signal, query_assay, type = "raw")
     if (grepl(pattern = "embeddings", x = signal)) {
-        seed_signal <- t(get_embeddings(seed_trial))
-        query_signal <- t(get_embeddings(query_trial))
+        seed_signal <- seed_trial$active
+        query_signal <- query_trial$active
     } else {
-        seed_counts <- get_counts(seed_trial, type = use_norm)
-        query_counts <- get_counts(query_trial, type = use_norm)
+        seed_counts <- get_counts(seed_assay, type = "raw")
+        query_counts <- get_counts(query_assay, type = "raw")
         seed_genes <- intersect(seed_signal, query_signal)
         if (length(seed_genes) == 0) {
             stop("No common features between seed and query data sets!")
@@ -67,31 +66,25 @@ integrate_assays <- function(seed_assay,
         seed_signal <- seed_counts[seed_genes, ]
         query_signal <- query_counts[seed_genes, ]
     }
-
-    
+    #-------------------------------------------------------------------------#
+    # compact signal so we only keep average signal per spix
+    #-------------------------------------------------------------------------#
+    seed_signal <- compress_signal(seed_signal, seed_trial$segments)
+    query_signal <- compress_signal(query_signal, query_trial$segments)
     #-------------------------------------------------------------------------#
     # Get estimated super pixel centers
     # we also generate a graph and score this graph. 
     # score the correlation between each vertex in seed/query graph
     #-------------------------------------------------------------------------#
     message_switch("slic_graph", verbose = verbose, data = "seed")
-    seed_spix <- check_segment_trial(seed_trial)
-    seed_graph <- generate_slic_graph(seed_spix,
+    seed_graph <- generate_slic_graph(seed_trial$segments,
         k = k,
-        scoring_method = scoring_method) %>%
-        score_graph(., signal = seed_signal,
-            centers = seed_spix,
-            scoring_method = scoring_method)
-    
+        scoring_method = scoring_method)
+
     message_switch("slic_graph", verbose = verbose, data = "query")
-    query_spix <- check_segment_trial(query_trial)
-    query_graph <- generate_slic_graph(query_spix,
+    query_graph <- generate_slic_graph(query_trial$segments,
         k = k,
-        scoring_method = scoring_method) %>%
-        score_graph(., signal = query_signal,
-            centers = query_spix,
-            scoring_method = scoring_method)
-    
+        scoring_method = scoring_method)
     #-------------------------------------------------------------------------#
     # Now we can compute the same thing but between each graph
     # For now - we check the number of centeres in case of mismatch
@@ -104,38 +97,63 @@ integrate_assays <- function(seed_assay,
         "from" = rep(unique(seed_graph$from), each = q_centers),
         "to" = rep(unique(query_graph$from), times = s_centers))
     message_switch("score_graph", verbose = verbose)
-    
     spix_score <- score_graph(integrated_graph,
-        signal = list(seed_signal, query_signal),
-        centers = list(seed_spix, query_spix))
+        signal = list(seed_signal, query_signal))
 
     aligned <- align_graph(seed_graph, query_graph, spix_score)
-    browser()
+    
     message_switch("matching_graphs", verbose = verbose)
-    # best_match <- get_matching_vertex(spix_score)
-    # integrate <- vesalius:::match_vertex_to_seed(best_match,
-    #     seed = seed_trial,
-    #     query = query_trial,
-    #     dims = dimensions)
+    best_match <- get_best_vertex(spix_score)
+    integrate <- vesalius:::match_vertex_to_seed(best_match,
+        seed = seed_trial,
+        query = query_trial,
+        dims = dimensions)
+    
+    rownames(integrate) <- rownames(seed_trial$active)
+    #-------------------------------------------------------------------------#
+    # Update and clean 
+    #-------------------------------------------------------------------------#
+    integrated_assay <- update_vesalius_assay(vesalius_assay = seed_assay,
+        data = integrate,
+        slot = "active",
+        append = FALSE)
+    integrated_assay <- add_active_embedding_tag(integrated_assay,
+        "integrated")
+    seed_assay <- update_vesalius_assay(vesalius_assay = seed_assay,
+        data = seed_trial$active,
+        slot = "active",
+        append = FALSE)
+    seed_assay <- add_active_embedding_tag(seed_assay,
+        "last")
+    query_assay <- update_vesalius_assay(vesalius_assay = query_assay,
+        data = query_trial$active,
+        slot = "active",
+        append = FALSE)
+    query_assay <- add_active_embedding_tag(query_assay,
+        "last")
     simple_bar(verbose)
     return(list("seed_score" = seed_graph,
         "query_score" = query_graph,
         "spix_score" = spix_score,
-        "best_match" = best_match,
-        "seed" = seed_trial,
-        "query" = query_trial,
-        "integrate" = integrate))
+        #"best_match" = best_match,
+        "aligned" = aligned,
+        "seed" = seed_assay,
+        "query" = query_assay,
+        "integrate" = integrated_assay))
 }
 
-territory_signal <- function(counts, territories) {
-    territories <- split(territories, territories$trial)
-    for (i in seq_along(territories)) {
-        territories[[i]] <- as.vector(
-            apply(counts[, territories[[i]]$barcodes],
-            MARGIN = 1,
-            mean))
+compress_signal <- function(signal, segments) {
+    segments <- split(segments, segments$Segment)
+    compressed_signal <- vector("list", length(segments))
+    for (i in seq_along(segments)) {
+        local_signal <- signal[, segments[[i]]$barcodes]
+        if (is.null(ncol(local_signal)) || ncol(local_signal) == 1) {
+            compressed_signal[[i]] <- as.vector(local_signal)
+        } else {
+            compressed_signal[[i]] <- apply(local_signal, 1, mean)
+        }
     }
-    return(territories)
+    return(compressed_signal)
 }
 
 
@@ -176,10 +194,10 @@ generate_slic_graph <- function(spix,
 
 
 get_super_pixel_centers <- function(spix) {
-    center_pixels <- sort(unique(spix$segment))
+    center_pixels <- sort(unique(spix$Segment))
     centers <- future_lapply(center_pixels, function(center, segments) {
-        x <- median(segments$x[segments$segment == center])
-        y <- median(segments$y[segments$segment == center])
+        x <- median(segments$x[segments$Segment == center])
+        y <- median(segments$y[segments$Segment == center])
         df <- data.frame("x" = x,
             "y" = y)
         rownames(df) <- center
@@ -191,7 +209,6 @@ get_super_pixel_centers <- function(spix) {
 #' importFrom future.apply future_lapply
 score_graph <- function(graph,
     signal,
-    centers,
     scoring_method = "spearman") {
     #-------------------------------------------------------------------------#
     # assuming that if the input to signal is a list
@@ -203,12 +220,6 @@ score_graph <- function(graph,
     } else {
         seed_signal <- query_signal <- signal
     }
-    if (is(centers, "list") && length(centers) == 2) {
-        seed_centers <- centers[[1]]
-        query_centers <- centers[[2]]
-    } else {
-        seed_centers <- query_centers <- centers
-    }
     #-------------------------------------------------------------------------#
     # Create a score graph 
     # and compute correlation between super pixels
@@ -218,16 +229,8 @@ score_graph <- function(graph,
     cat("\n")
     for (i in seq_len(nrow(graph))) {
         cat(paste0(i, "\r"))
-        c1 <- seed_signal[, seed_centers$barcodes[
-            seed_centers$segment == graph$from[i]]]
-        if (!is.null(nrow(c1))) {
-            c1 <- apply(c1, 1, mean)
-        }
-        c2 <- query_signal[, query_centers$barcodes[
-            query_centers$segment == graph$to[i]]]
-        if (!is.null(nrow(c2))) {
-            c2 <- apply(c2, 1, mean)
-        }
+        c1 <- seed_signal[[graph$from[i]]]
+        c2 <- query_signal[[graph$to[i]]]
         graph$score[i] <- cor(c1, c2, method = scoring_method)
     }
     return(graph)
@@ -253,7 +256,7 @@ align_graph <- function(seed_graph,
         neighborhood <- scores[scores$from %in% seed_neighbors, ] %>%
             get_best_vertex()
         overlap <- sum(neighborhood$to %in% query_neighbors) /
-            length(query_neighbors)
+            min(c(length(query_neighbors), length(seed_neighbors)))
         best_match$neighborhood[i] <- overlap
     }
     return(best_match)
@@ -272,14 +275,15 @@ match_vertex_to_seed <- function(vertex_match, seed,
     segment = "last",
     embedding = "last",
     dims = seq(1, 3)) {
-    seed_segements <- check_segment_trial(seed)
-    query_segements <- check_segment_trial(query)
-    query_embeds <- query@active
-    seed_embeds <- seed@active
+    seed_segements <- seed$segments
+    query_segements <- query$segments
+    query_embeds <- query$active
+    seed_embeds <- seed$active
+    
     for (i in seq_len(nrow(vertex_match))){
-        seed_spix <- seed_segements$barcodes[seed_segements$segment ==
+        seed_spix <- seed_segements$barcodes[seed_segements$Segment ==
             vertex_match$from[i]]
-        query_spix <- query_segements$barcodes[query_segements$segment ==
+        query_spix <- query_segements$barcodes[query_segements$Segment ==
             vertex_match$to[i]]
         query_spix_embedding <- query_embeds[query_spix, ]
         if (!is.null(dim(query_spix_embedding))) {
@@ -289,19 +293,14 @@ match_vertex_to_seed <- function(vertex_match, seed,
             seed_embeds[seed_spix[j], dims] <- query_spix_embedding[dims]
         }
     }
-    vesalius_assay <- update_vesalius_assay(vesalius_assay = seed,
-      data = seed_embeds,
-      slot = "active",
-      append = FALSE)
-    vesalius_assay <- add_integration_tag(vesalius_assay,
-       "integrated")
-    return(vesalius_assay)
+    return(seed_embeds)
 }
 
-#'@importFrom igraph graph_from_data_frame E distances
+#'@importFrom igraph graph_from_data_frame distances
+#'@importFrom igraph E
 graph_path_length <- function(graph) {
     gr <- igraph::graph_from_data_frame(graph, directed = FALSE)
-    E(gr)$weight <- graph$score
+    #igraph::E(gr)$weight <- graph$score
     path_length <- igraph::distances(gr)
     return(path_length)
 }
@@ -691,3 +690,13 @@ correlation <- function(seed_path, query_path, method) {
 #     return(mean(index))
 # }
 
+territory_signal <- function(counts, territories) {
+    territories <- split(territories, territories$trial)
+    for (i in seq_along(territories)) {
+        territories[[i]] <- as.vector(
+            apply(counts[, territories[[i]]$barcodes],
+            MARGIN = 1,
+            mean))
+    }
+    return(territories)
+}

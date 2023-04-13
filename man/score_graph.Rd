@@ -4,7 +4,7 @@
 \alias{score_graph}
 \title{importFrom future.apply future_lapply}
 \usage{
-score_graph(graph, signal, centers, scoring_method = "spearman")
+score_graph(graph, signal, scoring_method = "spearman")
 }
 \description{
 importFrom future.apply future_lapply

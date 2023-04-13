@@ -1133,7 +1133,7 @@ isolate_territories <- function(vesalius_assay,
     # Now we can dispatch the necessary information
     # and run the pooling algorithm
     #--------------------------------------------------------------------------#
-    segment <- unique(ter$segment)
+    segment <- unique(ter$Segment)
     for (i in seq_along(segment)) {
       message_switch("ter_pool", verbose, ter = i)
       #------------------------------------------------------------------------#
@@ -1145,7 +1145,7 @@ isolate_territories <- function(vesalius_assay,
       # Argument could be removed
       #------------------------------------------------------------------------#
 
-      tmp <- ter[ter$segment == segment[i], ]
+      tmp <- ter[ter$Segment == segment[i], ]
       tmp <- switch(method[1L],
         "distance" = distance_pooling(tmp, capture_radius,
           min_spatial_index))
@@ -1157,7 +1157,7 @@ isolate_territories <- function(vesalius_assay,
       #------------------------------------------------------------------------#
       # adding territories
       #------------------------------------------------------------------------#
-      ter$trial[ter$segment == segment[i]] <- tmp
+      ter$trial[ter$Segment == segment[i]] <- tmp
 
     }
 

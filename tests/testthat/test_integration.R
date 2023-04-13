@@ -147,7 +147,7 @@ vesalius <- build_vesalius_assay(coordinates, counts)
 jitter_ves <- build_vesalius_assay(jitter_coord, jitter_counts)
 
 vesalius <- generate_embeddings(vesalius)
-# vesalius <- smooth_image(vesalius, embedding = "PCA", sigma = 5, iter = 5)
+vesalius <- smooth_image(vesalius, embedding = "PCA", sigma = 5, iter = 5)
 # vesalius <- segment_image(vesalius,
 #     method = "slic",
 #     dimensions = 1:3,
@@ -158,7 +158,7 @@ vesalius <- generate_embeddings(vesalius)
 
 
 jitter_ves <- generate_embeddings(jitter_ves)
-# jitter_ves <- smooth_image(jitter_ves, embedding = "PCA", sigma = 5, iter = 5)
+jitter_ves <- smooth_image(jitter_ves, embedding = "PCA", sigma = 5, iter = 5)
 # jitter_ves <- segment_image(jitter_ves,
 #     method = "slic",
 #     dimensions = 1:3,

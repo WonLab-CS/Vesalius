@@ -560,7 +560,7 @@ check_segment_trial <- function(vesalius_assay, trial = "last") {
             value = TRUE)
     }
     territories <- territories[, c("barcodes", "x", "y", trial)]
-    colnames(territories) <- c("barcodes", "x", "y", "segment")
+    colnames(territories) <- c("barcodes", "x", "y", "Segment")
     return(territories)
 }
 
