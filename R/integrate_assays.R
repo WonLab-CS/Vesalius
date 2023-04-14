@@ -100,14 +100,14 @@ integrate_assays <- function(seed_assay,
     spix_score <- score_graph(integrated_graph,
         signal = list(seed_signal, query_signal))
 
-    aligned <- align_graph(seed_graph, query_graph, spix_score)
-    
+    aligned <- match_graph(seed_graph, query_graph, spix_score)
+    aligned <- assign_coordinates(aligned, seed_trial$segments)
     message_switch("matching_graphs", verbose = verbose)
-    best_match <- get_best_vertex(spix_score)
-    integrate <- vesalius:::match_vertex_to_seed(best_match,
-        seed = seed_trial,
-        query = query_trial,
-        dims = dimensions)
+    # best_match <- get_best_vertex(spix_score, rank = 1)
+    # integrate <- vesalius:::match_vertex_to_seed(best_match,
+    #     seed = seed_trial,
+    #     query = query_trial,
+    #     dims = dimensions)
     
     rownames(integrate) <- rownames(seed_trial$active)
     #-------------------------------------------------------------------------#
@@ -199,7 +199,8 @@ get_super_pixel_centers <- function(spix) {
         x <- median(segments$x[segments$Segment == center])
         y <- median(segments$y[segments$Segment == center])
         df <- data.frame("x" = x,
-            "y" = y)
+            "y" = y,
+            "center" = center)
         rownames(df) <- center
         return(df)
     }, segments = spix) %>% do.call("rbind", .)
@@ -237,35 +238,62 @@ score_graph <- function(graph,
 }
 
 
-align_graph <- function(seed_graph,
+match_graph <- function(seed_graph,
     query_graph,
     scores,
     depth = 1,
     threshold = 0.8) {
-    best_match <- get_best_vertex(scores)
     seed_paths <- graph_path_length(seed_graph)
     query_paths <- graph_path_length(query_graph)
-    best_match$neighborhood <- 0
-    for (i in seq_len(nrow(best_match))) {
-        seed_neighbors <- seed_paths[, as.character(best_match$from[i])]
-        seed_neighbors <- names(seed_neighbors)[seed_neighbors <= depth &
-            seed_neighbors != 0]
-        query_neighbors <- query_paths[, as.character(best_match$to[i])]
-        query_neighbors <- names(query_neighbors)[query_neighbors <= depth &
-            query_neighbors != 0]
-        neighborhood <- scores[scores$from %in% seed_neighbors, ] %>%
-            get_best_vertex()
-        overlap <- sum(neighborhood$to %in% query_neighbors) /
-            min(c(length(query_neighbors), length(seed_neighbors)))
-        best_match$neighborhood[i] <- overlap
+    max_depth <- min(c(max(seed_paths), max(query_paths)))
+    best_match <- get_best_vertex(scores, rank = depth)
+    best_match <- data.frame(best_match,
+        matrix(0, ncol = max_depth, nrow = nrow(best_match)))
+    colnames(best_match) <- c(colnames(best_match)[1:3],
+        paste0("depth_", seq(1, max_depth)))
+    for (d in seq_len(max_depth)) {
+        for (i in seq_len(nrow(best_match))) {
+            seed_niche <- seed_paths[, as.character(best_match$from[i])]
+            seed_niche <- names(seed_niche)[seed_niche <= d &
+                seed_niche > 0]
+            query_niche <- query_paths[, as.character(best_match$to[i])]
+            query_niche <- names(query_niche)[query_niche <= d &
+                query_niche > 0]
+            niche <- scores[scores$to %in% query_niche, ] %>%
+                get_best_vertex()
+            overlap <- min(c(sum(niche$from %in% seed_niche),
+                min(c(length(query_niche), length(seed_niche))))) /
+                min(c(length(query_niche), length(seed_niche)))
+            depth_loc <- paste0("depth_", d)
+            best_match[i, depth_loc] <- overlap
+        }
     }
+    best_match$anchor <- 0
+    anchors <- best_match$score >= threshold &
+        apply(best_match[, grep("depth", colnames(best_match))], 1, mean) >=
+        threshold
+    best_match$anchor[anchors] <- 1
     return(best_match)
 }
 
-get_best_vertex  <- function(score) {
-    from <- split(score, score$from)
+assign_coordinates <- function(aligned_graph, coordinates) {
+    coordinates <- get_super_pixel_centers(coordinates)
+    aligned_graph <- aligned_graph[aligned_graph$anchor == 1, ]
+    browser()
+    coordinates <- coordinates[coordinates$center %in% aligned_graph$from,
+        c("x", "y")]
+    aligned_graph <- cbind(coordinates, aligned_graph)
+    return(aligned_graph)
+}
+
+align_graph <- function(aligned_graph, query) {
+    query_centers <- get_super_pixel_centers(query)
+}
+
+get_best_vertex  <- function(score, rank = 1) {
+    from <- split(score, score$to)
     best_match <- lapply(from, function(f) {
-        return(f[f$score == max(f$score), ])
+        return(f[order(f$score, decreasing = TRUE)[rank], ])
     }) %>% do.call("rbind", .)
     return(best_match)
 }
@@ -305,154 +333,7 @@ graph_path_length <- function(graph) {
     return(path_length)
 }
 
-# integrate_by_territory <- function(seed_assay,
-#     query_assay,
-#     seed_trial = "last",
-#     query_trial = "last",
-#     method = "coherence",
-#     k = 5,
-#     use_counts = TRUE,
-#     use_norm = "raw",
-#     verbose = TRUE) {
-#     simple_bar(verbose)
-#     #-------------------------------------------------------------------------#
-#     # Get counts 
-#     #-------------------------------------------------------------------------#
-#     if (use_counts) {
-#         seed_counts <- get_counts(seed_assay, type = use_norm)
-#         query_counts <- get_counts(query_assay, type = use_norm)
-#         seed_genes <- intersect(rownames(seed_counts), rownames(query_counts))
-#         seed_counts <- seed_counts[seed_genes, ]
-#         query_counts <- query_counts[seed_genes, ]
-#     } else {
-#         seed_counts <- t(get_embeddings(seed_assay))
-#         query_counts <- t(get_embeddings(query_assay))
-#     }
-    
-#     #-------------------------------------------------------------------------#
-#     # get territory information
-#     #-------------------------------------------------------------------------#
-#     seed_assay <- vesalius:::check_territory_trial(seed_assay, seed_trial)
-#     query_assay <- vesalius:::check_territory_trial(query_assay, query_trial)
-#     #-------------------------------------------------------------------------#
-#     # Get variable features - place holder for now 
-#     #-------------------------------------------------------------------------#
-#     seed_signals <- territory_signal(seed_counts, seed_assay)
-#     query_signals <- territory_signal(query_counts, query_assay)
-#     #-------------------------------------------------------------------------#
-#     # Comapring signals 
-#     #-------------------------------------------------------------------------#
-#     sim <- signal_similiarity(seed_signals,
-#         query_signals,
-#         domain = method)
-    
-#     seed_rank <- generate_territory_graph(seed_assay[seed_assay$trial !=
-#         "isolated", ], k)
-#     query_rank <- generate_territory_graph(query_assay[query_assay$trial !=
-#         "isolated", ], k)
-#     neighborhood_sim <- score_neighbor_graph(seed_rank, query_rank, sim)
-#     simple_bar
-#     return(list("sim" = sim, "n_sim" = neighborhood_sim))
-# }
 
-# territory_signal <- function(counts, territories) {
-#     territories <- split(territories, territories$trial)
-#     for (i in seq_along(territories)) {
-#         territories[[i]] <- as.vector(
-#             apply(counts[, territories[[i]]$barcodes],
-#             MARGIN = 1,
-#             mean))
-#     }
-#     return(territories)
-# }
-
-
-
-
-# #' retrieve the points contained in the edge of each territory
-# #' @param trial name of territory trial that should be selected
-# #' @param tiles vesalius tiles 
-# #' @param start string - which point should be used as starting point
-# #' @param verbose logical - should progress message be print to console
-# #' @details Here we are using convex as start point. Essentially, we 
-# #' order the coordinates based on their polar coordinates using the 
-# #' median coordinate as the center point. 
-# #' @returns a data frame containing edge of each territory.
-# unpack_territory_path <- function(trial,
-#     tiles,
-#     start = "convex",
-#     verbose = TRUE) {
-#     #-------------------------------------------------------------------------#
-#     # First we convert to pixset and detect territory edge 
-#     #-------------------------------------------------------------------------#
-#     trial_split <- vector("list", length(unique(trial$trial)))
-#     names(trial_split) <- unique(trial$trial)
-#     for (i in seq_along(unique(trial$trial))) {
-#         territory <- unique(trial$trial)[i]
-#         ter <- right_join(trial, tiles, by = "barcodes") %>%
-#             filter(trial %in% territory) %>%
-#             mutate(value = 1) %>%
-#             select(c("barcodes", "x.y", "y.y", "value", "origin", "trial"))
-#         colnames(ter) <- c("barcodes", "x", "y", "value", "origin", "trial")
-#         edge <- extend_boundary(ter, 1) %>%
-#             detect_edges() %>%
-#             grow(1) %>%
-#             as.data.frame()
-#         edge <- inner_join(edge, ter, by = c("x", "y")) %>%
-#             select("barcodes") %>% unique()
-#         edge <- tiles %>% filter(barcodes %in% edge$barcodes & origin == 1)
-#         trial_split[[i]] <- edge
-
-#     }
-
-#     #-------------------------------------------------------------------------#
-#     # next we remove NULLs - this happens when no edge can be deteced 
-#     #-------------------------------------------------------------------------#
-#     nulls <- sapply(trial_split, nrow) == 0
-#     trial_split <- trial_split[!nulls]
-#     if (sum(nulls) > 0) {
-#         message_switch("edge_detect", verbose,
-#             nulls = paste(names(trial_split)[nulls]))
-#     } else if (length(trial_split) == 0) {
-#         stop("No edge can be detect in territories! Granularity too high.
-#          Consider increasing smoothing and/or decreasing segmentationd depth")
-#     }
-#     #-------------------------------------------------------------------------#
-#     # select starting point for path 
-#     # ATM we convert edge to ordered shape using polar coordinates 
-#     #-------------------------------------------------------------------------#
-#     trial <- switch(EXPR = start,
-#         "convex" = lapply(trial_split, function(trial) {
-#             ord <- convexify(trial$x,
-#                 trial$y,
-#                 median(trial$x),
-#                 median(trial$y),
-#                 order = TRUE)
-#             trial <- trial[ord$x, ]
-#             return(trial)
-#         }),
-#         "connected" = lapply(trial_split, connected_points))
-#     return(trial)
-# }
-
-# #' create path from neighboring points 
-# #' @param trail data frame containign x and y path
-# #' @return order x y coordinates
-# #' @importFrom RANN nn2
-# #' 
-# connected_points <- function(trial) {
-#     knn <- RANN::nn2(trial[, c("x","y")], k = nrow(trial))$nn.idx
-#     ord <- rep(0, nrow(knn))
-#     ord[1] <- 1
-#     for (i in seq(2, nrow(knn))) {
-#         if (i == 2) {
-#             ord[2] <- knn[(i - 1), 2]
-#         } else {
-#             ord[i] <- knn[ord[(i - 1)], min(which(!knn[ord[(i - 1)], ] %in% ord))]
-#         }
-#     }
-#     return(trial[ord, ])
-# }
 
 
 
@@ -603,92 +484,9 @@ correlation <- function(seed_path, query_path, method) {
 }
 
 
-# #' territory graph 
-# #' @param territories territory coordinates 
-# #' @param k number of neigbors to create graph 
-# #' @return nearest neighbors matrix 
-# #' 
-# #' 
 
-# generate_territory_graph <- function(territories, k) {
-#     #-------------------------------------------------------------------------#
-#     # Computing distance matrix between all points and initialising 
-#     # rank matrix for nearest neighbors 
-#     #-------------------------------------------------------------------------#
-#     coordinates <- as.matrix(dist(territories[, c("x", "y")]))
-#     territory_list <- unique(territories$trial)
-#     if (k > length(territory_list)){
-#         warning("Value for k nearest neighbors is to high.
-#         Returning all possible neighbors")
-#         k <- length(territory_list)
-#     }
-#     rank_matrix <- matrix(0, nrow = length(territory_list), ncol = k + 1)
-#     rownames(rank_matrix) <- territory_list
-#     colnames(rank_matrix) <- seq(0, k)
-#     rank_matrix[, 1] <- territory_list
-#     #-------------------------------------------------------------------------#
-#     # For each territory, check which coordinates from a different 
-#     # territory are the closest. Assign nearest neighbor of rank 1.
-#     # repeat the process until k nearest neighbor are found 
-#     #-------------------------------------------------------------------------#
-#     for (i in seq_along(territory_list)) {
-#         #---------------------------------------------------------------------#
-#         # intialise buffer storing barcodes that have already be
-#         # assgined to nearest neighbor territory 
-#         #---------------------------------------------------------------------#
-#         init_territory <- which(colnames(coordinates) %in%
-#                 territories$barcodes[territories$trial == territory_list[i]])
-#         buffer <- colnames(coordinates)[init_territory]
-#         for (j in seq(2, k + 1)) {
-#             #-----------------------------------------------------------------#
-#             # For clarity,  create variable for subsets
-#             #-----------------------------------------------------------------#
-#             not_in_buffer <- !rownames(coordinates) %in% buffer
-#             tmp <- coordinates[not_in_buffer, init_territory]
-#             tmp <- rownames(which(tmp == min(tmp), arr.ind = TRUE))[1L]
-#             rank_matrix[i, j] <- territories$trial[territories$barcodes ==
-#                 tmp]
-#             buffer <- c(buffer, territories$barcodes[territories$trial ==
-#                 rank_matrix[i, j]])
-#         }
-#     }
-#     return(rank_matrix)
-# }
 
-# score_neighbor_graph <- function(seed_rank, query_rank, score_matrix) {
-#     best_rank <- matrix(0, ncol = ncol(score_matrix),
-#         nrow = nrow(score_matrix))
-#     colnames(best_rank) <- colnames(score_matrix)
-#     rownames(best_rank) <- rownames(score_matrix)
-#     ranked_score <- apply(score_matrix, 2, order, decreasing = TRUE)
-#     rownames(ranked_score) <- rownames(score_matrix)
-#     for (i in seq_len(ncol(score_matrix))) {
-#         for (j in seq_len(nrow(score_matrix))) {
-#             seed <- seed_rank[rownames(seed_rank) ==
-#                 colnames(score_matrix)[i], ]
-#             query <- query_rank[rownames(query_rank) ==
-#                 rownames(score_matrix)[j], ]
-#             score <- best_neighbor_match(ranked_score[query, seed])
-#             best_rank[j, i] <- score
-#         }
-#     }
-#     return(best_rank)
-# }
 
-# best_neighbor_match <- function(score) {
-#     vec <- as.vector(score)
-#     ord <- ((order(vec, decreasing = TRUE) - 1) %/% ncol(score)) + 1
-#     index <- c()
-#     selected <- c()
-#     for (i in seq_along(ord)){
-#         if (ord[i] %in% unique(ord) && !ord[i] %in% selected) {
-#             index <- c(index, i)
-#             selected <- c(selected, ord[i])
-#         }
-#     }
-#     index <- (sort(vec, decreasing = TRUE))[index]
-#     return(mean(index))
-# }
 
 territory_signal <- function(counts, territories) {
     territories <- split(territories, territories$trial)

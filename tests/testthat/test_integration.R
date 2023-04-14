@@ -138,6 +138,7 @@ graph <- vesalius:::generate_territory_graph(territories, k = 5)
 score <- vesalius:::score_neighbor_graph(graph, graph,coh)
 
 ########
+set.seed(42)
 library(vesalius)
 library(ggplot2)
 library(dplyr)
