@@ -80,3 +80,17 @@ z_norm <- function(x) {
     return((x - mean(x)) / sd(x))
   }
 }
+
+
+polar_angle <- function(coord_x, coord_y, center_x, center_y) {
+  x <- coord_x - center_x
+  y <- coord_y - center_y
+  angle <- mapply(function(x, y) {
+    if (x >= 0 & y >= 0) angle <- atan(abs(y) / abs(x)) * (180 / pi)
+    if (x < 0 & y >= 0) angle <- 180 - (atan(abs(y) / abs(x)) * (180 / pi))
+    if (x < 0 & y < 0) angle <- 180 + (atan(abs(y) / abs(x)) * (180 / pi))
+    if (x >= 0 & y < 0) angle <- 360 - (atan(abs(y) / abs(x)) * (180 / pi))
+    return(angle)
+  }, x = x, y = y, SIMPLIFY = TRUE)
+  return(angle)
+}

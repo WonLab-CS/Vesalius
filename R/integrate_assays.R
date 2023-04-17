@@ -100,14 +100,11 @@ integrate_assays <- function(seed_assay,
     spix_score <- score_graph(integrated_graph,
         signal = list(seed_signal, query_signal))
 
-    aligned <- match_graph(seed_graph, query_graph, spix_score)
-    aligned <- assign_coordinates(aligned, seed_trial$segments)
+    aligned <- match_graph(seed_graph, query_graph, spix_score) %>%
+        assign_coordinates(., seed_trial$segments) %>%
+        align_graph(., query_trial$segments, query_graph)
     message_switch("matching_graphs", verbose = verbose)
-    # best_match <- get_best_vertex(spix_score, rank = 1)
-    # integrate <- vesalius:::match_vertex_to_seed(best_match,
-    #     seed = seed_trial,
-    #     query = query_trial,
-    #     dims = dimensions)
+   
     
     rownames(integrate) <- rownames(seed_trial$active)
     #-------------------------------------------------------------------------#
@@ -158,8 +155,7 @@ compress_signal <- function(signal, segments) {
 
 
 generate_slic_graph <- function(spix,
-    k = "auto",
-    scoring_method = "pearson") {
+    k = "auto") {
     #-------------------------------------------------------------------------#
     # first we estimate the pixel centers 
     # we will use this as an estimate for nearest neighbor calculation 
@@ -177,21 +173,25 @@ generate_slic_graph <- function(spix,
         rownames(knn) <- rownames(centers)
         graph <- populate_graph(knn)
     } else {
-        voronoi <- deldir::deldir(x = as.numeric(centers$x),
-            y = as.numeric(centers$y))$delsgs
-        center <- seq_len(nrow(centers))
-        graph <- lapply(center, function(idx, voronoi){
-            tri <- voronoi %>% filter(ind1 == idx | ind2 == idx)
-            tri <- unique(c(tri$ind1, tri$ind2))
-            graph <- data.frame("from" = rep(idx, length(tri)),
-                "to" = tri)
-            return(graph)
-        }, voronoi = voronoi) %>%
-            do.call("rbind", .)
+       graph <- graph_from_voronoi(centers)
     }
     return(graph)
 }
 
+graph_from_voronoi <- function(centers) {
+    voronoi <- deldir::deldir(x = as.numeric(centers$x),
+        y = as.numeric(centers$y))$delsgs
+    center <- seq_len(nrow(centers))
+    graph <- lapply(center, function(idx, voronoi){
+        tri <- voronoi %>% filter(ind1 == idx | ind2 == idx)
+        tri <- unique(c(tri$ind1, tri$ind2))
+        graph <- data.frame("from" = rep(idx, length(tri)),
+            "to" = tri)
+        return(graph)
+    }, voronoi = voronoi) %>%
+    do.call("rbind", .)
+    return(graph)
+}
 
 get_super_pixel_centers <- function(spix) {
     center_pixels <- sort(unique(spix$Segment))
@@ -279,16 +279,58 @@ match_graph <- function(seed_graph,
 assign_coordinates <- function(aligned_graph, coordinates) {
     coordinates <- get_super_pixel_centers(coordinates)
     aligned_graph <- aligned_graph[aligned_graph$anchor == 1, ]
-    browser()
     coordinates <- coordinates[coordinates$center %in% aligned_graph$from,
         c("x", "y")]
     aligned_graph <- cbind(coordinates, aligned_graph)
     return(aligned_graph)
 }
 
-align_graph <- function(aligned_graph, query) {
+align_graph <- function(aligned_graph,
+    query,
+    query_graph,
+    depth = 1) {
+    browser()
     query_centers <- get_super_pixel_centers(query)
+    #-------------------------------------------------------------------------#
+    # To align we check the distance and angle to the closest anchor point
+    # This is done in the aligned graph since we already have to seed coord
+    #-------------------------------------------------------------------------#
+    anchor_graph <- graph_from_voronoi(aligned_graph[, c("x", "y")])
+    anchor_distance <- as.matrix(dist(aligned_graph[, c("x", "y")],
+        diag = TRUE, upper = TRUE))
+    anchor_distance <- lapply(seq(1, nrow(aligned_graph)),
+        function(i, d, g) {
+        return(d[i, anchor_graph$to[anchor_graph$from == i]])
+    }, d = anchor_distance, g = anchor_graph)
+    #-------------------------------------------------------------------------#
+    # Now we need to scale the data - essentially we want to scale
+    # the distance and the angle. This will ensure that we are placing
+    # the neighbors in the correct loation with respect to the anchor
+    # We are finding the local distortion required
+    #-------------------------------------------------------------------------#
+    scale_distance <- as.matrix(dist(query_centers[
+        match(aligned_graph$to, query_centers$center), c("x", "y")],
+        diag = TRUE, upper = TRUE))
+    scale_distance <- lapply(seq(1, nrow(scale_distance)),
+        function(i, d, g) {
+        return(d[i, anchor_graph$to[anchor_graph$from == i]])
+    }, d = scale_distance, g = anchor_graph)
+    
+
+
+    anchors <- aligned_graph$to
+    for (i in seq_along(anchors)) {
+        niche <- query_graph$to[query_graph$from[anchors[i]]]
+        x <- query_centers$x[query_centers$centers %in% niche]
+        y <- query_centers$y[query_centers$centers %in% niche]
+        x_origin <- query_centers$x[query_centers$centers == anchors[i]]
+        y_origin <- query_centers$x[query_centers$centers == anchors[i]]
+        angle <- polar_angle(x, y, x_origin, y_origin)
+        distance <- query_distance[anchor[i], niche]
+    }
 }
+
+
 
 get_best_vertex  <- function(score, rank = 1) {
     from <- split(score, score$to)
