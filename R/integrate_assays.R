@@ -77,14 +77,10 @@ integrate_assays <- function(seed_assay,
     # score the correlation between each vertex in seed/query graph
     #-------------------------------------------------------------------------#
     message_switch("slic_graph", verbose = verbose, data = "seed")
-    seed_graph <- generate_slic_graph(seed_trial$segments,
-        k = k,
-        scoring_method = scoring_method)
+    seed_graph <- generate_slic_graph(seed_trial$segments, k = k)
 
     message_switch("slic_graph", verbose = verbose, data = "query")
-    query_graph <- generate_slic_graph(query_trial$segments,
-        k = k,
-        scoring_method = scoring_method)
+    query_graph <- generate_slic_graph(query_trial$segments, k = k)
     #-------------------------------------------------------------------------#
     # Now we can compute the same thing but between each graph
     # For now - we check the number of centeres in case of mismatch
@@ -104,39 +100,37 @@ integrate_assays <- function(seed_assay,
         assign_coordinates(., seed_trial$segments) %>%
         align_graph(., query_trial$segments, query_graph)
     message_switch("matching_graphs", verbose = verbose)
-   
     
-    rownames(integrate) <- rownames(seed_trial$active)
     #-------------------------------------------------------------------------#
     # Update and clean 
     #-------------------------------------------------------------------------#
-    integrated_assay <- update_vesalius_assay(vesalius_assay = seed_assay,
-        data = integrate,
-        slot = "active",
-        append = FALSE)
-    integrated_assay <- add_active_embedding_tag(integrated_assay,
-        "integrated")
-    seed_assay <- update_vesalius_assay(vesalius_assay = seed_assay,
-        data = seed_trial$active,
-        slot = "active",
-        append = FALSE)
-    seed_assay <- add_active_embedding_tag(seed_assay,
-        "last")
-    query_assay <- update_vesalius_assay(vesalius_assay = query_assay,
-        data = query_trial$active,
-        slot = "active",
-        append = FALSE)
-    query_assay <- add_active_embedding_tag(query_assay,
-        "last")
+    # integrated_assay <- update_vesalius_assay(vesalius_assay = seed_assay,
+    #     data = integrate,
+    #     slot = "active",
+    #     append = FALSE)
+    # integrated_assay <- add_active_embedding_tag(integrated_assay,
+    #     "integrated")
+    # seed_assay <- update_vesalius_assay(vesalius_assay = seed_assay,
+    #     data = seed_trial$active,
+    #     slot = "active",
+    #     append = FALSE)
+    # seed_assay <- add_active_embedding_tag(seed_assay,
+    #     "last")
+    # query_assay <- update_vesalius_assay(vesalius_assay = query_assay,
+    #     data = query_trial$active,
+    #     slot = "active",
+    #     append = FALSE)
+    # query_assay <- add_active_embedding_tag(query_assay,
+    #     "last")
     simple_bar(verbose)
     return(list("seed_score" = seed_graph,
         "query_score" = query_graph,
         "spix_score" = spix_score,
         #"best_match" = best_match,
-        "aligned" = aligned,
-        "seed" = seed_assay,
-        "query" = query_assay,
-        "integrate" = integrated_assay))
+        "aligned" = aligned))#,
+        # "seed" = seed_assay,
+        # "query" = query_assay,
+        # "integrate" = integrated_assay))
 }
 
 compress_signal <- function(signal, segments) {
@@ -285,49 +279,101 @@ assign_coordinates <- function(aligned_graph, coordinates) {
     return(aligned_graph)
 }
 
-align_graph <- function(aligned_graph,
+align_graph <- function(matched_graph,
     query,
     query_graph,
     depth = 1) {
-    browser()
+    #-------------------------------------------------------------------------#
+    # get anchor coordinates in query data set and aligned data 
+    # convert the movement of anchor to angle and distance 
+    #-------------------------------------------------------------------------#
     query_centers <- get_super_pixel_centers(query)
-    #-------------------------------------------------------------------------#
-    # To align we check the distance and angle to the closest anchor point
-    # This is done in the aligned graph since we already have to seed coord
-    #-------------------------------------------------------------------------#
-    anchor_graph <- graph_from_voronoi(aligned_graph[, c("x", "y")])
-    anchor_distance <- as.matrix(dist(aligned_graph[, c("x", "y")],
-        diag = TRUE, upper = TRUE))
-    anchor_distance <- lapply(seq(1, nrow(aligned_graph)),
-        function(i, d, g) {
-        return(d[i, anchor_graph$to[anchor_graph$from == i]])
-    }, d = anchor_distance, g = anchor_graph)
-    #-------------------------------------------------------------------------#
-    # Now we need to scale the data - essentially we want to scale
-    # the distance and the angle. This will ensure that we are placing
-    # the neighbors in the correct loation with respect to the anchor
-    # We are finding the local distortion required
-    #-------------------------------------------------------------------------#
-    scale_distance <- as.matrix(dist(query_centers[
-        match(aligned_graph$to, query_centers$center), c("x", "y")],
-        diag = TRUE, upper = TRUE))
-    scale_distance <- lapply(seq(1, nrow(scale_distance)),
-        function(i, d, g) {
-        return(d[i, anchor_graph$to[anchor_graph$from == i]])
-    }, d = scale_distance, g = anchor_graph)
-    
-
-
-    anchors <- aligned_graph$to
-    for (i in seq_along(anchors)) {
-        niche <- query_graph$to[query_graph$from[anchors[i]]]
-        x <- query_centers$x[query_centers$centers %in% niche]
-        y <- query_centers$y[query_centers$centers %in% niche]
-        x_origin <- query_centers$x[query_centers$centers == anchors[i]]
-        y_origin <- query_centers$x[query_centers$centers == anchors[i]]
-        angle <- polar_angle(x, y, x_origin, y_origin)
-        distance <- query_distance[anchor[i], niche]
+    cop <- query_centers
+    sink <- matched_graph$to
+    movement <- vector("list", length(sink))
+    names(movement) <- sink
+    for (i in seq_along(sink)) {
+        x_sink <- matched_graph[i, "x"]
+        y_sink <- matched_graph[i, "y"]
+        x_query <- query_centers[query_centers$center == sink[i], "x"]
+        y_query <- query_centers[query_centers$center == sink[i], "y"]
+        d <- sqrt(((x_sink - x_query)^2 + (y_sink - y_query)^2))
+        a <- polar_angle(x_sink, y_sink, x_query, y_query)
+        movement[[i]] <- list("d" = d, "a" = a)
     }
+    #-------------------------------------------------------------------------#
+    # get nearest neighbors using path depth 
+    #-------------------------------------------------------------------------#
+    query_path <- graph_path_length(query_graph)
+    nn <- vector("list", length(sink))
+    names(nn) <- sink
+    pooled <- colnames(query_path)[!colnames(query_path) %in% sink]
+    depth <- 1
+    while (length(pooled) > 0) {
+        for (i in seq_along(nn)){
+            anchor <- query_path[, sink[i]] == depth
+            anchor <- rownames(query_path)[anchor]
+            nn[[i]] <- anchor[anchor %in% pooled]
+            pooled <- pooled[!pooled %in% anchor]
+        }
+        depth <- depth + 1
+    }
+    nn <- nn[sapply(nn, length) > 0]
+    #-------------------------------------------------------------------------#
+    # next we check in which "triangle" does each nearest neighbor fall in
+    #-------------------------------------------------------------------------#
+    anchor_graph <- graph_from_voronoi(matched_graph[, c("x", "y")])
+    anchor_graph$from <- matched_graph$to[anchor_graph$from]
+    anchor_graph$to <- matched_graph$to[anchor_graph$to]
+    edge_list <- vector("list", length(nn))
+    names(edge_list) <- names(nn)
+    for (i in seq_along(nn)) {
+        local_anchor <- as.character(anchor_graph$to[anchor_graph$from ==
+            names(nn)[i] & anchor_graph$to != names(nn)[i]])
+        local_query <- nn[[i]]
+        dist_mat <- as.matrix(dist(query_centers[query_centers$center %in%
+            c(local_anchor, local_query), c("x", "y")],
+            diag = TRUE, upper = TRUE))[local_anchor, local_query]
+        if (is.null(ncol(dist_mat))) {
+            triangle_edge <- list(names(dist_mat)[order(dist_mat)[1:2]])
+            names(triangle_edge) <- local_query
+        } else {
+            triangle_edge <- lapply(seq_len(ncol(dist_mat)),
+                function(i, dist_mat) {
+                    return(rownames(dist_mat)[order(dist_mat[, i])[1:2]])
+            }, dist_mat)
+            names(triangle_edge) <- colnames(dist_mat)
+        }
+        edge_list[[i]] <- triangle_edge
+    }
+    #-------------------------------------------------------------------------#
+    # Additive vectors for every nn - moving each nn based on the nearest 
+    # anchor points
+    #-------------------------------------------------------------------------#
+    for (i in seq_along(edge_list)) {
+        for (j in seq_along(edge_list[[i]])) {
+            x_nn <- query_centers$x[query_centers$center ==
+                names(edge_list[[i]])[j]]
+            y_nn <- query_centers$y[query_centers$center ==
+                names(edge_list[[i]])[j]]
+            cum_dist <- sapply(movement[edge_list[[i]][[j]]], "[[", "d")
+            cum_angle <- sapply(movement[edge_list[[i]][[j]]], "[[", "a")
+            for (k in seq_along(cum_dist)) {
+                a <- cum_angle[k] * pi / 180
+                delta <- cart_coord(cum_dist[k], a)
+                x_nn <- x_nn + delta$delta_x
+                y_nn <- y_nn + delta$delta_y
+            }
+            query_centers$x[query_centers$center ==
+                names(edge_list[[i]])[j]] <- x_nn 
+            query_centers$y[query_centers$center ==
+                names(edge_list[[i]])[j]] <- y_nn
+        }
+    }
+    query_centers[query_centers$center %in% matched_graph$to, c("x", "y")] <-
+        matched_graph[, c("x", "y")]
+    browser()
+    return(query_centers)
 }
 
 
@@ -523,20 +569,4 @@ correlation <- function(seed_path, query_path, method) {
     colnames(co) <- names(seed_path)
     rownames(co) <- names(query_path)
     return(co)
-}
-
-
-
-
-
-
-territory_signal <- function(counts, territories) {
-    territories <- split(territories, territories$trial)
-    for (i in seq_along(territories)) {
-        territories[[i]] <- as.vector(
-            apply(counts[, territories[[i]]$barcodes],
-            MARGIN = 1,
-            mean))
-    }
-    return(territories)
 }

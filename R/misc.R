@@ -97,3 +97,20 @@ polar_angle <- function(coord_x, coord_y, center_x, center_y) {
   }, x = x, y = y, SIMPLIFY = TRUE)
   return(angle)
 }
+
+cart_coord <- function(d, a) {
+  if (a < pi / 2) {
+    delta_x <- d * cos(a)
+    delta_y <- d * sin(a)
+  } else if (a < pi) {
+    delta_x <- -d * sin(a - pi/ 2)
+    delta_y <- d * cos(a - pi/ 2)
+  } else if (a < 3 * pi / 2) {
+    delta_x <- -d * cos(a - pi)
+    delta_y <- -d * sin(a - pi)
+  } else {
+    delta_x <- d * sin(a - 3 * pi / 2)
+    delta_y <- -d * cos(a - 3 * pi / 2)
+  }
+  return(list("delta_x" = delta_x, "delta_y" = delta_y))
+}
