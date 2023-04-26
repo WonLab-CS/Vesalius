@@ -19,10 +19,11 @@ integrate_assays <- function(seed_assay,
     compactness = 1,
     n_centers = 2000,
     max_iter = 1000,
-    index_selection = "bubble",
+    index_selection = "random",
     threshold = 0.9,
     k = "auto",
     signal = "features",
+    expand_genes = TRUE,
     verbose = TRUE) {
     simple_bar(verbose)
     #-------------------------------------------------------------------------#
@@ -46,7 +47,6 @@ integrate_assays <- function(seed_assay,
         scaling = scaling,
         verbose = FALSE)
     
-    #integrated <- generate_common_embeddings(seed_trial, query_trial)
     #-------------------------------------------------------------------------#
     # get signal either as counts or as embedding values
     #-------------------------------------------------------------------------#
@@ -95,45 +95,20 @@ integrate_assays <- function(seed_assay,
     message_switch("score_graph", verbose = verbose)
     spix_score <- score_graph(integrated_graph,
         signal = list(seed_signal, query_signal))
-
+    message_switch("matching_graphs", verbose = verbose)
     matched_graph <- match_vertex(seed_graph, query_graph, spix_score)
     aligned_graph <- align_graph(matched_graph,
         seed_trial$segments,
         seed_graph,
         query_trial$segments,
         query_graph)
-    message_switch("matching_graphs", verbose = verbose)
-    
-    #-------------------------------------------------------------------------#
-    # Update and clean 
-    #-------------------------------------------------------------------------#
-    # integrated_assay <- update_vesalius_assay(vesalius_assay = seed_assay,
-    #     data = integrate,
-    #     slot = "active",
-    #     append = FALSE)
-    # integrated_assay <- add_active_embedding_tag(integrated_assay,
-    #     "integrated")
-    # seed_assay <- update_vesalius_assay(vesalius_assay = seed_assay,
-    #     data = seed_trial$active,
-    #     slot = "active",
-    #     append = FALSE)
-    # seed_assay <- add_active_embedding_tag(seed_assay,
-    #     "last")
-    # query_assay <- update_vesalius_assay(vesalius_assay = query_assay,
-    #     data = query_trial$active,
-    #     slot = "active",
-    #     append = FALSE)
-    # query_assay <- add_active_embedding_tag(query_assay,
-    #     "last")
+    integrated <- integrate_graph(aligned_graph,
+        seed_assay,
+        seed_trial$segments,
+        query_assay,
+        expand_genes = expand_genes)
     simple_bar(verbose)
-    return(list("seed_score" = seed_graph,
-        "query_score" = query_graph,
-        "spix_score" = spix_score,
-        #"best_match" = best_match,
-        "aligned" = aligned))#,
-        # "seed" = seed_assay,
-        # "query" = query_assay,
-        # "integrate" = integrated_assay))
+    return(integrated)
 }
 
 compress_signal <- function(signal, segments) {
@@ -273,14 +248,7 @@ match_vertex <- function(seed_graph,
     return(best_match)
 }
 
-assign_coordinates <- function(aligned_graph, coordinates) {
-    coordinates <- get_super_pixel_centers(coordinates)
-    aligned_graph <- aligned_graph[aligned_graph$anchor == 1, ]
-    coordinates <- coordinates[coordinates$center %in% aligned_graph$from,
-        c("x", "y")]
-    aligned_graph <- cbind(coordinates, aligned_graph)
-    return(aligned_graph)
-}
+
 
 align_graph <- function(matched_graph,
     seed,
@@ -289,28 +257,54 @@ align_graph <- function(matched_graph,
     query_graph) {
     #-------------------------------------------------------------------------#
     # First get all anchor trajectories 
+    # we used the seed coordinates as center pixel
     #-------------------------------------------------------------------------#
+    seed_centers <- get_super_pixel_centers(seed)
+    query_centers <- get_super_pixel_centers(query)
+    anchors <- matched_graph %>%
+        filter(anchor == 1) %>%
+        select(c("from", "to"))
+    anchors$angle <- 0
+    anchors$distance <- 0
+    for (i in seq_len(nrow(anchors))) {
+        seed_point <- seed_centers[seed_centers$center == anchors$from[i], ]
+        query_point <- query_centers[query_centers$center == anchors$to[i], ]
+        angle <- polar_angle(seed_point$x, seed_point$y,
+            query_point$x, query_point$y)
+        anchors$angle[i] <- angle
+        distance <- matrix(c(seed_point$x, query_point$x,
+            seed_point$y, query_point$y), ncol = 2)
+        distance <- as.numeric(dist(distance))
+        anchors$distance[i] <- distance
+    }
 
     #-------------------------------------------------------------------------#
-    # get nearest 2 nearest neighbor points between anchor points and 
-    # unassigned points. 
-    # Will use these points to create compound trajectories
+    # get closest anchor point for all un assigned spix points 
     #-------------------------------------------------------------------------#
-    
+    unassinged <- matched_graph %>% filter(anchor == 0)
+    query_point <- query_centers[query_centers$center %in% unassinged$to, ]
+    anchor_point <- query_centers[query_centers$center %in% anchors$to, ]
     #-------------------------------------------------------------------------#
-    # Apply trajectories to anchors
+    # Apply compound trajectories to individual points points
     #-------------------------------------------------------------------------#
-
+    nn <- RANN::nn2(data = anchor_point[, c("x", "y")],
+        query = query[, c("x", "y")],
+        k = 2)
+    angle <- anchors$angle[nn$nn.idx[, 1]] - anchors$angle[nn$nn.idx[, 2]]
+    distance <- sqrt(((anchors$distance[nn$nn.idx[, 1]])^2 + 
+        (anchors$distance[nn$nn.idx[, 2]])^2))
+    query$x <- query$x + distance * cos(angle * pi / 180)
+    query$y <- query$y + distance * sin(angle * pi / 180)
     #-------------------------------------------------------------------------#
-    # Apply compound trajectories to unassigned points 
+    # get closest seed point for all un assigned points 
     #-------------------------------------------------------------------------#
-    return(query_centers)
+    seed_nn <- RANN::nn2(data = seed_centers[, c("x", "y")],
+        query = query[, c("x", "y")],
+        k = 1)
+    query$norm_with <- seed_centers$center[seed_nn$nn.idx[, 1]]
+    return(query)
 }
 
-
-get_vertex_trajectoy <- function(seed, query) {
-
-}
 
 
 
@@ -332,6 +326,82 @@ graph_path_length <- function(graph) {
 }
 
 
+integrate_graph <- function(aligned_graph,
+    seed,
+    seed_spix,
+    query,
+    norm = "logNorm",
+    expand_genes = TRUE) {
+    #-------------------------------------------------------------------------#
+    # first let's get the raw counts from each 
+    #-------------------------------------------------------------------------#
+    seed_counts <- get_counts(seed)
+    query_counts <- get_counts(query)
+    #-------------------------------------------------------------------------#
+    # next split the aligned graph by spix
+    # and we can scale the counts in each super pixel 
+    #-------------------------------------------------------------------------#
+    spix <- split(aligned_graph, aligned_graph$Segment)
+    integrated_counts <- vector("list", length(spix))
+    for (i in seq_along(spix)) {
+        query_local <- query_counts[, spix[[i]]$barcodes]
+        if (is.null(ncol(query_local))){
+            query_local <- matrix(query_local, ncol = 1)
+            rownames(query_local) <- names(query_local)
+        }
+        colnames(query_local) <- paste0("data2_", colnames(query_local))
+        seed_local <- seed_counts[, seed_spix$barcodes[
+            seed_spix$Segment %in% spix[[i]]$norm_with]]
+        if (is.null(ncol(seed_local))){
+            seed_local <- matrix(seed_local, ncol = 1)
+            rownames(seed_local) <- names(seed_local)
+        }
+        
+        colnames(seed_local) <- paste0("data1_", colnames(seed_local))
+        max_count <- max(c(max(seed_local), max(query_local)))
+        sd_count <- max(c(apply(seed_local, 2, sd), apply(query_local, 2, sd)))
+        seed_local <- seed_local * (max_count / sd_count)
+        query_local <- query_local * (max_count / sd_count)
+        genes <- intersect(rownames(query_local), rownames(seed_local))
+        print(i)
+        counts <- cbind(seed_local[genes, ], query_local[genes, ])
+        if (expand_genes) {
+            diff_d1 <- setdiff(rownames(query_local), rownames(seed_local))
+            diff_d2 <- setdiff(rownames(seed_local), rownames(query_local))
+            expanded_counts <- matrix(0, ncol = ncol(counts),
+                nrow = length(c(diff_d1, diff_d2)))
+            colnames(expanded_counts) <- colnames(counts)
+            rownames(expanded_counts) <- c(diff_d1, diff_d2)
+            expanded_counts[diff_d1, colnames(seed_local)] <- 
+                seed_local[diff_d1, ]
+            expanded_counts[diff_d2, colnames(query_local)] <- 
+                query_local[diff_d2, ]
+            counts <- rbind(counts, expanded_counts)
+        }
+        counts <- counts[order(rownames(counts)), ]
+        #counts <- log(x+1, base = 10)
+        integrated_counts[[i]] <- counts
+    }
+    integrated_counts <- do.call("cbind", integrated_counts)
+    colnames(integrated_counts) <- make.unique(colnames(integrated_counts),
+        sep = "_")
+    seed_coordinates <- seed@tiles %>%
+        filter(origin == 1) %>%
+        select(c("barcodes", "x", "y"))
+    seed_coordinates$barcodes <- paste0("data1_", seed_coordinates$barcodes)
+    query_coordinates <- aligned_graph[, c("barcodes", "x", "y")]
+    query_coordinates$barcodes <- paste0("data1_",query_coordinates$barcodes)
+    integrated_coordinates <- rbind(seed_coordinates, query_coordinates)
+    integrated_coordinates$barcodes <- make.unique(
+        integrated_coordinates$barcodes,
+        sep = "_")
+    vesalius_assay <- build_vesalius_assay(coordinates = integrated_coordinates,
+        counts = integrated_counts,
+        assay = "integrated",
+        verbose = FALSE)
+    return(vesalius_assay)
+
+}
 
 
 

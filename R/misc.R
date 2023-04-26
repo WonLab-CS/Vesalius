@@ -95,8 +95,13 @@ polar_angle <- function(coord_x, coord_y, center_x, center_y) {
     if (x >= 0 & y < 0) angle <- 360 - (atan(abs(y) / abs(x)) * (180 / pi))
     return(angle)
   }, x = x, y = y, SIMPLIFY = TRUE)
+  if (is.na(angle)) {
+      angle <- 0
+  }
   return(angle)
 }
+
+
 
 cart_coord <- function(d, a) {
   if (a < pi / 2) {

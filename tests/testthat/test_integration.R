@@ -176,27 +176,10 @@ test <- integrate_assays(vesalius,
     signal = "features",
     n_centers = 50)
 
+test <- generate_embeddings(test)
 
-se <- vesalius:::get_super_pixel_centers(seed_trial$segments)
-qu <- vesalius:::get_super_pixel_centers(query_trial$segments)
-x_s <- se$x[se$center %in% aligned$from[aligned$anchor == 2]]
-y_s <- se$y[se$center %in% aligned$from[aligned$anchor == 2]]
-y_q <- qu$y[qu$center %in% aligned$to[aligned$anchor == 2]]
-x_q <- qu$x[qu$center %in% aligned$to[aligned$anchor == 2]]
-plot(x_s,y_s, xlim = range(seed_trial$segment$x), ylim = range(seed_trial$segment$y))
-points(x_q,y_q, pch =19, col ="red")
-points(,y_q, pch =19, col ="red")
-
-plot(0, type = "n", xlim = range(query_centers$x), ylim = range(query_centers$y))
-sapply(seq(1, nrow(cop)), function(i, co, qu){
-    x <- c(co$x[i], qu$x[i])
-    y <- c(co$y[i], qu$y[i])
-    lines(x,y, col = "red", lwd = 2)
-    points(co$x[i],co$y[i], pch = 19,col = "green")
-    points(qu$x[i],qu$y[i], pch = 19,col = "blue")
-
-}, co = cop, qu = query_centers)
-
+test <- smooth_image(test, embedding = "PCA", sigma = 5, iter = 5)
+test <- segment_image(test, col_resolution = 3)
 
 g <- image_plot(test$seed)
 g1 <- image_plot(test$query)
