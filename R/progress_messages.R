@@ -112,11 +112,33 @@ message_switch <- function(type, verbose = TRUE, ...) {
         "signal" = cat(paste(t,
             " Extracting assay signal\n")),
         "slic_graph" = cat(paste(t,
-            " Generate SLIC graph in", args$data, "\n")),
+            " Generating SLIC graph in", args$data, "\n")),
         "score_graph" = cat(paste(t,
             " Scoring graphs\n")),
         "matching_graphs" = cat(paste(t,
-            " Matching and Mapping Graphs\n"))
+            " Matching Graphs\n")),
+        "anchors_found" = cat(paste(t,
+            " Found ", args$anchors, " Anchors\n")),
+        "get_traj" = cat(paste(t,
+            " Getting anchor trajectories\n")),
+        "apply_traj" = cat(paste(t,
+            " Applying anchor trajectories to cells\n"))
+        )
+    } else {
+        return(NULL)
+    }
+}
+
+
+dyn_message_switch <- function(type, verbose = TRUE, ...) {
+    args <- list(...)
+    t <- Sys.time()
+    if (verbose) {
+        switch(EXPR = type,
+        "score_graph" = cat(paste(t, " Scoring graph: ",
+            args$prog, "% \r")),
+        "integrate_graph" = cat(paste(t, " Integrating graph: ",
+            args$prog, "% \r"))
         )
     } else {
         return(NULL)

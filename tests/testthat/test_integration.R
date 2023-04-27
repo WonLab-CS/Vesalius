@@ -8,14 +8,15 @@
 #-----------------------------------------------------------------------------#
 # Loading Libraries and setting seed
 #-----------------------------------------------------------------------------#
-library(vesalius, lib.loc = "/common/martinp4/R")
-library(pwr, lib.loc = "/common/martinp4/R")
-library(gsignal, lib.loc = "/common/martinp4/R")
 library(dplyr)
 library(future)
 library(ggplot2)
 library(dplyr)
 library(patchwork)
+library(vesalius, lib.loc = "/common/martinp4/R")
+library(pwr, lib.loc = "/common/martinp4/R")
+library(gsignal, lib.loc = "/common/martinp4/R")
+
 
 set.seed(1547)
 
@@ -23,13 +24,13 @@ set.seed(1547)
 #-----------------------------------------------------------------------------#
 # create output directories
 #-----------------------------------------------------------------------------#
-input <- "/common/martinp4/SSv2"
+input <- "/common/wonklab/SSv2"
 
 
 #-----------------------------------------------------------------------------#
 # Set future global for multicore processing
 #-----------------------------------------------------------------------------#
-plan(multicore, workers = 5)
+plan(multicore, workers = 4)
 max_size <- 10000 * 1024^2
 options(future.globals.maxSize = max_size)
 
@@ -49,65 +50,42 @@ coord <- read.csv(coordinates[f], header = FALSE, skip = 1)
 colnames(coord) <- c("barcodes", "xcoord", "ycoord")
 count_mat <- read.table(counts[f], header = TRUE, row.names = 1)
 
-# vesalius <- build_vesalius_assay(coord, count_mat) %>%
-#     generate_embeddings(tensor_resolution = 0.3) %>%
-#     regularise_image(dimensions = 1:30, lambda = 5) %>%
-#     equalize_image(dimensions = 1:30, sleft = 5, sright = 5) %>%
-#     smooth_image(dimensions = 1:30, sigma = 5, iter = 10) %>%
-#     segment_image(dimensions = 1:30, col_resolution = 12) %>%
-#     isolate_territories()
+
 
 vesalius <- build_vesalius_assay(coord, count_mat) %>%
     generate_embeddings(tensor_resolution = 0.3) %>%
     regularise_image(dimensions = 1:30, lambda = 5) %>%
     equalize_image(dimensions = 1:30, sleft = 5, sright = 5) %>%
-    smooth_image(dimensions = 1:30, method =c("iso", "box"), sigma = 2, box = 10, iter = 10) %>%
-    segment_image(dimensions = 1:30, col_resolution = 1000, method = "slic",threshold = "85%") %>%
-    segment_image(dimensions = 1:30, col_resolution = 12, method = "kmeans") 
-pdf("test.pdf")
-image_plot(vesalius)
-territory_plot(vesalius)
-dev.off()
+    smooth_image(dimensions = 1:30, method =c("iso", "box"), sigma = 2, box = 10, iter = 10) 
+
 f = 44
 coord <- read.csv(coordinates[f], header = FALSE, skip = 1)
 colnames(coord) <- c("barcodes", "xcoord", "ycoord")
 count_mat <- read.table(counts[f], header = TRUE, row.names = 1)
-# vesalius_query <- build_vesalius_assay(coord, count_mat) %>%
-#     generate_embeddings(tensor_resolution = 0.3) %>%
-#     regularise_image(dimensions = 1:30, lambda = 5) %>%
-#     equalize_image(dimensions = 1:30, sleft = 5, sright = 5) %>%
-#     smooth_image(dimensions = 1:30, sigma = 5, iter = 10) %>%
-#     segment_image(dimensions = 1:30, col_resolution = 12) %>%
-#     isolate_territories()
+
 
 vesalius_query <- build_vesalius_assay(coord, count_mat) %>%
     generate_embeddings(tensor_resolution = 0.3) %>%
     regularise_image(dimensions = 1:30, lambda = 5) %>%
     equalize_image(dimensions = 1:30, sleft = 5, sright = 5) %>%
-    smooth_image(dimensions = 1:30, method =c("iso", "box"), sigma = 2, box = 10, iter = 10) %>%
-    segment_image(dimensions = 1:30, col_resolution = 15) %>%
-    isolate_territories(min_spatial_index = 50)
+    smooth_image(dimensions = 1:30, method =c("iso", "box"), sigma = 2, box = 10, iter = 10)
 
-test <- integrate_by_territory(vesalius,
-    vesalius_query,
-    method = "coherence",
-    use_counts = TRUE,
-    k = 5,
-    use_norm = "log_norm")
+
 
 test <- integrate_assays(vesalius,
     vesalius_query,
     n_centers = 500,
     compactness = 20,
     index_selection = "random",
-    signal = "features")
+    signal = "features",
+    threshold = 0.5)
 
-g <- image_plot(test$seed)
-g1 <- image_plot(test$query)
-g2 <- image_plot(test$integrate)
+test <- generate_embeddings(test)
+g <- image_plot(test)
 
-pdf("test_counts.pdf", width = 20, height = 8)
-print(g + g1 + g2)
+
+pdf("test_counts.pdf", width = 8, height = 8)
+print(g)
 dev.off()
 
 # coherence_x <- test$sim$x

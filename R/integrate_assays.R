@@ -20,8 +20,8 @@ integrate_assays <- function(seed_assay,
     n_centers = 2000,
     max_iter = 1000,
     index_selection = "random",
-    threshold = 0.9,
-    k = "auto",
+    threshold = 0.7,
+    depth = 1,
     signal = "features",
     expand_genes = TRUE,
     verbose = TRUE) {
@@ -77,10 +77,10 @@ integrate_assays <- function(seed_assay,
     # score the correlation between each vertex in seed/query graph
     #-------------------------------------------------------------------------#
     message_switch("slic_graph", verbose = verbose, data = "seed")
-    seed_graph <- generate_slic_graph(seed_trial$segments, k = k)
+    seed_graph <- generate_slic_graph(seed_trial$segments)
 
     message_switch("slic_graph", verbose = verbose, data = "query")
-    query_graph <- generate_slic_graph(query_trial$segments, k = k)
+    query_graph <- generate_slic_graph(query_trial$segments)
     #-------------------------------------------------------------------------#
     # Now we can compute the same thing but between each graph
     # For now - we check the number of centeres in case of mismatch
@@ -92,21 +92,28 @@ integrate_assays <- function(seed_assay,
     integrated_graph <- data.frame(
         "from" = rep(unique(seed_graph$from), each = q_centers),
         "to" = rep(unique(query_graph$from), times = s_centers))
-    message_switch("score_graph", verbose = verbose)
+
     spix_score <- score_graph(integrated_graph,
-        signal = list(seed_signal, query_signal))
-    message_switch("matching_graphs", verbose = verbose)
-    matched_graph <- match_vertex(seed_graph, query_graph, spix_score)
+        signal = list(seed_signal, query_signal),
+        verbose = verbose)
+    matched_graph <- match_vertex(seed_graph,
+            query_graph,
+            spix_score,
+            depth = depth,
+            threshold = threshold,
+            verbose = verbose)
     aligned_graph <- align_graph(matched_graph,
         seed_trial$segments,
         seed_graph,
         query_trial$segments,
-        query_graph)
+        query_graph,
+        verbose = verbose)
     integrated <- integrate_graph(aligned_graph,
         seed_assay,
         seed_trial$segments,
         query_assay,
-        expand_genes = expand_genes)
+        expand_genes = expand_genes,
+        verbose = verbose)
     simple_bar(verbose)
     return(integrated)
 }
@@ -182,7 +189,8 @@ get_super_pixel_centers <- function(spix) {
 #' importFrom future.apply future_lapply
 score_graph <- function(graph,
     signal,
-    scoring_method = "spearman") {
+    scoring_method = "spearman",
+    verbose = TRUE) {
     #-------------------------------------------------------------------------#
     # assuming that if the input to signal is a list
     # we are comparing 2 data sets
@@ -199,13 +207,14 @@ score_graph <- function(graph,
     #-------------------------------------------------------------------------#
     graph <- data.frame(graph,
         "score" = rep(0, nrow(graph)))
-    cat("\n")
     for (i in seq_len(nrow(graph))) {
-        cat(paste0(i, "\r"))
+        dyn_message_switch("score_graph", verbose,
+            prog = round(i / nrow(graph), 4) * 100)
         c1 <- seed_signal[[graph$from[i]]]
         c2 <- query_signal[[graph$to[i]]]
         graph$score[i] <- cor(c1, c2, method = scoring_method)
     }
+    if (verbose){cat("\n")}
     return(graph)
 }
 
@@ -214,10 +223,12 @@ match_vertex <- function(seed_graph,
     query_graph,
     scores,
     depth = 1,
-    threshold = 0.8) {
+    threshold = 0.8,
+    verbose = TRUE) {
+    message_switch("matching_graphs", verbose)
     seed_paths <- graph_path_length(seed_graph)
     query_paths <- graph_path_length(query_graph)
-    max_depth <- min(c(max(seed_paths), max(query_paths)))
+    max_depth <- min(c(max(seed_paths), max(query_paths), depth))
     best_match <- get_best_vertex(scores, rank = depth)
     best_match <- data.frame(best_match,
         matrix(0, ncol = max_depth, nrow = nrow(best_match)))
@@ -240,11 +251,13 @@ match_vertex <- function(seed_graph,
             best_match[i, depth_loc] <- overlap
         }
     }
+    anchors <- apply(best_match[, 3:ncol(best_match)], 1, mean) >= threshold
     best_match$anchor <- 0
-    anchors <- best_match$score >= threshold &
-        apply(best_match[, grep("depth", colnames(best_match))], 1, mean) >=
-        threshold
     best_match$anchor[anchors] <- 1
+    message_switch("anchors_found", verbose, anchors = sum(best_match$anchor))
+    if (sum(best_match$anchor) == 0) {
+        stop("No anchors found! Consider relaxing selection threshold.")
+    }
     return(best_match)
 }
 
@@ -254,7 +267,8 @@ align_graph <- function(matched_graph,
     seed,
     seed_graph,
     query,
-    query_graph) {
+    query_graph,
+    verbose = TRUE) {
     #-------------------------------------------------------------------------#
     # First get all anchor trajectories 
     # we used the seed coordinates as center pixel
@@ -266,6 +280,7 @@ align_graph <- function(matched_graph,
         select(c("from", "to"))
     anchors$angle <- 0
     anchors$distance <- 0
+    message_switch("get_traj", verbose)
     for (i in seq_len(nrow(anchors))) {
         seed_point <- seed_centers[seed_centers$center == anchors$from[i], ]
         query_point <- query_centers[query_centers$center == anchors$to[i], ]
@@ -287,11 +302,13 @@ align_graph <- function(matched_graph,
     #-------------------------------------------------------------------------#
     # Apply compound trajectories to individual points points
     #-------------------------------------------------------------------------#
+    message_switch("apply_traj", verbose)
     nn <- RANN::nn2(data = anchor_point[, c("x", "y")],
         query = query[, c("x", "y")],
         k = 2)
-    angle <- anchors$angle[nn$nn.idx[, 1]] - anchors$angle[nn$nn.idx[, 2]]
-    distance <- sqrt(((anchors$distance[nn$nn.idx[, 1]])^2 + 
+    angle <- mean(c(anchors$angle[nn$nn.idx[, 1]],
+        anchors$angle[nn$nn.idx[, 2]]))
+    distance <- sqrt(((anchors$distance[nn$nn.idx[, 1]])^2 +
         (anchors$distance[nn$nn.idx[, 2]])^2))
     query$x <- query$x + distance * cos(angle * pi / 180)
     query$y <- query$y + distance * sin(angle * pi / 180)
@@ -325,13 +342,15 @@ graph_path_length <- function(graph) {
     return(path_length)
 }
 
-
+#' @importFrom dplyr select
+#' @importFrom Matrix rowMeans rowScale
 integrate_graph <- function(aligned_graph,
     seed,
     seed_spix,
     query,
     norm = "logNorm",
-    expand_genes = TRUE) {
+    expand_genes = TRUE,
+    verbose = TRUE) {
     #-------------------------------------------------------------------------#
     # first let's get the raw counts from each 
     #-------------------------------------------------------------------------#
@@ -342,65 +361,75 @@ integrate_graph <- function(aligned_graph,
     # and we can scale the counts in each super pixel 
     #-------------------------------------------------------------------------#
     spix <- split(aligned_graph, aligned_graph$Segment)
-    integrated_counts <- vector("list", length(spix))
+    integrated_counts <- build_integrated_matrix(seed_counts,
+        query_counts)
     for (i in seq_along(spix)) {
+        dyn_message_switch("integrate_graph", verbose,
+            prog = round(i / length(spix), 4) * 100)
+        #---------------------------------------------------------------------#
+        # Get counts in query and assign to integrated matrix
+        #---------------------------------------------------------------------#
         query_local <- query_counts[, spix[[i]]$barcodes]
-        if (is.null(ncol(query_local))){
+        if (is.null(ncol(query_local))) {
             query_local <- matrix(query_local, ncol = 1)
             rownames(query_local) <- names(query_local)
         }
         colnames(query_local) <- paste0("data2_", colnames(query_local))
+        scale <- rowMeans(query_local) / sd(query_local)
+        query_local <- rowScale(query_local, scale)
+        integrated_counts[rownames(query_local), colnames(query_local)] <-
+            query_local
+        #---------------------------------------------------------------------#
+        # Get counts in seed and assign to integrated matrix
+        #---------------------------------------------------------------------#
         seed_local <- seed_counts[, seed_spix$barcodes[
             seed_spix$Segment %in% spix[[i]]$norm_with]]
-        if (is.null(ncol(seed_local))){
+        if (is.null(ncol(seed_local))) {
             seed_local <- matrix(seed_local, ncol = 1)
             rownames(seed_local) <- names(seed_local)
         }
-        
         colnames(seed_local) <- paste0("data1_", colnames(seed_local))
-        max_count <- max(c(max(seed_local), max(query_local)))
-        sd_count <- max(c(apply(seed_local, 2, sd), apply(query_local, 2, sd)))
-        seed_local <- seed_local * (max_count / sd_count)
-        query_local <- query_local * (max_count / sd_count)
-        genes <- intersect(rownames(query_local), rownames(seed_local))
-        print(i)
-        counts <- cbind(seed_local[genes, ], query_local[genes, ])
-        if (expand_genes) {
-            diff_d1 <- setdiff(rownames(query_local), rownames(seed_local))
-            diff_d2 <- setdiff(rownames(seed_local), rownames(query_local))
-            expanded_counts <- matrix(0, ncol = ncol(counts),
-                nrow = length(c(diff_d1, diff_d2)))
-            colnames(expanded_counts) <- colnames(counts)
-            rownames(expanded_counts) <- c(diff_d1, diff_d2)
-            expanded_counts[diff_d1, colnames(seed_local)] <- 
-                seed_local[diff_d1, ]
-            expanded_counts[diff_d2, colnames(query_local)] <- 
-                query_local[diff_d2, ]
-            counts <- rbind(counts, expanded_counts)
-        }
-        counts <- counts[order(rownames(counts)), ]
-        #counts <- log(x+1, base = 10)
-        integrated_counts[[i]] <- counts
+        scale <- rowMeans(seed_local) / sd(seed_local)
+        seed_local <- rowScale(seed_local, scale)
+        integrated_counts[rownames(seed_local), colnames(seed_local)] <-
+            seed_local
     }
-    integrated_counts <- do.call("cbind", integrated_counts)
-    colnames(integrated_counts) <- make.unique(colnames(integrated_counts),
-        sep = "_")
+    if (verbose){cat("\n")}
+    #browser()
+    #-------------------------------------------------------------------------#
+    # Now re can rebuild the coordinates 
+    #-------------------------------------------------------------------------#
     seed_coordinates <- seed@tiles %>%
         filter(origin == 1) %>%
         select(c("barcodes", "x", "y"))
     seed_coordinates$barcodes <- paste0("data1_", seed_coordinates$barcodes)
     query_coordinates <- aligned_graph[, c("barcodes", "x", "y")]
-    query_coordinates$barcodes <- paste0("data1_",query_coordinates$barcodes)
+    query_coordinates$barcodes <- paste0("data2_", query_coordinates$barcodes)
     integrated_coordinates <- rbind(seed_coordinates, query_coordinates)
     integrated_coordinates$barcodes <- make.unique(
         integrated_coordinates$barcodes,
         sep = "_")
+    
     vesalius_assay <- build_vesalius_assay(coordinates = integrated_coordinates,
         counts = integrated_counts,
         assay = "integrated",
         verbose = FALSE)
     return(vesalius_assay)
 
+}
+
+build_integrated_matrix <- function(...) {
+    data_sets <- list(...)
+    gene_set <- unique(unlist(lapply(data_sets, rownames)))
+    cells <- unlist(lapply(seq(1, length(data_sets)), function(i, d) {
+        return(paste0("data", i, "_", colnames(d[[i]])))
+    }, d = data_sets))
+    integrated_counts <- Matrix(0,
+        ncol = length(cells),
+        nrow = length(gene_set))
+    colnames(integrated_counts) <- cells
+    rownames(integrated_counts) <- gene_set
+    return(integrated_counts)
 }
 
 

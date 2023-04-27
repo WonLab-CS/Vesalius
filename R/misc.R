@@ -13,7 +13,7 @@
 #' @importFrom dplyr filter %>%
 globalise_territories <- function(img) {
   img_tmp <- img %>% filter(trial != "isolated")
-  ter <- paste0(img_tmp$segment, "_", img_tmp$trial)
+  ter <- paste0(img_tmp$Segment, "_", img_tmp$trial)
   all_ter <- unique(ter)
   ter <- seq_along(all_ter)[match(ter, all_ter)]
   img$trial[img$trial != "isolated"] <- ter

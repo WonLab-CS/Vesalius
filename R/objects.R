@@ -138,7 +138,7 @@ setMethod("show",
         #---------------------------------------------------------------------#
         # check embeddings
         #---------------------------------------------------------------------#
-        all_embeds <- get_embeddings(object, active = FALSE)
+        all_embeds <- object@embeddings
         if (length(all_embeds) > 0 & length(all_embeds) < 4) {
             cat("\n")
             cat(paste(paste(names(all_embeds), sep = " ", collapse = ", "),
