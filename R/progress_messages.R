@@ -136,9 +136,9 @@ dyn_message_switch <- function(type, verbose = TRUE, ...) {
     if (verbose) {
         switch(EXPR = type,
         "score_graph" = cat(paste(t, " Scoring graph: ",
-            args$prog, "% \r")),
+            args$prog, "%   \r")),
         "integrate_graph" = cat(paste(t, " Integrating graph: ",
-            args$prog, "% \r"))
+            args$prog, "%   \r"))
         )
     } else {
         return(NULL)

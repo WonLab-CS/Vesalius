@@ -85,6 +85,7 @@ check_image_input <- function(image) {
     return(image)
 }
 
+
 #' checking overlap between barcodes in counts and coordinates
 #' @param mat_barcodes character vector containing barcode names in matrix
 #' (count matrix or embedding matrix)

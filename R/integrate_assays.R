@@ -23,7 +23,6 @@ integrate_assays <- function(seed_assay,
     threshold = 0.7,
     depth = 1,
     signal = "features",
-    expand_genes = TRUE,
     verbose = TRUE) {
     simple_bar(verbose)
     #-------------------------------------------------------------------------#
@@ -112,7 +111,6 @@ integrate_assays <- function(seed_assay,
         seed_assay,
         seed_trial$segments,
         query_assay,
-        expand_genes = expand_genes,
         verbose = verbose)
     simple_bar(verbose)
     return(integrated)
@@ -343,74 +341,89 @@ graph_path_length <- function(graph) {
 }
 
 #' @importFrom dplyr select
-#' @importFrom Matrix rowMeans rowScale
 integrate_graph <- function(aligned_graph,
     seed,
     seed_spix,
     query,
     norm = "logNorm",
-    expand_genes = TRUE,
     verbose = TRUE) {
     #-------------------------------------------------------------------------#
     # first let's get the raw counts from each 
     #-------------------------------------------------------------------------#
     seed_counts <- get_counts(seed)
     query_counts <- get_counts(query)
+    genes <- intersect(rownames(seed_counts), rownames(query_counts))
+    seed_counts <- seed_counts[rownames(seed_counts) %in% genes, ]
+    query_counts <- query_counts[rownames(query_counts) %in% genes, ]
     #-------------------------------------------------------------------------#
     # next split the aligned graph by spix
     # and we can scale the counts in each super pixel 
     #-------------------------------------------------------------------------#
-    spix <- split(aligned_graph, aligned_graph$Segment)
-    integrated_counts <- build_integrated_matrix(seed_counts,
-        query_counts)
+    spix <- split(aligned_graph,
+        list(aligned_graph$Segment, aligned_graph$norm_with))
+    spix <- spix[sapply(spix, function(x){return(nrow(x)>0)})]
+    
+    integrated_counts <- vector("list", length(spix))
+    query_names <- c()
     for (i in seq_along(spix)) {
         dyn_message_switch("integrate_graph", verbose,
             prog = round(i / length(spix), 4) * 100)
-        #---------------------------------------------------------------------#
-        # Get counts in query and assign to integrated matrix
-        #---------------------------------------------------------------------#
+        query_names <- c(query_names,spix[[i]]$barcodes)
         query_local <- query_counts[, spix[[i]]$barcodes]
-        if (is.null(ncol(query_local))) {
-            query_local <- matrix(query_local, ncol = 1)
-            rownames(query_local) <- names(query_local)
-        }
-        colnames(query_local) <- paste0("data2_", colnames(query_local))
-        scale <- rowMeans(query_local) / sd(query_local)
-        query_local <- rowScale(query_local, scale)
-        integrated_counts[rownames(query_local), colnames(query_local)] <-
-            query_local
-        #---------------------------------------------------------------------#
-        # Get counts in seed and assign to integrated matrix
-        #---------------------------------------------------------------------#
         seed_local <- seed_counts[, seed_spix$barcodes[
             seed_spix$Segment %in% spix[[i]]$norm_with]]
+        max_count <- max(seed_local)
         if (is.null(ncol(seed_local))) {
-            seed_local <- matrix(seed_local, ncol = 1)
-            rownames(seed_local) <- names(seed_local)
+            sd_count <- sd(query_local)
+        } else {
+            sd_count <- max(apply(seed_local, 1, sd))
         }
-        colnames(seed_local) <- paste0("data1_", colnames(seed_local))
-        scale <- rowMeans(seed_local) / sd(seed_local)
-        seed_local <- rowScale(seed_local, scale)
-        integrated_counts[rownames(seed_local), colnames(seed_local)] <-
-            seed_local
+        query_local <- query_local * (max_count / sd_count)
+
+        if (is.null(ncol(query_local))) {
+           query_local <- query_local[order(names(query_local))]
+        } else {
+            query_local <- query_local[order(rownames(query_local)), ]
+        }
+        integrated_counts[[i]] <- query_local
     }
     if (verbose){cat("\n")}
+    #-------------------------------------------------------------------------#
+    # Bind everything together - this needs to be cleaned
+    #-------------------------------------------------------------------------#
+    integrated_counts <- do.call("cbind", integrated_counts)
+    # colnames(integrated_counts) <- make.unique(paste0("Query_",
+    #     query_names))
+    # colnames(seed_counts) <- paste0("Seed_",
+    #     colnames(seed_counts))
+    # integrated_names <- make.unique(c(colnames(integrated_counts),
+    #     colnames(seed_counts)), sep = "_")
+    # integrated_counts <- cbind(integrated_counts, seed_counts)
+    # colnames(integrated_counts) <- integrated_names
+    
     #browser()
     #-------------------------------------------------------------------------#
     # Now re can rebuild the coordinates 
     #-------------------------------------------------------------------------#
-    seed_coordinates <- seed@tiles %>%
-        filter(origin == 1) %>%
-        select(c("barcodes", "x", "y"))
-    seed_coordinates$barcodes <- paste0("data1_", seed_coordinates$barcodes)
+    # seed_coordinates <- seed@tiles %>%
+    #     filter(origin == 1) %>%
+    #     select(c("barcodes", "x", "y"))
+    # seed_coordinates$barcodes <- paste0("Seed_", seed_coordinates$barcodes)
     query_coordinates <- aligned_graph[, c("barcodes", "x", "y")]
-    query_coordinates$barcodes <- paste0("data2_", query_coordinates$barcodes)
-    integrated_coordinates <- rbind(seed_coordinates, query_coordinates)
-    integrated_coordinates$barcodes <- make.unique(
-        integrated_coordinates$barcodes,
-        sep = "_")
+    # query_coordinates$barcodes <- make.unique(paste0("Query_", query_coordinates$barcodes))
+    common_loc <- intersect(query_coordinates$barcodes,
+        colnames(integrated_counts))
+    query_coordinates <- query_coordinates[query_coordinates$barcodes %in% common_loc, ]
+    integrated_counts <- integrated_counts[, common_loc]
     
-    vesalius_assay <- build_vesalius_assay(coordinates = integrated_coordinates,
+    query_coordinates$barcodes <- gsub("_et_", "_l_", common_loc)
+    colnames(integrated_counts) <- gsub("_et_", "_l_", common_loc)
+    # integrated_coordinates <- rbind(query_coordinates, seed_coordinates)
+    # integrated_coordinates$barcodes <- make.unique(
+    #     integrated_coordinates$barcodes,
+    #     sep = "_")
+    
+    vesalius_assay <- build_vesalius_assay(coordinates = query_coordinates,
         counts = integrated_counts,
         assay = "integrated",
         verbose = FALSE)

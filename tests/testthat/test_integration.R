@@ -74,46 +74,25 @@ vesalius_query <- build_vesalius_assay(coord, count_mat) %>%
 
 test <- integrate_assays(vesalius,
     vesalius_query,
-    n_centers = 500,
-    compactness = 20,
+    n_centers = 50,
+    compactness = 100,
     index_selection = "random",
     signal = "features",
-    threshold = 0.5)
+    threshold = 0.7)
 
 test <- generate_embeddings(test)
-g <- image_plot(test)
 
 
-pdf("test_counts.pdf", width = 8, height = 8)
-print(g)
+
+g <- image_plot(vesalius, embedding = "PCA")
+g1 <- image_plot(test, embedding = "PCA")
+
+
+pdf("test_counts.pdf", width = 16, height = 8)
+print(g + g1)
 dev.off()
 
-# coherence_x <- test$sim$x
-# coherence_y <- test$sim$y
-# colnames(coherence_x) <- paste0("seed_", colnames(coherence_x))
-# rownames(coherence_x) <- paste0("query_", rownames(coherence_x))
 
-# colnames(coherence_y) <- paste0("seed_", colnames(coherence_y))
-# rownames(coherence_y) <- paste0("query_", rownames(coherence_y))
-
-# seed <- lapply(test$seed, function(path) {
-#     return(list("x" = fft(path$x),
-#       "y" = fft(path$y)))
-# })
-
-# query <- lapply(test$query, function(path) {
-#     return(list("x" = fft(path$x),
-#       "y" = fft(path$y)))
-# })
-coh <- integrate_by_territory(vesalius,
-    vesalius,
-    method = "coherence",
-    use_counts = TRUE,
-    use_norm = "log_norm")
-territories <- vesalius:::check_territory_trial(vesalius, "last") %>%
-    filter(trial != "isolated")
-graph <- vesalius:::generate_territory_graph(territories, k = 5)
-score <- vesalius:::score_neighbor_graph(graph, graph,coh)
 
 ########
 set.seed(145)
@@ -155,9 +134,9 @@ test <- integrate_assays(vesalius,
     n_centers = 50)
 
 test <- generate_embeddings(test)
-
+test <- equalize_image(test, embedding = "PCA",sleft = 5, sright = 5)
 test <- smooth_image(test, embedding = "PCA", sigma = 5, iter = 5)
-test <- segment_image(test, col_resolution = 3)
+test <- segment_image(test, col_resolution = 5)
 
 g <- image_plot(test$seed)
 g1 <- image_plot(test$query)
