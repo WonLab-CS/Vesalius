@@ -80,7 +80,7 @@ test <- integrate_assays(vesalius,
     signal = "features",
     threshold = 0.7)
 
-test <- generate_embeddings(test)
+test <- generate_embeddings(test,tensor_resolution = 0.99)
 
 
 
@@ -131,7 +131,8 @@ test <- integrate_assays(vesalius,
     compactness = 10,
     index_selection = "random",
     signal = "features",
-    n_centers = 50)
+    n_centers = 50,
+    threshold = 0.85)
 
 test <- generate_embeddings(test)
 test <- equalize_image(test, embedding = "PCA",sleft = 5, sright = 5)

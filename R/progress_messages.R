@@ -118,7 +118,7 @@ message_switch <- function(type, verbose = TRUE, ...) {
         "matching_graphs" = cat(paste(t,
             " Matching Graphs\n")),
         "anchors_found" = cat(paste(t,
-            " Found ", args$anchors, " Anchors\n")),
+            " Found ", args$anchors, " Anchors at current threshold\n")),
         "get_traj" = cat(paste(t,
             " Getting anchor trajectories\n")),
         "apply_traj" = cat(paste(t,
@@ -138,6 +138,8 @@ dyn_message_switch <- function(type, verbose = TRUE, ...) {
         "score_graph" = cat(paste(t, " Scoring graph: ",
             args$prog, "%   \r")),
         "integrate_graph" = cat(paste(t, " Integrating graph: ",
+            args$prog, "%   \r")),
+        "graph_matching" = cat(paste(t, " Optimising graph match: ",
             args$prog, "%   \r"))
         )
     } else {

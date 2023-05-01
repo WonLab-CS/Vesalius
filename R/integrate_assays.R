@@ -21,6 +21,11 @@ integrate_assays <- function(seed_assay,
     max_iter = 1000,
     index_selection = "random",
     threshold = 0.7,
+    iter = 10000,
+    n_anchors = 20,
+    mut_extent = 0.1,
+    mut_prob = 0.2,
+    use_graph_distance = FALSE,
     depth = 1,
     signal = "features",
     verbose = TRUE) {
@@ -92,15 +97,29 @@ integrate_assays <- function(seed_assay,
         "from" = rep(unique(seed_graph$from), each = q_centers),
         "to" = rep(unique(query_graph$from), times = s_centers))
 
+
     spix_score <- score_graph(integrated_graph,
         signal = list(seed_signal, query_signal),
         verbose = verbose)
-    matched_graph <- match_vertex(seed_graph,
-            query_graph,
-            spix_score,
-            depth = depth,
-            threshold = threshold,
-            verbose = verbose)
+    # matched_graph <- match_vertex(seed_graph,
+    #         query_graph,
+    #         spix_score,
+    #         depth = depth,
+    #         threshold = threshold,
+    #         verbose = verbose)
+    matched_graph <- match_graph(seed_graph = seed_graph,
+        seed_trial = seed_trial$segments,
+        query_graph = query_graph,
+        query_trial = query_trial$segments,
+        score = spix_score,
+        scoring_method = "pearson",
+        threshold = threshold,
+        iter = iter,
+        n_anchors = n_anchors,
+        mut_extent = mut_extent,
+        mut_prob = mut_prob,
+        use_graph_distance = use_graph_distance,
+        verbose = verbose)
     aligned_graph <- align_graph(matched_graph,
         seed_trial$segments,
         seed_graph,
@@ -214,6 +233,102 @@ score_graph <- function(graph,
     }
     if (verbose){cat("\n")}
     return(graph)
+}
+
+
+match_graph <- function(seed_graph,
+    seed_trial,
+    query_graph,
+    query_trial,
+    score,
+    scoring_method = "pearson",
+    threshold = 0.7,
+    iter = 10000,
+    n_anchors = 25,
+    mut_extent = 0.1,
+    mut_prob = 0.3,
+    use_graph_distance = FALSE,
+    verbose = verbose) {
+    #-------------------------------------------------------------------------#
+    # Initialize optimisation 
+    #-------------------------------------------------------------------------#
+    #score <- score[score$score >= threshold, ]
+    if (length(unique(score$from)) < n_anchors ||
+        length(unique(score$to)) < n_anchors) {
+        n_anchors <- min(c(length(unique(score$from)),
+            length(unique(score$to))))
+        message_switch("anchors_found", verbose, anchors = n_anchors)
+    }
+    sub_sample <- sample(seq(1,max(score$from)),
+        size = n_anchors,
+        replace = FALSE)
+    seed_anchors <- get_best_vertex(score)$from[sub_sample]
+    query_anchors <- get_best_vertex(score)$to[sub_sample]
+    centers_1 <- get_super_pixel_centers(seed_trial)
+    centers_1$x <- min_max(centers_1$x)
+    centers_1$y <- min_max(centers_1$y)
+    centers_2 <- get_super_pixel_centers(query_trial)
+    centers_2$x <- min_max(centers_2$x)
+    centers_2$y <- min_max(centers_2$y)
+
+    indiv_seed <- list("chromosome" = rep(1, n_anchors * 2),
+        "indiv" = seed_anchors,
+        "score" = sum(rep(1, n_anchors * 2)))
+    indiv_query <- list("chromosome" = rep(0, n_anchors * 2),
+        "indiv" = query_anchors,
+        "score" = sum(rep(1, n_anchors * 2)))
+    #-------------------------------------------------------------------------#
+    # iterating over random graph and finding best match 
+    # at the moment it is super basic
+    #-------------------------------------------------------------------------#
+    for (i in seq_len(iter)) {
+        dyn_message_switch("graph_matching", verbose,
+            prog = round(i / iter, 4) * 100)
+        cent_1 <- centers_1[centers_1$center %in% seed_anchors, c("x", "y")]
+        cent_2 <- centers_2[centers_2$center %in% query_anchors, c("x", "y")]
+        dist_1 <- RANN::nn2(data = cent_1,
+            k = 2)$nn.dist[, 2]
+        dist_2 <- RANN::nn2(data = cent_2,
+            k = 2)$nn.dist[, 2]
+        loc <- paste0(score$from, "_", score$to) %in%
+            paste0(seed_anchors, "_", query_anchors)
+        scores <- 1 - score[loc, "score"]
+        scores <- c(abs(dist_1 - dist_2), scores)
+        if (indiv_seed$score > sum(scores) || indiv_query$score > sum(scores)) {
+            indiv_seed$chromosome <- scores
+            indiv_query$chromosome <- scores
+            indiv_seed$indiv <- seed_anchors
+            indiv_query$indiv <- query_anchors
+            indiv_seed$score <- sum(scores)
+            indiv_query$score <- sum(scores)
+            if (runif(1) <= mut_prob) {
+                locs <- sample(seq(1, length(seed_anchors)),
+                    size = n_anchors * mut_extent)
+                new_seed <- sample(centers_1$center[!centers_1$center
+                    %in% seed_anchors[-locs]],
+                    size = length(locs))
+                seed_anchors[locs] <- new_seed
+                new_query <- sample(centers_2$center[!centers_2$center
+                    %in% query_anchors[-locs]],
+                    size = length(locs))
+                query_anchors[locs] <- new_query
+                
+            } else {
+                seed_anchors <- sample(seed_anchors,
+                    size = n_anchors,
+                    replace = FALSE)
+                query_anchors <- sample(query_anchors,
+                    size = n_anchors,
+                    replace = FALSE)
+            }
+        }
+    }
+    if (verbose){cat("\n")}
+    anchors <- data.frame("from" = indiv_seed$indiv,
+        "to" = indiv_query$indiv,
+        "score" = indiv_query$score / n_anchors,
+        "anchor" = rep(1, n_anchors))
+    return(anchors)
 }
 
 
