@@ -252,7 +252,7 @@ match_graph <- function(seed_graph,
     #-------------------------------------------------------------------------#
     # Initialize optimisation 
     #-------------------------------------------------------------------------#
-    #score <- score[score$score >= threshold, ]
+    
     if (length(unique(score$from)) < n_anchors ||
         length(unique(score$to)) < n_anchors) {
         n_anchors <- min(c(length(unique(score$from)),
@@ -284,8 +284,8 @@ match_graph <- function(seed_graph,
     for (i in seq_len(iter)) {
         dyn_message_switch("graph_matching", verbose,
             prog = round(i / iter, 4) * 100)
-        cent_1 <- centers_1[centers_1$center %in% seed_anchors, c("x", "y")]
-        cent_2 <- centers_2[centers_2$center %in% query_anchors, c("x", "y")]
+        cent_1 <- centers_1[match(seed_anchors, centers_1$center), c("x", "y")]
+        cent_2 <- centers_2[match(query_anchors, centers_2$center), c("x", "y")]
         dist_1 <- RANN::nn2(data = cent_1,
             k = 2)$nn.dist[, 2]
         dist_2 <- RANN::nn2(data = cent_2,
@@ -312,7 +312,6 @@ match_graph <- function(seed_graph,
                     %in% query_anchors[-locs]],
                     size = length(locs))
                 query_anchors[locs] <- new_query
-                
             } else {
                 seed_anchors <- sample(seed_anchors,
                     size = n_anchors,
@@ -386,6 +385,7 @@ align_graph <- function(matched_graph,
     # First get all anchor trajectories 
     # we used the seed coordinates as center pixel
     #-------------------------------------------------------------------------#
+    browser()
     seed_centers <- get_super_pixel_centers(seed)
     query_centers <- get_super_pixel_centers(query)
     anchors <- matched_graph %>%
@@ -426,12 +426,13 @@ align_graph <- function(matched_graph,
     query$x <- query$x + distance * cos(angle * pi / 180)
     query$y <- query$y + distance * sin(angle * pi / 180)
     #-------------------------------------------------------------------------#
-    # get closest seed point for all un assigned points 
+    # get closest seed point for all un assigned points
     #-------------------------------------------------------------------------#
     seed_nn <- RANN::nn2(data = seed_centers[, c("x", "y")],
         query = query[, c("x", "y")],
         k = 1)
     query$norm_with <- seed_centers$center[seed_nn$nn.idx[, 1]]
+    
     return(query)
 }
 

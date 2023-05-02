@@ -74,11 +74,12 @@ vesalius_query <- build_vesalius_assay(coord, count_mat) %>%
 
 test <- integrate_assays(vesalius,
     vesalius_query,
-    n_centers = 50,
+    n_centers = 10,
+    n_anchors = 10,
     compactness = 100,
     index_selection = "random",
     signal = "features",
-    threshold = 0.7)
+    threshold = 0.85)
 
 test <- generate_embeddings(test,tensor_resolution = 0.99)
 
@@ -86,10 +87,10 @@ test <- generate_embeddings(test,tensor_resolution = 0.99)
 
 g <- image_plot(vesalius, embedding = "PCA")
 g1 <- image_plot(test, embedding = "PCA")
+g2 <- image_plot(vesalius_query, embedding = "PCA")
 
-
-pdf("test_counts.pdf", width = 16, height = 8)
-print(g + g1)
+pdf("test_counts.pdf", width = 24, height = 8)
+print(g + g2 + g1)
 dev.off()
 
 
@@ -132,7 +133,7 @@ test <- integrate_assays(vesalius,
     index_selection = "random",
     signal = "features",
     n_centers = 50,
-    threshold = 0.85)
+    threshold = 0.8)
 
 test <- generate_embeddings(test)
 test <- equalize_image(test, embedding = "PCA",sleft = 5, sright = 5)
