@@ -292,8 +292,8 @@ match_graph <- function(seed_graph,
             k = 2)$nn.dist[, 2]
         loc <- paste0(score$from, "_", score$to) %in%
             paste0(seed_anchors, "_", query_anchors)
-        scores <- 1 - score[loc, "score"]
-        scores <- c(abs(dist_1 - dist_2), scores)
+        #scores <- 1 - score[loc, "score"]
+        scores <- c(abs(dist_1 - dist_2))#, scores)
         if (indiv_seed$score > sum(scores) || indiv_query$score > sum(scores)) {
             indiv_seed$chromosome <- scores
             indiv_query$chromosome <- scores
@@ -385,7 +385,7 @@ align_graph <- function(matched_graph,
     # First get all anchor trajectories 
     # we used the seed coordinates as center pixel
     #-------------------------------------------------------------------------#
-    browser()
+    
     seed_centers <- get_super_pixel_centers(seed)
     query_centers <- get_super_pixel_centers(query)
     anchors <- matched_graph %>%
@@ -417,14 +417,17 @@ align_graph <- function(matched_graph,
     #-------------------------------------------------------------------------#
     message_switch("apply_traj", verbose)
     nn <- RANN::nn2(data = anchor_point[, c("x", "y")],
-        query = query[, c("x", "y")],
+        query = query_centers[, c("x", "y")],
         k = 2)
-    angle <- mean(c(anchors$angle[nn$nn.idx[, 1]],
-        anchors$angle[nn$nn.idx[, 2]]))
-    distance <- sqrt(((anchors$distance[nn$nn.idx[, 1]])^2 +
-        (anchors$distance[nn$nn.idx[, 2]])^2))
-    query$x <- query$x + distance * cos(angle * pi / 180)
-    query$y <- query$y + distance * sin(angle * pi / 180)
+    # angle <- apply(matrix(c(anchors$angle[nn$nn.idx[, 2]],
+    #     anchors$angle[nn$nn.idx[, 2]]), ncol = 2), 1, mean)
+    # distance <- sqrt(((anchors$distance[nn$nn.idx[, 1]])^2 +
+    #     (anchors$distance[nn$nn.idx[, 2]])^2))
+    browser()
+    angle <- anchors$angle
+    distance <-anchors$distance
+    query_centers$x_new <- query_centers$x + distance * cos(angle * pi / 180)
+    query_centers$y_new <- query_centers$y + distance * sin(angle * pi / 180)
     #-------------------------------------------------------------------------#
     # get closest seed point for all un assigned points
     #-------------------------------------------------------------------------#

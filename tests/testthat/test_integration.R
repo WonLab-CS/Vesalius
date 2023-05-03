@@ -78,12 +78,34 @@ test <- integrate_assays(vesalius,
     n_anchors = 10,
     compactness = 100,
     index_selection = "random",
+    mut_extent = 0.4,
+    mut_prob = 0.4,
     signal = "features",
     threshold = 0.85)
 
 test <- generate_embeddings(test,tensor_resolution = 0.99)
 
+g <- ggplot(query_centers, aes(x,y,col = as.factor(center))) + geom_point(size = 10)
+g1 <- ggplot(query_centers, aes(x_new,y_new, col = as.factor(center))) + geom_point(size=10)
+pdf("test.pdf", width = 10, height = 5)
+g+g1
+dev.off()
 
+pdf("test.pdf")
+plot(0, type = "n", xlim = c(0, 2000), ylim = c(0, 2000))
+points(seed_centers$x, seed_centers$y,col="black", cex = 3)
+points(query_centers$x, query_centers$y,pch = 20, cex = 3, col="red")
+
+for(i in seq_len(nrow(query_centers))){
+    x <- c(query_centers$x[anchors$to[i]],
+        seed_centers$x[anchors$from[i]])
+    y <- c(query_centers$y[anchors$to[i]],
+        seed_centers$y[anchors$from[i]])
+    # x <- c(query_centers$x[i], query_centers$x_new[i])
+    # y <- c(query_centers$y[i], query_centers$y_new[i])
+    lines(x,y, col = "red", lwd = 2)
+}
+dev.off()
 
 g <- image_plot(vesalius, embedding = "PCA")
 g1 <- image_plot(test, embedding = "PCA")
