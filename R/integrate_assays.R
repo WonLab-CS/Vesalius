@@ -25,8 +25,7 @@ integrate_assays <- function(seed_assay,
     n_anchors = 20,
     mut_extent = 0.1,
     mut_prob = 0.2,
-    use_graph_distance = FALSE,
-    depth = 1,
+    allow_vertex_merge = FALSE,
     signal = "features",
     verbose = TRUE) {
     simple_bar(verbose)
@@ -247,7 +246,7 @@ match_graph <- function(seed_graph,
     n_anchors = 25,
     mut_extent = 0.1,
     mut_prob = 0.3,
-    use_graph_distance = FALSE,
+    allow_vertex_merge = FALSE,
     verbose = verbose) {
     #-------------------------------------------------------------------------#
     # Initialize optimisation 
@@ -397,37 +396,37 @@ align_graph <- function(matched_graph,
     for (i in seq_len(nrow(anchors))) {
         seed_point <- seed_centers[seed_centers$center == anchors$from[i], ]
         query_point <- query_centers[query_centers$center == anchors$to[i], ]
-        angle <- polar_angle(seed_point$x, seed_point$y,
-            query_point$x, query_point$y)
+        #angle <- polar_angle(seed_point$x, seed_point$y,
+        #    query_point$x, query_point$y)
+        angle <- atan2(seed_point$y - query_point$y,
+            seed_point$x - query_point$x)
         anchors$angle[i] <- angle
         distance <- matrix(c(seed_point$x, query_point$x,
             seed_point$y, query_point$y), ncol = 2)
         distance <- as.numeric(dist(distance))
         anchors$distance[i] <- distance
     }
+    anchors <- anchors[order(anchors$to), ]
 
     #-------------------------------------------------------------------------#
     # get closest anchor point for all un assigned spix points 
     #-------------------------------------------------------------------------#
-    unassinged <- matched_graph %>% filter(anchor == 0)
-    query_point <- query_centers[query_centers$center %in% unassinged$to, ]
+    #unassinged <- matched_graph %>% filter(anchor == 0)
+    #query_point <- query_centers[query_centers$center %in% unassinged$to, ]
     anchor_point <- query_centers[query_centers$center %in% anchors$to, ]
     #-------------------------------------------------------------------------#
     # Apply compound trajectories to individual points points
     #-------------------------------------------------------------------------#
     message_switch("apply_traj", verbose)
     nn <- RANN::nn2(data = anchor_point[, c("x", "y")],
-        query = query_centers[, c("x", "y")],
-        k = 2)
-    # angle <- apply(matrix(c(anchors$angle[nn$nn.idx[, 2]],
-    #     anchors$angle[nn$nn.idx[, 2]]), ncol = 2), 1, mean)
-    # distance <- sqrt(((anchors$distance[nn$nn.idx[, 1]])^2 +
-    #     (anchors$distance[nn$nn.idx[, 2]])^2))
+        query = query[, c("x", "y")],
+        k = 1)
+    angle <- anchors$angle[nn$nn.idx[, 1]]
+    distance <- anchors$distance[nn$nn.idx[, 1]]
     browser()
-    angle <- anchors$angle
-    distance <-anchors$distance
-    query_centers$x_new <- query_centers$x + distance * cos(angle * pi / 180)
-    query_centers$y_new <- query_centers$y + distance * sin(angle * pi / 180)
+    
+    query$x_new <- query$x + (distance * cos(angle))
+    query$y_new <- query$y + (distance * sin(angle))
     #-------------------------------------------------------------------------#
     # get closest seed point for all un assigned points
     #-------------------------------------------------------------------------#
