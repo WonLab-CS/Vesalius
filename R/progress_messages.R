@@ -41,6 +41,8 @@ message_switch <- function(type, verbose = TRUE, ...) {
             "===>", args$comp_type, "in", args$assay, "<===\n")),
         "pca_tensor" = cat(paste(t,
             " Running Principal Component Analysis \n")),
+        "nmf_tensor" = cat(paste(t,
+           " Running Non-Negative Matrix Factorization \n")),
         "pca_rgb_tensor" = cat(paste(t,
             " Converting PCA Embedding Values to gray scale \n")),
         "pcal_rgb_tensor" = cat(paste(t,

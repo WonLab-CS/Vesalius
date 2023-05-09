@@ -765,6 +765,9 @@ embed_latent_space <- function(counts,
       "PCA" = embed_pca(counts,
         dimensions = dimensions,
         verbose = verbose),
+      "NMF" = embed_nmf(counts,
+                        dimensions = dimensions,
+                        verbose = verbose),
       "PCA_L" = embed_pcal(counts,
         dimensions = dimensions,
         verbose = verbose),
@@ -1007,5 +1010,38 @@ embed_lsi_umap <- function(counts,
   colour_matrix <- list(as.matrix(colour_matrix))
   names(colour_matrix) <- "LSI_UMAP"
   return(colour_matrix)
+}
+#' embed nmf
+#' 
+#' embed in grey scale using NMF embeddings 
+#' @param counts Seurat object containing normalised counts
+#' @param dimensions number dimension to retain from NMF
+#' @param verbose logical if progress messages should be outputed
+#' @return normalised NMF embedding matrix 
+#' @importFrom NMF nmf
+#' @importFrom NMF coefficients
+#' @importFrom NMF basis
+embed_nmf <- function(counts, dimensions, verbose = TRUE) {
+  #--------------------------------------------------------------------------#
+  # Get the normalized count matrix and matrix with variable features from the Seurat object
+  #--------------------------------------------------------------------------#
+  vesalius:::message_switch("nmf_tensor", verbose)
+  count_matrix <- as.matrix(Seurat::GetAssayData(counts, slot = "data"))
+  features <- counts@assays[["RNA"]]@var.features
+  count_matrix <- count_matrix[features, ]
+  #--------------------------------------------------------------------------#
+  # Run NMF
+  #--------------------------------------------------------------------------#
+  nmf_result <- NMF::nmf(count_matrix, rank = dimensions , method = 'lee')
+  
+  #--------------------------------------------------------------------------#
+  # Get the NMF projections (W matrix) and normalize
+  #--------------------------------------------------------------------------#
+  nmf_projections <- t(NMF::coefficients(nmf_result))
+  nmf_projections <- apply(nmf_projections, 2, vesalius:::norm_pixel, "minmax")
+  nmf_projections <- list(as.matrix(nmf_projections))
+  names(nmf_projections) <- "NMF"
+  
+  return(nmf_projections)
 }
 

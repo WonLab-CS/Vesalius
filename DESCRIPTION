@@ -51,7 +51,8 @@ Imports:
     edgeR,
     ggplot2,
     igraph,
-    pwr
+    pwr,
+    NMF
 Suggests:
     knitr,
     RUnit,

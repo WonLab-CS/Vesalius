@@ -252,10 +252,10 @@ check_norm_methods <- function(norm, use_counts = NULL) {
 #' @param embed embedding method selected by user
 #' @return embedding method string or error
 check_embed_methods <- function(embed) {
-    if (any(!embed %in% c("PCA", "PCA_L", "UMAP", "LSI", "LSI_UMAP"))) {
+    if (any(!embed %in% c("PCA", "PCA_L", "UMAP", "LSI", "LSI_UMAP", "NMF"))) {
         stop("Embedding method provided does not match available options \n
             Select from: \n
-            PCA, PCA_L, UMAP, LSI, LSI_UMAP")
+            PCA, PCA_L, UMAP, LSI, LSI_UMAP, NMF")
     } else {
         return(embed)
     }
