@@ -9,7 +9,8 @@ build_vesalius_assay(
   counts = NULL,
   image = NULL,
   assay = "spatial_omics",
-  adjust_coordinates = "origin",
+  scale = "auto",
+  unit = "um",
   verbose = TRUE
 )
 }
@@ -25,9 +26,6 @@ Default is NULL. See details.}
 
 \item{assay}{character vector containing names of the assays
 (see details).}
-
-\item{adjust_coordinates}{character of one of the following
-"origin" or "norm" (see details).}
 
 \item{verbose}{logical indicating if progress message should be
 outputed or not.}

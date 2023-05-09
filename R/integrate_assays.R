@@ -9,7 +9,7 @@
 #' @export
 #' 
 
-integrate_assays <- function(seed_assay,
+integrate_horizontally <- function(seed_assay,
     query_assay,
     seed_trial = "last",
     query_trial = "last",
@@ -117,7 +117,6 @@ integrate_assays <- function(seed_assay,
         n_anchors = n_anchors,
         mut_extent = mut_extent,
         mut_prob = mut_prob,
-        use_graph_distance = use_graph_distance,
         verbose = verbose)
     aligned_graph <- align_graph(matched_graph,
         seed_trial$segments,
@@ -132,6 +131,17 @@ integrate_assays <- function(seed_assay,
         verbose = verbose)
     simple_bar(verbose)
     return(integrated)
+}
+
+#' @export
+integrate_vertically <- function(seed,
+    query,
+    dimensions = seq(1, 30),
+    embedding = "last",
+    method = "interlace",
+    verbose = TRUE) {
+    simple_bar(verbose)
+    
 }
 
 compress_signal <- function(signal, segments) {
@@ -661,7 +671,7 @@ index <- function(seed_path,
     return(indexed)
 }
 
-
+#' importFrom gsignal mscohere
 spectral_coherence <- function(seed_path, query_path) {
     seed_path <- seed_path[names(seed_path) != "isolated"]
     query_path <- query_path[names(query_path) != "isolated"]

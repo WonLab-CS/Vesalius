@@ -268,12 +268,19 @@ generate_tiles <- function(vesalius_assay,
   #----------------------------------------------------------------------#
   # Reduce resolution
   # Might be worth creating dedicated sanity check functions for this
+  # rescaling scaling with scaling factor
+  # TO DO add unit check to change unit if needed?
   #----------------------------------------------------------------------#
   if (tensor_resolution < 1 && tensor_resolution > 0) {
     message_switch("tensor_res", verbose)
     coordinates <- reduce_tensor_resolution(coordinates = coordinates,
       tensor_resolution = tensor_resolution)
-  }
+    rescale <- calculate_scale(coordinates)
+    scale_factor <- rescale / vesalius_assay@meta$scale$scale
+    vesalius_assay@meta$scale <- list("scale" = vesalius_assay@meta$scale$scale,
+      "rescale" = rescale,
+      "scale_factor" = scale_factor)
+  } 
   #----------------------------------------------------------------------#
   # TESSELATION TIME!
   #----------------------------------------------------------------------#

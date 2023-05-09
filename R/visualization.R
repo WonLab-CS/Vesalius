@@ -347,6 +347,8 @@ create_alpha <- function(territories, highlight) {
 #' @param cex numeric - font size modulator
 #' @param cex_pt numeric point size
 #' @param alpha point transparency
+#' @param return_as_list logical - should plot be returned as simple list
+#' or as a ggplot object (single gene)/ patchwork object (multiple genes)
 #' @details Vesalius offers a plotting function that allows you to 
 #' visualise gene expression. 
 #' 
@@ -414,9 +416,10 @@ create_alpha <- function(territories, highlight) {
 #' @importFrom stats na.exclude
 #' @importFrom ggplot2 ggplot geom_point aes facet_wrap theme_classic
 #' @importFrom ggplot2 scale_color_gradientn theme element_text
-#' @importFrom ggplot2 guides guide_legend labs margin
+#' @importFrom ggplot2 guides guide_legend labs margin element_rect
 #' @importFrom RColorBrewer brewer.pal
 #' @importFrom ggpubr ggarrange
+#' @importFrom patchwork wrap_plots
 view_gene_expression <- function(vesalius_assay,
   genes = NULL,
   norm_method = "last",
@@ -429,7 +432,9 @@ view_gene_expression <- function(vesalius_assay,
   with_background = FALSE,
   cex = 10,
   cex_pt = 1,
-  alpha = 0.75) {
+  alpha = 0.75,
+  max_size = 5,
+  return_as_list = FALSE) {
     #--------------------------------------------------------------------------#
     # First lets get the norm method out and the associated counts
     #--------------------------------------------------------------------------#
@@ -544,10 +549,10 @@ view_gene_expression <- function(vesalius_assay,
 
     if (length(gene_list) == 1) {
       gene_list <- gene_list[[1L]]
-    } else {
+    } else if (!return_as_list) {
       gene_list <- ggarrange(plotlist = gene_list,
-        ncol = floor(sqrt(length(gene_list))),
-        nrow = floor(sqrt(length(gene_list))))
+        ncol = min(c(floor(sqrt(length(gene_list))), max_size)),
+        nrow = min(c(floor(sqrt(length(gene_list))), max_size)))
     }
     return(gene_list)
 }

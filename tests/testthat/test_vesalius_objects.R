@@ -128,3 +128,18 @@ test_that("Adding custom embeddings", {
     # Add sanity checks to make sure that barcodes overlap
 })
 
+test_that("Scale of coordinates",{
+    expect_s4_class(build_vesalius_assay(coordinates,
+        counts), "vesalius_assay")
+    expect_s4_class(build_vesalius_assay(coordinates,
+        counts,
+        scale = 15))
+    vesalius <- build_vesalius_assay(coordinates,
+        counts, scale = "auto")
+    expect_equal(vesalius@meta$scale$scale, 23.06237)
+    vesalius <- build_vesalius_assay(coordinates,
+        counts, scale = 15)
+    expect_equal(vesalius@meta$scale$scale, 15)
+    expect_equal(vesalius@meta$unit$unit, "um")
+})
+

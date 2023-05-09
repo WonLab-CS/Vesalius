@@ -87,6 +87,8 @@ message_switch <- function(type, verbose = TRUE, ...) {
             " Checking Coordinates in", args$assay, "\n")),
         "check_counts" = cat(paste(t,
             " Checking Counts in", args$assay, "\n")),
+        "scale" = cat(paste(t,
+            " Calculating Assay scale from coordinates\n")),
         "vtc" = cat(paste(t,
             " Converting Vesalius to Image\n")),
         "ctv" = cat(paste(t,
@@ -118,11 +120,13 @@ message_switch <- function(type, verbose = TRUE, ...) {
         "matching_graphs" = cat(paste(t,
             " Matching Graphs\n")),
         "anchors_found" = cat(paste(t,
-            " Found ", args$anchors, " Anchors at current threshold\n")),
+            " Found", args$anchors, "Anchors at current threshold\n")),
         "get_traj" = cat(paste(t,
             " Getting anchor trajectories\n")),
         "apply_traj" = cat(paste(t,
-            " Applying anchor trajectories to cells\n"))
+            " Applying anchor trajectories to cells\n")),
+        "area_comp" = cat(paste(t,
+            " Computing Territory Area from", args$patches, "patches\n"))
         )
     } else {
         return(NULL)

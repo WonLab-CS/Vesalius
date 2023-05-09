@@ -72,7 +72,7 @@ vesalius_query <- build_vesalius_assay(coord, count_mat) %>%
 
 
 
-test <- integrate_assays(vesalius,
+test <- integrate_horizontally(vesalius,
     vesalius_query,
     n_centers = 20,
     n_anchors = 20,

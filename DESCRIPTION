@@ -51,7 +51,10 @@ Imports:
     edgeR,
     ggplot2,
     igraph,
-    pwr
+    pwr,
+    purrr,
+    gsignal,
+    patchwork
 Suggests:
     knitr,
     RUnit,

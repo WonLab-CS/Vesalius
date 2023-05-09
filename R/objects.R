@@ -186,8 +186,6 @@ setMethod("show",
 #' @param image connection string or image array
 #' @param assay character vector containing names of the assays
 #' (see details).
-#' @param adjust_coordinates character of one of the following
-#' "origin" or "norm" (see details).
 #' @param verbose logical indicating if progress message should be
 #' outputed or not.
 #' @details
@@ -230,7 +228,8 @@ build_vesalius_assay <- function(coordinates,
     counts = NULL,
     image = NULL,
     assay = "spatial_omics",
-    adjust_coordinates = "origin",
+    scale = "auto",
+    unit = "um",
     verbose = TRUE) {
     simple_bar(verbose)
     #--------------------------------------------------------------------------#
@@ -243,8 +242,15 @@ build_vesalius_assay <- function(coordinates,
         coordinates,
         image,
         assay,
-        adjust_coordinates,
         verbose)
+    #--------------------------------------------------------------------------#
+    # get scale from coordinates
+    #--------------------------------------------------------------------------#
+    if (scale == "auto") {
+        message_switch("scale", verbose)
+        scale <- calculate_scale(input$coordinates)
+    }
+    meta <- list("scale" = list("scale" = scale), "unit" = list("unit" = unit))
     #--------------------------------------------------------------------------#
     # add assay log
     #--------------------------------------------------------------------------#
@@ -252,8 +258,8 @@ build_vesalius_assay <- function(coordinates,
         assay = assay,
         counts = input$counts,
         tiles = input$coordinates,
-        image = input$image
-        )
+        image = input$image,
+        meta = meta)
     commit <- create_commit_log(arg_match = as.list(match.call()),
       default = formals(build_vesalius_assay))
     vesalius_assay <- commit_log(vesalius_assay,
