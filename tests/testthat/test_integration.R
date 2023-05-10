@@ -13,6 +13,7 @@ library(future)
 library(ggplot2)
 library(dplyr)
 library(patchwork)
+library(Matrix)
 library(vesalius, lib.loc = "/common/martinp4/R")
 library(pwr, lib.loc = "/common/martinp4/R")
 library(gsignal, lib.loc = "/common/martinp4/R")
@@ -115,6 +116,115 @@ g2 <- image_plot(vesalius_query, embedding = "PCA")
 pdf("test_counts.pdf", width = 24, height = 8)
 print(g + g2 + g1)
 dev.off()
+
+
+
+
+## Vertical 
+# data prep
+rna <- "/common/wonklab/Spatial_CITE/GSM6578061_mousekidney_RNA.tsv"
+prot <- "/common/wonklab/Spatial_CITE/GSM6578070_mousekidney_protein.tsv"
+
+rna <- read.table(rna, header = TRUE, sep = "\t")
+prot <- read.table(prot, header = TRUE, sep = "\t")
+
+CITE_coordinates <- function(assay) {
+    locations <- assay[, 1]
+    coordinates <- strsplit(locations,"x")
+    x <- sapply(coordinates,"[[", 1)
+    y <- sapply(coordinates,"[[", 2)
+    return(data.frame("barcodes" = locations,
+        "x" = x,
+        "y" = y))
+}
+
+CITE_counts <- function(assay) {
+    locations <- assay[, 1]
+    genes <- colnames(assay)[-1]
+    counts <- t(assay[, -1])
+    colnames(counts) <- locations
+    rownames(counts) <- genes
+    return(counts)
+}
+
+rna_coord <- CITE_coordinates(rna)
+rna_counts <- CITE_counts(rna)
+
+prot_coord <- CITE_coordinates(prot)
+prot_counts <- CITE_counts(prot)
+
+ves_rna <- build_vesalius_assay(rna_coord, rna_counts)
+ves_rna <- generate_embeddings(ves_rna, filter_grid = 1) %>%
+    equalize_image(dimensions = 1:5, sleft = 2, sright = 2) %>%
+    smooth_image(dimensions = 1:5,sigma = 1, iter = 5) %>%
+    segment_image(dimensions = 1:5,col_resolution = 10) %>%
+    isolate_territories()
+
+embed_plot <- vector("list", 30)
+for(i in seq_along(embed_plot)){
+    embed_plot[[i]] <- image_plot(ves_rna, dimensions = i,
+        embedding = "PCA")
+}
+pdf("rna_embed.pdf", width = 30, height = 30)
+print(wrap_plots(embed_plot, nrow = 6, ncol = 5))
+dev.off()
+pdf("rna_territories.pdf", width = 10, height = 8)
+print(territory_plot(ves_rna, cex_pt = 5))
+dev.off()
+
+ves_prot <- build_vesalius_assay(prot_coord,prot_counts)
+ves_prot <- generate_embeddings(ves_prot, filter_grid = 1) %>%
+    equalize_image(dimensions = 1:5,sleft = 2, sright = 2) %>%
+    smooth_image(dimensions = 1:5,sigma = 1, iter = 5) %>%
+    segment_image(dimensions = 1:5,col_resolution = 10) %>%
+    isolate_territories()
+
+embed_plot <- vector("list", 30)
+for(i in seq_along(embed_plot)){
+    embed_plot[[i]] <- image_plot(ves_prot, dimensions = i,
+        embedding = "PCA")
+}
+pdf("prot_embed.pdf", width = 30, height = 30)
+print(wrap_plots(embed_plot, nrow = 6, ncol = 5))
+dev.off()
+pdf("prot_territories.pdf", width = 10, height = 8)
+print(territory_plot(ves_prot, cex_pt = 5))
+dev.off()
+
+integrated <- integrate_vertically(ves_rna,
+    ves_prot,
+    dimensions = 1:10,
+    method = "interlace")
+integrated <- smooth_image(integrated, sigma = 2, iter = 5)
+integrated <- segment_image(integrated, dimensions = 1:10)
+integrated <- isolate_territories(integrated)
+pdf("test_vertical_int_interlace.pdf", width = 12, height = 10)
+territory_plot(integrated, cex_pt= 5)
+dev.off()
+
+integrated <- integrate_vertically(ves_rna,
+    ves_prot,
+    dimensions = 1:10,
+    method = "mean")
+integrated <- smooth_image(integrated, sigma = 2, iter = 5)
+integrated <- segment_image(integrated, dimensions = 1:10)
+integrated <- isolate_territories(integrated)
+pdf("test_vertical_int_mean.pdf", width = 12, height = 10)
+territory_plot(integrated, cex_pt= 5)
+dev.off()
+
+integrated <- integrate_vertically(ves_rna,
+    ves_prot,
+    dimensions = 1:10,
+    method = "concat")
+integrated <- equalize_image(integrated, dimensions = 1:10,sleft = 2, sright = 2)
+integrated <- smooth_image(integrated, dimensions = 1:10,sigma = 1, iter = 5)
+integrated <- segment_image(integrated, dimensions = 1:10, col_resolution = 10)
+integrated <- isolate_territories(integrated)
+pdf("test_vertical_int_concat.pdf", width = 12, height = 10)
+territory_plot(integrated, cex_pt= 5)
+dev.off()
+
 
 
 

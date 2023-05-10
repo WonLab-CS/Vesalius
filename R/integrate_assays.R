@@ -1,11 +1,42 @@
-################################################################################
-################################   Vesalius      ###############################
+###############################################################################
+################################   Vesalius      ##############################
 ###############################################################################
 
-#------------------------------/Fourier Transform/----------------------------#
+#--------------------------/Integrating & Alinging/---------------------------#
 
 
-
+#' Aling and integrate spatial assay from the same modality using super pixels
+#' @param seed_assay vesalius_assay object - data to be mapped to
+#' @param query_assay vesalius_assay objecy - data to map
+#' @param seed_trial name of embedding to use for super pixel generation
+#' @param query_trial name of embedding to use for super pixel generation
+#' @param scoring_method method used to score the similarity between super 
+#' pixels (pearson, spearman, kendall, coherence, index)
+#' @param dimensions integer vector - which latent space dimensions should be
+#' used for super pixel generation
+#' @param scaling numeric ]0,1] describing image scale to consider 
+#' during super pixel selection
+#' @param compactness numeric ]0,Inf] - importance of the spatial component 
+#' in relation to color similarity. See details
+#' @param n_centers integer [3, max(spatial_index)] - number of super pixels
+#' to generate in each image. See details
+#' @param iter integer [1, Inf] - Number of iteration during graph matching
+#' phase.
+#' @param index_selection character (random, bubble) - how should initial super
+#' pixel locations be selected. See detials
+#' @param threshold numeric [0,1[ - similarity score threshold. Only super pixel
+#' that score above this threshold will be used for graph matching
+#' @param n_anchors integer [3, n_centers] - Number of graph anchors used during
+#' graph matching
+#' @param mut_extent numeric [0,1] - extent of alignment graph that can be 
+#' subjected to mutations
+#' @param mut_prob numeric [0,1] - probability of alignment graph mutation.
+#' @param allow_vertex_merge logical - Should graph vertices be merged or should
+#' them be repelled to new location. See details
+#' @param signal character (features, counts, embeddings, "custom") - What should 
+#' be used as cell signal for super pixel scoring. Seed details 
+#' @param verbose logical - should I be a noisy boy?
+#' 
 #' @export
 #' 
 
@@ -18,10 +49,9 @@ integrate_horizontally <- function(seed_assay,
     scaling = 0.2,
     compactness = 1,
     n_centers = 2000,
-    max_iter = 1000,
+    iter = 10000,
     index_selection = "random",
     threshold = 0.7,
-    iter = 10000,
     n_anchors = 20,
     mut_extent = 0.1,
     mut_prob = 0.2,
@@ -36,7 +66,7 @@ integrate_horizontally <- function(seed_assay,
     seed_trial <- slic_segmentation(seed_assay,
         dimensions = dimensions,
         col_resolution = n_centers,
-        embedding = "last",
+        embedding = seed_trial,
         index_selection = index_selection,
         compactness = compactness,
         scaling = scaling,
@@ -44,7 +74,7 @@ integrate_horizontally <- function(seed_assay,
     query_trial <- slic_segmentation(query_assay,
         dimensions = dimensions,
         col_resolution = n_centers,
-        embedding = "last",
+        embedding = query_trial,
         index_selection = index_selection,
         compactness = compactness,
         scaling = scaling,
@@ -139,10 +169,104 @@ integrate_vertically <- function(seed,
     dimensions = seq(1, 30),
     embedding = "last",
     method = "interlace",
+    norm_method = "raw",
+    dim_reduction = "PCA",
     verbose = TRUE) {
     simple_bar(verbose)
-    
+    #-------------------------------------------------------------------------#
+    # check place holder 
+    #-------------------------------------------------------------------------#
+
+    #-------------------------------------------------------------------------#
+    # Get embeddings - need make some changes here
+    # for now we assume we get the active 
+    #-------------------------------------------------------------------------#
+    seed_embed <- check_embedding_selection(seed, embedding, dimensions)
+    query_embed <- check_embedding_selection(query, embedding, dimensions)
+    #-------------------------------------------------------------------------#
+    # method switch - which method is best 
+    #-------------------------------------------------------------------------#
+    integrated_embeds <- switch(EXPR = method,
+        "interlace" = interlace_embeds(seed_embed, query_embed, dimensions),
+        "mean" = average_embed(seed_embed, query_embed, dimensions),
+        "concat" = concat_embed(seed,
+            query,
+            dimensions,
+            norm_method,
+            dim_reduction))
+    integrated_embeds <- list(integrated_embeds)
+    names(integrated_embeds) <- method
+    integrated <- new("vesalius_assay",
+        assay = "integrated",
+        embeddings = integrated_embeds,
+        active = integrated_embeds[[1]],
+        tiles = seed@tiles)
+    simple_bar(verbose)
+    return(integrated)
+
 }
+
+interlace_embeds <- function(seed, query, dimensions) {
+    seed <- seed[, dimensions]
+    query <- query[match(rownames(seed), rownames(query)), dimensions]
+    interlaced_embed <- matrix(0,
+        ncol = ncol(seed) + ncol(query),
+        nrow = nrow(seed))
+    rownames(interlaced_embed) <- rownames(seed)
+    dimensions <- rep(dimensions, each = 2)
+    for (i in seq(1, ncol(interlaced_embed), by = 2)) {
+        interlaced_embed[, i] <- seed[, dimensions[i]]
+        interlaced_embed[, i + 1] <- query[, dimensions[i + 1]]
+    }
+    return(interlaced_embed)
+}
+
+average_embed <- function(seed, query, dimensions) {
+    seed <- seed[, dimensions]
+    query <- query[match(rownames(seed), rownames(query)), dimensions]
+    averaged_embed <- matrix(0,
+        ncol = length(dimensions),
+        nrow = nrow(seed))
+    rownames(averaged_embed) <- rownames(seed)
+    for (i in seq(1, ncol(averaged_embed))) {
+        averaged_embed[, i] <- apply(cbind(seed[, dimensions[i]],
+            query[, dimensions[i]]),
+            MARGIN = 1,
+            mean)
+    }
+    return(averaged_embed)
+}
+
+concat_embed <- function(seed,
+    query,
+    dimensions,
+    norm_method,
+    dim_reduction) {
+
+    seed_features <- seed@meta$variable_features
+    query_features <- query@meta$variable_features
+    seed_counts <- get_counts(seed, type = "raw")
+    seed_counts <- seed_counts[rownames(seed_counts) %in% seed_features, ]
+    query_counts <- get_counts(query, type = "raw")
+    query_counts <- query_counts[rownames(query_counts) %in% query_features,
+        match(colnames(seed_counts), colnames(query_counts))]
+    integrated_counts <- rbind(seed_counts, query_counts)
+    integrated_counts <- process_counts(integrated_counts,
+        assay = "integrated",
+        method = norm_method,
+        use_count = "raw",
+        nfeatures = sum(c(length(seed_features), length(query_features))))
+    integrated_embeds <- embed_latent_space(integrated_counts$SO,
+        assay = "integrated",
+        dim_reduction = dim_reduction,
+        dimensions = max(dimensions),
+        remove_lsi_1 = FALSE,
+        verbose = FALSE)
+    return(integrated_embeds[[1]])
+
+}
+
+
 
 compress_signal <- function(signal, segments) {
     segments <- split(segments, segments$Segment)
