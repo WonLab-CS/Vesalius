@@ -25,7 +25,8 @@ Collate: image_processing.R
     sanity_checks.R
     object_modification.R
     integrate_assays.R
-Depends: R (>= 4.0.0)
+Depends: R (>= 4.0.0),
+         NMF
 Imports:
     grDevices,
     stats,
@@ -51,8 +52,7 @@ Imports:
     edgeR,
     ggplot2,
     igraph,
-    pwr,
-    NMF
+    pwr
 Suggests:
     knitr,
     RUnit,

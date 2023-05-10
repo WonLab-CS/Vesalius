@@ -1032,7 +1032,7 @@ embed_nmf <- function(counts, dimensions, verbose = TRUE) {
   #--------------------------------------------------------------------------#
   # Run NMF
   #--------------------------------------------------------------------------#
-  nmf_result <- NMF::nmf(count_matrix, rank = dimensions , method = 'lee')
+  nmf_result <- NMF::nmf(count_matrix, rank = dimensions , method = 'lee', seed = 'random')
   
   #--------------------------------------------------------------------------#
   # Get the NMF projections (W matrix) and normalize
