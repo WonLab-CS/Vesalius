@@ -109,46 +109,52 @@ integrate_horizontally <- function(seed_assay,
     # we also generate a graph and score this graph. 
     # score the correlation between each vertex in seed/query graph
     #-------------------------------------------------------------------------#
-    message_switch("slic_graph", verbose = verbose, data = "seed")
-    seed_graph <- generate_slic_graph(seed_trial$segments)
+    mapped <- som_map(seed_trial$segments,
+        seed_signal,
+        query_trial$segments,
+        query_signal,
+        anchors = n_anchors)
+    
+    # message_switch("slic_graph", verbose = verbose, data = "seed")
+    # seed_graph <- generate_slic_graph(seed_trial$segments)
 
-    message_switch("slic_graph", verbose = verbose, data = "query")
-    query_graph <- generate_slic_graph(query_trial$segments)
-    #-------------------------------------------------------------------------#
-    # Now we can compute the same thing but between each graph
-    # For now - we check the number of centeres in case of mismatch
-    # for now I am getting mismatch even with random sampling which 
-    # does not make any sense but to check and fix
-    #-------------------------------------------------------------------------#
-    q_centers <- length(unique(query_graph$from))
-    s_centers <- length(unique(seed_graph$from))
-    integrated_graph <- data.frame(
-        "from" = rep(unique(seed_graph$from), each = q_centers),
-        "to" = rep(unique(query_graph$from), times = s_centers))
+    # message_switch("slic_graph", verbose = verbose, data = "query")
+    # query_graph <- generate_slic_graph(query_trial$segments)
+    # #-------------------------------------------------------------------------#
+    # # Now we can compute the same thing but between each graph
+    # # For now - we check the number of centeres in case of mismatch
+    # # for now I am getting mismatch even with random sampling which 
+    # # does not make any sense but to check and fix
+    # #-------------------------------------------------------------------------#
+    # q_centers <- length(unique(query_graph$from))
+    # s_centers <- length(unique(seed_graph$from))
+    # integrated_graph <- data.frame(
+    #     "from" = rep(unique(seed_graph$from), each = q_centers),
+    #     "to" = rep(unique(query_graph$from), times = s_centers))
 
 
-    spix_score <- score_graph(integrated_graph,
-        signal = list(seed_signal, query_signal),
-        verbose = verbose)
-    # matched_graph <- match_vertex(seed_graph,
-    #         query_graph,
-    #         spix_score,
-    #         depth = depth,
-    #         threshold = threshold,
-    #         verbose = verbose)
-    matched_graph <- match_graph(seed_graph = seed_graph,
-        seed_trial = seed_trial$segments,
-        query_graph = query_graph,
-        query_trial = query_trial$segments,
-        score = spix_score,
-        scoring_method = "pearson",
-        threshold = threshold,
-        iter = iter,
-        n_anchors = n_anchors,
-        mut_extent = mut_extent,
-        mut_prob = mut_prob,
-        verbose = verbose)
-    aligned_graph <- align_graph(matched_graph,
+    # spix_score <- score_graph(integrated_graph,
+    #     signal = list(seed_signal, query_signal),
+    #     verbose = verbose)
+    # # matched_graph <- match_vertex(seed_graph,
+    # #         query_graph,
+    # #         spix_score,
+    # #         depth = depth,
+    # #         threshold = threshold,
+    # #         verbose = verbose)
+    # matched_graph <- match_graph(seed_graph = seed_graph,
+    #     seed_trial = seed_trial$segments,
+    #     query_graph = query_graph,
+    #     query_trial = query_trial$segments,
+    #     score = spix_score,
+    #     scoring_method = "pearson",
+    #     threshold = threshold,
+    #     iter = iter,
+    #     n_anchors = n_anchors,
+    #     mut_extent = mut_extent,
+    #     mut_prob = mut_prob,
+    #     verbose = verbose)
+    aligned_graph <- align_graph(mapped,
         seed_trial$segments,
         seed_graph,
         query_trial$segments,
@@ -271,6 +277,7 @@ concat_embed <- function(seed,
 compress_signal <- function(signal, segments) {
     segments <- split(segments, segments$Segment)
     compressed_signal <- vector("list", length(segments))
+    names(compressed_signal) <- names(segments)
     for (i in seq_along(segments)) {
         local_signal <- signal[, segments[[i]]$barcodes]
         if (is.null(ncol(local_signal)) || ncol(local_signal) == 1) {
@@ -280,6 +287,30 @@ compress_signal <- function(signal, segments) {
         }
     }
     return(compressed_signal)
+}
+
+#' importFrom kohonen som map scale somgrid
+som_map <- function(seed_trial,
+    seed_signal,
+    query_trial,
+    query_signal,
+    anchors){
+    seed_spix <- get_super_pixel_centers(seed_trial)
+    query_spix <- get_super_pixel_centers(query_trial)
+    spixs <- seed_spix$center
+    anchors <- sqrt(length(spixs))
+    seed_signal <- cbind(seed_spix[,c("x","y")],
+        do.call("rbind", seed_signal))
+    seed_som <- som(scale(seed_signal),
+        grid = somgrid(x = floor(anchors),
+            y = ceiling(anchors), "hexagonal"))
+    query_signal <- cbind(query_spix[,c("x","y")],
+        do.call("rbind", query_signal))
+    mapped <- kohonen::map(x = seed_som, newdata = scale(query_signal))
+    anchor_map <- cbind(seed_spix, mapped$unit.classif)
+    anchor_map$anchor <- 1
+    colnames(anchor_map) <- c("x","y","to","from","anchor")
+    return(anchor_map)
 }
 
 
@@ -553,14 +584,14 @@ align_graph <- function(matched_graph,
     #-------------------------------------------------------------------------#
     message_switch("apply_traj", verbose)
     nn <- RANN::nn2(data = anchor_point[, c("x", "y")],
-        query = query[, c("x", "y")],
+        query = query_centers[, c("x", "y")],
         k = 1)
     angle <- anchors$angle[nn$nn.idx[, 1]]
     distance <- anchors$distance[nn$nn.idx[, 1]]
     browser()
     
-    query$x_new <- query$x + (distance * cos(angle))
-    query$y_new <- query$y + (distance * sin(angle))
+    query_centers$x_new <- query_centers$x + (distance * cos(angle))
+    query_centers$y_new <- query_centers$y + (distance * sin(angle))
     #-------------------------------------------------------------------------#
     # get closest seed point for all un assigned points
     #-------------------------------------------------------------------------#
