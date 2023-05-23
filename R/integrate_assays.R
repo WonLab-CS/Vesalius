@@ -109,52 +109,54 @@ integrate_horizontally <- function(seed_assay,
     # we also generate a graph and score this graph. 
     # score the correlation between each vertex in seed/query graph
     #-------------------------------------------------------------------------#
-    mapped <- som_map(seed_trial$segments,
-        seed_signal,
-        query_trial$segments,
-        query_signal,
-        anchors = n_anchors)
+    # mapped <- som_map(seed_trial$segments,
+    #     seed_signal,
+    #     query_trial$segments,
+    #     query_signal,
+    #     anchors = n_anchors,
+    #     compactness = compactness,
+    #     scale = scaling)
     
-    # message_switch("slic_graph", verbose = verbose, data = "seed")
-    # seed_graph <- generate_slic_graph(seed_trial$segments)
+    message_switch("slic_graph", verbose = verbose, data = "seed")
+    seed_graph <- generate_slic_graph(seed_trial$segments)
 
-    # message_switch("slic_graph", verbose = verbose, data = "query")
-    # query_graph <- generate_slic_graph(query_trial$segments)
-    # #-------------------------------------------------------------------------#
-    # # Now we can compute the same thing but between each graph
-    # # For now - we check the number of centeres in case of mismatch
-    # # for now I am getting mismatch even with random sampling which 
-    # # does not make any sense but to check and fix
-    # #-------------------------------------------------------------------------#
-    # q_centers <- length(unique(query_graph$from))
-    # s_centers <- length(unique(seed_graph$from))
-    # integrated_graph <- data.frame(
-    #     "from" = rep(unique(seed_graph$from), each = q_centers),
-    #     "to" = rep(unique(query_graph$from), times = s_centers))
+    message_switch("slic_graph", verbose = verbose, data = "query")
+    query_graph <- generate_slic_graph(query_trial$segments)
+    #-------------------------------------------------------------------------#
+    # Now we can compute the same thing but between each graph
+    # For now - we check the number of centeres in case of mismatch
+    # for now I am getting mismatch even with random sampling which 
+    # does not make any sense but to check and fix
+    #-------------------------------------------------------------------------#
+    q_centers <- length(unique(query_graph$from))
+    s_centers <- length(unique(seed_graph$from))
+    integrated_graph <- data.frame(
+        "to" = rep(unique(seed_graph$from), each = q_centers),
+        "from" = rep(unique(query_graph$from), times = s_centers))
 
 
-    # spix_score <- score_graph(integrated_graph,
-    #     signal = list(seed_signal, query_signal),
-    #     verbose = verbose)
-    # # matched_graph <- match_vertex(seed_graph,
-    # #         query_graph,
-    # #         spix_score,
-    # #         depth = depth,
-    # #         threshold = threshold,
-    # #         verbose = verbose)
-    # matched_graph <- match_graph(seed_graph = seed_graph,
-    #     seed_trial = seed_trial$segments,
-    #     query_graph = query_graph,
-    #     query_trial = query_trial$segments,
-    #     score = spix_score,
-    #     scoring_method = "pearson",
-    #     threshold = threshold,
-    #     iter = iter,
-    #     n_anchors = n_anchors,
-    #     mut_extent = mut_extent,
-    #     mut_prob = mut_prob,
-    #     verbose = verbose)
-    aligned_graph <- align_graph(mapped,
+    spix_score <- score_graph(integrated_graph,
+        signal = list(seed_signal, query_signal),
+        verbose = verbose)
+    # matched_graph <- match_vertex(seed_graph,
+    #         query_graph,
+    #         spix_score,
+    #         depth = depth,
+    #         threshold = threshold,
+    #         verbose = verbose)
+    matched_graph <- match_graph(seed_graph = seed_graph,
+        seed_trial = seed_trial$segments,
+        query_graph = query_graph,
+        query_trial = query_trial$segments,
+        score = spix_score,
+        #scoring_method = "pearson",
+        #threshold = threshold,
+        #iter = iter,
+        #n_anchors = n_anchors,
+        #mut_extent = mut_extent,
+        #mut_prob = mut_prob,
+        verbose = verbose)
+    aligned_graph <- align_graph(matched_graph,
         seed_trial$segments,
         seed_graph,
         query_trial$segments,
@@ -290,28 +292,37 @@ compress_signal <- function(signal, segments) {
 }
 
 #' importFrom kohonen som map scale somgrid
-som_map <- function(seed_trial,
-    seed_signal,
-    query_trial,
-    query_signal,
-    anchors){
-    seed_spix <- get_super_pixel_centers(seed_trial)
-    query_spix <- get_super_pixel_centers(query_trial)
-    spixs <- seed_spix$center
-    anchors <- sqrt(length(spixs))
-    seed_signal <- cbind(seed_spix[,c("x","y")],
-        do.call("rbind", seed_signal))
-    seed_som <- som(scale(seed_signal),
-        grid = somgrid(x = floor(anchors),
-            y = ceiling(anchors), "hexagonal"))
-    query_signal <- cbind(query_spix[,c("x","y")],
-        do.call("rbind", query_signal))
-    mapped <- kohonen::map(x = seed_som, newdata = scale(query_signal))
-    anchor_map <- cbind(seed_spix, mapped$unit.classif)
-    anchor_map$anchor <- 1
-    colnames(anchor_map) <- c("x","y","to","from","anchor")
-    return(anchor_map)
-}
+# som_map <- function(seed_trial,
+#     seed_signal,
+#     query_trial,
+#     query_signal,
+#     anchors,
+#     scale,
+#     compactness) {
+#     seed_spix <- get_super_pixel_centers(seed_trial)
+#     query_spix <- get_super_pixel_centers(query_trial)
+#     spixs <- seed_spix$center
+#     anchors <- sqrt(length(spixs))
+#     seed_signal <- cbind(seed_spix[,c("x","y")],
+#         do.call("rbind", seed_signal))
+#     seed_signal <- as.matrix(scale_data_spatial(seed_signal,
+#         compactness,
+#         scale))
+#     seed_som <- kohonen::som(seed_signal,
+#         grid = somgrid(xdim = floor(anchors),
+#             ydim = ceiling(anchors)))
+#     query_signal <- cbind(query_spix[, c("x","y")],
+#         do.call("rbind", query_signal))
+#     query_signal <- as.matrix(scale_data_spatial(query_signal,
+#         compactness,
+#         scale))
+#     mapped <- kohonen::map(x = seed_som, newdata = as.matrix(query_signal))
+#     anchor_map <- cbind(seed_spix, mapped$unit.classif)
+#     anchor_map$anchor <- 1
+#     colnames(anchor_map) <- c("x", "y", "to", "from", "anchor")
+#     browser()
+#     return(anchor_map)
+# }
 
 
 generate_slic_graph <- function(spix,
@@ -343,8 +354,8 @@ graph_from_voronoi <- function(centers) {
         y = as.numeric(centers$y))$delsgs
     center <- seq_len(nrow(centers))
     graph <- lapply(center, function(idx, voronoi){
-        tri <- voronoi %>% filter(ind1 == idx | ind2 == idx)
-        tri <- unique(c(tri$ind1, tri$ind2))
+        tri <- voronoi %>% filter(ind2 == idx)
+        tri <- c(tri$ind1, idx)
         graph <- data.frame("from" = rep(idx, length(tri)),
             "to" = tri)
         return(graph)
@@ -391,8 +402,8 @@ score_graph <- function(graph,
     for (i in seq_len(nrow(graph))) {
         dyn_message_switch("score_graph", verbose,
             prog = round(i / nrow(graph), 4) * 100)
-        c1 <- seed_signal[[graph$from[i]]]
-        c2 <- query_signal[[graph$to[i]]]
+        c1 <- seed_signal[[graph$to[i]]]
+        c2 <- query_signal[[graph$from[i]]]
         graph$score[i] <- cor(c1, c2, method = scoring_method)
     }
     if (verbose){cat("\n")}
@@ -400,142 +411,202 @@ score_graph <- function(graph,
 }
 
 
+
 match_graph <- function(seed_graph,
     seed_trial,
     query_graph,
     query_trial,
     score,
-    scoring_method = "pearson",
-    threshold = 0.7,
-    iter = 10000,
-    n_anchors = 25,
-    mut_extent = 0.1,
-    mut_prob = 0.3,
+    depth = 1,
     allow_vertex_merge = FALSE,
     verbose = verbose) {
     #-------------------------------------------------------------------------#
     # Initialize optimisation 
     #-------------------------------------------------------------------------#
     
-    if (length(unique(score$from)) < n_anchors ||
-        length(unique(score$to)) < n_anchors) {
-        n_anchors <- min(c(length(unique(score$from)),
-            length(unique(score$to))))
-        message_switch("anchors_found", verbose, anchors = n_anchors)
-    }
-    sub_sample <- sample(seq(1,max(score$from)),
-        size = n_anchors,
-        replace = FALSE)
-    seed_anchors <- get_best_vertex(score)$from[sub_sample]
-    query_anchors <- get_best_vertex(score)$to[sub_sample]
-    centers_1 <- get_super_pixel_centers(seed_trial)
-    centers_1$x <- min_max(centers_1$x)
-    centers_1$y <- min_max(centers_1$y)
-    centers_2 <- get_super_pixel_centers(query_trial)
-    centers_2$x <- min_max(centers_2$x)
-    centers_2$y <- min_max(centers_2$y)
-
-    indiv_seed <- list("chromosome" = rep(1, n_anchors * 2),
-        "indiv" = seed_anchors,
-        "score" = sum(rep(1, n_anchors * 2)))
-    indiv_query <- list("chromosome" = rep(0, n_anchors * 2),
-        "indiv" = query_anchors,
-        "score" = sum(rep(1, n_anchors * 2)))
-    #-------------------------------------------------------------------------#
-    # iterating over random graph and finding best match 
-    # at the moment it is super basic
-    #-------------------------------------------------------------------------#
-    for (i in seq_len(iter)) {
-        dyn_message_switch("graph_matching", verbose,
-            prog = round(i / iter, 4) * 100)
-        cent_1 <- centers_1[match(seed_anchors, centers_1$center), c("x", "y")]
-        cent_2 <- centers_2[match(query_anchors, centers_2$center), c("x", "y")]
-        dist_1 <- RANN::nn2(data = cent_1,
-            k = 2)$nn.dist[, 2]
-        dist_2 <- RANN::nn2(data = cent_2,
-            k = 2)$nn.dist[, 2]
-        loc <- paste0(score$from, "_", score$to) %in%
-            paste0(seed_anchors, "_", query_anchors)
-        #scores <- 1 - score[loc, "score"]
-        scores <- c(abs(dist_1 - dist_2))#, scores)
-        if (indiv_seed$score > sum(scores) || indiv_query$score > sum(scores)) {
-            indiv_seed$chromosome <- scores
-            indiv_query$chromosome <- scores
-            indiv_seed$indiv <- seed_anchors
-            indiv_query$indiv <- query_anchors
-            indiv_seed$score <- sum(scores)
-            indiv_query$score <- sum(scores)
-            if (runif(1) <= mut_prob) {
-                locs <- sample(seq(1, length(seed_anchors)),
-                    size = n_anchors * mut_extent)
-                new_seed <- sample(centers_1$center[!centers_1$center
-                    %in% seed_anchors[-locs]],
-                    size = length(locs))
-                seed_anchors[locs] <- new_seed
-                new_query <- sample(centers_2$center[!centers_2$center
-                    %in% query_anchors[-locs]],
-                    size = length(locs))
-                query_anchors[locs] <- new_query
-            } else {
-                seed_anchors <- sample(seed_anchors,
-                    size = n_anchors,
-                    replace = FALSE)
-                query_anchors <- sample(query_anchors,
-                    size = n_anchors,
-                    replace = FALSE)
-            }
-        }
-    }
-    if (verbose){cat("\n")}
-    anchors <- data.frame("from" = indiv_seed$indiv,
-        "to" = indiv_query$indiv,
-        "score" = indiv_query$score / n_anchors,
-        "anchor" = rep(1, n_anchors))
-    return(anchors)
-}
-
-
-match_vertex <- function(seed_graph,
-    query_graph,
-    scores,
-    depth = 1,
-    threshold = 0.8,
-    verbose = TRUE) {
-    message_switch("matching_graphs", verbose)
-    seed_paths <- graph_path_length(seed_graph)
+    #seed_paths <- graph_path_length(seed_graph)
     query_paths <- graph_path_length(query_graph)
-    max_depth <- min(c(max(seed_paths), max(query_paths), depth))
-    best_match <- get_best_vertex(scores, rank = depth)
-    best_match <- data.frame(best_match,
-        matrix(0, ncol = max_depth, nrow = nrow(best_match)))
-    colnames(best_match) <- c(colnames(best_match)[1:3],
-        paste0("depth_", seq(1, max_depth)))
-    for (d in seq_len(max_depth)) {
-        for (i in seq_len(nrow(best_match))) {
-            seed_niche <- seed_paths[, as.character(best_match$from[i])]
-            seed_niche <- names(seed_niche)[seed_niche <= d &
-                seed_niche > 0]
-            query_niche <- query_paths[, as.character(best_match$to[i])]
-            query_niche <- names(query_niche)[query_niche <= d &
-                query_niche > 0]
-            niche <- scores[scores$to %in% query_niche, ] %>%
+    seed_trial <- get_super_pixel_centers(seed_trial)
+    seed_trial$x <- min_max(seed_trial$x)
+    seed_trial$y <- min_max(seed_trial$y)
+    # Create a similarity matrix based on vertex positions and features
+    similarity_matrix <- rep(0, nrow(score))
+    for (i in seq_len(nrow(score))) {
+        #---------------------------------------------------------------------#
+        # First we get the score of for the center spix
+        # since we want to minimize the cost we do 1 - score
+        #---------------------------------------------------------------------#
+        feature_score <- 1 - score$score[i]
+        #---------------------------------------------------------------------#
+        # next we want to minimize the score difference betwee neighborhoods
+        # what is the best score for the query neighbor hood if mapped to 
+        # the seed 
+        #---------------------------------------------------------------------#
+        query_niche <- query_paths[, as.character(score$from[i])]
+        query_niche <- names(query_niche)[query_niche <= depth &
+            query_niche > 0]
+        niche <- score[score$from %in% query_niche, ] %>%
                 get_best_vertex()
-            overlap <- min(c(sum(niche$from %in% seed_niche),
-                min(c(length(query_niche), length(seed_niche))))) /
-                min(c(length(query_niche), length(seed_niche)))
-            depth_loc <- paste0("depth_", d)
-            best_match[i, depth_loc] <- overlap
-        }
+        niche_score <- 1 - niche$score
+        #---------------------------------------------------------------------#
+        # For the best matches we want to minimize the distance between 
+        # query neighborhood and best matches
+        # we already know that we have the best matches for the query niche
+        #---------------------------------------------------------------------#
+        mapped_to <- seed_trial[seed_trial$center == score$to[i], ]
+        seed_niche <- seed_trial[seed_trial$center %in% niche$to, ]
+        dist <- RANN::nn2(mapped_to[, c("x", "y")],
+            query = seed_niche[, c("x", "y")])$nn.dist
+        similarity_matrix[i] <- sum(c(feature_score, niche_score, dist))
     }
-    anchors <- apply(best_match[, 3:ncol(best_match)], 1, mean) >= threshold
-    best_match$anchor <- 0
-    best_match$anchor[anchors] <- 1
-    message_switch("anchors_found", verbose, anchors = sum(best_match$anchor))
-    if (sum(best_match$anchor) == 0) {
-        stop("No anchors found! Consider relaxing selection threshold.")
-    }
-    return(best_match)
+    similarity_matrix <- matrix(similarity_matrix,
+        ncol = length(unique(score$to)),
+        nrow = length(unique(score$to)),
+        byrow = TRUE)
+
+    mapping <- HungarianSolver(similarity_matrix)$pairs
+    mapping <- as.data.frame(mapping, score)
+    colnames(mapping) <- c("from", "to")
+    mapping$anchor <- 1
+    return(mapping)
 }
+
+# match_graph <- function(seed_graph,
+#     seed_trial,
+#     query_graph,
+#     query_trial,
+#     score,
+#     scoring_method = "pearson",
+#     threshold = 0.7,
+#     iter = 10000,
+#     n_anchors = 25,
+#     mut_extent = 0.1,
+#     mut_prob = 0.3,
+#     allow_vertex_merge = FALSE,
+#     verbose = verbose) {
+#     #-------------------------------------------------------------------------#
+#     # Initialize optimisation 
+#     #-------------------------------------------------------------------------#
+    
+#     if (length(unique(score$from)) < n_anchors ||
+#         length(unique(score$to)) < n_anchors) {
+#         n_anchors <- min(c(length(unique(score$from)),
+#             length(unique(score$to))))
+#         message_switch("anchors_found", verbose, anchors = n_anchors)
+#     }
+#     sub_sample <- sample(seq(1,max(score$from)),
+#         size = n_anchors,
+#         replace = FALSE)
+#     seed_anchors <- get_best_vertex(score)$from[sub_sample]
+#     query_anchors <- get_best_vertex(score)$to[sub_sample]
+#     centers_1 <- get_super_pixel_centers(seed_trial)
+#     centers_1$x <- min_max(centers_1$x)
+#     centers_1$y <- min_max(centers_1$y)
+#     centers_2 <- get_super_pixel_centers(query_trial)
+#     centers_2$x <- min_max(centers_2$x)
+#     centers_2$y <- min_max(centers_2$y)
+
+#     indiv_seed <- list("chromosome" = rep(1, n_anchors * 2),
+#         "indiv" = seed_anchors,
+#         "score" = sum(rep(1, n_anchors * 2)))
+#     indiv_query <- list("chromosome" = rep(0, n_anchors * 2),
+#         "indiv" = query_anchors,
+#         "score" = sum(rep(1, n_anchors * 2)))
+#     #-------------------------------------------------------------------------#
+#     # iterating over random graph and finding best match 
+#     # at the moment it is super basic
+#     #-------------------------------------------------------------------------#
+#     for (i in seq_len(iter)) {
+#         dyn_message_switch("graph_matching", verbose,
+#             prog = round(i / iter, 4) * 100)
+#         cent_1 <- centers_1[match(seed_anchors, centers_1$center), c("x", "y")]
+#         cent_2 <- centers_2[match(query_anchors, centers_2$center), c("x", "y")]
+#         dist_1 <- RANN::nn2(data = cent_1,
+#             k = 2)$nn.dist[, 2]
+#         dist_2 <- RANN::nn2(data = cent_2,
+#             k = 2)$nn.dist[, 2]
+#         loc <- paste0(score$from, "_", score$to) %in%
+#             paste0(seed_anchors, "_", query_anchors)
+#         #scores <- 1 - score[loc, "score"]
+#         scores <- c(abs(dist_1 - dist_2))#, scores)
+#         if (indiv_seed$score > sum(scores) || indiv_query$score > sum(scores)) {
+#             indiv_seed$chromosome <- scores
+#             indiv_query$chromosome <- scores
+#             indiv_seed$indiv <- seed_anchors
+#             indiv_query$indiv <- query_anchors
+#             indiv_seed$score <- sum(scores)
+#             indiv_query$score <- sum(scores)
+#             if (runif(1) <= mut_prob) {
+#                 locs <- sample(seq(1, length(seed_anchors)),
+#                     size = n_anchors * mut_extent)
+#                 new_seed <- sample(centers_1$center[!centers_1$center
+#                     %in% seed_anchors[-locs]],
+#                     size = length(locs))
+#                 seed_anchors[locs] <- new_seed
+#                 new_query <- sample(centers_2$center[!centers_2$center
+#                     %in% query_anchors[-locs]],
+#                     size = length(locs))
+#                 query_anchors[locs] <- new_query
+#             } else {
+#                 seed_anchors <- sample(seed_anchors,
+#                     size = n_anchors,
+#                     replace = FALSE)
+#                 query_anchors <- sample(query_anchors,
+#                     size = n_anchors,
+#                     replace = FALSE)
+#             }
+#         }
+#     }
+#     if (verbose){cat("\n")}
+#     anchors <- data.frame("from" = indiv_seed$indiv,
+#         "to" = indiv_query$indiv,
+#         "score" = indiv_query$score / n_anchors,
+#         "anchor" = rep(1, n_anchors))
+#     return(anchors)
+# }
+
+
+# match_vertex <- function(seed_graph,
+#     query_graph,
+#     scores,
+#     depth = 1,
+#     threshold = 0.8,
+#     verbose = TRUE) {
+#     message_switch("matching_graphs", verbose)
+#     seed_paths <- graph_path_length(seed_graph)
+#     query_paths <- graph_path_length(query_graph)
+#     max_depth <- min(c(max(seed_paths), max(query_paths), depth))
+#     best_match <- get_best_vertex(scores, rank = depth)
+#     best_match <- data.frame(best_match,
+#         matrix(0, ncol = max_depth, nrow = nrow(best_match)))
+#     colnames(best_match) <- c(colnames(best_match)[1:3],
+#         paste0("depth_", seq(1, max_depth)))
+#     for (d in seq_len(max_depth)) {
+#         for (i in seq_len(nrow(best_match))) {
+#             seed_niche <- seed_paths[, as.character(best_match$from[i])]
+#             seed_niche <- names(seed_niche)[seed_niche <= d &
+#                 seed_niche > 0]
+#             query_niche <- query_paths[, as.character(best_match$to[i])]
+#             query_niche <- names(query_niche)[query_niche <= d &
+#                 query_niche > 0]
+#             niche <- scores[scores$to %in% query_niche, ] %>%
+#                 get_best_vertex()
+#             overlap <- min(c(sum(niche$from %in% seed_niche),
+#                 min(c(length(query_niche), length(seed_niche))))) /
+#                 min(c(length(query_niche), length(seed_niche)))
+#             depth_loc <- paste0("depth_", d)
+#             best_match[i, depth_loc] <- overlap
+#         }
+#     }
+#     anchors <- apply(best_match[, 3:ncol(best_match)], 1, mean) >= threshold
+#     best_match$anchor <- 0
+#     best_match$anchor[anchors] <- 1
+#     message_switch("anchors_found", verbose, anchors = sum(best_match$anchor))
+#     if (sum(best_match$anchor) == 0) {
+#         stop("No anchors found! Consider relaxing selection threshold.")
+#     }
+#     return(best_match)
+# }
 
 
 
@@ -559,8 +630,8 @@ align_graph <- function(matched_graph,
     anchors$distance <- 0
     message_switch("get_traj", verbose)
     for (i in seq_len(nrow(anchors))) {
-        seed_point <- seed_centers[seed_centers$center == anchors$from[i], ]
-        query_point <- query_centers[query_centers$center == anchors$to[i], ]
+        seed_point <- seed_centers[seed_centers$center == anchors$to[i], ]
+        query_point <- query_centers[query_centers$center == anchors$from[i], ]
         #angle <- polar_angle(seed_point$x, seed_point$y,
         #    query_point$x, query_point$y)
         angle <- atan2(seed_point$y - query_point$y,
@@ -571,25 +642,27 @@ align_graph <- function(matched_graph,
         distance <- as.numeric(dist(distance))
         anchors$distance[i] <- distance
     }
-    anchors <- anchors[order(anchors$to), ]
+    anchors <- anchors[order(anchors$from), ]
 
     #-------------------------------------------------------------------------#
     # get closest anchor point for all un assigned spix points 
     #-------------------------------------------------------------------------#
     #unassinged <- matched_graph %>% filter(anchor == 0)
     #query_point <- query_centers[query_centers$center %in% unassinged$to, ]
-    anchor_point <- query_centers[query_centers$center %in% anchors$to, ]
+    anchor_point <- query_centers[query_centers$center %in% anchors$from, ]
     #-------------------------------------------------------------------------#
     # Apply compound trajectories to individual points points
     #-------------------------------------------------------------------------#
     message_switch("apply_traj", verbose)
     nn <- RANN::nn2(data = anchor_point[, c("x", "y")],
         query = query_centers[, c("x", "y")],
-        k = 1)
-    angle <- anchors$angle[nn$nn.idx[, 1]]
-    distance <- anchors$distance[nn$nn.idx[, 1]]
+        k = 2)
+    angle <- apply(anchors$angle[nn$nn.idx[, 1:2]], 1, mean)
+    distance <- apply(anchors$angle[nn$nn.idx[, 1:2]], 1, function(x) {
+        return(sqrt(x[1]^2 + x[2]^2))
+    })
+   
     browser()
-    
     query_centers$x_new <- query_centers$x + (distance * cos(angle))
     query_centers$y_new <- query_centers$y + (distance * sin(angle))
     #-------------------------------------------------------------------------#
@@ -607,7 +680,7 @@ align_graph <- function(matched_graph,
 
 
 get_best_vertex  <- function(score, rank = 1) {
-    from <- split(score, score$to)
+    from <- split(score, score$from)
     best_match <- lapply(from, function(f) {
         return(f[order(f$score, decreasing = TRUE)[rank], ])
     }) %>% do.call("rbind", .)

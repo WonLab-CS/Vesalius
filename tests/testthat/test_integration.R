@@ -18,6 +18,9 @@ library(vesalius, lib.loc = "/common/martinp4/R")
 library(pwr, lib.loc = "/common/martinp4/R")
 library(gsignal, lib.loc = "/common/martinp4/R")
 library(kohonen, lib.loc = "/common/martinp4/R")
+library(registry, lib.loc = "/common/martinp4/R")
+library(rngtools, lib.loc = "/common/martinp4/R")
+library(NMF, lib.loc = "/common/martinp4/R")
 
 
 set.seed(1547)
@@ -55,7 +58,7 @@ count_mat <- read.table(counts[f], header = TRUE, row.names = 1)
 
 
 vesalius <- build_vesalius_assay(coord, count_mat) %>%
-    generate_embeddings(tensor_resolution = 0.3) %>%
+    generate_embeddings(dim_reduction = "NMF", tensor_resolution = 0.3) %>%
     regularise_image(dimensions = 1:30, lambda = 5) %>%
     equalize_image(dimensions = 1:30, sleft = 5, sright = 5) %>%
     smooth_image(dimensions = 1:30, method =c("iso", "box"), sigma = 2, box = 10, iter = 10) 
@@ -94,7 +97,7 @@ g+g1
 dev.off()
 
 pdf("test.pdf")
-plot(0, type = "n", xlim = c(-500, 2000), ylim = c(-500, 2000))
+plot(0, type = "n", xlim = c(0, 650), ylim = c(0, 650))
 points(seed_centers$x, seed_centers$y,col="black", cex = 3)
 points(query_centers$x, query_centers$y,pch = 20, cex = 3, col="red")
 
@@ -118,6 +121,16 @@ pdf("test_counts.pdf", width = 24, height = 8)
 print(g + g2 + g1)
 dev.off()
 
+
+plot(0, type = "n", xlim = c(0, 650), ylim = c(0, 650))
+points(seed_spix$x, seed_spix$y,col="black", cex = 3)
+points(query_spix$x, query_spix$y,pch = 20, cex = 3, col="red")
+for(i in seq_len(nrow(anchor_map))){
+    x <- c(anchor_map$x[i], query_spix$x[anchor_map$from[i]])
+    y <- c(anchor_map$y[i], query_spix$y[anchor_map$from[i]])
+    lines(x,y, lwd = 2, col = "blue")
+}
+dev.off()
 
 
 
@@ -242,29 +255,27 @@ jitter_ves <- build_vesalius_assay(jitter_coord, jitter_counts)
 
 vesalius <- generate_embeddings(vesalius)
 vesalius <- smooth_image(vesalius, embedding = "PCA", sigma = 5, iter = 5)
-# vesalius <- segment_image(vesalius,
-#     method = "slic",
-#     dimensions = 1:3,
-#     col_resolution = 50,
-#     compactness = 1,
-#     index_selection = "random",
-#     scaling = 0.2)
+vesalius <- segment_image(vesalius,
+    method = "som",
+    dimensions = 1:3,
+    col_resolution = 10,
+    compactness = 1,
+    scaling = 0.2)
 
 
 jitter_ves <- generate_embeddings(jitter_ves)
 jitter_ves <- smooth_image(jitter_ves, embedding = "PCA", sigma = 5, iter = 5)
-# jitter_ves <- segment_image(jitter_ves,
-#     method = "slic",
-#     dimensions = 1:3,
-#     col_resolution = 50,
-#     compactness = 1,
-#     index_selection = "bubble",
-#     scaling = 0.2)
+jitter_ves <- segment_image(jitter_ves,
+    method = "slic",
+    dimensions = 1:3,
+    col_resolution = 10,
+    compactness = 1,
+    scaling = 0.2)
 
 
-test <- integrate_assays(vesalius,
+test <- integrate_horizontally(vesalius,
     jitter_ves,
-    compactness = 10,
+    compactness = 5,
     index_selection = "random",
     signal = "features",
     n_centers = 50,
@@ -275,11 +286,8 @@ test <- equalize_image(test, embedding = "PCA",sleft = 5, sright = 5)
 test <- smooth_image(test, embedding = "PCA", sigma = 5, iter = 5)
 test <- segment_image(test, col_resolution = 5)
 
-g <- image_plot(test$seed)
-g1 <- image_plot(test$query)
-g2 <- image_plot(test$integrate)
 
-print(g + g1 + g2)
+
 
 
 seed_score <- igraph::graph_from_data_frame(test$seed_score, directed = FALSE)

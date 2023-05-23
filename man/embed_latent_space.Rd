@@ -9,6 +9,7 @@ embed_latent_space(
   assay,
   dim_reduction,
   dimensions,
+  features = NULL,
   remove_lsi_1,
   verbose
 )
@@ -23,6 +24,8 @@ Select from PCA, PCA_L, UMAP, LSI, LSI_UMAP}
 
 \item{dimensions}{numeric for number of dimeniosn top retain after 
 dimensionality reduction}
+
+\item{features}{custom features used for dim reduction}
 
 \item{remove_lsi_1}{logical if first dimension of LSI embedding should be 
 removed (will soon be depreciated)}

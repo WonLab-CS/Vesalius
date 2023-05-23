@@ -25,6 +25,7 @@
 #' @param filter_threshold numeric (range 0 -1) describing the quantile
 #' threshold at which tiles should be retained (seed details)
 #' @param nfeatures numeric describing the number of variable features to use.
+#' @param features custom set of features to generate embeddings
 #' @param min_cutoff only used when dimensionality reduction method is
 #' LSI or LSI_UMAP
 #' cutoff for feature to be included in the VariableFeatures for the object.
@@ -85,6 +86,7 @@ generate_embeddings <- function(vesalius_assay,
   filter_grid = 0.01,
   filter_threshold = 0.995,
   nfeatures = 2000,
+  features = NULL,
   min_cutoff = "q5",
   remove_lsi_1 = TRUE,
   verbose = TRUE) {
@@ -147,15 +149,13 @@ generate_embeddings <- function(vesalius_assay,
       append = TRUE)
     vesalius_assay <- add_active_count_tag(vesalius_assay,
       norm = ifelse(use_count == "raw", normalisation, use_count))
-    #--------------------------------------------------------------------------#
-    # Adding variable features to meta 
-    #--------------------------------------------------------------------------#
-    features <- list(check_features(counts$SO))
-    names(features) <- "variable_features"
-    vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
-      data = features,
-      slot = "meta",
-      append = TRUE)
+    
+    if (is.null(features)) {
+      features <- check_features(counts$SO)
+      feature_seclection <- "variable_features"
+    } else {
+      feature_seclection <- "custom_features"
+    }
     #--------------------------------------------------------------------------#
     # Embeddings - get embedding method and convert latent space
     # to color space.
@@ -164,8 +164,16 @@ generate_embeddings <- function(vesalius_assay,
       assay = assay,
       dim_reduction,
       dimensions = dimensions,
+      features = features,
       remove_lsi_1 = remove_lsi_1,
       verbose = verbose)
+    #--------------------------------------------------------------------------#
+    # Upodating object
+    #--------------------------------------------------------------------------#
+    vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
+      data = setNames(list(features), feature_seclection),
+      slot = "meta",
+      append = TRUE)
     vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
       data = embeds,
       slot = "embeddings",
@@ -753,6 +761,7 @@ tfidf_norm <- function(counts, min_cutoff) {
 #' Select from PCA, PCA_L, UMAP, LSI, LSI_UMAP
 #' @param dimensions numeric for number of dimeniosn top retain after 
 #' dimensionality reduction
+#' @param features custom features used for dim reduction
 #' @param remove_lsi_1 logical if first dimension of LSI embedding should be 
 #' removed (will soon be depreciated)
 #' @param verbose logical if progress messages should be outputed or not
@@ -762,6 +771,7 @@ embed_latent_space <- function(counts,
   assay,
   dim_reduction,
   dimensions,
+  features = NULL,
   remove_lsi_1,
   verbose) {
     message_switch("in_assay",
@@ -771,18 +781,23 @@ embed_latent_space <- function(counts,
     embeds <- switch(dim_reduction,
       "PCA" = embed_pca(counts,
         dimensions = dimensions,
+        features = features,
         verbose = verbose),
       "PCA_L" = embed_pcal(counts,
         dimensions = dimensions,
+        features = features,
         verbose = verbose),
       "UMAP" = embed_umap(counts,
         dimensions = dimensions,
+        features = features,
         verbose),
       "LSI" = embed_lsi(counts,
         dimensions = dimensions,
+        features = features,
         remove_lsi_1),
       "LSI_UMAP" = embed_lsi_umap(counts,
         dimensions = dimensions,
+        features = features,
         remove_lsi_1))
     return(embeds)
 }
@@ -792,19 +807,20 @@ embed_latent_space <- function(counts,
 #' embed in grey scale using PCA embeddings 
 #' @param counts Seurat object containing normalised counts
 #' @param dimensions number dimension to retain from PCA
+#' @param features custom vector of features
 #' @param verbose logical if progress messages should be outputed
 #' @return normalised PCA embedding matrix 
 #' @importFrom Seurat RunPCA
 #' @importFrom Seurat Embeddings
 embed_pca <- function(counts,
   dimensions,
+  features = NULL,
   verbose = TRUE) {
     #--------------------------------------------------------------------------#
     # First run PCA
     # Parsing feature names just in case no var features have been 
     #--------------------------------------------------------------------------#
     message_switch("pca_tensor", verbose)
-    features <- check_features(counts)
     counts <- Seurat::RunPCA(counts,
       npcs = dimensions,
       features = features,
@@ -830,6 +846,7 @@ embed_pca <- function(counts,
 #' embed in grey scale using PCA Loading value 
 #' @param counts Seurat object containing normalised counts
 #' @param dimensions number dimension to retain from PCA
+#' @param features custom vector of features
 #' @param verbose logical if progress messages should be outputed
 #' @details This approach is a slightly different as it takes 
 #' the loading value associted to each gene in a barcode and sums
@@ -843,12 +860,12 @@ embed_pca <- function(counts,
 #' @importFrom future.apply future_lapply
 embed_pcal <- function(counts,
   dimensions,
+  features = NULL,
   verbose = TRUE) {
     #--------------------------------------------------------------------------#
     # First run PCA
     #--------------------------------------------------------------------------#
     message_switch("pca_tensor", verbose)
-    features <- check_features(counts)
     counts <- Seurat::RunPCA(counts,
       npcs = dimensions,
       features = features,
@@ -886,7 +903,8 @@ embed_pcal <- function(counts,
 #' 
 #' embed in gray scale using UMAP projections
 #' @param counts Seurat object containing normalised counts 
-#' @param dimensions number of PCs to use for the UMAP projections 
+#' @param dimensions number of PCs to use for the UMAP projections
+#' @param features custom vector of features
 #' @param verbose logical if progress messages should be outputed 
 #' @details Note that while you can select any number of dimensions
 #' the number of UMAP dimensions will always be 3.
@@ -895,13 +913,16 @@ embed_pcal <- function(counts,
 #' @importFrom Seurat RunUMAP
 #' @importFrom Seurat FetchData
 
-embed_umap <- function(counts, dimensions, verbose) {
+embed_umap <- function(counts,
+  dimensions,
+  features = NULL,
+  verbose) {
   #----------------------------------------------------------------------------#
   # First run PCA and then UMAP
   # Progress message pca_tensor() => Prog.R
   #----------------------------------------------------------------------------#
   message_switch("pca_tensor", verbose)
-  features <- check_features(counts)
+
   counts <- Seurat::RunPCA(counts,
     npcs = dimensions,
     features = features,
@@ -926,6 +947,7 @@ embed_umap <- function(counts, dimensions, verbose) {
 #' embed in grey scale using latent semantic indexing
 #' @param counts Seurat object containing normalised counts
 #' @param dimensions numeric for number of latent space dimensions to use
+#' @param features custom vector of features
 #' @param remove_lsi_1 logical if first LSI dimenions should be removed 
 #' @param verbose logical if progress messages should be outputed 
 #' @returns normalised LSI embedding matrix 
@@ -933,13 +955,14 @@ embed_umap <- function(counts, dimensions, verbose) {
 #' @importFrom Seurat Embeddings
 embed_lsi <- function(counts,
   dimensions,
+  features = NULL,
   remove_lsi_1,
   verbose = TRUE) {
   #--------------------------------------------------------------------------#
   # Run partial singular value decomposition(SVD) on TF-IDF normalized matrix
   #--------------------------------------------------------------------------#
   message_switch("svd_tensor", verbose)
-  features <- check_features(counts)
+  
   svd <- Signac::RunSVD(counts,
     n = dimensions + 1,
     features = features,
@@ -968,6 +991,7 @@ embed_lsi <- function(counts,
 #' followed by UMAP
 #' @param counts Seurat object containing normalised counts
 #' @param dimensions numeric for number of latent space dimensions to use
+#' @param features custom vector of features
 #' @param remove_lsi_1 logical if first LSI dimenions should be removed 
 #' @param verbose logical if progress messages should be outputed 
 #' @returns normalised LSI embedding matrix 
@@ -977,13 +1001,14 @@ embed_lsi <- function(counts,
 
 embed_lsi_umap <- function(counts,
   dimensions,
+  features = NULL,
   remove_lsi_1,
   verbose = TRUE) {
   #--------------------------------------------------------------------------#
   # Run partial singular value decomposition(SVD) on TF-IDF normalized matrix
   #--------------------------------------------------------------------------#
   message_switch("svd_tensor", verbose)
-  features <- check_features(counts)
+  
   svd <- Signac::RunSVD(counts,
     n = dimensions + 1,
     features = features,

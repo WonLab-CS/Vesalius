@@ -4,12 +4,14 @@
 \alias{embed_umap}
 \title{embed umap}
 \usage{
-embed_umap(counts, dimensions, verbose)
+embed_umap(counts, dimensions, features = NULL, verbose)
 }
 \arguments{
 \item{counts}{Seurat object containing normalised counts}
 
 \item{dimensions}{number of PCs to use for the UMAP projections}
+
+\item{features}{custom vector of features}
 
 \item{verbose}{logical if progress messages should be outputed}
 }

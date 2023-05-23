@@ -4,12 +4,14 @@
 \alias{embed_pca}
 \title{embed PCA}
 \usage{
-embed_pca(counts, dimensions, verbose = TRUE)
+embed_pca(counts, dimensions, features = NULL, verbose = TRUE)
 }
 \arguments{
 \item{counts}{Seurat object containing normalised counts}
 
 \item{dimensions}{number dimension to retain from PCA}
+
+\item{features}{custom vector of features}
 
 \item{verbose}{logical if progress messages should be outputed}
 }

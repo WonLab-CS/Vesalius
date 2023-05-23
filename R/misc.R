@@ -39,6 +39,8 @@ detect_edges <- function(img) {
 
 
 
+
+
 #------------------------/ Normalising Embeds /--------------------------------#
 
 #' pixel normalisation dispatch function
@@ -79,6 +81,16 @@ z_norm <- function(x) {
   } else {
     return((x - mean(x)) / sd(x))
   }
+}
+
+scale_data_spatial <- function(data, compactness, scale) {
+  scale_spat <- max(c(max(data$x), max(data$x))  * scale)
+  scale_dat <- apply(data[, !colnames(data) %in% c("x", "y")], 2, sd) %>%
+    max()
+  ratio <- (scale_spat / scale_dat) / compactness
+  data[, !colnames(data) %in% c("x", "y")] <-
+    data[, !colnames(data) %in% c("x", "y")] * ratio
+  return(data)
 }
 
 

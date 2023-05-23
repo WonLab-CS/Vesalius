@@ -305,10 +305,11 @@ check_segmentation_method <- function(method) {
         "leiden",
         "slic",
         "louvain_slic",
-        "leiden_slice"))) {
+        "leiden_slice",
+        "som"))) {
         stop("Segmentation method provided does not match available options \n
             Select from: \n
-            kmeans, louvain, leiden, slic, louvain_slic, leiden_slic")
+            kmeans, louvain, leiden, slic, louvain_slic, leiden_slic, som")
     } else {
         return(method)
     }

@@ -570,7 +570,14 @@ segment_image <- function(vesalius_assay,
         embedding = embedding,
         compactness = compactness,
         scaling = scaling,
-        verbose = verbose))
+        verbose = verbose),
+    "som" = som_segmentation(vesalius_assay,
+      dimensions= dimensions,
+      col_resolution = col_resolution,
+      embedding = embedding,
+      compactness = compactness,
+      scaling = scaling,
+      verbose = verbose))
 
   vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
     data = segments$active,
@@ -721,8 +728,8 @@ create_pseudo_centroids <- function(vesalius_assay, clusters, dimensions) {
   active <- vesalius_assay@active
   for (d in dimensions) {
     for (clust in unique(clusters$Segment)) {
-        loc <- match(rownames(active),
-          clusters$barcodes[clusters$Segment == clust])
+        loc <- match(clusters$barcodes[clusters$Segment == clust],
+          rownames(active))
         active[loc, d] <- mean(active[loc, d])
     }
   }
@@ -1052,6 +1059,74 @@ slic_segmentation <- function(vesalius_assay,
     tail(1)
     colnames(clusters) <- gsub("Segment", new_trial, colnames(clusters))
     return(list("segments" = clusters, "active" = embeddings))
+}
+
+
+som_segmentation <- function(vesalius_assay,
+    dimensions,
+    col_resolution,
+    embedding,
+    compactness = 1,
+    scaling = 0.3,
+    verbose) {
+    #-------------------------------------------------------------------------#
+    # first we get tiles and get images 
+    # then we compute the a scaling metric - this is normally based on 
+    # empirical data (0.28 is one way) but it essentially a measure of the
+    # scaling value between pixel distance and color distance 
+    # we measure the max spread of colors as well
+    # all this serves as a way to scale the "spread" of the color values 
+    # to match the "spread" of the spatial coordinates
+    #-------------------------------------------------------------------------#
+    coord <- get_tiles(vesalius_assay) %>% filter(origin == 1)
+    
+    #tiles <- get_tiles(vesalius_assay)
+    embeddings <- check_embedding_selection(vesalius_assay,
+      embedding,
+      dimensions)[, dimensions]
+    # max spatial distance 
+    sc_spat <- max(c(max(coord$x), max(coord$x))  * scaling)
+    # max color distance between two pixels??
+    sc_col <-  apply(embeddings, 2, sd) %>% max()
+    #-------------------------------------------------------------------------#
+    # Scaling ratio for pixel values - this is what is going to effectively
+    # scale color value to match the scale of spatial value 
+    # the compactness will define how important the spatial component should 
+    # be. Now the way this works here is that we are modulating "color" value
+    # and not the pixel value. The higher the compactness the "higher" the 
+    # color values will be scaled up to match the spatial coordinates
+    #-------------------------------------------------------------------------#
+    ratio <- (sc_spat / sc_col) / (compactness)
+    embeddings <- as.data.frame(embeddings * ratio)
+    bar <- rownames(embeddings)
+    embeddings$barcodes <- bar
+    embeddings <- embeddings %>%
+        right_join(coord, by = "barcodes") %>%
+        select(-c("barcodes", "origin")) %>%
+        as.matrix()
+    colnames(embeddings) <- c(paste0("dim_", dimensions), "x", "y")
+    #-------------------------------------------------------------------------#
+    # create SOM map of data 
+    #-------------------------------------------------------------------------#
+    som <- som(as.matrix(embeddings),
+      grid = somgrid(xdim = floor(sqrt(col_resolution)),
+        ydim = ceiling(sqrt(col_resolution))))
+    
+    cluster <- data.frame("cluster" = som$unit.classif,
+      "barcodes" = bar)
+    match_loc <- match(coord$barcodes, cluster$barcodes)
+    clusters <- data.frame(coord, "Segment" = cluster$cluster[match_loc])
+    active <- create_pseudo_centroids(vesalius_assay,
+      clusters,
+      dimensions)
+    active <- active / ratio
+    
+    new_trial <- create_trial_tag(colnames(vesalius_assay@territories),
+      "Segment") %>%
+      tail(1)
+    colnames(clusters) <- gsub("Segment", new_trial, colnames(clusters))
+    return(list("segments" = clusters, "active" = active))
+
 }
 
 #' select inital indices
