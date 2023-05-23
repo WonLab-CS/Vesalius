@@ -156,3 +156,4 @@ importFrom(stats,wilcox.test)
 importFrom(tvR,denoise2)
 importFrom(utils,head)
 importFrom(utils,tail)
+ 
