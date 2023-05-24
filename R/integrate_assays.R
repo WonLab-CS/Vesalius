@@ -458,7 +458,7 @@ match_graph <- function(seed_graph,
         seed_niche <- seed_trial[seed_trial$center %in% niche$to, ]
         dist <- RANN::nn2(mapped_to[, c("x", "y")],
             query = seed_niche[, c("x", "y")])$nn.dist
-        similarity_matrix[i] <- sum(c(feature_score, niche_score, dist))
+        similarity_matrix[i] <- sum(c(feature_score, niche_score, mean(dist)))
     }
     if (verbose){cat("\n")}
     message_switch("hungarian", verbose)
@@ -606,13 +606,16 @@ integrate_graph <- function(aligned_graph,
         # query_local <- query_local * (max_count / sd_count)
 
         if (is.null(ncol(query_local))) {
-           query_local <- query_local[order(names(query_local))]
+            query_local <- matrix(query_local[order(names(query_local))],
+                ncol = 1)
+            colnames(query_local) <- spix[[i]]$barcodes
         } else {
             query_local <- query_local[order(rownames(query_local)), ]
         }
         integrated_counts[[i]] <- query_local
     }
     if (verbose){cat("\n")}
+    #browser()
     #-------------------------------------------------------------------------#
     # Bind everything together - this needs to be cleaned
     #-------------------------------------------------------------------------#
@@ -634,6 +637,7 @@ integrate_graph <- function(aligned_graph,
     #     filter(origin == 1) %>%
     #     select(c("barcodes", "x", "y"))
     # seed_coordinates$barcodes <- paste0("Seed_", seed_coordinates$barcodes)
+    
     query_coordinates <- aligned_graph[, c("barcodes", "x", "y")]
     # query_coordinates$barcodes <- make.unique(paste0("Query_", query_coordinates$barcodes))
     common_loc <- intersect(query_coordinates$barcodes,

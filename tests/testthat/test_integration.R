@@ -282,8 +282,8 @@ test <- integrate_horizontally(vesalius,
     threshold = 0.8)
 
 test <- generate_embeddings(test)
-test <- equalize_image(test, embedding = "PCA",sleft = 5, sright = 5)
-test <- smooth_image(test, embedding = "PCA", sigma = 5, iter = 5)
+#test <- equalize_image(test, embedding = "PCA",sleft = 5, sright = 5)
+test <- smooth_image(test, sigma = 5, iter = 5)
 test <- segment_image(test, col_resolution = 5)
 
 plot(0, type = "n", xlim = c(0, 650), ylim = c(0, 650))
