@@ -255,28 +255,28 @@ jitter_ves <- build_vesalius_assay(jitter_coord, jitter_counts)
 
 vesalius <- generate_embeddings(vesalius)
 vesalius <- smooth_image(vesalius, embedding = "PCA", sigma = 5, iter = 5)
-vesalius <- segment_image(vesalius,
-    method = "som",
-    dimensions = 1:3,
-    col_resolution = 10,
-    compactness = 1,
-    scaling = 0.2)
+# vesalius <- segment_image(vesalius,
+#     method = "som",
+#     dimensions = 1:3,
+#     col_resolution = 10,
+#     compactness = 1,
+#     scaling = 0.2)
 
 
 jitter_ves <- generate_embeddings(jitter_ves)
 jitter_ves <- smooth_image(jitter_ves, embedding = "PCA", sigma = 5, iter = 5)
-jitter_ves <- segment_image(jitter_ves,
-    method = "slic",
-    dimensions = 1:3,
-    col_resolution = 10,
-    compactness = 1,
-    scaling = 0.2)
+# jitter_ves <- segment_image(jitter_ves,
+#     method = "slic",
+#     dimensions = 1:3,
+#     col_resolution = 10,
+#     compactness = 1,
+#     scaling = 0.2)
 
 
 test <- integrate_horizontally(vesalius,
     jitter_ves,
     compactness = 5,
-    index_selection = "random",
+    index_selection = "bubble",
     signal = "features",
     n_centers = 50,
     threshold = 0.8)
@@ -286,7 +286,20 @@ test <- equalize_image(test, embedding = "PCA",sleft = 5, sright = 5)
 test <- smooth_image(test, embedding = "PCA", sigma = 5, iter = 5)
 test <- segment_image(test, col_resolution = 5)
 
+plot(0, type = "n", xlim = c(0, 650), ylim = c(0, 650))
+points(seed_centers$x, seed_centers$y,col="black", cex = 3)
+points(query_centers$x, query_centers$y,pch = 20, cex = 3, col="red")
 
+for(i in seq_len(nrow(query_centers))){
+    # x <- c(query_centers$x[anchors$from[i]],
+    #     seed_centers$x[anchors$to[i]])
+    # y <- c(query_centers$y[anchors$from[i]],
+    #     seed_centers$y[anchors$to[i]])
+    x_new <- c(query_centers$x[i], query_centers$x_new[i])
+    y_new <- c(query_centers$y[i], query_centers$y_new[i])
+    # lines(x,y, col = "green", lwd = 2)
+    lines(x_new,y_new, col = "blue", lwd = 2)
+}
 
 
 

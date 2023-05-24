@@ -55,7 +55,8 @@ Imports:
     pwr,
     purrr,
     gsignal,
-    patchwork
+    patchwork,
+    RcppHungarian
 Suggests:
     knitr,
     RUnit,

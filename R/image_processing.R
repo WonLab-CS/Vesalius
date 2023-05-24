@@ -958,15 +958,6 @@ slic_segmentation <- function(vesalius_assay,
     threshold = 0.9,
     max_iter = 1000,
     verbose) {
-    # if (is(vesalius_assay, "vesalius_assay")) {
-    #   assay <- get_assay_names(vesalius_assay)
-    #   images <- format_ves_to_c(vesalius_assay = vesalius_assay,
-    #     embed = embedding,
-    #     dims = dimensions,
-    #     verbose = FALSE) %>% imappend("cc")
-    # } else {
-    #   stop("Unsupported format to regularise_image function")
-    # }
     #-------------------------------------------------------------------------#
     # first we get tiles and get images 
     # then we compute the a scaling metric - this is normally based on 
@@ -1227,7 +1218,7 @@ bubble_stack <- function(coordinates,
             random_start <- active[sample(x =
                 seq(1, l = length(active)),
                 size = 1)]
-            if (random_start %in% background_grid) browser()
+            
             background_grid <- c(background_grid, random_start)
             removing <- nn_index[random_start,
                 nn_dist[random_start, ] <= radius]
@@ -1238,7 +1229,7 @@ bubble_stack <- function(coordinates,
         }
         if (iter >= max_iter) {
             convergence <- TRUE
-            warning("Max Iteration with not convergence!
+            warning("Max Iteration with no convergence!
             Returning Approximation")
         }
         #---------------------------------------------------------------------#
@@ -1259,11 +1250,7 @@ bubble_stack <- function(coordinates,
     # within the full pixel image 
     # could use right_join and the likes but no 
     #-------------------------------------------------------------------------#
-    # in_image <- paste0(embeddings[, "x"], "_", embeddings[, "y"])
-    # in_background <- paste0(coordinates$x[background_grid],
-    #     "_",
-    #     coordinates$y[background_grid])
-    # in_image <- which(in_image %in% in_background)
+    
     return(background_grid)
 }
 
