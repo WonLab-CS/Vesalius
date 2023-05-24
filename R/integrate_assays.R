@@ -644,6 +644,8 @@ align_graph <- function(matched_graph,
     }
     anchors <- anchors[order(anchors$from), ]
 
+    
+
     #-------------------------------------------------------------------------#
     # get closest anchor point for all un assigned spix points 
     #-------------------------------------------------------------------------#
