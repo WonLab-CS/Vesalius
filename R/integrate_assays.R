@@ -644,7 +644,7 @@ align_graph <- function(matched_graph,
     }
     anchors <- anchors[order(anchors$from), ]
 
-    
+
 
     #-------------------------------------------------------------------------#
     # get closest anchor point for all un assigned spix points 
@@ -664,7 +664,8 @@ align_graph <- function(matched_graph,
         return(sqrt(x[1]^2 + x[2]^2))
     })
    
-    browser()
+
+    
     query_centers$x_new <- query_centers$x + (distance * cos(angle))
     query_centers$y_new <- query_centers$y + (distance * sin(angle))
     #-------------------------------------------------------------------------#
