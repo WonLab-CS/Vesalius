@@ -663,7 +663,6 @@ align_graph <- function(matched_graph,
     distance <- apply(anchors$angle[nn$nn.idx[, 1:2]], 1, function(x) {
         return(sqrt(x[1]^2 + x[2]^2))
     })
-   
 
     
     query_centers$x_new <- query_centers$x + (distance * cos(angle))
