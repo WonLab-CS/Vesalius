@@ -1,4 +1,4 @@
-Package: vesalius
+Package:  vesalius
 Type: Package
 Title: Vesalius: Dissecting Tissue Anatomy from Spatial Transcriptomic Data
 Version: 2.0.0
@@ -26,7 +26,8 @@ Collate: image_processing.R
     object_modification.R
     integrate_assays.R
     interoperability.R
-Depends: R (>= 4.0.0)
+Depends: R (>= 4.0.0),
+         NMF
 Imports:
     grDevices,
     stats,
