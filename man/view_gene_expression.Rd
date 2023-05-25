@@ -17,7 +17,9 @@ view_gene_expression(
   with_background = FALSE,
   cex = 10,
   cex_pt = 1,
-  alpha = 0.75
+  alpha = 0.75,
+  max_size = 5,
+  return_as_list = FALSE
 )
 }
 \arguments{
@@ -50,6 +52,9 @@ a territory/ layer.}
 \item{cex_pt}{numeric point size}
 
 \item{alpha}{point transparency}
+
+\item{return_as_list}{logical - should plot be returned as simple list
+or as a ggplot object (single gene)/ patchwork object (multiple genes)}
 }
 \value{
 a ggplot object

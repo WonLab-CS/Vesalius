@@ -556,6 +556,27 @@ segment_image <- function(vesalius_assay,
       compactness = compactness,
       scaling = scaling,
       threshold = threshold,
+      verbose = verbose),
+    "louvain_slic" = louvain_slic_segmentation(vesalius_assay,
+        dimensions = dimensions,
+        col_resolution = col_resolution,
+        embedding = embedding,
+        compactness = compactness,
+        scaling = scaling,
+        verbose = verbose),
+    "leiden_slic" = leiden_slic_segmentation(vesalius_assay,
+        dimensions = dimensions,
+        col_resolution = col_resolution,
+        embedding = embedding,
+        compactness = compactness,
+        scaling = scaling,
+        verbose = verbose),
+    "som" = som_segmentation(vesalius_assay,
+      dimensions= dimensions,
+      col_resolution = col_resolution,
+      embedding = embedding,
+      compactness = compactness,
+      scaling = scaling,
       verbose = verbose))
 
   vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
@@ -707,8 +728,8 @@ create_pseudo_centroids <- function(vesalius_assay, clusters, dimensions) {
   active <- vesalius_assay@active
   for (d in dimensions) {
     for (clust in unique(clusters$Segment)) {
-        loc <- match(rownames(active),
-          clusters$barcodes[clusters$Segment == clust])
+        loc <- match(clusters$barcodes[clusters$Segment == clust],
+          rownames(active))
         active[loc, d] <- mean(active[loc, d])
     }
   }
@@ -785,6 +806,146 @@ populate_graph <- function(chunk) {
   return(template)
 }
 
+
+
+#' @importFrom imager imappend imsplit spectrum
+#' @importFrom purrr map_dbl map
+louvain_slic_segmentation <- function(vesalius_assay,
+    dimensions,
+    col_resolution,
+    embedding,
+    compactness = 1,
+    scaling = 0.3,
+    verbose) {
+    #-------------------------------------------------------------------------#
+    # first we get tiles and get images 
+    # then we compute the a scaling metric - this is normally based on 
+    # empirical data (0.28 is one way) but it essentially a measure of the
+    # scaling value between pixel distance and color distance 
+    # we measure the max spread of colors as well
+    # all this serves as a way to scale the "spread" of the color values 
+    # to match the "spread" of the spatial coordinates
+    #-------------------------------------------------------------------------#
+    coord <- get_tiles(vesalius_assay) %>% filter(origin == 1)
+    embeddings <- check_embedding_selection(vesalius_assay,
+      embedding,
+      dimensions)[, dimensions]
+    loc <- match(coord$barcodes, rownames(embeddings))
+    # max spatial distance 
+    sc_spat <- max(c(max(coord$x), max(coord$x))  * scaling)
+    # max color distance between two pixels??
+    sc_col <-  apply(embeddings, 2, sd) %>% max()
+    #-------------------------------------------------------------------------#
+    # Scaling ratio for pixel values - this is what is going to effectively
+    # scale color value to match the scale of spatial value 
+    # the compactness will define how important the spatial component should 
+    # be. Now the way this works here is that we are modulating "color" value
+    # and not the pixel value. The higher the compactness the "higher" the 
+    # color values will be scaled up to match the spatial coordinates
+    #-------------------------------------------------------------------------# 
+    ratio <- (sc_spat / sc_col) / (compactness)
+    embeddings <- as.data.frame(embeddings * ratio)
+    embeddings$barcodes <- barcodes <- rownames(embeddings)
+    embeddings <- embeddings %>%
+        right_join(coord, by = "barcodes") %>%
+        select(-c("barcodes", "origin")) %>%
+        as.matrix()
+    colnames(embeddings) <- c(paste0("dim_", dimensions), "x", "y")
+    rownames(embeddings) <- barcodes
+    #-------------------------------------------------------------------------#
+    # Run louvain
+    #-------------------------------------------------------------------------#
+    graph <- compute_nearest_neighbor_graph(embeddings = embeddings)
+    clusters <- igraph::cluster_louvain(graph, resolution = col_resolution)
+    cluster <- data.frame("cluster" = clusters$membership,
+      "barcodes" = clusters$names)
+
+
+    match_loc <- match(coord$barcodes, cluster$barcodes)
+    clusters <- data.frame(coord, "Segment" = cluster$cluster[match_loc])
+    active <- create_pseudo_centroids(vesalius_assay,
+      clusters,
+      dimensions)
+    active <- active / ratio
+    
+    new_trial <- create_trial_tag(colnames(vesalius_assay@territories),
+      "Segment") %>%
+      tail(1)
+    colnames(clusters) <- gsub("Segment", new_trial, colnames(clusters))
+    return(list("segments" = clusters, "active" = active))
+}
+
+
+#' @importFrom imager imappend imsplit spectrum
+#' @importFrom purrr map_dbl map
+leiden_slic_segmentation <- function(vesalius_assay,
+    dimensions,
+    col_resolution,
+    embedding,
+    compactness = 1,
+    scaling = 0.3,
+    verbose) {
+    #-------------------------------------------------------------------------#
+    # first we get tiles and get images 
+    # then we compute the a scaling metric - this is normally based on 
+    # empirical data (0.28 is one way) but it essentially a measure of the
+    # scaling value between pixel distance and color distance 
+    # we measure the max spread of colors as well
+    # all this serves as a way to scale the "spread" of the color values 
+    # to match the "spread" of the spatial coordinates
+    #-------------------------------------------------------------------------#
+    coord <- get_tiles(vesalius_assay) %>% filter(origin == 1)
+    embeddings <- check_embedding_selection(vesalius_assay,
+      embedding,
+      dimensions)[, dimensions]
+    loc <- match(coord$barcodes, rownames(embeddings))
+    # max spatial distance 
+    sc_spat <- max(c(max(coord$x), max(coord$x))  * scaling)
+    # max color distance between two pixels??
+    sc_col <-  apply(embeddings, 2, sd) %>% max()
+    #-------------------------------------------------------------------------#
+    # Scaling ratio for pixel values - this is what is going to effectively
+    # scale color value to match the scale of spatial value 
+    # the compactness will define how important the spatial component should 
+    # be. Now the way this works here is that we are modulating "color" value
+    # and not the pixel value. The higher the compactness the "higher" the 
+    # color values will be scaled up to match the spatial coordinates
+    #-------------------------------------------------------------------------# 
+    ratio <- (sc_spat / sc_col) / (compactness)
+    embeddings <- as.data.frame(embeddings * ratio)
+    embeddings$barcodes <- barcodes <- rownames(embeddings)
+    embeddings <- embeddings %>%
+        right_join(coord, by = "barcodes") %>%
+        select(-c("barcodes", "origin")) %>%
+        as.matrix()
+    colnames(embeddings) <- c(paste0("dim_", dimensions), "x", "y")
+    rownames(embeddings) <- barcodes
+    #-------------------------------------------------------------------------#
+    # Run louvain
+    #-------------------------------------------------------------------------#
+    graph <- compute_nearest_neighbor_graph(embeddings = embeddings)
+    clusters <- igraph::cluster_leiden(graph,
+      resolution_parameter = col_resolution)
+    cluster <- data.frame("cluster" = clusters$membership,
+      "barcodes" = clusters$names)
+
+
+    match_loc <- match(coord$barcodes, cluster$barcodes)
+    clusters <- data.frame(coord, "Segment" = cluster$cluster[match_loc])
+    active <- create_pseudo_centroids(vesalius_assay,
+      clusters,
+      dimensions)
+    active <- active / ratio
+    
+    new_trial <- create_trial_tag(colnames(vesalius_assay@territories),
+      "Segment") %>%
+      tail(1)
+    colnames(clusters) <- gsub("Segment", new_trial, colnames(clusters))
+    return(list("segments" = clusters, "active" = active))
+}
+
+
+
 #' @importFrom imager imappend imsplit spectrum
 #' @importFrom purrr map_dbl map
 slic_segmentation <- function(vesalius_assay,
@@ -797,15 +958,6 @@ slic_segmentation <- function(vesalius_assay,
     threshold = 0.9,
     max_iter = 1000,
     verbose) {
-    # if (is(vesalius_assay, "vesalius_assay")) {
-    #   assay <- get_assay_names(vesalius_assay)
-    #   images <- format_ves_to_c(vesalius_assay = vesalius_assay,
-    #     embed = embedding,
-    #     dims = dimensions,
-    #     verbose = FALSE) %>% imappend("cc")
-    # } else {
-    #   stop("Unsupported format to regularise_image function")
-    # }
     #-------------------------------------------------------------------------#
     # first we get tiles and get images 
     # then we compute the a scaling metric - this is normally based on 
@@ -898,6 +1050,74 @@ slic_segmentation <- function(vesalius_assay,
     tail(1)
     colnames(clusters) <- gsub("Segment", new_trial, colnames(clusters))
     return(list("segments" = clusters, "active" = embeddings))
+}
+
+
+som_segmentation <- function(vesalius_assay,
+    dimensions,
+    col_resolution,
+    embedding,
+    compactness = 1,
+    scaling = 0.3,
+    verbose) {
+    #-------------------------------------------------------------------------#
+    # first we get tiles and get images 
+    # then we compute the a scaling metric - this is normally based on 
+    # empirical data (0.28 is one way) but it essentially a measure of the
+    # scaling value between pixel distance and color distance 
+    # we measure the max spread of colors as well
+    # all this serves as a way to scale the "spread" of the color values 
+    # to match the "spread" of the spatial coordinates
+    #-------------------------------------------------------------------------#
+    coord <- get_tiles(vesalius_assay) %>% filter(origin == 1)
+    
+    #tiles <- get_tiles(vesalius_assay)
+    embeddings <- check_embedding_selection(vesalius_assay,
+      embedding,
+      dimensions)[, dimensions]
+    # max spatial distance 
+    sc_spat <- max(c(max(coord$x), max(coord$x))  * scaling)
+    # max color distance between two pixels??
+    sc_col <-  apply(embeddings, 2, sd) %>% max()
+    #-------------------------------------------------------------------------#
+    # Scaling ratio for pixel values - this is what is going to effectively
+    # scale color value to match the scale of spatial value 
+    # the compactness will define how important the spatial component should 
+    # be. Now the way this works here is that we are modulating "color" value
+    # and not the pixel value. The higher the compactness the "higher" the 
+    # color values will be scaled up to match the spatial coordinates
+    #-------------------------------------------------------------------------#
+    ratio <- (sc_spat / sc_col) / (compactness)
+    embeddings <- as.data.frame(embeddings * ratio)
+    bar <- rownames(embeddings)
+    embeddings$barcodes <- bar
+    embeddings <- embeddings %>%
+        right_join(coord, by = "barcodes") %>%
+        select(-c("barcodes", "origin")) %>%
+        as.matrix()
+    colnames(embeddings) <- c(paste0("dim_", dimensions), "x", "y")
+    #-------------------------------------------------------------------------#
+    # create SOM map of data 
+    #-------------------------------------------------------------------------#
+    som <- som(as.matrix(embeddings),
+      grid = somgrid(xdim = floor(sqrt(col_resolution)),
+        ydim = ceiling(sqrt(col_resolution))))
+    
+    cluster <- data.frame("cluster" = som$unit.classif,
+      "barcodes" = bar)
+    match_loc <- match(coord$barcodes, cluster$barcodes)
+    clusters <- data.frame(coord, "Segment" = cluster$cluster[match_loc])
+    active <- create_pseudo_centroids(vesalius_assay,
+      clusters,
+      dimensions)
+    active <- active / ratio
+    
+    new_trial <- create_trial_tag(colnames(vesalius_assay@territories),
+      "Segment") %>%
+      tail(1)
+    colnames(clusters) <- gsub("Segment", new_trial, colnames(clusters))
+    return(list("segments" = clusters, "active" = active))
+
 }
 
 #' select inital indices
@@ -998,7 +1218,7 @@ bubble_stack <- function(coordinates,
             random_start <- active[sample(x =
                 seq(1, l = length(active)),
                 size = 1)]
-            if (random_start %in% background_grid) browser()
+            
             background_grid <- c(background_grid, random_start)
             removing <- nn_index[random_start,
                 nn_dist[random_start, ] <= radius]
@@ -1009,7 +1229,7 @@ bubble_stack <- function(coordinates,
         }
         if (iter >= max_iter) {
             convergence <- TRUE
-            warning("Max Iteration with not convergence!
+            warning("Max Iteration with no convergence!
             Returning Approximation")
         }
         #---------------------------------------------------------------------#
@@ -1030,11 +1250,7 @@ bubble_stack <- function(coordinates,
     # within the full pixel image 
     # could use right_join and the likes but no 
     #-------------------------------------------------------------------------#
-    # in_image <- paste0(embeddings[, "x"], "_", embeddings[, "y"])
-    # in_background <- paste0(coordinates$x[background_grid],
-    #     "_",
-    #     coordinates$y[background_grid])
-    # in_image <- which(in_image %in% in_background)
+    
     return(background_grid)
 }
 

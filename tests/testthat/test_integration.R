@@ -13,9 +13,14 @@ library(future)
 library(ggplot2)
 library(dplyr)
 library(patchwork)
+library(Matrix)
 library(vesalius, lib.loc = "/common/martinp4/R")
 library(pwr, lib.loc = "/common/martinp4/R")
 library(gsignal, lib.loc = "/common/martinp4/R")
+library(kohonen, lib.loc = "/common/martinp4/R")
+library(registry, lib.loc = "/common/martinp4/R")
+library(rngtools, lib.loc = "/common/martinp4/R")
+library(NMF, lib.loc = "/common/martinp4/R")
 
 
 set.seed(1547)
@@ -53,7 +58,7 @@ count_mat <- read.table(counts[f], header = TRUE, row.names = 1)
 
 
 vesalius <- build_vesalius_assay(coord, count_mat) %>%
-    generate_embeddings(tensor_resolution = 0.3) %>%
+    generate_embeddings(dim_reduction = "NMF", tensor_resolution = 0.3) %>%
     regularise_image(dimensions = 1:30, lambda = 5) %>%
     equalize_image(dimensions = 1:30, sleft = 5, sright = 5) %>%
     smooth_image(dimensions = 1:30, method =c("iso", "box"), sigma = 2, box = 10, iter = 10) 
@@ -72,7 +77,7 @@ vesalius_query <- build_vesalius_assay(coord, count_mat) %>%
 
 
 
-test <- integrate_assays(vesalius,
+test <- integrate_horizontally(vesalius,
     vesalius_query,
     n_centers = 20,
     n_anchors = 20,
@@ -92,7 +97,7 @@ g+g1
 dev.off()
 
 pdf("test.pdf")
-plot(0, type = "n", xlim = c(-500, 2000), ylim = c(-500, 2000))
+plot(0, type = "n", xlim = c(0, 650), ylim = c(0, 650))
 points(seed_centers$x, seed_centers$y,col="black", cex = 3)
 points(query_centers$x, query_centers$y,pch = 20, cex = 3, col="red")
 
@@ -117,12 +122,132 @@ print(g + g2 + g1)
 dev.off()
 
 
+plot(0, type = "n", xlim = c(0, 650), ylim = c(0, 650))
+points(seed_spix$x, seed_spix$y,col="black", cex = 3)
+points(query_spix$x, query_spix$y,pch = 20, cex = 3, col="red")
+for(i in seq_len(nrow(anchor_map))){
+    x <- c(anchor_map$x[i], query_spix$x[anchor_map$from[i]])
+    y <- c(anchor_map$y[i], query_spix$y[anchor_map$from[i]])
+    lines(x,y, lwd = 2, col = "blue")
+}
+dev.off()
+
+
+
+## Vertical 
+# data prep
+rna <- "/common/wonklab/Spatial_CITE/GSM6578061_mousekidney_RNA.tsv"
+prot <- "/common/wonklab/Spatial_CITE/GSM6578070_mousekidney_protein.tsv"
+
+rna <- read.table(rna, header = TRUE, sep = "\t")
+prot <- read.table(prot, header = TRUE, sep = "\t")
+
+CITE_coordinates <- function(assay) {
+    locations <- assay[, 1]
+    coordinates <- strsplit(locations,"x")
+    x <- sapply(coordinates,"[[", 1)
+    y <- sapply(coordinates,"[[", 2)
+    return(data.frame("barcodes" = locations,
+        "x" = x,
+        "y" = y))
+}
+
+CITE_counts <- function(assay) {
+    locations <- assay[, 1]
+    genes <- colnames(assay)[-1]
+    counts <- t(assay[, -1])
+    colnames(counts) <- locations
+    rownames(counts) <- genes
+    return(counts)
+}
+
+rna_coord <- CITE_coordinates(rna)
+rna_counts <- CITE_counts(rna)
+
+prot_coord <- CITE_coordinates(prot)
+prot_counts <- CITE_counts(prot)
+
+ves_rna <- build_vesalius_assay(rna_coord, rna_counts)
+ves_rna <- generate_embeddings(ves_rna, filter_grid = 1) %>%
+    equalize_image(dimensions = 1:5, sleft = 2, sright = 2) %>%
+    smooth_image(dimensions = 1:5,sigma = 1, iter = 5) %>%
+    segment_image(dimensions = 1:5,col_resolution = 10) %>%
+    isolate_territories()
+
+embed_plot <- vector("list", 30)
+for(i in seq_along(embed_plot)){
+    embed_plot[[i]] <- image_plot(ves_rna, dimensions = i,
+        embedding = "PCA")
+}
+pdf("rna_embed.pdf", width = 30, height = 30)
+print(wrap_plots(embed_plot, nrow = 6, ncol = 5))
+dev.off()
+pdf("rna_territories.pdf", width = 10, height = 8)
+print(territory_plot(ves_rna, cex_pt = 5))
+dev.off()
+
+ves_prot <- build_vesalius_assay(prot_coord,prot_counts)
+ves_prot <- generate_embeddings(ves_prot, filter_grid = 1) %>%
+    equalize_image(dimensions = 1:5,sleft = 2, sright = 2) %>%
+    smooth_image(dimensions = 1:5,sigma = 1, iter = 5) %>%
+    segment_image(dimensions = 1:5,col_resolution = 10) %>%
+    isolate_territories()
+
+embed_plot <- vector("list", 30)
+for(i in seq_along(embed_plot)){
+    embed_plot[[i]] <- image_plot(ves_prot, dimensions = i,
+        embedding = "PCA")
+}
+pdf("prot_embed.pdf", width = 30, height = 30)
+print(wrap_plots(embed_plot, nrow = 6, ncol = 5))
+dev.off()
+pdf("prot_territories.pdf", width = 10, height = 8)
+print(territory_plot(ves_prot, cex_pt = 5))
+dev.off()
+
+integrated <- integrate_vertically(ves_rna,
+    ves_prot,
+    dimensions = 1:10,
+    method = "interlace")
+integrated <- smooth_image(integrated, sigma = 2, iter = 5)
+integrated <- segment_image(integrated, dimensions = 1:10)
+integrated <- isolate_territories(integrated)
+pdf("test_vertical_int_interlace.pdf", width = 12, height = 10)
+territory_plot(integrated, cex_pt= 5)
+dev.off()
+
+integrated <- integrate_vertically(ves_rna,
+    ves_prot,
+    dimensions = 1:10,
+    method = "mean")
+integrated <- smooth_image(integrated, sigma = 2, iter = 5)
+integrated <- segment_image(integrated, dimensions = 1:10)
+integrated <- isolate_territories(integrated)
+pdf("test_vertical_int_mean.pdf", width = 12, height = 10)
+territory_plot(integrated, cex_pt= 5)
+dev.off()
+
+integrated <- integrate_vertically(ves_rna,
+    ves_prot,
+    dimensions = 1:10,
+    method = "concat")
+integrated <- equalize_image(integrated, dimensions = 1:10,sleft = 2, sright = 2)
+integrated <- smooth_image(integrated, dimensions = 1:10,sigma = 1, iter = 5)
+integrated <- segment_image(integrated, dimensions = 1:10, col_resolution = 10)
+integrated <- isolate_territories(integrated)
+pdf("test_vertical_int_concat.pdf", width = 12, height = 10)
+territory_plot(integrated, cex_pt= 5)
+dev.off()
+
+
+
 
 ########
 set.seed(145)
 library(vesalius)
 library(ggplot2)
 library(dplyr)
+library(kohonen)
 data(vesalius)
 load("Scenes/super_pixel/jitter_ves.Rda")
 vesalius <- build_vesalius_assay(coordinates, counts)
@@ -131,11 +256,10 @@ jitter_ves <- build_vesalius_assay(jitter_coord, jitter_counts)
 vesalius <- generate_embeddings(vesalius)
 vesalius <- smooth_image(vesalius, embedding = "PCA", sigma = 5, iter = 5)
 # vesalius <- segment_image(vesalius,
-#     method = "slic",
+#     method = "som",
 #     dimensions = 1:3,
-#     col_resolution = 50,
+#     col_resolution = 10,
 #     compactness = 1,
-#     index_selection = "random",
 #     scaling = 0.2)
 
 
@@ -144,30 +268,39 @@ jitter_ves <- smooth_image(jitter_ves, embedding = "PCA", sigma = 5, iter = 5)
 # jitter_ves <- segment_image(jitter_ves,
 #     method = "slic",
 #     dimensions = 1:3,
-#     col_resolution = 50,
+#     col_resolution = 10,
 #     compactness = 1,
-#     index_selection = "bubble",
 #     scaling = 0.2)
 
 
-test <- integrate_assays(vesalius,
+test <- integrate_horizontally(vesalius,
     jitter_ves,
-    compactness = 10,
-    index_selection = "random",
+    compactness = 5,
+    index_selection = "bubble",
     signal = "features",
     n_centers = 50,
     threshold = 0.8)
 
 test <- generate_embeddings(test)
-test <- equalize_image(test, embedding = "PCA",sleft = 5, sright = 5)
-test <- smooth_image(test, embedding = "PCA", sigma = 5, iter = 5)
+#test <- equalize_image(test, embedding = "PCA",sleft = 5, sright = 5)
+test <- smooth_image(test, sigma = 5, iter = 5)
 test <- segment_image(test, col_resolution = 5)
 
-g <- image_plot(test$seed)
-g1 <- image_plot(test$query)
-g2 <- image_plot(test$integrate)
+plot(0, type = "n", xlim = c(0, 650), ylim = c(0, 650))
+points(seed_centers$x, seed_centers$y,col="black", cex = 3)
+points(query_centers$x, query_centers$y,pch = 20, cex = 3, col="red")
 
-print(g + g1 + g2)
+for(i in seq_len(nrow(query_centers))){
+    # x <- c(query_centers$x[anchors$from[i]],
+    #     seed_centers$x[anchors$to[i]])
+    # y <- c(query_centers$y[anchors$from[i]],
+    #     seed_centers$y[anchors$to[i]])
+    x_new <- c(query_centers$x[i], query_centers$x_new[i])
+    y_new <- c(query_centers$y[i], query_centers$y_new[i])
+    # lines(x,y, col = "green", lwd = 2)
+    lines(x_new,y_new, col = "blue", lwd = 2)
+}
+
 
 
 seed_score <- igraph::graph_from_data_frame(test$seed_score, directed = FALSE)

@@ -39,6 +39,8 @@ detect_edges <- function(img) {
 
 
 
+
+
 #------------------------/ Normalising Embeds /--------------------------------#
 
 #' pixel normalisation dispatch function
@@ -81,9 +83,18 @@ z_norm <- function(x) {
   }
 }
 
+scale_data_spatial <- function(data, compactness, scale) {
+  scale_spat <- max(c(max(data$x), max(data$x))  * scale)
+  scale_dat <- apply(data[, !colnames(data) %in% c("x", "y")], 2, sd) %>%
+    max()
+  ratio <- (scale_spat / scale_dat) / compactness
+  data[, !colnames(data) %in% c("x", "y")] <-
+    data[, !colnames(data) %in% c("x", "y")] * ratio
+  return(data)
+}
 
 
-
+#-------------------------/ Aligning Assays /--------------------------------#
 
 polar_angle <- function(coord_x, coord_y, center_x, center_y) {
   x <- coord_x - center_x
@@ -118,4 +129,65 @@ cart_coord <- function(d, a) {
     delta_y <- -d * cos(a - 3 * pi / 2)
   }
   return(list("delta_x" = delta_x, "delta_y" = delta_y))
+}
+
+#-----------------------------/ Scaling  /----------------------------------#
+#' calculate scale of assay
+#' @param coordinates Spatial coordinates as data frame
+#' @details Calculate the average distance between spots/beads/indeces
+#' @return Single float 
+#' @importFrom RANN nn2
+calculate_scale <- function(coordinates, q = 0.999) {
+    scale <- RANN::nn2(data = coordinates[, c("x", "y")], k = 2)
+    scale <- quantile(scale$nn.dist[, 2], q)
+    return(scale)
+}
+
+#' Calculate the total area of a territory
+#' @param vesalius_assay a vesalius_assay object
+#' @param territory numeric/character/vector describing wich terriory(ies)
+#' that will be use to compute area.
+#' @param trial which territory trial should be used
+#' @param use_rescaled logical - which value should be use for 
+#' @details Compute the total area of a territory 
+#' @return territory area
+compute_territory_area <- function(vesalius_assay,
+  territory = NULL,
+  trial = "last",
+  use_rescaled = FALSE,
+  verbose = TRUE) {
+  #---------------------------------------------------------------------------#
+  # First lets check the territory selection
+  #--------------------------------------------------------------------------#
+  territory <- territory %||%
+      stop("No specified territory! Cannot compute Area.")
+  ter <- check_territory_trial(vesalius_assay, trial)
+  territory <- check_group_value(ter, territory)
+  ter <- filter(ter, trial %in% territory)
+  #--------------------------------------------------------------------------#
+  # Next we can get the scale and use this as the capture radius
+  #--------------------------------------------------------------------------#
+  if (use_rescaled) {
+    scale <- vesalius_assay@meta$scale$rescale
+  } else {
+    scale <- vesalius_assay@meta$scale$scale
+  }
+  #--------------------------------------------------------------------------#
+  # run distance pooling to seperate potential patches
+  #--------------------------------------------------------------------------#
+  patches <- distance_pooling(ter,
+    capture_radius = scale,
+    min_spatial_index = 3)
+  ter$trial <- patches
+  patches <- unique(ter$trial)
+  patches <- patches[!patches %in% "isolated"]
+  area <- rep(0,length(patches))
+  message_switch("area_comp", verbose, patches = length(patches))
+  for (i in seq_along(patches)) {
+      area[i] <- deldir::deldir(
+        as.numeric(ter$x[ter$trial == patches[i]]),
+        as.numeric(ter$y[ter$trial == patches[i]]))$del.area
+  }
+  area <- sum(area)
+  return(area)
 }

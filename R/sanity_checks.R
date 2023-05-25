@@ -11,22 +11,18 @@
 #' @param coordinates coordinate file
 #' @param image connection to image or image array
 #' @param assay string with assay name
-#' @param adjust_coordinates string describing how coordinates should be
-#' adjusted (origin or norm)
 #' @param verbose logical if progress message should be outputed.
 #' @return list containing checked counts, coordinates and assay
 check_inputs <- function(counts,
     coordinates,
     image,
     assay,
-    adjust_coordinates,
     verbose) {
     #--------------------------------------------------------------------------#
     # we can check the validity of the coordinates
     #--------------------------------------------------------------------------#
     coordinates <- check_coordinates(coordinates,
         assay,
-        adjust_coordinates,
         verbose)
     #--------------------------------------------------------------------------#
     # next let's check counts if they are present
@@ -140,16 +136,14 @@ check_counts <- function(counts, assay, verbose) {
 #' @param coordinates coordinate data 
 #' @param assay string - assay name
 #' @param verbose logical if progress message should be printed
-#' @param adjust_coordinates string - how should coordinates be adjusted
 #' @details adjusts coordinates by either snapping coordinates to origin 
 #' or min max normalisation of coordinates. Might add polar for future tests.
 #' @return coordinates data.frame or error
 #' @importFrom methods is as
 check_coordinates <- function(coordinates,
     assay,
-    adjust_coordinates = c("origin", "norm"),
     verbose) {
-    message_switch("check_coord",verbose, assay = assay)
+    message_switch("check_coord", verbose, assay = assay)
     if (is(coordinates, "matrix")) {
         coordinates <- as.data.frame(coordinates)
     } else if (is(coordinates, "data.frame")) {
@@ -176,19 +170,15 @@ check_coordinates <- function(coordinates,
     coordinates$barcodes <- as.character(coordinates$barcodes)
     coordinates$x <- as.numeric(coordinates$x)
     coordinates$y <- as.numeric(coordinates$y)
-    if (adjust_coordinates[1L] == "origin") {
-        coordinates$x_orig <- coordinates$x
-        coordinates$y_orig <- coordinates$y
-        coordinates$x <- (coordinates$x - min(coordinates$x)) + 1
-        coordinates$y <- (coordinates$y - min(coordinates$y)) + 1
-    } else if (adjust_coordinates[1L] == "norm") {
-        coordinates$x_orig <- coordinates$x
-        coordinates$y_orig <- coordinates$y
-        coordinates$x <- min_max((coordinates$x))
-        coordinates$y <- min_max((coordinates$y))
-    } else {
-        stop("Woops - not sure how you want me to adjust coordinates")
-    }
+    #--------------------------------------------------------------------------#
+    # snapping coordinates to origin - might need to change this 
+    # when using image - still the original coordinates though
+    #--------------------------------------------------------------------------#
+    coordinates$x_orig <- coordinates$x
+    coordinates$y_orig <- coordinates$y
+    coordinates$x <- (coordinates$x - min(coordinates$x)) + 1
+    coordinates$y <- (coordinates$y - min(coordinates$y)) + 1
+    
     return(coordinates)
 }
 
@@ -310,10 +300,16 @@ check_eq_method <- function(method) {
 #' @param method string - segmentation method
 #' @return segmentation method
 check_segmentation_method <- function(method) {
-    if (any(!method %in% c("kmeans", "louvain", "leiden", "slic"))) {
+    if (any(!method %in% c("kmeans",
+        "louvain",
+        "leiden",
+        "slic",
+        "louvain_slic",
+        "leiden_slice",
+        "som"))) {
         stop("Segmentation method provided does not match available options \n
             Select from: \n
-            kmeans, louvain, leiden, slic")
+            kmeans, louvain, leiden, slic, louvain_slic, leiden_slic, som")
     } else {
         return(method)
     }

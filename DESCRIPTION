@@ -25,6 +25,7 @@ Collate: image_processing.R
     sanity_checks.R
     object_modification.R
     integrate_assays.R
+    interoperability.R
 Depends: R (>= 4.0.0),
          NMF
 Imports:
@@ -52,7 +53,11 @@ Imports:
     edgeR,
     ggplot2,
     igraph,
-    pwr
+    pwr,
+    purrr,
+    gsignal,
+    patchwork,
+    RcppHungarian
 Suggests:
     knitr,
     RUnit,

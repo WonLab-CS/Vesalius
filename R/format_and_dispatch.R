@@ -68,7 +68,7 @@ future_ves_to_cimg <- function(i, embeddings, dims, tiles, full_image = TRUE) {
     return(cimg)
   }
   im <- as.cimg(array(median(cimg$value), c(max(cimg$x), max(cimg$y))))
-  ind <- imager:::index.coord(im, cimg[, c("x", "y"), drop = FALSE])
+  ind <- imager::index.coord(im, cimg[, c("x", "y"), drop = FALSE])
   im[ind] <- cimg[["value"]]
   return(im)
 }

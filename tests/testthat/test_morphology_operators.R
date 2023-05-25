@@ -1,8 +1,8 @@
 # load data and process it to get territories 
 data(vesalius)
-vesalius <- build_vesalius_assay(coordinates, counts)
-vesalius <- generate_embeddings(vesalius)
-vesalius <- smooth_image(vesalius, iter = 15)
+vesalius <- build_vesalius_assay(coordinates, counts, scale = "auto")
+vesalius <- generate_embeddings(vesalius, tensor_resolution = 0.3)
+vesalius <- smooth_image(vesalius,sigma = 5, iter = 5)
 vesalius <- segment_image(vesalius, col_resolution = 3)
 vesalius <- isolate_territories(vesalius)
 vesalius <- isolate_territories(vesalius)
