@@ -14,13 +14,15 @@ library(ggplot2)
 library(dplyr)
 library(patchwork)
 library(Matrix)
-library(vesalius, lib.loc = "/common/martinp4/R")
 library(pwr, lib.loc = "/common/martinp4/R")
 library(gsignal, lib.loc = "/common/martinp4/R")
 library(kohonen, lib.loc = "/common/martinp4/R")
 library(registry, lib.loc = "/common/martinp4/R")
 library(rngtools, lib.loc = "/common/martinp4/R")
 library(NMF, lib.loc = "/common/martinp4/R")
+library(RcppHungarian, lib.loc = "/common/martinp4/R")
+library(vesalius, lib.loc = "/common/martinp4/R")
+
 
 
 set.seed(1547)
@@ -58,7 +60,7 @@ count_mat <- read.table(counts[f], header = TRUE, row.names = 1)
 
 
 vesalius <- build_vesalius_assay(coord, count_mat) %>%
-    generate_embeddings(dim_reduction = "NMF", tensor_resolution = 0.3) %>%
+    generate_embeddings(dim_reduction = "PCA", tensor_resolution = 0.3) %>%
     regularise_image(dimensions = 1:30, lambda = 5) %>%
     equalize_image(dimensions = 1:30, sleft = 5, sright = 5) %>%
     smooth_image(dimensions = 1:30, method =c("iso", "box"), sigma = 2, box = 10, iter = 10) 
@@ -79,16 +81,20 @@ vesalius_query <- build_vesalius_assay(coord, count_mat) %>%
 
 test <- integrate_horizontally(vesalius,
     vesalius_query,
-    n_centers = 20,
-    n_anchors = 20,
-    compactness = 100,
+    n_centers = 150,
+    n_anchors = 150,
+    compactness = 20,
+    depth = 2,
     index_selection = "random",
-    mut_extent = 0.4,
-    mut_prob = 0.4,
-    signal = "features",
-    threshold = 0.85)
+    signal = "features")
 
 test <- generate_embeddings(test,tensor_resolution = 0.99)
+test <- #regularise_image(test, dimensions = 1:30, lambda = 5) %>%
+    equalize_image(test,dimensions = 1:30, sleft = 5, sright = 5)# %>%
+    #smooth_image(dimensions = 1:30, method =c("iso", "box"), sigma = 2, box = 10, iter = 10)
+pdf("test_1.pdf")
+image_plot(test)
+dev.off()
 
 g <- ggplot(query, aes(x,y,col = as.factor(Segment))) + geom_point(size = 0.3)
 g1 <- ggplot(query, aes(x_new,y_new, col = as.factor(Segment))) + geom_point(size=0.3)
@@ -278,13 +284,17 @@ test <- integrate_horizontally(vesalius,
     compactness = 5,
     index_selection = "bubble",
     signal = "features",
-    n_centers = 50,
+    n_centers = 100,
     threshold = 0.8)
 
-test <- generate_embeddings(test)
-#test <- equalize_image(test, embedding = "PCA",sleft = 5, sright = 5)
+
+test <- generate_embeddings(test, tensor_resolution = 0.999)
+test <- equalize_image(test,sleft = 5, sright = 5)
 test <- smooth_image(test, sigma = 5, iter = 5)
-test <- segment_image(test, col_resolution = 5)
+#test <- segment_image(test, col_resolution = 5)
+
+
+image_plot(test) + image_plot(jitter_ves)
 
 plot(0, type = "n", xlim = c(0, 650), ylim = c(0, 650))
 points(seed_centers$x, seed_centers$y,col="black", cex = 3)

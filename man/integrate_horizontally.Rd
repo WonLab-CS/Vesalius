@@ -18,8 +18,7 @@ integrate_horizontally(
   index_selection = "random",
   threshold = 0.7,
   n_anchors = 20,
-  mut_extent = 0.1,
-  mut_prob = 0.2,
+  depth = 1,
   allow_vertex_merge = FALSE,
   signal = "features",
   verbose = TRUE
@@ -61,11 +60,6 @@ that score above this threshold will be used for graph matching}
 \item{n_anchors}{integer [3, n_centers] - Number of graph anchors used during
 graph matching}
 
-\item{mut_extent}{numeric [0,1] - extent of alignment graph that can be 
-subjected to mutations}
-
-\item{mut_prob}{numeric [0,1] - probability of alignment graph mutation.}
-
 \item{allow_vertex_merge}{logical - Should graph vertices be merged or should
 them be repelled to new location. See details}
 
@@ -73,6 +67,11 @@ them be repelled to new location. See details}
 be used as cell signal for super pixel scoring. Seed details}
 
 \item{verbose}{logical - should I be a noisy boy?}
+
+\item{mut_extent}{numeric [0,1] - extent of alignment graph that can be 
+subjected to mutations}
+
+\item{mut_prob}{numeric [0,1] - probability of alignment graph mutation.}
 }
 \description{
 Aling and integrate spatial assay from the same modality using super pixels

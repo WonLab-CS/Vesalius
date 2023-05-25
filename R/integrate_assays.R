@@ -53,8 +53,7 @@ integrate_horizontally <- function(seed_assay,
     index_selection = "random",
     threshold = 0.7,
     n_anchors = 20,
-    mut_extent = 0.1,
-    mut_prob = 0.2,
+    depth = 1,
     allow_vertex_merge = FALSE,
     signal = "features",
     verbose = TRUE) {
@@ -149,12 +148,7 @@ integrate_horizontally <- function(seed_assay,
         query_graph = query_graph,
         query_trial = query_trial$segments,
         score = spix_score,
-        #scoring_method = "pearson",
-        #threshold = threshold,
-        #iter = iter,
-        #n_anchors = n_anchors,
-        #mut_extent = mut_extent,
-        #mut_prob = mut_prob,
+        depth = depth,
         verbose = verbose)
     aligned_graph <- align_graph(matched_graph,
         seed_trial$segments,
@@ -170,10 +164,22 @@ integrate_horizontally <- function(seed_assay,
     simple_bar(verbose)
     return(integrated)
 }
-
+#' Integrate jointly measured spatial omic assays
+#' @param mod1 vesalius_assay object containing first modality
+#' @param mod2 vesalius_assay objecty containing second modality
+#' @param dimensions numeric vector describing latent space dimensions 
+#' to use during intergration
+#' @param method character - integration method. interlace - mean - concat 
+#' are available options
+#' @param norm_method character - which count values should be use 
+#' for integration when using concat method
+#' @param dim_reduction characater - which dim reduction methods should be 
+#' used for concat integration (PCA,PCA_L,UMAP,LSI,LSI_UMAP,NMF)
+#' @param verbose logical - should progress message be outputed to the 
+#' console.
 #' @export
-integrate_vertically <- function(seed,
-    query,
+integrate_vertically <- function(mod1,
+    mod2,
     dimensions = seq(1, 30),
     embedding = "last",
     method = "interlace",
@@ -189,16 +195,16 @@ integrate_vertically <- function(seed,
     # Get embeddings - need make some changes here
     # for now we assume we get the active 
     #-------------------------------------------------------------------------#
-    seed_embed <- check_embedding_selection(seed, embedding, dimensions)
-    query_embed <- check_embedding_selection(query, embedding, dimensions)
+    mod1_embed <- check_embedding_selection(mod1, embedding, dimensions)
+    mod2_embed <- check_embedding_selection(mod2, embedding, dimensions)
     #-------------------------------------------------------------------------#
     # method switch - which method is best 
     #-------------------------------------------------------------------------#
     integrated_embeds <- switch(EXPR = method,
-        "interlace" = interlace_embeds(seed_embed, query_embed, dimensions),
-        "mean" = average_embed(seed_embed, query_embed, dimensions),
-        "concat" = concat_embed(seed,
-            query,
+        "interlace" = interlace_embeds(mod1_embed, mod2_embed, dimensions),
+        "mean" = average_embed(mod1_embed, mod2_embed, dimensions),
+        "concat" = concat_embed(mod1,
+            mod2,
             dimensions,
             norm_method,
             dim_reduction))
@@ -208,7 +214,7 @@ integrate_vertically <- function(seed,
         assay = "integrated",
         embeddings = integrated_embeds,
         active = integrated_embeds[[1]],
-        tiles = seed@tiles)
+        tiles = mod1@tiles)
     simple_bar(verbose)
     return(integrated)
 
@@ -423,7 +429,6 @@ match_graph <- function(seed_graph,
     #-------------------------------------------------------------------------#
     # Initialize optimisation 
     #-------------------------------------------------------------------------#
-    #seed_paths <- graph_path_length(seed_graph)
     query_paths <- graph_path_length(query_graph)
     seed_trial <- get_super_pixel_centers(seed_trial)
     seed_trial$x <- min_max(seed_trial$x)
@@ -511,8 +516,6 @@ align_graph <- function(matched_graph,
     #-------------------------------------------------------------------------#
     # get closest anchor point for all un assigned spix points 
     #-------------------------------------------------------------------------#
-    #unassinged <- matched_graph %>% filter(anchor == 0)
-    #query_point <- query_centers[query_centers$center %in% unassinged$to, ]
     anchor_point <- query_centers[query_centers$center %in% anchors$from, ]
     #-------------------------------------------------------------------------#
     # Apply compound trajectories to individual points points
@@ -520,20 +523,46 @@ align_graph <- function(matched_graph,
     message_switch("apply_traj", verbose)
     nn <- RANN::nn2(data = anchor_point[, c("x", "y")],
         query = query[, c("x", "y")],
-        k = 2)
-    
-    angle <- apply(nn$nn.idx, 1, function(idx, anchors) {
-        angle <- mean(anchors$angle[as.vector(idx)[1]])
-        return(angle)
-    }, anchors)
-    distance <- apply(nn$nn.idx, 1, function(idx, anchors) {
-        distance <- sqrt(sum((anchors$distance[as.vector(idx)[1]])^2))
-        return(distance)
-    }, anchors)
+        k = 1)
+    #browser()
+    idx <- unique(nn$nn.idx[,1])
+    for (i in seq_along(idx)) {
+        #browser()
+        base_angle <- anchors$angle[idx[i]]
+        base_distance <- anchors$distance[idx[i]]
+        loc <- which(query$Segment == idx[i])
+        points_matrix <- query[loc, c("x", "y")]
+        center_x <- anchor_point$x[anchor_point$center == idx[i]]
+        center_y <- anchor_point$y[anchor_point$center == idx[i]]
+        points_matrix$x <- points_matrix$x - center_x
+        points_matrix$y <- points_matrix$y - center_y
+        theta <- base_angle
+        rotation_matrix <- matrix(c(cos(theta), -sin(theta),
+             sin(theta),cos(theta)),
+             nrow = 2, ncol = 2, byrow = TRUE)
+        points_matrix <- as.matrix(points_matrix) %*% rotation_matrix
+        points_matrix[,1] <- (points_matrix[,1] + center_x) +
+            (base_distance * cos(base_angle))
+        points_matrix[,2] <- (points_matrix[,2] + center_y) +
+            (base_distance * sin(base_angle))
+        query$x[loc] <- points_matrix[,1] 
+        query$y[loc] <- points_matrix[,2] 
+    }
 
     
-    query$x <- query$x + (distance * cos(angle))
-    query$y <- query$y + (distance * sin(angle))
+    
+    # angle <- apply(nn$nn.idx, 1, function(idx, anchors) {
+    #     angle <- mean(anchors$angle[as.vector(idx)[1]])
+    #     return(angle)
+    # }, anchors)
+    # distance <- apply(nn$nn.idx, 1, function(idx, anchors) {
+    #     distance <- sqrt(sum((anchors$distance[as.vector(idx)[1]])^2))
+    #     return(distance)
+    # }, anchors)
+
+    
+    # query$x <- query$x + (distance * cos(angle))
+    # query$y <- query$y + (distance * sin(angle))
     #-------------------------------------------------------------------------#
     # get closest seed point for all un assigned points
     #-------------------------------------------------------------------------#
@@ -560,7 +589,6 @@ get_best_vertex  <- function(score, rank = 1) {
 #'@importFrom igraph E
 graph_path_length <- function(graph) {
     gr <- igraph::graph_from_data_frame(graph, directed = FALSE)
-    #igraph::E(gr)$weight <- graph$score
     path_length <- igraph::distances(gr)
     return(path_length)
 }
@@ -615,7 +643,7 @@ integrate_graph <- function(aligned_graph,
         integrated_counts[[i]] <- query_local
     }
     if (verbose){cat("\n")}
-    #browser()
+    
     #-------------------------------------------------------------------------#
     # Bind everything together - this needs to be cleaned
     #-------------------------------------------------------------------------#
@@ -651,7 +679,7 @@ integrate_graph <- function(aligned_graph,
     # integrated_coordinates$barcodes <- make.unique(
     #     integrated_coordinates$barcodes,
     #     sep = "_")
-    
+    #browser()
     vesalius_assay <- build_vesalius_assay(coordinates = query_coordinates,
         counts = integrated_counts,
         assay = "integrated",
