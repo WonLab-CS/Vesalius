@@ -9,6 +9,7 @@ territory_plot(
   trial = "last",
   split = FALSE,
   highlight = NULL,
+  contour = "None",
   randomise = TRUE,
   cex = 10,
   cex_pt = 1
@@ -25,6 +26,9 @@ separate panels}
 
 \item{highlight}{numeric vector describing which territories should be 
 highlighted.}
+
+\item{contour}{if territory contours should be added. Availble:
+"None", "egde", or "hull"}
 
 \item{randomise}{logical - If TRUE, colour palette will be randomised.}
 

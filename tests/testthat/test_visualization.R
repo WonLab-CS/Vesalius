@@ -2,8 +2,8 @@
 data(vesalius)
 vesalius <- build_vesalius_assay(coordinates, counts)
 vesalius <- generate_embeddings(vesalius)
-vesalius <- smooth_image(vesalius, iter = 15)
-vesalius <- segment_image(vesalius, col_resolution = 3)
+vesalius <- smooth_image(vesalius, sigma = 5, iter = 15)
+vesalius <- segment_image(vesalius, col_resolution = 2)
 vesalius <- isolate_territories(vesalius)
 cells <- sample(get_territories(vesalius)$barcodes, 1040, replace = FALSE)
 cell_error <- get_territories(vesalius)[

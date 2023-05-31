@@ -155,7 +155,6 @@ rebalence_colors <- function(coordinates, dimensions, method = "minmax") {
     }
     return(template)
 }
-
 #' territory_plot - plotting Vesalius territories
 #' @param vesalius_assay a vesalius_Assay object
 #' @param trial character string describing which segmentation trial
@@ -165,6 +164,8 @@ rebalence_colors <- function(coordinates, dimensions, method = "minmax") {
 #' @param randomise logical - If TRUE, colour palette will be randomised.
 #' @param highlight numeric vector describing which territories should be 
 #' highlighted.
+#' @param contour if territory contours should be added. Availble:
+#' "None", "egde", or "hull"
 #' @param cex numeric describing font size multiplier.
 #' @param cex_pt numeric describing point size multiplier.
 #' @details Territory plots show all territories in false colour after they
@@ -196,12 +197,13 @@ rebalence_colors <- function(coordinates, dimensions, method = "minmax") {
 #' @export
 #' @importFrom ggplot2 ggplot geom_point aes facet_wrap theme_classic
 #' @importFrom ggplot2 scale_color_manual theme element_text
-#' @importFrom ggplot2 guides guide_legend labs
+#' @importFrom ggplot2 guides guide_legend labs geom_path
 
 territory_plot <- function(vesalius_assay,
   trial = "last",
   split = FALSE,
   highlight = NULL,
+  contour = "None",
   randomise = TRUE,
   cex = 10,
   cex_pt = 1) {
@@ -219,7 +221,11 @@ territory_plot <- function(vesalius_assay,
     if (!is.null(highlight)){
         highlight <- check_group_value(territories, highlight)
     }
-    
+    if (!grepl("none|None|NONE", contour)) {
+      territories <- unpack_territory_path(territories,
+        vesalius_assay@tiles,
+        method = contour)
+    }
     legend <- sapply(strsplit(trial, "_"), "[[", 1)
     #--------------------------------------------------------------------------#
     # Changing label order because factor can suck ass sometimes
@@ -237,36 +243,40 @@ territory_plot <- function(vesalius_assay,
     #--------------------------------------------------------------------------#
     ter_col <- create_palette(territories, randomise)
     ter_alpha <- create_alpha(territories, highlight)
-    if (split) {
-      ter_plot <- ggplot(territories, aes(x, y, col = trial)) +
-          geom_point(size = cex_pt, alpha = ter_alpha) +
-          facet_wrap(~trial) +
-          theme_classic() +
-          scale_color_manual(values = ter_col) +
-          theme(legend.text = element_text(size = cex * 1.2),
-            axis.text = element_text(size = cex * 1.2),
-            axis.title = element_text(size = cex * 1.2),
-            plot.title = element_text(size = cex * 1.5),
-            legend.title = element_text(size = cex * 1.2)) +
-          guides(colour = guide_legend(
-            override.aes = list(size = cex * 0.3))) +
-          labs(colour = legend, title = paste("Vesalius", trial),
-            x = "X coordinates", y = "Y coordinates")
+
+    ter_plot <- ggplot()
+    if (!grepl("none|None|NONE", contour)) {
+      ter_plot <- ter_plot +
+        geom_point(data = territories,
+          aes(x,y, col = trial, group = trial),
+          size = cex_pt,
+          alpha = ter_alpha) +
+        geom_path(data = territories,
+          aes(x,y, col = trial, group = trial),
+          linewidth = cex_pt * 0.5,
+          alpha = ter_alpha)
     } else {
-      ter_plot <- ggplot(territories, aes(x, y, col = trial)) +
-          geom_point(size = cex_pt, alpha = ter_alpha) +
-          theme_classic() +
-          scale_color_manual(values = ter_col) +
-          theme(legend.text = element_text(size = cex * 1.2),
-            axis.text = element_text(size = cex * 1.2),
-            axis.title = element_text(size = cex * 1.2),
-            plot.title = element_text(size = cex * 1.5),
-            legend.title = element_text(size = cex * 1.2)) +
-          guides(colour = guide_legend(
-            override.aes = list(size = cex * 0.3))) +
-          labs(colour = legend, title = paste("Vesalius", trial),
-            x = "X coordinates", y = "Y coordinates")
+      ter_plot <- ter_plot +
+        geom_point(data = territories,
+          aes(x,y, col = trial),
+          size = cex_pt,
+          alpha = ter_alpha)
     }
+    if (split) {
+      ter_plot <- ter_plot + facet_wrap(~trial)
+    }
+    ter_plot <- ter_plot +
+      theme_classic() +
+      scale_color_manual(values = ter_col) +
+      theme(legend.text = element_text(size = cex * 1.2),
+        axis.text = element_text(size = cex * 1.2),
+        axis.title = element_text(size = cex * 1.2),
+        plot.title = element_text(size = cex * 1.5),
+        legend.title = element_text(size = cex * 1.2)) +
+      guides(colour = guide_legend(
+        override.aes = list(size = cex * 0.3))) +
+      labs(colour = legend, title = paste("Vesalius", trial),
+        x = "X coordinates", y = "Y coordinates")
     return(ter_plot)
 }
 
@@ -324,6 +334,93 @@ create_alpha <- function(territories, highlight) {
   }
   return(ter_col[as.integer(territories$trial)])
 }
+
+#' retrieve the points contained in the edge of each territory
+#' @param trial name of territory trial that should be selected
+#' @param tiles vesalius tiles 
+#' @param method string - method for how territories edges should be
+#' selected
+#' @details Here we are using convex as start point. Essentially, we 
+#' order the coordinates based on their polar coordinates using the 
+#' median coordinate as the center point. 
+#' @returns a data frame containing edge of each territory.
+unpack_territory_path <- function(trial,
+    tiles,
+    method = "none") {
+    #-------------------------------------------------------------------------#
+    # First we convert to pixset and detect territory edge 
+    #-------------------------------------------------------------------------#
+    trial_split <- vector("list", length(unique(trial$trial)))
+    names(trial_split) <- unique(trial$trial)
+    for (i in seq_along(unique(trial$trial))) {
+        territory <- unique(trial$trial)[i]
+        path <- switch(method,
+          "none" = trial,
+          "edge" = territory_edge(trial, tiles, territory),
+          "hull" = territory_hull(trial, territory))
+        trial_split[[i]] <- path
+    }
+
+    #-------------------------------------------------------------------------#
+    # next we remove NULLs - this happens when no edge can be deteced 
+    #-------------------------------------------------------------------------#
+    nulls <- sapply(trial_split, nrow) == 0
+    trial_split <- trial_split[!nulls]
+    if (sum(nulls) > 0) {
+      warning(paste(names(trial_split)[nulls], "could not be convert to path!
+       Skiiping territories in plot\n"))
+    } else if (length(trial_split) == 0) {
+        stop("No edge can be detect in territories! Granularity too high.
+         Consider increasing smoothing and/or decreasing segmentationd depth")
+    }
+    #-------------------------------------------------------------------------#
+    # select starting point for path 
+    # ATM we convert edge to ordered shape using polar coordinates 
+    #-------------------------------------------------------------------------#
+    trial <- lapply(trial_split, function(trial) {
+            ord <- convexify(trial$x,
+                trial$y,
+                median(trial$x),
+                median(trial$y),
+                order = TRUE)
+            trial <- trial[ord$x, ]
+            return(trial)
+        })
+    trial <- do.call("rbind", trial)
+    trial <- trial %>% filter(trial != "isolated")
+    return(trial)
+}
+
+territory_edge <- function(trial, tiles, territory) {
+  ter <- right_join(trial, tiles, by = "barcodes") %>%
+    filter(trial %in% territory) %>%
+    mutate(value = 1) %>%
+    select(c("barcodes", "x.y", "y.y", "value", "origin", "trial"))
+  colnames(ter) <- c("barcodes", "x", "y", "value", "origin", "trial")
+  edge <- extend_boundary(ter, 1) %>%
+    detect_edges() %>%
+    grow(1) %>%
+    as.data.frame()
+  edge <- inner_join(edge, ter, by = c("x", "y")) %>%
+    select("barcodes") %>% 
+    unique()
+  edge <- tiles %>% filter(barcodes %in% edge$barcodes & origin == 1)
+  edge$trial <- territory
+  edge <- rbind(edge, edge[1, ])
+  return(edge)
+}
+
+#' @importFrom grDevices chull
+territory_hull <- function(trial, territory) {
+  trial <- trial %>%
+    filter(trial %in% territory)
+  hull <- chull(trial$x, trial$y)
+  trial <- trial[hull, ]
+  trial <- rbind(trial, trial[1, ])
+  return(trial)
+}
+
+
 
 #' view_gene_expression
 #' 

@@ -305,6 +305,7 @@ generate_tiles <- function(vesalius_assay,
   # Resterise tiles
   #----------------------------------------------------------------------#
   message_switch("raster", verbose)
+  #browser()
   tiles <- rasterise(filtered)
   #------------------------------------------------------------------------#
   # adjusted counts if necessary
@@ -500,6 +501,8 @@ rasterise <- function(filtered) {
         #----------------------------------------------------------------------#
         # get indecies from original data
         #----------------------------------------------------------------------#
+        x_orig <- filtered$coordinates$x_orig[idx]
+        y_orig <- filtered$coordinates$y_orig[idx]
         ind <- filtered$coordinates$ind[idx]
         indx <- filtered$coordinates$x[idx]
         indy <- filtered$coordinates$y[idx]
@@ -558,11 +561,17 @@ rasterise <- function(filtered) {
             cent <- as.integer(length(max_y) / 2)
         }
         centers <- rep(0, length(max_x))
+        orig_x <- rep(0, length(max_x))
+        orig_y <- rep(0, length(max_x))
         centers[cent] <- 1
+        orig_x[cent] <- x_orig
+        orig_y[cent] <- y_orig
         tile <- data.frame("barcodes" = rep(filtered$coordinates$barcodes[idx],
             times = length(max_x)),
           "x" = max_x,
           "y" = max_y,
+          "x_orig" = orig_x,
+          "y_orig" = orig_y,
           "origin" = centers)
         return(tile)
     }, filtered = filtered, future.seed = TRUE)
