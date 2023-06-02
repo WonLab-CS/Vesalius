@@ -264,7 +264,7 @@ generate_tiles <- function(vesalius_assay,
     verbose = verbose,
     assay = assay,
     comp_type = "Generating Tiles")
-
+  vesalius_assay@meta$orig_coord <- coordinates
   #----------------------------------------------------------------------#
   # Filter outlier beads
   #----------------------------------------------------------------------#
@@ -570,8 +570,6 @@ rasterise <- function(filtered) {
             times = length(max_x)),
           "x" = max_x,
           "y" = max_y,
-          "x_orig" = orig_x,
-          "y_orig" = orig_y,
           "origin" = centers)
         return(tile)
     }, filtered = filtered, future.seed = TRUE)

@@ -165,9 +165,10 @@ rebalence_colors <- function(coordinates, dimensions, method = "minmax") {
 #' @param highlight numeric vector describing which territories should be 
 #' highlighted.
 #' @param contour if territory contours should be added. Availble:
-#' "None", "egde", or "hull"
+#' "None", "convex", "concave"
 #' @param cex numeric describing font size multiplier.
 #' @param cex_pt numeric describing point size multiplier.
+#' @param alpha opacity factor ]0,1[
 #' @details Territory plots show all territories in false colour after they
 #' have been isolated from a Vesalius image.
 #' 
@@ -197,7 +198,10 @@ rebalence_colors <- function(coordinates, dimensions, method = "minmax") {
 #' @export
 #' @importFrom ggplot2 ggplot geom_point aes facet_wrap theme_classic
 #' @importFrom ggplot2 scale_color_manual theme element_text
-#' @importFrom ggplot2 guides guide_legend labs geom_path
+#' @importFrom ggplot2 guides guide_legend labs geom_polygon
+#' @importFrom ggplot2 scale_fill_manual scale_x_continuous scale_y_continuous
+#' @importFrom imager imrotate
+#' @importFrom ggnewscale new_scale
 
 territory_plot <- function(vesalius_assay,
   trial = "last",
@@ -206,7 +210,9 @@ territory_plot <- function(vesalius_assay,
   contour = "None",
   randomise = TRUE,
   cex = 10,
-  cex_pt = 1) {
+  cex_pt = 1,
+  alpha = 0.65,
+  use_image = FALSE) {
     #--------------------------------------------------------------------------#
     # Dirty ggplot - this is just a quick and dirty plot to show what it look
     # like
@@ -215,17 +221,42 @@ territory_plot <- function(vesalius_assay,
     # SANITY check here and format
     #--------------------------------------------------------------------------#
     territories <- check_territory_trial(vesalius_assay, trial)
+    tiles <- get_tiles(vesalius_assay)
     if (any(territories$trial == 0)) {
       territories$trial <- territories$trial + 1
     }
     if (!is.null(highlight)){
         highlight <- check_group_value(territories, highlight)
     }
-    if (!grepl("none|None|NONE", contour)) {
+    
+    if (use_image) {
+        img <- vesalius_assay@image
+        if (length(img) == 0) {
+          warning(paste0("No Image found in ",
+            get_assay_names(vesalius_assay)))
+          img <- NULL
+        } else {
+          #-------------------------------------------------------------------#
+          # NOTE: not ideal - i made it a list to handle multiple images 
+          # will need to think about hwo to handle this data 
+          # especially when it comes to interoperable object
+          #-------------------------------------------------------------------#
+          img <- imager::imrotate(img[[1]], 90)
+          img <- as.data.frame(img, wide = "c") %>%
+            mutate(rgb_val = rgb(c.1, c.2, c.3))
+          img$x <- rev(img$x)
+          territories <- adjust_cooridnates(territories, vesalius_assay)
+          #tiles <- adjust_cooridnates(tiles, vesalius_assay)
+        }
+    } else {
+       img <- NULL
+    }
+    if (as_contour <- !grepl("none|None|NONE", contour)) {
       territories <- unpack_territory_path(territories,
-        vesalius_assay@tiles,
+        tiles,
         method = contour)
     }
+    
     legend <- sapply(strsplit(trial, "_"), "[[", 1)
     #--------------------------------------------------------------------------#
     # Changing label order because factor can suck ass sometimes
@@ -242,32 +273,38 @@ territory_plot <- function(vesalius_assay,
     # to use this palette instead - Sorry Hadely
     #--------------------------------------------------------------------------#
     ter_col <- create_palette(territories, randomise)
-    ter_alpha <- create_alpha(territories, highlight)
+    ter_alpha <- create_alpha(territories, highlight, alpha)
 
     ter_plot <- ggplot()
-    if (!grepl("none|None|NONE", contour)) {
+    if (!is.null(img)) {
+      ter_plot <- ter_plot + geom_raster(data = img,
+        aes(x = x, y = y, fill = rgb_val)) +
+        scale_fill_identity() +
+        scale_x_continuous(expand = c(0, 0)) +
+        scale_y_continuous(expand = c(0, 0)) +
+        new_scale("fill")
+    }
+    if (as_contour) {
       ter_plot <- ter_plot +
-        geom_point(data = territories,
-          aes(x,y, col = trial, group = trial),
-          size = cex_pt,
-          alpha = ter_alpha) +
-        geom_path(data = territories,
-          aes(x,y, col = trial, group = trial),
-          linewidth = cex_pt * 0.5,
-          alpha = ter_alpha)
+        geom_polygon(data = territories,
+          aes(x,y, fill = trial),
+          colour = ter_col[territories$trial],
+          alpha = ter_alpha,
+          size = cex_pt) +
+        scale_fill_manual(values = ter_col)
     } else {
       ter_plot <- ter_plot +
         geom_point(data = territories,
-          aes(x,y, col = trial),
+          aes(x, y, col = trial),
           size = cex_pt,
-          alpha = ter_alpha)
+          alpha = ter_alpha)+
+        scale_color_manual(values = ter_col)
     }
     if (split) {
       ter_plot <- ter_plot + facet_wrap(~trial)
     }
     ter_plot <- ter_plot +
       theme_classic() +
-      scale_color_manual(values = ter_col) +
       theme(legend.text = element_text(size = cex * 1.2),
         axis.text = element_text(size = cex * 1.2),
         axis.title = element_text(size = cex * 1.2),
@@ -321,16 +358,17 @@ create_palette <- function(territories, randomise) {
 #' @param territories vesalius territories taken from a vesalius_assay
 #' @param highlight numeric vector describing which territories should 
 #' be highlighted
+#' @param alpha tranaparent factor
 #' @details If highlight is null, will return the same alpha values 
 #' for all territories
 #' @return vector of alpha values
-create_alpha <- function(territories, highlight) {
-  if (!is.null(highlight)){
-    ter_col <- rep(0.25, length(levels(territories$trial)))
+create_alpha <- function(territories, highlight, alpha) {
+  if (!is.null(highlight)) {
+    ter_col <- rep(alpha * 0.25, length(levels(territories$trial)))
     loc <- as.character(levels(territories$trial)) %in% highlight
-    ter_col[loc] <- 1
+    ter_col[loc] <- alpha
   } else {
-    ter_col <- rep(0.65, length(levels(territories$trial)))
+    ter_col <- rep(alpha, length(levels(territories$trial)))
   }
   return(ter_col[as.integer(territories$trial)])
 }
@@ -357,7 +395,8 @@ unpack_territory_path <- function(trial,
         path <- switch(method,
           "none" = trial,
           "edge" = territory_edge(trial, tiles, territory),
-          "hull" = territory_hull(trial, territory))
+          "concave" = territory_concave(trial, territory),
+          "convex" = territory_convex(trial, territory))
         trial_split[[i]] <- path
     }
 
@@ -397,7 +436,7 @@ territory_edge <- function(trial, tiles, territory) {
     mutate(value = 1) %>%
     select(c("barcodes", "x.y", "y.y", "value", "origin", "trial"))
   colnames(ter) <- c("barcodes", "x", "y", "value", "origin", "trial")
-  edge <- extend_boundary(ter, 1) %>%
+  edge <- extend_boundary(ter, c(10)) %>%
     detect_edges() %>%
     grow(1) %>%
     as.data.frame()
@@ -411,13 +450,71 @@ territory_edge <- function(trial, tiles, territory) {
 }
 
 #' @importFrom grDevices chull
-territory_hull <- function(trial, territory) {
+territory_convex <- function(trial, territory) {
   trial <- trial %>%
     filter(trial %in% territory)
   hull <- chull(trial$x, trial$y)
   trial <- trial[hull, ]
   trial <- rbind(trial, trial[1, ])
   return(trial)
+}
+
+
+# #' @importFrom concaveman concaveman
+# territory_concave <- function(trial, territory) {
+#   trial <- trial %>%
+#     filter(trial %in% territory)
+#   bars <- trial$barcodes
+#   trial_mat <- as.matrix(trial[, c("x", "y")])
+#   rownames(trial_mat) <- bars
+#   hull <- as.data.frame(concaveman(trial_mat, concavity = 3))
+#   colnames(hull) <- c("x", "y")
+#   knn <- RANN::nn2(data = trial_mat,
+#     query = hull,
+#     k = 1)
+#   trial <- trial[knn$nn.idx[, 1], ]
+#   return(trial)
+# }
+
+adjust_cooridnates <- function(trial, vesalius_assay) {
+    orig_coord <- vesalius_assay@meta$orig_coord
+    #-------------------------------------------------------------------------#
+    # First let's split barcodes between adjusted and not 
+    #-------------------------------------------------------------------------#
+    adj_barcodes <- grep("_et_", trial$barcodes, value = TRUE)
+    non_adj_barcodes <- trial$barcodes[!trial$barcodes %in% adj_barcodes]
+    #-------------------------------------------------------------------------#
+    # next get original coordinates and match them in trial for non adjusted
+    #-------------------------------------------------------------------------#
+    in_trial <- match(orig_coord$barcodes, non_adj_barcodes) %>%
+      na.exclude()
+    in_orig <- match(non_adj_barcodes, orig_coord$barcodes) %>%
+      na.exclude()
+    
+    trial$x[in_trial] <- orig_coord$x_orig[in_orig]
+    trial$y[in_trial] <- orig_coord$y_orig[in_orig]
+    #-------------------------------------------------------------------------#
+    # unpack adjusted 
+    #-------------------------------------------------------------------------#
+    adj_barcodes_sp <- split(adj_barcodes, "_et_")
+    for (i in seq_along(adj_barcodes_sp)) {
+        x <- orig_coord[orig_coord$barcodes %in% adj_barcodes_sp[[i]],
+          "x_orig"]
+        y <- orig_coord[orig_coord$barcodes %in% adj_barcodes_sp[[i]],
+          "y_orig"]
+        trial$x[trial$barcodes == adj_barcodes[i]] <- median(x)
+        trial$y[trial$barcodes == adj_barcodes[i]] <- median(y)
+    }
+    #-------------------------------------------------------------------------#
+    # adjuste using scale - note!!! This is dodgy as fuck!
+    # mainly because my original use of scale was intended to be used this way
+    # Using this like this since it is faster for ad hoc analysis 
+    #-------------------------------------------------------------------------#
+    scale <- vesalius_assay@meta$scale$scale
+    trial$x <- trial$x * scale
+    trial$y <- trial$y * scale
+    return(trial)
+
 }
 
 

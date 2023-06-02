@@ -800,31 +800,31 @@ index <- function(seed_path,
     return(indexed)
 }
 
-#' importFrom gsignal mscohere
-spectral_coherence <- function(seed_path, query_path) {
-    seed_path <- seed_path[names(seed_path) != "isolated"]
-    query_path <- query_path[names(query_path) != "isolated"]
-    coh <- matrix(0,
-        ncol = length(seed_path),
-        nrow = length(query_path))
-    for (seed in seq_along(seed_path)){
-        for (query in seq_along(query_path)){
-            #-----------------------------------------------------------------#
-            # Get partial max and subset paths
-            #-----------------------------------------------------------------#
-            seed_sub <- seed_path[[seed]]
-            query_sub <- query_path[[query]]
-            signal <- cbind(seed_sub, query_sub)
-            #-----------------------------------------------------------------#
-            # coherence 
-            #-----------------------------------------------------------------#
-            coh[query, seed] <- max(gsignal::mscohere(signal)$coh)
-        }
-    }
-    colnames(coh) <- names(seed_path)
-    rownames(coh) <- names(query_path)
-    return(coh)
-}
+# #' importFrom gsignal mscohere
+# spectral_coherence <- function(seed_path, query_path) {
+#     seed_path <- seed_path[names(seed_path) != "isolated"]
+#     query_path <- query_path[names(query_path) != "isolated"]
+#     coh <- matrix(0,
+#         ncol = length(seed_path),
+#         nrow = length(query_path))
+#     for (seed in seq_along(seed_path)){
+#         for (query in seq_along(query_path)){
+#             #-----------------------------------------------------------------#
+#             # Get partial max and subset paths
+#             #-----------------------------------------------------------------#
+#             seed_sub <- seed_path[[seed]]
+#             query_sub <- query_path[[query]]
+#             signal <- cbind(seed_sub, query_sub)
+#             #-----------------------------------------------------------------#
+#             # coherence 
+#             #-----------------------------------------------------------------#
+#             coh[query, seed] <- max(gsignal::mscohere(signal)$coh)
+#         }
+#     }
+#     colnames(coh) <- names(seed_path)
+#     rownames(coh) <- names(query_path)
+#     return(coh)
+# }
 
 correlation <- function(seed_path, query_path, method) {
     seed_path <- seed_path[names(seed_path) != "isolated"]

@@ -12,7 +12,9 @@ territory_plot(
   contour = "None",
   randomise = TRUE,
   cex = 10,
-  cex_pt = 1
+  cex_pt = 1,
+  alpha = 0.65,
+  use_image = FALSE
 )
 }
 \arguments{
@@ -28,13 +30,15 @@ separate panels}
 highlighted.}
 
 \item{contour}{if territory contours should be added. Availble:
-"None", "egde", or "hull"}
+"None", "convex", "concave"}
 
 \item{randomise}{logical - If TRUE, colour palette will be randomised.}
 
 \item{cex}{numeric describing font size multiplier.}
 
 \item{cex_pt}{numeric describing point size multiplier.}
+
+\item{alpha}{opacity factor ]0,1[}
 }
 \value{
 a ggplot object

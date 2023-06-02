@@ -55,14 +55,13 @@ Imports:
     igraph,
     pwr,
     purrr,
-    gsignal,
     patchwork,
-    RcppHungarian
+    RcppHungarian,
+    ggnewscale
 Suggests:
     knitr,
     RUnit,
     rmarkdown,
-    patchwork,
     testthat (>= 3.0.0)
 Encoding: UTF-8
 LazyData: true
