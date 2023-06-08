@@ -14,6 +14,9 @@ library(ggplot2)
 library(dplyr)
 library(patchwork)
 library(Matrix)
+library(deldir)
+library(imager)
+library(imagerExtra)
 library(pwr, lib.loc = "/common/martinp4/R")
 library(gsignal, lib.loc = "/common/martinp4/R")
 library(kohonen, lib.loc = "/common/martinp4/R")
@@ -21,6 +24,7 @@ library(registry, lib.loc = "/common/martinp4/R")
 library(rngtools, lib.loc = "/common/martinp4/R")
 library(NMF, lib.loc = "/common/martinp4/R")
 library(RcppHungarian, lib.loc = "/common/martinp4/R")
+library(spatstat.utils)
 library(vesalius, lib.loc = "/common/martinp4/R")
 
 
@@ -81,10 +85,10 @@ vesalius_query <- build_vesalius_assay(coord, count_mat) %>%
 
 test <- integrate_horizontally(vesalius,
     vesalius_query,
-    n_centers = 150,
-    n_anchors = 150,
+    n_centers = 200,
+    n_anchors = 200,
     compactness = 20,
-    depth = 2,
+    depth = 4,
     index_selection = "random",
     signal = "features")
 

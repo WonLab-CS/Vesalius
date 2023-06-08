@@ -1053,6 +1053,7 @@ slic_segmentation <- function(vesalius_assay,
 }
 
 
+#' @importFrom kohonen som somgrid
 som_segmentation <- function(vesalius_assay,
     dimensions,
     col_resolution,

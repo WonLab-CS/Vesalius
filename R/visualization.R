@@ -222,9 +222,9 @@ territory_plot <- function(vesalius_assay,
     #--------------------------------------------------------------------------#
     territories <- check_territory_trial(vesalius_assay, trial)
     tiles <- get_tiles(vesalius_assay)
-    if (any(territories$trial == 0)) {
-      territories$trial <- territories$trial + 1
-    }
+    # if (any(territories$trial == 0)) {
+    #   territories$trial <- territories$trial + 1
+    # }
     if (!is.null(highlight)){
         highlight <- check_group_value(territories, highlight)
     }
@@ -261,13 +261,11 @@ territory_plot <- function(vesalius_assay,
     #--------------------------------------------------------------------------#
     # Changing label order because factor can suck ass sometimes
     #--------------------------------------------------------------------------#
-    sorted_labels <- order(levels(as.factor(territories$trial)))
-    if (any(grepl("isolated", territories$trial))) {
-      sorted_labels[length(sorted_labels)] <- "isolated"
-    }
+    sorted_labels <- order_labels(territories)
 
     territories$trial <- factor(territories$trial,
       levels = sorted_labels)
+    
     #--------------------------------------------------------------------------#
     # My pure hatred for the standard ggplot rainbow colours has forced me
     # to use this palette instead - Sorry Hadely
@@ -287,7 +285,7 @@ territory_plot <- function(vesalius_assay,
     if (as_contour) {
       ter_plot <- ter_plot +
         geom_polygon(data = territories,
-          aes(x,y, fill = trial),
+          aes(x, y, fill = trial),
           colour = ter_col[territories$trial],
           alpha = ter_alpha,
           size = cex_pt) +
@@ -317,7 +315,17 @@ territory_plot <- function(vesalius_assay,
     return(ter_plot)
 }
 
-
+order_labels <- function(territories) {
+      ter <- unique(territories$trial)
+      iso <- ter[ter == "isolated"]
+      tmp <- ter[ter != "isolated"]
+      if (all(is.na(suppressWarnings(as.numeric(tmp))))) {
+         labels <- c(sort(tmp), iso)
+      } else {
+         labels <- c(sort(as.numeric(tmp)), iso)
+      }
+      return(labels)
+}
 
 #' create color palette from predefine scheme
 #' @param territories vesalius territories taken from a vesalius_assay

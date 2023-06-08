@@ -49,12 +49,10 @@ integrate_horizontally <- function(seed_assay,
     scaling = 0.2,
     compactness = 1,
     n_centers = 2000,
-    iter = 10000,
     index_selection = "random",
     threshold = 0.7,
-    n_anchors = 20,
     depth = 1,
-    allow_vertex_merge = FALSE,
+    strict_mapping = FALSE,
     signal = "features",
     verbose = TRUE) {
     simple_bar(verbose)
@@ -137,12 +135,7 @@ integrate_horizontally <- function(seed_assay,
     spix_score <- score_graph(integrated_graph,
         signal = list(seed_signal, query_signal),
         verbose = verbose)
-    # matched_graph <- match_vertex(seed_graph,
-    #         query_graph,
-    #         spix_score,
-    #         depth = depth,
-    #         threshold = threshold,
-    #         verbose = verbose)
+    
     matched_graph <- match_graph(seed_graph = seed_graph,
         seed_trial = seed_trial$segments,
         query_graph = query_graph,
@@ -155,6 +148,7 @@ integrate_horizontally <- function(seed_assay,
         seed_graph,
         query_trial$segments,
         query_graph,
+        strict_mapping = strict_mapping,
         verbose = verbose)
     integrated <- integrate_graph(aligned_graph,
         seed_assay,
@@ -435,6 +429,7 @@ match_graph <- function(seed_graph,
     seed_trial$y <- min_max(seed_trial$y)
     # Create a similarity matrix based on vertex positions and features
     similarity_matrix <- rep(0, nrow(score))
+    cost <- vector("list", nrow(score))
     for (i in seq_len(nrow(score))) {
         dyn_message_switch("sim_mat", verbose,
             prog = round(i / nrow(score), 4) * 100)
@@ -463,20 +458,53 @@ match_graph <- function(seed_graph,
         seed_niche <- seed_trial[seed_trial$center %in% niche$to, ]
         dist <- RANN::nn2(mapped_to[, c("x", "y")],
             query = seed_niche[, c("x", "y")])$nn.dist
+        cost[[i]] <- c(feature_score, niche_score, mean(dist))
         similarity_matrix[i] <- sum(c(feature_score, niche_score, mean(dist)))
     }
     if (verbose){cat("\n")}
     message_switch("hungarian", verbose)
+    #browser()
     similarity_matrix <- matrix(similarity_matrix,
         ncol = length(unique(score$to)),
         nrow = length(unique(score$to)),
         byrow = TRUE)
-
+    
     mapping <- RcppHungarian::HungarianSolver(similarity_matrix)$pairs
     mapping <- as.data.frame(mapping)
     colnames(mapping) <- c("to", "from")
+    
     mapping$anchor <- 1
     return(mapping)
+}
+
+format_cost <- function(cost, ncol, nrow) {
+    f_score <- matrix(sapply(cost, "[", 1),
+        ncol = ncol,
+        nrow = nrow,
+        byrow = TRUE)
+    n_score <- matrix(sapply(cost, "[", 2),
+        ncol = ncol,
+        nrow = nrow,
+        byrow = TRUE)
+    d_score <- matrix(sapply(cost,"[", 3),
+        ncol = ncol,
+        nrow = nrow,
+        byrow = TRUE)
+    return(list("f" = f_score, "n" = n_score, "d" = d_score))
+}
+
+assign_cost <- function(coord, mapping, cost) {
+    assigned_score <- vector("list", length(cost))
+    for (i in seq_along(cost)){
+        d <- cost[[i]]
+        tmp <- coord
+        sc <- mapply(function(x,y,d){d[x,y]}, mapping$to, mapping$from,
+            MoreArgs = list(d))
+        tmp$score <- sc[mapping$from]
+        tmp$type <- names(cost)[i]
+        assigned_score[[i]] <- tmp
+    }
+    return(do.call("rbind", assigned_score))
 }
 
 
@@ -485,6 +513,7 @@ align_graph <- function(matched_graph,
     seed_graph,
     query,
     query_graph,
+    strict_mapping = FALSE,
     verbose = TRUE) {
     #-------------------------------------------------------------------------#
     # First get all anchor trajectories 
@@ -521,32 +550,37 @@ align_graph <- function(matched_graph,
     # Apply compound trajectories to individual points points
     #-------------------------------------------------------------------------#
     message_switch("apply_traj", verbose)
-    nn <- RANN::nn2(data = anchor_point[, c("x", "y")],
+    nn_all <- RANN::nn2(data = anchor_point[, c("x", "y")],
         query = query[, c("x", "y")],
-        k = 1)
-    #browser()
-    idx <- unique(nn$nn.idx[,1])
+        k = 3)
+    nn_anchor <- RANN::nn2(data = anchor_point[, c("x", "y")],
+        k = 3)
+    browser()
+    idx <- unique(apply(nn$nn.idx, 1, paste0, sep = "", collapse = "_"))
     for (i in seq_along(idx)) {
         #browser()
-        base_angle <- anchors$angle[idx[i]]
-        base_distance <- anchors$distance[idx[i]]
-        loc <- which(query$Segment == idx[i])
+        index <- as.numeric(strsplit(idx[i],"_")[[1]])
+        base_angle <- mean(anchors$angle[index])
+        base_distance <- anchors$distance[index]
+        base_distance <- base_distance[1] - base_distance[2]
+        loc <- which(query$Segment %in% index)
         points_matrix <- query[loc, c("x", "y")]
-        center_x <- anchor_point$x[anchor_point$center == idx[i]]
-        center_y <- anchor_point$y[anchor_point$center == idx[i]]
-        points_matrix$x <- points_matrix$x - center_x
-        points_matrix$y <- points_matrix$y - center_y
-        theta <- base_angle
-        rotation_matrix <- matrix(c(cos(theta), -sin(theta),
-             sin(theta),cos(theta)),
-             nrow = 2, ncol = 2, byrow = TRUE)
-        points_matrix <- as.matrix(points_matrix) %*% rotation_matrix
-        points_matrix[,1] <- (points_matrix[,1] + center_x) +
-            (base_distance * cos(base_angle))
-        points_matrix[,2] <- (points_matrix[,2] + center_y) +
-            (base_distance * sin(base_angle))
-        query$x[loc] <- points_matrix[,1] 
-        query$y[loc] <- points_matrix[,2] 
+
+        # center_x <- anchor_point$x[anchor_point$center == idx[i]]
+        # center_y <- anchor_point$y[anchor_point$center == idx[i]]
+        # points_matrix$x <- points_matrix$x - center_x
+        # points_matrix$y <- points_matrix$y - center_y
+        # theta <- base_angle
+        # rotation_matrix <- matrix(c(cos(theta), -sin(theta),
+        #      sin(theta),cos(theta)),
+        #      nrow = 2, ncol = 2, byrow = TRUE)
+        # points_matrix <- as.matrix(points_matrix) %*% rotation_matrix
+        # points_matrix[,1] <- (points_matrix[, 1] + center_x) +
+        #     (base_distance * cos(base_angle))
+        # points_matrix[,2] <- (points_matrix[, 2] + center_y) +
+        #     (base_distance * sin(base_angle))
+        # query$x[loc] <- points_matrix[, 1]
+        # query$y[loc] <- points_matrix[, 2]
     }
 
     

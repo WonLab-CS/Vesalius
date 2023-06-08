@@ -57,7 +57,8 @@ Imports:
     purrr,
     patchwork,
     RcppHungarian,
-    ggnewscale
+    ggnewscale,
+    kohonen
 Suggests:
     knitr,
     RUnit,
