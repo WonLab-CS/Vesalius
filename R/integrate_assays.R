@@ -52,7 +52,7 @@ integrate_horizontally <- function(seed_assay,
     index_selection = "random",
     threshold = 0.7,
     depth = 1,
-    strict_mapping = FALSE,
+    strict_mapping = TRUE,
     signal = "features",
     verbose = TRUE) {
     simple_bar(verbose)
@@ -507,7 +507,8 @@ assign_cost <- function(coord, mapping, cost) {
     return(do.call("rbind", assigned_score))
 }
 
-
+#' 
+#' @importFrom geometry cart2bary bary2cart
 align_graph <- function(matched_graph,
     seed,
     seed_graph,
@@ -520,6 +521,52 @@ align_graph <- function(matched_graph,
     # we used the seed coordinates as center pixel
     #-------------------------------------------------------------------------#
     
+    # seed_centers <- get_super_pixel_centers(seed)
+    # query_centers <- get_super_pixel_centers(query)
+    # anchors <- matched_graph %>%
+    #     filter(anchor == 1) %>%
+    #     select(c("from", "to"))
+    # anchors$x_from <- query_centers$x[anchors$from]
+    # anchors$y_from <- query_centers$y[anchors$from]
+    # anchors$x_to <- seed_centers$x[anchors$to]
+    # anchors$y_to <- seed_centers$y[anchors$to]
+    
+    # #-------------------------------------------------------------------------#
+    # # Get barycentric coordinates from query
+    # # first we need the nearest neighbors to forma triangle around each
+    # # points - then we compute baycentric coordinates 
+    # #-------------------------------------------------------------------------#
+    # message_switch("apply_traj", verbose)
+
+    # tiles <- create_triangle_mesh(anchors$x_from, anchors$y_from)
+    
+    # accounted_for <- rep(0, nrow(query))
+    # query$x_buffer <- query$x
+    # query$y_buffer <- query$y
+    # for (i in seq_along(tiles)) {
+    #     in_triangle <- sp::point.in.polygon(query$x_buffer,
+    #         query$y_buffer,
+    #         tiles[[i]]$x, tiles[[i]]$y) != 0
+    #     pts <- query[in_triangle, c("x_buffer", "y_buffer")]
+    #     accounted_for[in_triangle] <- 1
+    #     bary <- geometry::cart2bary(X = as.matrix(tiles[[i]]),
+    #         P = as.matrix(pts))
+    #     nn <- RANN::nn2(data = anchors[, c("x_to", "y_to")],
+    #         query = tiles[[i]],
+    #         k = 10)
+    #     nn <- get_triangular_idx(nn)
+    #     new_triangle <- anchors[nn, c("x_to", "y_to")]
+    #     new_coord <- geometry::bary2cart(as.matrix(new_triangle), bary)
+    #     #browser()
+    #     query$x[in_triangle] <- new_coord[, 1]
+    #     query$y[in_triangle] <- new_coord[, 2]
+
+    # }
+
+    
+    #-------------------------------------------------------------------------#
+    # Getting triangles for unaccounted points 
+    #-------------------------------------------------------------------------#
     seed_centers <- get_super_pixel_centers(seed)
     query_centers <- get_super_pixel_centers(query)
     anchors <- matched_graph %>%
@@ -539,73 +586,77 @@ align_graph <- function(matched_graph,
         anchors$distance[i] <- as.numeric(dist(distance))
     }
     anchors <- anchors[order(anchors$from), ]
-
-
-
-    #-------------------------------------------------------------------------#
-    # get closest anchor point for all un assigned spix points 
-    #-------------------------------------------------------------------------#
-    anchor_point <- query_centers[query_centers$center %in% anchors$from, ]
     #-------------------------------------------------------------------------#
     # Apply compound trajectories to individual points points
     #-------------------------------------------------------------------------#
     message_switch("apply_traj", verbose)
-    nn_all <- RANN::nn2(data = anchor_point[, c("x", "y")],
-        query = query[, c("x", "y")],
-        k = 3)
-    nn_anchor <- RANN::nn2(data = anchor_point[, c("x", "y")],
-        k = 3)
     browser()
-    idx <- unique(apply(nn$nn.idx, 1, paste0, sep = "", collapse = "_"))
-    for (i in seq_along(idx)) {
-        #browser()
-        index <- as.numeric(strsplit(idx[i],"_")[[1]])
-        base_angle <- mean(anchors$angle[index])
-        base_distance <- anchors$distance[index]
-        base_distance <- base_distance[1] - base_distance[2]
-        loc <- which(query$Segment %in% index)
-        points_matrix <- query[loc, c("x", "y")]
+    for (i in seq_len(nrow(anchors))) {
 
-        # center_x <- anchor_point$x[anchor_point$center == idx[i]]
-        # center_y <- anchor_point$y[anchor_point$center == idx[i]]
-        # points_matrix$x <- points_matrix$x - center_x
-        # points_matrix$y <- points_matrix$y - center_y
-        # theta <- base_angle
-        # rotation_matrix <- matrix(c(cos(theta), -sin(theta),
-        #      sin(theta),cos(theta)),
-        #      nrow = 2, ncol = 2, byrow = TRUE)
-        # points_matrix <- as.matrix(points_matrix) %*% rotation_matrix
-        # points_matrix[,1] <- (points_matrix[, 1] + center_x) +
-        #     (base_distance * cos(base_angle))
-        # points_matrix[,2] <- (points_matrix[, 2] + center_y) +
-        #     (base_distance * sin(base_angle))
-        # query$x[loc] <- points_matrix[, 1]
-        # query$y[loc] <- points_matrix[, 2]
+        loc <- query$Segment == anchors$from[i]
+        pts <- query[loc, c("x","y")]
+        alpha <- anchors$angle[i]
+        pts$x <- pts$x - query_centers$x[i]
+        pts$x <- pts$y - query_centers$y[i]
+        pts$x <- pts$x * cos(alpha) + pts$y * sin(alpha)
+        pts$y <- -pts$x * sin(alpha) + pts$y * cos(alpha)
+        pts$x <- pts$x + query_centers$x[i]
+        pts$y <- pts$y + query_centers$x[i]
+        # pts <- as.matrix(pts)
+        # seed_pts <- unlist(query_centers[query_centers$center == anchors$from[i],
+        #     c("x", "y")])
+        # #rotation matrix
+        # rotm <- matrix(c(cos(pi),
+        #     sin(pi),
+        #     -sin(pi),
+        #     cos(pi)),
+        #     ncol=2)
+        # #browser()
+        # pts <- t(rotm %*% (t(pts) - seed_pts) + seed_pts)
+        # #browser()
+        query$x[loc] <- pts$x
+        query$y[loc] <- pts$y
     }
-
-    
-    
-    # angle <- apply(nn$nn.idx, 1, function(idx, anchors) {
-    #     angle <- mean(anchors$angle[as.vector(idx)[1]])
-    #     return(angle)
-    # }, anchors)
-    # distance <- apply(nn$nn.idx, 1, function(idx, anchors) {
-    #     distance <- sqrt(sum((anchors$distance[as.vector(idx)[1]])^2))
-    #     return(distance)
-    # }, anchors)
-
-    
-    # query$x <- query$x + (distance * cos(angle))
-    # query$y <- query$y + (distance * sin(angle))
+    angle <- anchors$angle[query$Segment]
+    distance <- anchors$distance[query$Segment]
+    query$x <- query$x + (distance * cos(angle))
+    query$y <- query$y + (distance * sin(angle))
+    query$norm_with <- anchors$to[query$Segment]
     #-------------------------------------------------------------------------#
     # get closest seed point for all un assigned points
     #-------------------------------------------------------------------------#
-    seed_nn <- RANN::nn2(data = seed_centers[, c("x", "y")],
-        query = query[, c("x", "y")],
-        k = 1)
-    query$norm_with <- seed_centers$center[seed_nn$nn.idx[, 1]]
-    #browser()
     return(query)
+}
+
+create_triangle_mesh <- function(x, y) {
+    voronoi <- deldir::deldir(x = as.numeric(x),
+        y = as.numeric(y))
+    triangles <- seq_len(nrow(voronoi$delsgs))
+    graph <- lapply(triangles, function(idx, voronoi){
+        p1 <- voronoi$delsgs$ind1[idx]
+        p2 <- voronoi$delsgs$ind2[idx]
+        sub_1 <- voronoi$delsgs %>% filter(ind2 == p1)
+        sub_2 <- voronoi$delsgs %>% filter(ind2 == p2)
+        p3s <- intersect(sub_1$ind1, sub_2$ind1)
+        triangles <- lapply(p3s, function(p3,p1, p2, coord){
+            tmp <- rbind(coord[p1,c("x", "y")],
+                coord[p2,c("x", "y")],
+                coord[p3,c("x", "y")])
+        },p1, p2, voronoi$summary)
+        return(triangles)
+    }, voronoi = voronoi)
+    graph <- graph[sapply(graph, length) > 0]
+    return(unlist(graph, recursive = FALSE))
+}
+
+get_triangular_idx <- function(nn) {
+    coord_loc <- nn$nn.idx[, 1]
+    i <- 1
+    while (length(unique(coord_loc)) != 3) {
+        coord_loc[duplicated(coord_loc)] <- nn$nn.idx[duplicated(coord_loc), i]
+        i <- i + 1
+    }
+    return(coord_loc)
 }
 
 
@@ -657,8 +708,8 @@ integrate_graph <- function(aligned_graph,
             prog = round(i / length(spix), 4) * 100)
         query_names <- c(query_names,spix[[i]]$barcodes)
         query_local <- query_counts[, spix[[i]]$barcodes]
-        seed_local <- seed_counts[, seed_spix$barcodes[
-            seed_spix$Segment %in% spix[[i]]$norm_with]]
+        # seed_local <- seed_counts[, seed_spix$barcodes[
+        #     seed_spix$Segment %in% spix[[i]]$norm_with]]
         # max_count <- max(seed_local)
         # if (is.null(ncol(seed_local))) {
         #     sd_count <- sd(query_local)

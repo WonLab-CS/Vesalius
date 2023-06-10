@@ -14,12 +14,10 @@ integrate_horizontally(
   scaling = 0.2,
   compactness = 1,
   n_centers = 2000,
-  iter = 10000,
   index_selection = "random",
   threshold = 0.7,
-  n_anchors = 20,
   depth = 1,
-  allow_vertex_merge = FALSE,
+  strict_mapping = TRUE,
   signal = "features",
   verbose = TRUE
 )
@@ -48,30 +46,30 @@ in relation to color similarity. See details}
 \item{n_centers}{integer [3, max(spatial_index)] - number of super pixels
 to generate in each image. See details}
 
-\item{iter}{integer [1, Inf] - Number of iteration during graph matching
-phase.}
-
 \item{index_selection}{character (random, bubble) - how should initial super
 pixel locations be selected. See detials}
 
 \item{threshold}{numeric [0,1[ - similarity score threshold. Only super pixel
 that score above this threshold will be used for graph matching}
 
-\item{n_anchors}{integer [3, n_centers] - Number of graph anchors used during
-graph matching}
-
-\item{allow_vertex_merge}{logical - Should graph vertices be merged or should
-them be repelled to new location. See details}
-
 \item{signal}{character (features, counts, embeddings, "custom") - What should 
 be used as cell signal for super pixel scoring. Seed details}
 
 \item{verbose}{logical - should I be a noisy boy?}
 
+\item{iter}{integer [1, Inf] - Number of iteration during graph matching
+phase.}
+
+\item{n_anchors}{integer [3, n_centers] - Number of graph anchors used during
+graph matching}
+
 \item{mut_extent}{numeric [0,1] - extent of alignment graph that can be 
 subjected to mutations}
 
 \item{mut_prob}{numeric [0,1] - probability of alignment graph mutation.}
+
+\item{allow_vertex_merge}{logical - Should graph vertices be merged or should
+them be repelled to new location. See details}
 }
 \description{
 Aling and integrate spatial assay from the same modality using super pixels

@@ -58,7 +58,8 @@ Imports:
     patchwork,
     RcppHungarian,
     ggnewscale,
-    kohonen
+    kohonen,
+    geometry
 Suggests:
     knitr,
     RUnit,
