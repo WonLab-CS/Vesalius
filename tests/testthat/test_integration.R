@@ -42,7 +42,7 @@ input <- "/common/wonklab/SSv2"
 #-----------------------------------------------------------------------------#
 # Set future global for multicore processing
 #-----------------------------------------------------------------------------#
-plan(multicore, workers = 1)
+plan(multicore, workers = 4)
 max_size <- 10000 * 1024^2
 options(future.globals.maxSize = max_size)
 
@@ -86,17 +86,15 @@ vesalius_query <- build_vesalius_assay(coord, count_mat) %>%
 
 test <- integrate_horizontally(vesalius,
     vesalius_query,
-    n_centers = 50,
-    compactness = 20,
-    depth = 1,
-    index_selection = "random",
+    n_centers = 15,
+    depth = 4,
     signal = "features")
 
-test <- generate_embeddings(test,tensor_resolution = 0.99)
+test <- generate_embeddings(test,tensor_resolution = 0.9999)
 # test <- #regularise_image(test, dimensions = 1:30, lambda = 5) %>%
 #     equalize_image(test,dimensions = 1:30, sleft = 5, sright = 5)# %>%
     #smooth_image(dimensions = 1:30, method =c("iso", "box"), sigma = 2, box = 10, iter = 10)
-pdf("test_1.pdf")
+pdf("test_bary.pdf")
 image_plot(test)
 dev.off()
 
@@ -285,16 +283,12 @@ jitter_ves <- smooth_image(jitter_ves, embedding = "PCA", sigma = 5, iter = 5)
 
 test <- integrate_horizontally(vesalius,
     jitter_ves,
-    compactness = 5,
-    index_selection = "random",
     signal = "features",
-    n_centers = 50,
-    strict_mapping = FALSE,
-    threshold = 0.8)
+    grid = 80)
 
 
 test <- generate_embeddings(test)
-test <- equalize_image(test,sleft = 5, sright = 5)
+test <- equalize_image(test, sleft = 5, sright = 5)
 test <- smooth_image(test, sigma = 5, iter = 5)
 #test <- segment_image(test, col_resolution = 5)
 

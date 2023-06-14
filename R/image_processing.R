@@ -1146,7 +1146,9 @@ select_initial_indices <- function(coordinates,
         #     embeddings,
         #     n_centers),
         "random" = random_sampling(coordinates,
-          n_centers = n_centers))
+          n_centers = n_centers),
+        "hex" = hex_grid(coordinates,
+          n_centers) )
     return(indices)
 }
 
@@ -1253,6 +1255,38 @@ bubble_stack <- function(coordinates,
     #-------------------------------------------------------------------------#
     
     return(background_grid)
+}
+
+
+hex_grid <- function(coordinates, n_centers, return_index = TRUE) {
+    dims <- ceiling(sqrt(n_centers))
+    range_y <- max(coordinates$y)
+    range_x <- max(coordinates$x)
+    y <- seq(0, range_y + 1, l = dims)
+    x_short <- seq(0, range_x, l = dims)
+    shift <- (x_short[2] - x_short[1]) / 2
+    x_long <- seq(-shift, max(x_short) + shift, l = dims + 1)
+    c_x <- c()
+    c_y <- c()
+    for (i in seq_along(y)){
+        if (i %% 2 == 0) {
+            c_x <- c(c_x, x_long)
+            c_y <- c(c_y, rep(y[i], times = length(x_long)))
+        } else {
+            c_x <- c(c_x, x_short)
+            c_y <- c(c_y, rep(y[i], times = length(x_short)))
+        }
+    }
+    coord <- data.frame("x" = c_x, "y" = c_y)
+    if (return_index) {
+      background_grid <- RANN::nn2(data = coordinates[, c("x", "y")],
+      query = coord,
+      k = 1)
+      return(background_grid$nn.idx[, 1])
+    } else {
+      return(coord)
+    }
+    
 }
 
 

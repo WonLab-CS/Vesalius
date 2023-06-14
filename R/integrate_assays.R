@@ -2,7 +2,9 @@
 ################################   Vesalius      ##############################
 ###############################################################################
 
-#--------------------------/Integrating & Alinging/---------------------------#
+#-----------------------------------------------------------------------------#
+############################ HORIZONTAL INTEGRATION ###########################
+#-----------------------------------------------------------------------------#
 
 
 #' Aling and integrate spatial assay from the same modality using super pixels
@@ -18,16 +20,16 @@
 #' during super pixel selection
 #' @param compactness numeric ]0,Inf] - importance of the spatial component 
 #' in relation to color similarity. See details
-#' @param n_centers integer [3, max(spatial_index)] - number of super pixels
-#' to generate in each image. See details
+#' @param grid integer [2, Inf[] - How many grid elements should be use to create
+#' inital hex grid (see details)
 #' @param iter integer [1, Inf] - Number of iteration during graph matching
 #' phase.
-#' @param index_selection character (random, bubble) - how should initial super
+#' @param n_landmarks [1, N_spatial_index] - number of super pixels to use as 
+#' landmarks for mesh adjustement.
+#' @param index_selection character (random, bubble, hex) - how should initial super
 #' pixel locations be selected. See detials
 #' @param threshold numeric [0,1[ - similarity score threshold. Only super pixel
 #' that score above this threshold will be used for graph matching
-#' @param n_anchors integer [3, n_centers] - Number of graph anchors used during
-#' graph matching
 #' @param mut_extent numeric [0,1] - extent of alignment graph that can be 
 #' subjected to mutations
 #' @param mut_prob numeric [0,1] - probability of alignment graph mutation.
@@ -36,7 +38,8 @@
 #' @param signal character (features, counts, embeddings, "custom") - What should 
 #' be used as cell signal for super pixel scoring. Seed details 
 #' @param verbose logical - should I be a noisy boy?
-#' 
+#' @details Hex grid is expanded to include all points and then reduced to exclude
+#' exmpty triangles.
 #' @export
 #' 
 
@@ -48,8 +51,9 @@ integrate_horizontally <- function(seed_assay,
     dimensions = seq(1, 30),
     scaling = 0.2,
     compactness = 1,
-    n_centers = 2000,
-    index_selection = "random",
+    grid = 100,
+    n_landmarks = 20,
+    index_selection = "hex",
     threshold = 0.7,
     depth = 1,
     strict_mapping = TRUE,
@@ -60,22 +64,32 @@ integrate_horizontally <- function(seed_assay,
     # compute slic for both assays
     #-------------------------------------------------------------------------#
     message_switch("seg", verbose = verbose, method = "slic")
-    seed_trial <- slic_segmentation(seed_assay,
+    seed_landmarks <- slic_segmentation(seed_assay,
         dimensions = dimensions,
-        col_resolution = n_centers,
+        col_resolution = n_landmarks,
         embedding = seed_trial,
         index_selection = index_selection,
         compactness = compactness,
         scaling = scaling,
         verbose = FALSE)
-    query_trial <- slic_segmentation(query_assay,
+    query_landmarks <- slic_segmentation(query_assay,
         dimensions = dimensions,
-        col_resolution = n_centers,
+        col_resolution = n_landmarks,
         embedding = query_trial,
         index_selection = index_selection,
         compactness = compactness,
         scaling = scaling,
         verbose = FALSE)
+    message_switch("mesh", verbose)
+    seed_mesh <- generate_mesh(seed_assay,
+        n_centers = grid)
+    query_mesh <- generate_mesh(query_assay,
+        n_centers = grid)
+    #-------------------------------------------------------------------------#
+    # Adjust grid to match landmark spix 
+    #-------------------------------------------------------------------------#
+    seed_mesh <- adjust_mesh(seed_mesh, seed_landmarks)
+    query_mesh <- adjust_mesh(query_mesh, query_landmarks)
     
     #-------------------------------------------------------------------------#
     # get signal either as counts or as embedding values
@@ -84,8 +98,9 @@ integrate_horizontally <- function(seed_assay,
     seed_signal <- check_signal(signal, seed_assay, type = "raw")
     query_signal <- check_signal(signal, query_assay, type = "raw")
     if (grepl(pattern = "embeddings", x = signal)) {
-        seed_signal <- seed_trial$active
-        query_signal <- query_trial$active
+        # NOTE: if you run spix you need to get the spix embeddings 
+        seed_signal <- seed_assay@active
+        query_signal <- query_assay@active
     } else {
         seed_counts <- get_counts(seed_assay, type = "raw")
         query_counts <- get_counts(query_assay, type = "raw")
@@ -99,26 +114,19 @@ integrate_horizontally <- function(seed_assay,
     #-------------------------------------------------------------------------#
     # compact signal so we only keep average signal per spix
     #-------------------------------------------------------------------------#
-    seed_signal <- compress_signal(seed_signal, seed_trial$segments)
-    query_signal <- compress_signal(query_signal, query_trial$segments)
+    seed_signal <- compress_signal(seed_signal, seed_mesh$segments)
+    query_signal <- compress_signal(query_signal, query_mesh$segments)
     #-------------------------------------------------------------------------#
     # Get estimated super pixel centers
     # we also generate a graph and score this graph. 
     # score the correlation between each vertex in seed/query graph
     #-------------------------------------------------------------------------#
-    # mapped <- som_map(seed_trial$segments,
-    #     seed_signal,
-    #     query_trial$segments,
-    #     query_signal,
-    #     anchors = n_anchors,
-    #     compactness = compactness,
-    #     scale = scaling)
     
     message_switch("slic_graph", verbose = verbose, data = "seed")
-    seed_graph <- generate_slic_graph(seed_trial$segments)
+    seed_graph <- generate_slic_graph(seed_mesh$segments)
 
     message_switch("slic_graph", verbose = verbose, data = "query")
-    query_graph <- generate_slic_graph(query_trial$segments)
+    query_graph <- generate_slic_graph(query_mesh$segments)
     #-------------------------------------------------------------------------#
     # Now we can compute the same thing but between each graph
     # For now - we check the number of centeres in case of mismatch
@@ -137,144 +145,102 @@ integrate_horizontally <- function(seed_assay,
         verbose = verbose)
     
     matched_graph <- match_graph(seed_graph = seed_graph,
-        seed_trial = seed_trial$segments,
+        seed_trial = seed_mesh$segments,
         query_graph = query_graph,
-        query_trial = query_trial$segments,
+        query_trial = query_mesh$segments,
         score = spix_score,
         depth = depth,
         verbose = verbose)
     aligned_graph <- align_graph(matched_graph,
-        seed_trial$segments,
-        seed_graph,
-        query_trial$segments,
-        query_graph,
-        strict_mapping = strict_mapping,
+        seed_mesh$segments,
+        seed_mesh$mesh,
+        query_mesh$segments,
+        query_mesh$mesh,
         verbose = verbose)
     integrated <- integrate_graph(aligned_graph,
         seed_assay,
-        seed_trial$segments,
+        seed_mesh$segments,
         query_assay,
         verbose = verbose)
     simple_bar(verbose)
     return(integrated)
 }
-#' Integrate jointly measured spatial omic assays
-#' @param mod1 vesalius_assay object containing first modality
-#' @param mod2 vesalius_assay objecty containing second modality
-#' @param dimensions numeric vector describing latent space dimensions 
-#' to use during intergration
-#' @param method character - integration method. interlace - mean - concat 
-#' are available options
-#' @param norm_method character - which count values should be use 
-#' for integration when using concat method
-#' @param dim_reduction characater - which dim reduction methods should be 
-#' used for concat integration (PCA,PCA_L,UMAP,LSI,LSI_UMAP,NMF)
-#' @param verbose logical - should progress message be outputed to the 
-#' console.
-#' @export
-integrate_vertically <- function(mod1,
-    mod2,
-    dimensions = seq(1, 30),
-    embedding = "last",
-    method = "interlace",
-    norm_method = "raw",
-    dim_reduction = "PCA",
-    verbose = TRUE) {
-    simple_bar(verbose)
-    #-------------------------------------------------------------------------#
-    # check place holder 
-    #-------------------------------------------------------------------------#
 
+generate_mesh <- function(vesalius_assay,
+    n_centers,
+    index_selection) {
     #-------------------------------------------------------------------------#
-    # Get embeddings - need make some changes here
-    # for now we assume we get the active 
+    # get coordinates
     #-------------------------------------------------------------------------#
-    mod1_embed <- check_embedding_selection(mod1, embedding, dimensions)
-    mod2_embed <- check_embedding_selection(mod2, embedding, dimensions)
-    #-------------------------------------------------------------------------#
-    # method switch - which method is best 
-    #-------------------------------------------------------------------------#
-    integrated_embeds <- switch(EXPR = method,
-        "interlace" = interlace_embeds(mod1_embed, mod2_embed, dimensions),
-        "mean" = average_embed(mod1_embed, mod2_embed, dimensions),
-        "concat" = concat_embed(mod1,
-            mod2,
-            dimensions,
-            norm_method,
-            dim_reduction))
-    integrated_embeds <- list(integrated_embeds)
-    names(integrated_embeds) <- method
-    integrated <- new("vesalius_assay",
-        assay = "integrated",
-        embeddings = integrated_embeds,
-        active = integrated_embeds[[1]],
-        tiles = mod1@tiles)
-    simple_bar(verbose)
-    return(integrated)
-
-}
-
-interlace_embeds <- function(seed, query, dimensions) {
-    seed <- seed[, dimensions]
-    query <- query[match(rownames(seed), rownames(query)), dimensions]
-    interlaced_embed <- matrix(0,
-        ncol = ncol(seed) + ncol(query),
-        nrow = nrow(seed))
-    rownames(interlaced_embed) <- rownames(seed)
-    dimensions <- rep(dimensions, each = 2)
-    for (i in seq(1, ncol(interlaced_embed), by = 2)) {
-        interlaced_embed[, i] <- seed[, dimensions[i]]
-        interlaced_embed[, i + 1] <- query[, dimensions[i + 1]]
+    coord <- get_tiles(vesalius_assay) %>% filter(origin == 1)
+    coord$Segment <- 0
+    mesh <- hex_grid(coord, n_centers, return_index = FALSE)
+    mesh <- create_triangle_mesh(mesh[, 1], mesh[, 2])
+    names(mesh) <- seq_along(mesh)
+    for (i in seq_along(mesh)){
+        in_triangle <- sp::point.in.polygon(coord$x, coord$y,
+            mesh[[i]]$x, mesh[[i]]$y) != 0
+        if (sum(in_triangle) == 0) {
+            mesh[[i]] <- NA
+            next()
+        }
+        coord$Segment[in_triangle] <- i
     }
-    return(interlaced_embed)
+    mesh <- mesh[!is.na(mesh)]
+    coord$Segment <- seq_along(mesh)[
+        match(as.character(coord$Segment), names(mesh))]
+    names(mesh) <- seq_along(mesh)
+    return(list("segments" = coord, "mesh" = mesh))
 }
 
-average_embed <- function(seed, query, dimensions) {
-    seed <- seed[, dimensions]
-    query <- query[match(rownames(seed), rownames(query)), dimensions]
-    averaged_embed <- matrix(0,
-        ncol = length(dimensions),
-        nrow = nrow(seed))
-    rownames(averaged_embed) <- rownames(seed)
-    for (i in seq(1, ncol(averaged_embed))) {
-        averaged_embed[, i] <- apply(cbind(seed[, dimensions[i]],
-            query[, dimensions[i]]),
-            MARGIN = 1,
-            mean)
+adjust_mesh <- function(mesh, landmarks) {
+    #-------------------------------------------------------------------------#
+    # first get points to from mesh to shift
+    # and shift to spix center
+    #-------------------------------------------------------------------------#
+    mesh <- mesh$mesh
+    landmark_points <- get_super_pixel_centers(landmarks$segments)
+    buffer_mesh <- do.call("rbind", mesh)
+    closest <- RANN::nn2(data = landmark_points[,c("x","y")],
+        query = buffer_mesh, k = 1)
+    for (i in seq_along(unique(landmark_points$center))) {
+        loc <- which(closest$nn.idx[, 1] == landmark_points$center[i])
+        if (length(loc) == 0){
+            next()
+        }
+        min_loc <- loc[which(closest$nn.dist[loc, 1] ==
+            min(closest$nn.dist[loc, 1]))]
+        buffer_mesh[min_loc, ] <- landmark_points[i, c("x", "y")]
     }
-    return(averaged_embed)
-}
-
-concat_embed <- function(seed,
-    query,
-    dimensions,
-    norm_method,
-    dim_reduction) {
-
-    seed_features <- seed@meta$variable_features
-    query_features <- query@meta$variable_features
-    seed_counts <- get_counts(seed, type = "raw")
-    seed_counts <- seed_counts[rownames(seed_counts) %in% seed_features, ]
-    query_counts <- get_counts(query, type = "raw")
-    query_counts <- query_counts[rownames(query_counts) %in% query_features,
-        match(colnames(seed_counts), colnames(query_counts))]
-    integrated_counts <- rbind(seed_counts, query_counts)
-    integrated_counts <- process_counts(integrated_counts,
-        assay = "integrated",
-        method = norm_method,
-        use_count = "raw",
-        nfeatures = sum(c(length(seed_features), length(query_features))))
-    integrated_embeds <- embed_latent_space(integrated_counts$SO,
-        assay = "integrated",
-        dim_reduction = dim_reduction,
-        dimensions = max(dimensions),
-        remove_lsi_1 = FALSE,
-        verbose = FALSE)
-    return(integrated_embeds[[1]])
+    #-------------------------------------------------------------------------#
+    # Rebuild mesh list 
+    #-------------------------------------------------------------------------#
+    updated_mesh <- lapply(seq(1, nrow(buffer_mesh), by = 3),
+        function(i, mesh) {
+            return(mesh[i:(i + 2), ])
+        }, buffer_mesh)
+    names(updated_mesh) <- seq_along(updated_mesh)
+    #-------------------------------------------------------------------------#
+    # Add new mesh annotations to segment for scoring
+    #-------------------------------------------------------------------------#
+    coord <- landmarks$segments
+    coord$Segment <- NA
+    for (i in seq_along(updated_mesh)){
+        in_triangle <- sp::point.in.polygon(coord$x, coord$y,
+            updated_mesh[[i]]$x, updated_mesh[[i]]$y) != 0
+        if (sum(in_triangle) == 0) {
+            updated_mesh[[i]] <- NA
+            next()
+        }
+        coord$Segment[in_triangle] <- names(updated_mesh)[i]
+    }
+    updated_mesh <- updated_mesh[!is.na(updated_mesh)]
+    coord$Segment <- seq_along(updated_mesh)[
+        match(as.character(coord$Segment), names(updated_mesh))]
+    names(updated_mesh) <- seq_along(updated_mesh)
+    return(list("segments" = coord, "mesh" = updated_mesh))
 
 }
-
-
 
 compress_signal <- function(signal, segments) {
     segments <- split(segments, segments$Segment)
@@ -291,38 +257,8 @@ compress_signal <- function(signal, segments) {
     return(compressed_signal)
 }
 
-#' importFrom kohonen som map scale somgrid
-# som_map <- function(seed_trial,
-#     seed_signal,
-#     query_trial,
-#     query_signal,
-#     anchors,
-#     scale,
-#     compactness) {
-#     seed_spix <- get_super_pixel_centers(seed_trial)
-#     query_spix <- get_super_pixel_centers(query_trial)
-#     spixs <- seed_spix$center
-#     anchors <- sqrt(length(spixs))
-#     seed_signal <- cbind(seed_spix[,c("x","y")],
-#         do.call("rbind", seed_signal))
-#     seed_signal <- as.matrix(scale_data_spatial(seed_signal,
-#         compactness,
-#         scale))
-#     seed_som <- kohonen::som(seed_signal,
-#         grid = somgrid(xdim = floor(anchors),
-#             ydim = ceiling(anchors)))
-#     query_signal <- cbind(query_spix[, c("x","y")],
-#         do.call("rbind", query_signal))
-#     query_signal <- as.matrix(scale_data_spatial(query_signal,
-#         compactness,
-#         scale))
-#     mapped <- kohonen::map(x = seed_som, newdata = as.matrix(query_signal))
-#     anchor_map <- cbind(seed_spix, mapped$unit.classif)
-#     anchor_map$anchor <- 1
-#     colnames(anchor_map) <- c("x", "y", "to", "from", "anchor")
-#     browser()
-#     return(anchor_map)
-# }
+
+
 
 
 generate_slic_graph <- function(spix,
@@ -332,6 +268,7 @@ generate_slic_graph <- function(spix,
     # we will use this as an estimate for nearest neighbor calculation 
     #-------------------------------------------------------------------------#
     centers <- get_super_pixel_centers(spix) %>% select(c("x", "y"))
+    
     #-------------------------------------------------------------------------#
     # Next we get the nearest neighbors
     # If we use the auto option we compute the nearest neighbors based on 
@@ -404,7 +341,11 @@ score_graph <- function(graph,
             prog = round(i / nrow(graph), 4) * 100)
         c1 <- seed_signal[[graph$to[i]]]
         c2 <- query_signal[[graph$from[i]]]
-        graph$score[i] <- cor(c1, c2, method = scoring_method)
+        if (length(c1) == 0 || length(c2) == 0){
+            graph$score < 0
+        } else {
+            graph$score[i] <- cor(c1, c2, method = scoring_method)
+        }
     }
     if (verbose){cat("\n")}
     return(graph)
@@ -423,15 +364,17 @@ match_graph <- function(seed_graph,
     #-------------------------------------------------------------------------#
     # Initialize optimisation 
     #-------------------------------------------------------------------------#
+    browser()
     query_paths <- graph_path_length(query_graph)
+    seed_path <- graph_path_length(seed_graph)
     seed_trial <- get_super_pixel_centers(seed_trial)
     seed_trial$x <- min_max(seed_trial$x)
     seed_trial$y <- min_max(seed_trial$y)
     # Create a similarity matrix based on vertex positions and features
-    similarity_matrix <- rep(0, nrow(score))
-    cost <- vector("list", nrow(score))
+    cost_matrix <- rep(0, nrow(score))
+    #cost <- vector("list", nrow(score))
     for (i in seq_len(nrow(score))) {
-        dyn_message_switch("sim_mat", verbose,
+        dyn_message_switch("sim_mat", FALSE,
             prog = round(i / nrow(score), 4) * 100)
         #---------------------------------------------------------------------#
         # First we get the score of for the center spix
@@ -456,20 +399,21 @@ match_graph <- function(seed_graph,
         #---------------------------------------------------------------------#
         mapped_to <- seed_trial[seed_trial$center == score$to[i], ]
         seed_niche <- seed_trial[seed_trial$center %in% niche$to, ]
+        
         dist <- RANN::nn2(mapped_to[, c("x", "y")],
             query = seed_niche[, c("x", "y")])$nn.dist
-        cost[[i]] <- c(feature_score, niche_score, mean(dist))
-        similarity_matrix[i] <- sum(c(feature_score, niche_score, mean(dist)))
+        #cost[[i]] <- c(feature_score, niche_score, mean(dist))
+        cost_matrix[i] <- sum(c(feature_score, niche_score, mean(dist)))
     }
+    #browser()
     if (verbose){cat("\n")}
     message_switch("hungarian", verbose)
-    #browser()
-    similarity_matrix <- matrix(similarity_matrix,
-        ncol = length(unique(score$to)),
+    cost_matrix <- matrix(cost_matrix,
+        ncol = length(unique(score$from)),
         nrow = length(unique(score$to)),
         byrow = TRUE)
     
-    mapping <- RcppHungarian::HungarianSolver(similarity_matrix)$pairs
+    mapping <- RcppHungarian::HungarianSolver(cost_matrix)$pairs
     mapping <- as.data.frame(mapping)
     colnames(mapping) <- c("to", "from")
     
@@ -516,117 +460,68 @@ align_graph <- function(matched_graph,
     query_graph,
     strict_mapping = FALSE,
     verbose = TRUE) {
-    #-------------------------------------------------------------------------#
-    # First get all anchor trajectories 
-    # we used the seed coordinates as center pixel
-    #-------------------------------------------------------------------------#
     
-    # seed_centers <- get_super_pixel_centers(seed)
-    # query_centers <- get_super_pixel_centers(query)
-    # anchors <- matched_graph %>%
-    #     filter(anchor == 1) %>%
-    #     select(c("from", "to"))
-    # anchors$x_from <- query_centers$x[anchors$from]
-    # anchors$y_from <- query_centers$y[anchors$from]
-    # anchors$x_to <- seed_centers$x[anchors$to]
-    # anchors$y_to <- seed_centers$y[anchors$to]
-    
-    # #-------------------------------------------------------------------------#
-    # # Get barycentric coordinates from query
-    # # first we need the nearest neighbors to forma triangle around each
-    # # points - then we compute baycentric coordinates 
-    # #-------------------------------------------------------------------------#
-    # message_switch("apply_traj", verbose)
-
-    # tiles <- create_triangle_mesh(anchors$x_from, anchors$y_from)
-    
-    # accounted_for <- rep(0, nrow(query))
-    # query$x_buffer <- query$x
-    # query$y_buffer <- query$y
-    # for (i in seq_along(tiles)) {
-    #     in_triangle <- sp::point.in.polygon(query$x_buffer,
-    #         query$y_buffer,
-    #         tiles[[i]]$x, tiles[[i]]$y) != 0
-    #     pts <- query[in_triangle, c("x_buffer", "y_buffer")]
-    #     accounted_for[in_triangle] <- 1
-    #     bary <- geometry::cart2bary(X = as.matrix(tiles[[i]]),
-    #         P = as.matrix(pts))
-    #     nn <- RANN::nn2(data = anchors[, c("x_to", "y_to")],
-    #         query = tiles[[i]],
-    #         k = 10)
-    #     nn <- get_triangular_idx(nn)
-    #     new_triangle <- anchors[nn, c("x_to", "y_to")]
-    #     new_coord <- geometry::bary2cart(as.matrix(new_triangle), bary)
-    #     #browser()
-    #     query$x[in_triangle] <- new_coord[, 1]
-    #     query$y[in_triangle] <- new_coord[, 2]
-
-    # }
-
-    
-    #-------------------------------------------------------------------------#
-    # Getting triangles for unaccounted points 
-    #-------------------------------------------------------------------------#
-    seed_centers <- get_super_pixel_centers(seed)
-    query_centers <- get_super_pixel_centers(query)
-    anchors <- matched_graph %>%
-        filter(anchor == 1) %>%
-        select(c("from", "to"))
-    anchors$angle <- 0
-    anchors$distance <- 0
-    message_switch("get_traj", verbose)
-    for (i in seq_len(nrow(anchors))) {
-        seed_point <- seed_centers[seed_centers$center == anchors$to[i], ]
-        query_point <- query_centers[query_centers$center == anchors$from[i], ]
-        angle <- atan2(seed_point$y - query_point$y,
-            seed_point$x - query_point$x)
-        anchors$angle[i] <- angle
-        distance <- matrix(c(seed_point$x, query_point$x,
-            seed_point$y, query_point$y), ncol = 2)
-        anchors$distance[i] <- as.numeric(dist(distance))
+    query$norm_with <- 0
+    for (i in seq_len(nrow(matched_graph))) {
+        pts <- query[query$Segment == matched_graph$from[i], c("x", "y")]
+        tile <- query_graph[[as.character(matched_graph$from[i])]]
+        bary <- geometry::cart2bary(X = as.matrix(tile),
+            P = as.matrix(pts))
+        new_tile <- seed_graph[[as.character(matched_graph$to[i])]]
+        new_coord <- geometry::bary2cart(as.matrix(new_tile), bary)
+        query$x[query$Segment == matched_graph$from[i]] <- new_coord[, 1]
+        query$y[query$Segment == matched_graph$from[i]] <- new_coord[, 2]
+        query$norm_with[query$Segment == matched_graph$from[i]] <- 
+            as.character(matched_graph$to[i])
+        
     }
-    anchors <- anchors[order(anchors$from), ]
-    #-------------------------------------------------------------------------#
-    # Apply compound trajectories to individual points points
-    #-------------------------------------------------------------------------#
-    message_switch("apply_traj", verbose)
-    browser()
-    for (i in seq_len(nrow(anchors))) {
-
-        loc <- query$Segment == anchors$from[i]
-        pts <- query[loc, c("x","y")]
-        alpha <- anchors$angle[i]
-        pts$x <- pts$x - query_centers$x[i]
-        pts$x <- pts$y - query_centers$y[i]
-        pts$x <- pts$x * cos(alpha) + pts$y * sin(alpha)
-        pts$y <- -pts$x * sin(alpha) + pts$y * cos(alpha)
-        pts$x <- pts$x + query_centers$x[i]
-        pts$y <- pts$y + query_centers$x[i]
-        # pts <- as.matrix(pts)
-        # seed_pts <- unlist(query_centers[query_centers$center == anchors$from[i],
-        #     c("x", "y")])
-        # #rotation matrix
-        # rotm <- matrix(c(cos(pi),
-        #     sin(pi),
-        #     -sin(pi),
-        #     cos(pi)),
-        #     ncol=2)
-        # #browser()
-        # pts <- t(rotm %*% (t(pts) - seed_pts) + seed_pts)
-        # #browser()
-        query$x[loc] <- pts$x
-        query$y[loc] <- pts$y
-    }
-    angle <- anchors$angle[query$Segment]
-    distance <- anchors$distance[query$Segment]
-    query$x <- query$x + (distance * cos(angle))
-    query$y <- query$y + (distance * sin(angle))
-    query$norm_with <- anchors$to[query$Segment]
+    
     #-------------------------------------------------------------------------#
     # get closest seed point for all un assigned points
     #-------------------------------------------------------------------------#
     return(query)
 }
+
+
+# create_triangle_mesh <- function(x, y) {
+#     voronoi <- deldir::deldir(x = as.numeric(x),
+#         y = as.numeric(y))
+#     anchors <- sort(unique(c(voronoi$delsgs$ind1, voronoi$delsgs$ind2)))
+#     graph <- lapply(anchors, function(idx, voronoi){
+#         triangle <- voronoi$delsgs %>% 
+#             filter(ind1 == idx | ind2 == idx)
+#         loc <- which(triangle[, c("ind1", "ind2")] != idx, arr.ind = TRUE)
+#         triangle <- apply(loc, 1, function(loc, tri){
+#             if (loc[2] == 1){
+#                 tmp <- tri[loc[1], c("x1", "y1")]
+#             } else {
+#                 tmp <- tri[loc[1], c("x2", "y2")]
+#             }
+#             colnames(tmp) <- c("x", "y")
+#             return(tmp)
+#         }, triangle) %>%
+#         do.call("rbind", .)
+#         center <- voronoi$summary[idx, c("x", "y")]
+#         triangle <- convexify(triangle$x,triangle$y, center$x, center$y)
+#         all_tiles <- vector("list", nrow(triangle))
+#         for (i in seq_len(nrow(triangle))){
+#             if (i < nrow(triangle)){
+#                 all_tiles[[i]] <- data.frame(rbind(center,
+#                     triangle[i, ],
+#                     triangle[i + 1, ]),
+#                     "anchor" = rep(idx, 3))
+#             } else {
+#                 all_tiles[[i]] <- data.frame(rbind(center,
+#                     triangle[i, ],
+#                     triangle[1, ]),
+#                     "anchor" = rep(idx, 3))
+#             }
+#         }
+#         return(all_tiles)
+#     }, voronoi = voronoi)
+#     graph <- unlist(graph, recursive = FALSE)
+#     return(graph)
+# }
 
 create_triangle_mesh <- function(x, y) {
     voronoi <- deldir::deldir(x = as.numeric(x),
@@ -638,10 +533,10 @@ create_triangle_mesh <- function(x, y) {
         sub_1 <- voronoi$delsgs %>% filter(ind2 == p1)
         sub_2 <- voronoi$delsgs %>% filter(ind2 == p2)
         p3s <- intersect(sub_1$ind1, sub_2$ind1)
-        triangles <- lapply(p3s, function(p3,p1, p2, coord){
-            tmp <- rbind(coord[p1,c("x", "y")],
-                coord[p2,c("x", "y")],
-                coord[p3,c("x", "y")])
+        triangles <- lapply(p3s, function(p3, p1, p2, coord){
+            tmp <- rbind(coord[p1, c("x", "y")],
+                coord[p2, c("x", "y")],
+                coord[p3, c("x", "y")])
         },p1, p2, voronoi$summary)
         return(triangles)
     }, voronoi = voronoi)
@@ -658,6 +553,7 @@ get_triangular_idx <- function(nn) {
     }
     return(coord_loc)
 }
+
 
 
 
@@ -934,3 +830,125 @@ correlation <- function(seed_path, query_path, method) {
     rownames(co) <- names(query_path)
     return(co)
 }
+
+
+#-----------------------------------------------------------------------------#
+############################ VERTICAL INTEGRATION #############################
+#-----------------------------------------------------------------------------#
+
+#' Integrate jointly measured spatial omic assays
+#' @param mod1 vesalius_assay object containing first modality
+#' @param mod2 vesalius_assay objecty containing second modality
+#' @param dimensions numeric vector describing latent space dimensions 
+#' to use during intergration
+#' @param method character - integration method. interlace - mean - concat 
+#' are available options
+#' @param norm_method character - which count values should be use 
+#' for integration when using concat method
+#' @param dim_reduction characater - which dim reduction methods should be 
+#' used for concat integration (PCA,PCA_L,UMAP,LSI,LSI_UMAP,NMF)
+#' @param verbose logical - should progress message be outputed to the 
+#' console.
+#' @export
+integrate_vertically <- function(mod1,
+    mod2,
+    dimensions = seq(1, 30),
+    embedding = "last",
+    method = "interlace",
+    norm_method = "raw",
+    dim_reduction = "PCA",
+    verbose = TRUE) {
+    simple_bar(verbose)
+    #-------------------------------------------------------------------------#
+    # check place holder 
+    #-------------------------------------------------------------------------#
+
+    #-------------------------------------------------------------------------#
+    # Get embeddings - need make some changes here
+    # for now we assume we get the active 
+    #-------------------------------------------------------------------------#
+    mod1_embed <- check_embedding_selection(mod1, embedding, dimensions)
+    mod2_embed <- check_embedding_selection(mod2, embedding, dimensions)
+    #-------------------------------------------------------------------------#
+    # method switch - which method is best 
+    #-------------------------------------------------------------------------#
+    integrated_embeds <- switch(EXPR = method,
+        "interlace" = interlace_embeds(mod1_embed, mod2_embed, dimensions),
+        "mean" = average_embed(mod1_embed, mod2_embed, dimensions),
+        "concat" = concat_embed(mod1,
+            mod2,
+            dimensions,
+            norm_method,
+            dim_reduction))
+    integrated_embeds <- list(integrated_embeds)
+    names(integrated_embeds) <- method
+    integrated <- new("vesalius_assay",
+        assay = "integrated",
+        embeddings = integrated_embeds,
+        active = integrated_embeds[[1]],
+        tiles = mod1@tiles)
+    simple_bar(verbose)
+    return(integrated)
+
+}
+
+interlace_embeds <- function(seed, query, dimensions) {
+    seed <- seed[, dimensions]
+    query <- query[match(rownames(seed), rownames(query)), dimensions]
+    interlaced_embed <- matrix(0,
+        ncol = ncol(seed) + ncol(query),
+        nrow = nrow(seed))
+    rownames(interlaced_embed) <- rownames(seed)
+    dimensions <- rep(dimensions, each = 2)
+    for (i in seq(1, ncol(interlaced_embed), by = 2)) {
+        interlaced_embed[, i] <- seed[, dimensions[i]]
+        interlaced_embed[, i + 1] <- query[, dimensions[i + 1]]
+    }
+    return(interlaced_embed)
+}
+
+average_embed <- function(seed, query, dimensions) {
+    seed <- seed[, dimensions]
+    query <- query[match(rownames(seed), rownames(query)), dimensions]
+    averaged_embed <- matrix(0,
+        ncol = length(dimensions),
+        nrow = nrow(seed))
+    rownames(averaged_embed) <- rownames(seed)
+    for (i in seq(1, ncol(averaged_embed))) {
+        averaged_embed[, i] <- apply(cbind(seed[, dimensions[i]],
+            query[, dimensions[i]]),
+            MARGIN = 1,
+            mean)
+    }
+    return(averaged_embed)
+}
+
+concat_embed <- function(seed,
+    query,
+    dimensions,
+    norm_method,
+    dim_reduction) {
+
+    seed_features <- seed@meta$variable_features
+    query_features <- query@meta$variable_features
+    seed_counts <- get_counts(seed, type = "raw")
+    seed_counts <- seed_counts[rownames(seed_counts) %in% seed_features, ]
+    query_counts <- get_counts(query, type = "raw")
+    query_counts <- query_counts[rownames(query_counts) %in% query_features,
+        match(colnames(seed_counts), colnames(query_counts))]
+    integrated_counts <- rbind(seed_counts, query_counts)
+    integrated_counts <- process_counts(integrated_counts,
+        assay = "integrated",
+        method = norm_method,
+        use_count = "raw",
+        nfeatures = sum(c(length(seed_features), length(query_features))))
+    integrated_embeds <- embed_latent_space(integrated_counts$SO,
+        assay = "integrated",
+        dim_reduction = dim_reduction,
+        dimensions = max(dimensions),
+        remove_lsi_1 = FALSE,
+        verbose = FALSE)
+    return(integrated_embeds[[1]])
+
+}
+

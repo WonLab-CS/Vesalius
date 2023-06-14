@@ -13,8 +13,9 @@ integrate_horizontally(
   dimensions = seq(1, 30),
   scaling = 0.2,
   compactness = 1,
-  n_centers = 2000,
-  index_selection = "random",
+  grid = 100,
+  n_landmarks = 20,
+  index_selection = "hex",
   threshold = 0.7,
   depth = 1,
   strict_mapping = TRUE,
@@ -43,10 +44,13 @@ during super pixel selection}
 \item{compactness}{numeric ]0,Inf] - importance of the spatial component 
 in relation to color similarity. See details}
 
-\item{n_centers}{integer [3, max(spatial_index)] - number of super pixels
-to generate in each image. See details}
+\item{grid}{integer [2, Inf[] - How many grid elements should be use to create
+inital hex grid (see details)}
 
-\item{index_selection}{character (random, bubble) - how should initial super
+\item{n_landmarks}{[1, N_spatial_index] - number of super pixels to use as 
+landmarks for mesh adjustement.}
+
+\item{index_selection}{character (random, bubble, hex) - how should initial super
 pixel locations be selected. See detials}
 
 \item{threshold}{numeric [0,1[ - similarity score threshold. Only super pixel
@@ -60,9 +64,6 @@ be used as cell signal for super pixel scoring. Seed details}
 \item{iter}{integer [1, Inf] - Number of iteration during graph matching
 phase.}
 
-\item{n_anchors}{integer [3, n_centers] - Number of graph anchors used during
-graph matching}
-
 \item{mut_extent}{numeric [0,1] - extent of alignment graph that can be 
 subjected to mutations}
 
@@ -73,4 +74,8 @@ them be repelled to new location. See details}
 }
 \description{
 Aling and integrate spatial assay from the same modality using super pixels
+}
+\details{
+Hex grid is expanded to include all points and then reduced to exclude
+exmpty triangles.
 }
