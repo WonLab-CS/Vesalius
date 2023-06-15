@@ -115,6 +115,10 @@ message_switch <- function(type, verbose = TRUE, ...) {
             " Connecting Super Pixels\n")),
         "signal" = cat(paste(t,
             " Extracting assay signal\n")),
+        "landmarks" = cat(paste(t,
+            " Finding landmarks in", args$assay, "\n")),
+        "optimal_land" = cat(paste(t,
+            " Finding Optimal Landmarks\n")),
         "slic_graph" = cat(paste(t,
             " Generating mesh graph in", args$data, "\n")),
         "mesh" = cat(paste(t,
@@ -125,8 +129,8 @@ message_switch <- function(type, verbose = TRUE, ...) {
             " Matching Graphs\n")),
         "hungarian" = cat(paste(t,
             " Solving Graph Alignment\n")),
-        "anchors_found" = cat(paste(t,
-            " Found", args$anchors, "Anchors at current threshold\n")),
+        "landmarks_found" = cat(paste(t,
+            " Found", args$anchors, "landmarks at current threshold\n")),
         "get_traj" = cat(paste(t,
             " Getting anchor trajectories\n")),
         "apply_traj" = cat(paste(t,
@@ -145,13 +149,13 @@ dyn_message_switch <- function(type, verbose = TRUE, ...) {
     t <- Sys.time()
     if (verbose) {
         switch(EXPR = type,
-        "score_graph" = cat(paste(t, " Scoring graph: ",
+        "score_graph" = cat(paste(t, " Scoring", args$assay, "graph: ",
             args$prog, "%   \r")),
         "integrate_graph" = cat(paste(t, " Integrating graph: ",
             args$prog, "%   \r")),
         "graph_matching" = cat(paste(t, " Optimising graph match: ",
             args$prog, "%   \r")),
-        "sim_mat" = cat(paste(t, " Preparing similarity matrix: ",
+        "cost_mat" = cat(paste(t, " Preparing cost matrix: ",
             args$prog, "%   \r"))
         )
     } else {

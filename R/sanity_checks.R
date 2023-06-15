@@ -11,18 +11,22 @@
 #' @param coordinates coordinate file
 #' @param image connection to image or image array
 #' @param assay string with assay name
+#' @param layer int [1, Inf[ - depth layer when more than on assay is
+#' present
 #' @param verbose logical if progress message should be outputed.
 #' @return list containing checked counts, coordinates and assay
 check_inputs <- function(counts,
     coordinates,
     image,
     assay,
+    layer,
     verbose) {
     #--------------------------------------------------------------------------#
     # we can check the validity of the coordinates
     #--------------------------------------------------------------------------#
     coordinates <- check_coordinates(coordinates,
         assay,
+        layer,
         verbose)
     #--------------------------------------------------------------------------#
     # next let's check counts if they are present
@@ -135,6 +139,7 @@ check_counts <- function(counts, assay, verbose) {
 #' adjust coordinate value to remove white edge space
 #' @param coordinates coordinate data 
 #' @param assay string - assay name
+#' @param layer int [1, Inf[ - depth layer 
 #' @param verbose logical if progress message should be printed
 #' @details adjusts coordinates by either snapping coordinates to origin 
 #' or min max normalisation of coordinates. Might add polar for future tests.
@@ -142,6 +147,7 @@ check_counts <- function(counts, assay, verbose) {
 #' @importFrom methods is as
 check_coordinates <- function(coordinates,
     assay,
+    layer,
     verbose) {
     message_switch("check_coord", verbose, assay = assay)
     if (is(coordinates, "matrix")) {
@@ -159,8 +165,10 @@ check_coordinates <- function(coordinates,
     if (all(c("barcodes", "xcoord", "ycoord") %in% colnames(coordinates))) {
         coordinates <- coordinates[, c("barcodes", "xcoord", "ycoord")]
         colnames(coordinates) <- c("barcodes",  "x", "y")
+        coordinates$z <- layer
     } else if (all(c("barcodes", "x", "y") %in% colnames(coordinates))) {
         coordinates <- coordinates[, c("barcodes", "x", "y")]
+        coordinates$z <- layer
     } else {
         stop("Unknown column names")
     }
@@ -744,11 +752,11 @@ check_template_source <- function(vesalius_assay, from, dimensions) {
 }
 
 
-check_signal <- function(signal, assay, type) {
-    if (any(signal %in% c("features", "counts"))) {
+check_signal <- function(assay, signal, type) {
+    if (any(signal %in% c("variable_features", "all_features"))) {
         signal <- switch(EXPR = signal,
-            "features" = assay@meta$variable_features,
-            "counts" = rownames(get_counts(assay, type)))
+            "variable_features" = assay@meta$variable_features,
+            "all_features" = rownames(get_counts(assay, type)))
         return(signal)
     } else if (any(signal %in% rownames(get_counts(assay, type)))) {
         int <- intersect(signal, rownames(get_counts(assay, type)))
@@ -761,6 +769,7 @@ check_signal <- function(signal, assay, type) {
         return(signal)
     } else {
         stop("Unknown signal type! Select from:
-        features, counts, embeddings or vector of feature names")
+        variable_features, all_features, embeddings!
+        Alternitively: vector of feature names you are interested in.")
     }
 }

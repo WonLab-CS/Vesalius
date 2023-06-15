@@ -283,7 +283,11 @@ jitter_ves <- smooth_image(jitter_ves, embedding = "PCA", sigma = 5, iter = 5)
 
 test <- integrate_horizontally(vesalius,
     jitter_ves,
-    signal = "features",
+    signal = "variable_features",
+    mapping = "mesh",
+    index_selection = "bubble",
+    n_landmarks = 50,
+    threshold = 0.2,
     grid = 80)
 
 

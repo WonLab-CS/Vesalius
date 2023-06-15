@@ -59,7 +59,8 @@ Imports:
     RcppHungarian,
     ggnewscale,
     kohonen,
-    geometry
+    geometry,
+    Morpho
 Suggests:
     knitr,
     RUnit,

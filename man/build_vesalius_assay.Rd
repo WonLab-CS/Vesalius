@@ -11,6 +11,7 @@ build_vesalius_assay(
   assay = "spatial_omics",
   scale = "auto",
   unit = "um",
+  layer = 1,
   verbose = TRUE
 )
 }

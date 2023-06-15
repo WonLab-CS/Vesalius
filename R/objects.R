@@ -230,6 +230,7 @@ build_vesalius_assay <- function(coordinates,
     assay = "spatial_omics",
     scale = "auto",
     unit = "um",
+    layer = 1,
     verbose = TRUE) {
     simple_bar(verbose)
     #--------------------------------------------------------------------------#
@@ -242,6 +243,7 @@ build_vesalius_assay <- function(coordinates,
         coordinates,
         image,
         assay,
+        layer,
         verbose)
     #--------------------------------------------------------------------------#
     # get scale from coordinates

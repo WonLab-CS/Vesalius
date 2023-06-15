@@ -7,19 +7,19 @@
 integrate_horizontally(
   seed_assay,
   query_assay,
-  seed_trial = "last",
-  query_trial = "last",
   scoring_method = "pearson",
+  index_selection = "bubble",
+  mapping = "mesh",
+  trial = "last",
   dimensions = seq(1, 30),
   scaling = 0.2,
-  compactness = 1,
+  compactness = 5,
   grid = 100,
-  n_landmarks = 20,
-  index_selection = "hex",
+  n_landmarks = 50,
   threshold = 0.7,
   depth = 1,
-  strict_mapping = TRUE,
-  signal = "features",
+  signal = "variable_features",
+  use_norm = "raw",
   verbose = TRUE
 )
 }
@@ -28,30 +28,29 @@ integrate_horizontally(
 
 \item{query_assay}{vesalius_assay objecy - data to map}
 
-\item{seed_trial}{name of embedding to use for super pixel generation}
-
-\item{query_trial}{name of embedding to use for super pixel generation}
-
-\item{scoring_method}{method used to score the similarity between super 
+\item{scoring_method}{method used to score the similarity between super
 pixels (pearson, spearman, kendall, coherence, index)}
+
+\item{index_selection}{character (random, bubble, hex)
+how should initial super pixel locations be selected. See detials}
+
+\item{mapping}{character - method used for mapping query data onto see data
+(mesh, spix, morph)}
 
 \item{dimensions}{integer vector - which latent space dimensions should be
 used for super pixel generation}
 
-\item{scaling}{numeric ]0,1] describing image scale to consider 
+\item{scaling}{numeric ]0,1] describing image scale to consider
 during super pixel selection}
 
-\item{compactness}{numeric ]0,Inf] - importance of the spatial component 
+\item{compactness}{numeric ]0,Inf] - importance of the spatial component
 in relation to color similarity. See details}
 
-\item{grid}{integer [2, Inf[] - How many grid elements should be use to create
-inital hex grid (see details)}
+\item{grid}{integer [2, Inf[]
+How many grid elements should be use to create inital hex grid (see details)}
 
-\item{n_landmarks}{[1, N_spatial_index] - number of super pixels to use as 
+\item{n_landmarks}{[1, N_spatial_index] - number of super pixels to use as
 landmarks for mesh adjustement.}
-
-\item{index_selection}{character (random, bubble, hex) - how should initial super
-pixel locations be selected. See detials}
 
 \item{threshold}{numeric [0,1[ - similarity score threshold. Only super pixel
 that score above this threshold will be used for graph matching}
@@ -61,16 +60,12 @@ be used as cell signal for super pixel scoring. Seed details}
 
 \item{verbose}{logical - should I be a noisy boy?}
 
+\item{seed_trial}{name of embedding to use for super pixel generation}
+
+\item{query_trial}{name of embedding to use for super pixel generation}
+
 \item{iter}{integer [1, Inf] - Number of iteration during graph matching
 phase.}
-
-\item{mut_extent}{numeric [0,1] - extent of alignment graph that can be 
-subjected to mutations}
-
-\item{mut_prob}{numeric [0,1] - probability of alignment graph mutation.}
-
-\item{allow_vertex_merge}{logical - Should graph vertices be merged or should
-them be repelled to new location. See details}
 }
 \description{
 Aling and integrate spatial assay from the same modality using super pixels
