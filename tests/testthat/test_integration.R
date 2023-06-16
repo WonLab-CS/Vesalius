@@ -17,6 +17,7 @@ library(Matrix)
 library(deldir)
 library(imager)
 library(imagerExtra)
+library(Morpho)
 library(pwr, lib.loc = "/common/martinp4/R")
 library(gsignal, lib.loc = "/common/martinp4/R")
 library(kohonen, lib.loc = "/common/martinp4/R")
@@ -86,16 +87,19 @@ vesalius_query <- build_vesalius_assay(coord, count_mat) %>%
 
 test <- integrate_horizontally(vesalius,
     vesalius_query,
-    n_centers = 15,
+    index_selection = "random",
+    mapping = "morph",
+    n_landmarks = 150,
+    threshold = 0.6,
     depth = 4,
-    signal = "features")
+    signal = "variable_features")
 
 test <- generate_embeddings(test,tensor_resolution = 0.9999)
 # test <- #regularise_image(test, dimensions = 1:30, lambda = 5) %>%
 #     equalize_image(test,dimensions = 1:30, sleft = 5, sright = 5)# %>%
     #smooth_image(dimensions = 1:30, method =c("iso", "box"), sigma = 2, box = 10, iter = 10)
-pdf("test_bary.pdf")
-image_plot(test)
+pdf("test_morph.pdf")
+image_plot(vesalius) + image_plot(test) + image_plot(vesalius_query)
 dev.off()
 
 g <- ggplot(query, aes(x,y,col = as.factor(Segment))) + geom_point(size = 0.3)
@@ -287,8 +291,9 @@ test <- integrate_horizontally(vesalius,
     mapping = "mesh",
     index_selection = "bubble",
     n_landmarks = 50,
-    threshold = 0.2,
-    grid = 80)
+    depth = 1,
+    threshold = 0,
+    grid = 100)
 
 
 test <- generate_embeddings(test)
@@ -297,7 +302,7 @@ test <- smooth_image(test, sigma = 5, iter = 5)
 #test <- segment_image(test, col_resolution = 5)
 
 
-image_plot(test) + image_plot(jitter_ves)
+image_plot(vesalius) + image_plot(test) + image_plot(jitter_ves)
 
 plot(0, type = "n", xlim = c(0, 650), ylim = c(0, 650))
 points(seed_centers$x, seed_centers$y,col="black", cex = 3)
