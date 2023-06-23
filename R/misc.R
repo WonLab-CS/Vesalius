@@ -93,7 +93,12 @@ scale_data_spatial <- function(data, compactness, scale) {
   return(data)
 }
 
-
+jaccard <- function(a, b) {
+    intersection <- length(intersect(a, b))
+    union <- length(union(a, b))
+    return(intersection / union)
+}
+ 
 #-------------------------/ Aligning Assays /--------------------------------#
 
 polar_angle <- function(coord_x, coord_y, center_x, center_y) {

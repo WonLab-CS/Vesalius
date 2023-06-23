@@ -72,7 +72,21 @@ integrate_horizontally <- function(seed_assay,
     #-------------------------------------------------------------------------#
     # Compute landmarks
     #-------------------------------------------------------------------------#
-    landmarks <- get_landmarks(seed = seed_assay,
+    # landmarks <- get_landmarks(seed = seed_assay,
+    #     seed_signal = signal$seed,
+    #     query = query_assay,
+    #     query_signal = signal$query,
+    #     trial = trial,
+    #     scoring_method = scoring_method,
+    #     index_selection = index_selection,
+    #     dimensions = dimensions,
+    #     scaling = scaling,
+    #     compactness = compactness,
+    #     n_landmarks = n_landmarks,
+    #     depth = depth,
+    #     threshold = threshold,
+    #     verbose)
+    spix_mnn <- get_spix_MNN(seed = seed_assay,
         seed_signal = signal$seed,
         query = query_assay,
         query_signal = signal$query,
@@ -85,19 +99,21 @@ integrate_horizontally <- function(seed_assay,
         n_landmarks = n_landmarks,
         depth = depth,
         threshold = threshold,
-        verbose)
+        verbose = verbose)
     #-------------------------------------------------------------------------#
     # Mapping points from landmarks
     #-------------------------------------------------------------------------#
-    aligned <- switch(EXPR = mapping,
-        "mesh" = mesh_mapping(landmarks,
-            signal,
-            grid,
-            depth,
-            threshold,
-            verbose),
-        "morph" = morph_mapping(landmarks),
-        "spix" = spix_mapping(landmarks))
+    # aligned <- switch(EXPR = mapping,
+    #     "mesh" = mesh_mapping(landmarks,
+    #         signal,
+    #         grid,
+    #         depth,
+    #         threshold,
+    #         verbose),
+    #     "morph" = morph_mapping(landmarks),
+    #     "spix" = spix_mapping(landmarks),
+    #     "spix_nn" = spix_nn_mapping(landmarks,
+    #         signal))
     # message_switch("mesh", verbose)
     # seed_mesh <- generate_mesh(seed_assay,
     #     n_centers = grid)
@@ -163,13 +179,12 @@ integrate_horizontally <- function(seed_assay,
     #     query_mesh$segments,
     #     query_mesh$mesh,
     #     verbose = verbose)
-    integrated <- integrate_graph(aligned,
+    integrated <- integrate_graph(spix_mnn,
         query_assay,
         verbose = verbose)
     # simple_bar(verbose)
     return(integrated)
 }
-
 
 get_features <- function(seed_assay,
     query_assay,
@@ -278,6 +293,107 @@ get_landmarks <- function(seed,
         "query_spix" = query_spix,
         "matched_graph" = matched_graph))
 
+}
+
+get_spix_MNN <- function(seed,
+    seed_signal,
+    query,
+    query_signal,
+    trial = "last",
+    scoring_method = "pearson",
+    index_selection = "random",
+    dimensions = seq(1,30),
+    scaling = 0.2,
+    compactness = 5,
+    n_landmarks = 50,
+    depth = 1,
+    threshold = 0.5,
+    verbose = TRUE) {
+    #-------------------------------------------------------------------------#
+    # first we compute super pixels from embedding values
+    # Note this could be updated to parallel 
+    #-------------------------------------------------------------------------#
+    message_switch("landmarks", verbose, assay = get_assay_names(seed))
+    seed_spix <- slic_segmentation(seed,
+        dimensions = dimensions,
+        col_resolution = n_landmarks,
+        embedding = trial,
+        index_selection = index_selection,
+        compactness = compactness,
+        scaling = scaling,
+        verbose = FALSE)
+    seed_spix <- merge_spix(seed_spix)
+    message_switch("landmarks", verbose, assay = "Query List")
+    query_spix <- lapply(query, slic_segmentation,
+        dimensions = dimensions,
+        col_resolution = n_landmarks,
+        embedding = trial,
+        index_selection = index_selection,
+        compactness = compactness,
+        scaling = scaling,
+        verbose = FALSE)
+    query_spix <- lapply(query_spix, merge_spix)
+    #-------------------------------------------------------------------------#
+    # Next we create a scoring table for each spix
+    #-------------------------------------------------------------------------#
+    message_switch("spix_MNN", verbose)
+    aligned_indices <- vector("list", length(query_spix))
+    for (i in seq_along(query_spix)) {
+        #---------------------------------------------------------------------#
+        # Preparing matrices to generate a cost matrix for hugarian solver
+        #---------------------------------------------------------------------#
+        seed_nodes <- sort(unique(seed_spix$segments$Segment))
+        query_nodes <- sort(unique(query_spix[[i]]$segments$Segment))
+        score_table <- data.frame(
+            "from" = rep(query_nodes, each = length(seed_nodes)),
+            "to" = rep(seed_nodes, times = length(query_nodes)))
+        #---------------------------------------------------------------------#
+        # First we create a transcriptional  matrix
+        #---------------------------------------------------------------------#
+        seed_local <- t(scale(t(as.matrix(seed_signal))))
+        query_local <- t(scale(t(as.matrix(query_signal[[i]]))))
+        feature_dist_mat <- RANN::nn2(t(seed_local),
+            t(query_local),
+            k = min(ncol(seed_local), ncol(query_local)))
+        ordered_mat <- feature_dist_mat$nn.idx
+        rownames(ordered_mat) <- colnames(query_local)
+        colnames(ordered_mat) <- colnames(seed_local)
+        feature_dist_mat <- 
+            (feature_dist_mat$nn.dists - min(feature_dist_mat$nn.dists)) /
+            (max(feature_dist_mat$nn.dists) - min(feature_dist_mat$nn.dists))
+        rownames(feature_dist_mat) <- colnames(query_local)
+        colnames(feature_dist_mat) <- colnames(seed_local)
+        #---------------------------------------------------------------------#
+        # Next we create a relative spatial distance matrix
+        #---------------------------------------------------------------------#
+        seed_dist <- RANN::nn2(seed_spix$segments[, c("x","y")],
+            k = nrow(seed_spix$segments))
+        query_dist <- RANN::nn2(query_spix[[i]]$segments[, c("x","y")],
+            k = nrow(query_spix[[i]]$segments))
+        
+        #---------------------------------------------------------------------#
+        # Now we create a spix neighbohood matrix - generates a score 
+        # for each super pixel 
+        #---------------------------------------------------------------------#
+        spix_score <- mutual_spix_score(ordered_mat,
+            graph = score_table,
+            seed = seed_spix$segments,
+            query = query_spix[[i]]$segments,
+            assay = paste("Query list" , i),
+            verbose = TRUE)
+        #---------------------------------------------------------------------#
+        # Create a cost matrix
+        #---------------------------------------------------------------------#
+        cost_mat <- feature_dist_mat + spix_score
+        matched_indices <- match_index(cost_mat)
+        #browser()
+        aligned_indices[[i]] <- align_index(matched_indices,
+            seed_spix$segments,
+            query_spix[[i]]$segments,
+            verbose)
+       
+    }
+    return(aligned_indices)
 }
 
 spix_mapping <- function(landmarks) {
@@ -392,6 +508,40 @@ morph_mapping <- function(landmarks) {
     return(query)
 }
 
+
+mutual_spix_score <- function(ordered_mat,
+    graph,
+    seed,
+    query,
+    assay,
+    verbose = TRUE) {
+    graph <- data.frame(graph,
+        "score" = rep(0, nrow(graph)))
+    for (i in seq_len(nrow(graph))) {
+        dyn_message_switch("score_graph", verbose,
+            prog = round(i / nrow(graph), 4) * 100,
+            assay = assay)
+        seed_bar <- seed$barcodes[seed$Segment == graph$to[i]]
+        query_bar <- query$barcodes[query$Segment == graph$from[i]]
+        if (length(seed_bar) == 0 || length(query_bar) == 0) {
+            #browser()
+            graph$score <- NA
+        } else {
+            #browser()
+            local_ord_mat <- ordered_mat[rownames(ordered_mat) %in% seed_bar,
+            colnames(ordered_mat) %in% query_bar]
+            dim(local_ord_mat) <- c(length(seed_bar), length(query_bar))
+            ordered_mat[rownames(ordered_mat) %in% seed_bar,
+                colnames(ordered_mat) %in% query_bar]   <- sum(local_ord_mat) /
+                    (nrow(local_ord_mat) * ncol(local_ord_mat))
+        }
+    }
+    if (verbose){cat("\n")}
+    ordered_mat <- (ordered_mat - min(ordered_mat)) /
+        (max(ordered_mat) - min(ordered_mat))
+    return(ordered_mat)
+}
+
 #' importFrom future.apply future_lapply
 score_graph <- function(graph,
     signal,
@@ -421,7 +571,7 @@ score_graph <- function(graph,
         c1 <- seed_signal[[graph$to[i]]]
         c2 <- query_signal[[graph$from[i]]]
         if (length(c1) == 0 || length(c2) == 0){
-            graph$score < 0
+            graph$score <- 0
         } else {
             graph$score[i] <- switch(EXPR = scoring_method,
                 "pearson" = cor(c1, c2, method = scoring_method),
@@ -431,6 +581,36 @@ score_graph <- function(graph,
     }
     if (verbose){cat("\n")}
     return(graph)
+}
+
+
+merge_spix <- function(spix) {
+    spixs <- spix$segments
+    n_bar <- table(spixs$Segment)
+    low_n <- names(n_bar)[n_bar < 3]
+    if (length(low_n) > 0) {
+        knn <- RANN::nn2(spixs[!spixs$Segment %in% low_n, c("x", "y")],
+            spixs[spixs$Segment %in% low_n, c("x", "y")],
+            k = 1)
+        spixs$Segment[spixs$Segment %in% low_n] <- 
+            spixs$Segment[which(!spixs$Segment %in% low_n)[knn$nn.idx[,1]]]
+        #spixs$Segment <- spixs$Segment[]
+        spix$segments <- spixs
+    }
+    return(spix)
+}
+
+match_index <- function(cost_matrix) {
+    mapping <- RcppHungarian::HungarianSolver(cost_matrix)$pairs
+    mapping <- as.data.frame(mapping)
+    colnames(mapping) <- c("to", "from")
+    scores <- mapply(function(i, j, cost) {
+        return(cost[i, j])
+    }, mapping$to, mapping$from, MoreArgs = list(cost_matrix))
+    mapping$score <- scores
+    mapping$to <- rownames(cost_matrix)[mapping$to]
+    mapping$from <- colnames(cost_matrix)[mapping$from]
+    return(mapping)
 }
 
 
@@ -487,6 +667,9 @@ match_graph <- function(seed_graph,
     message_switch("landmarks_found", verbose, anchors = sum(mapping$anchors))
     return(mapping)
 }
+
+
+
 
 build_cost_matrix <- function(i,
     score,
@@ -729,6 +912,18 @@ align_graph <- function(matched_graph,
     return(query)
 }
 
+align_index <- function(matched_index,
+    seed,
+    query,
+    verbose = TRUE) {
+    query$norm_with <- 0
+    query$x[match(matched_index$from, query$barcodes)] <-
+        seed$x[match(matched_index$to, seed$barcodes)]
+    query$y[match(matched_index$from, query$barcodes)] <-
+        seed$y[match(matched_index$to, seed$barcodes)]
+    return(query)
+}
+
 
 # create_triangle_mesh <- function(x, y) {
 #     voronoi <- deldir::deldir(x = as.numeric(x),
@@ -805,10 +1000,10 @@ get_triangular_idx <- function(nn) {
 
 
 
-get_best_vertex  <- function(score, rank = 1) {
+get_best_vertex  <- function(score, rank = 1, decreasing = TRUE) {
     from <- split(score, score$from)
     best_match <- lapply(from, function(f) {
-        return(f[order(f$score, decreasing = TRUE)[rank], ])
+        return(f[order(f$score, decreasing = decreasing)[rank], ])
     }) %>% do.call("rbind", .)
     return(best_match)
 }
@@ -826,68 +1021,9 @@ integrate_graph <- function(aligned_graph,
     query,
     verbose = TRUE) {
     #-------------------------------------------------------------------------#
-    # first let's get the raw counts from each 
-    #-------------------------------------------------------------------------#
-    # seed_counts <- get_counts(seed)
-    # query_counts <- get_counts(query)
-    # genes <- intersect(rownames(seed_counts), rownames(query_counts))
-    # seed_counts <- seed_counts[rownames(seed_counts) %in% genes, ]
-    # query_counts <- query_counts[rownames(query_counts) %in% genes, ]
-    # #-------------------------------------------------------------------------#
-    # # next split the aligned graph by spix
-    # # and we can scale the counts in each super pixel 
-    # #-------------------------------------------------------------------------#
-    # spix <- split(aligned_graph,
-    #     list(aligned_graph$Segment, aligned_graph$norm_with))
-    # spix <- spix[sapply(spix, function(x){return(nrow(x)>0)})]
-    
-    # integrated_counts <- vector("list", length(spix))
-    # query_names <- c()
-    # for (i in seq_along(spix)) {
-    #     dyn_message_switch("integrate_graph", verbose,
-    #         prog = round(i / length(spix), 4) * 100)
-    #     query_names <- c(query_names,spix[[i]]$barcodes)
-    #     query_local <- query_counts[, spix[[i]]$barcodes]
-    #     # seed_local <- seed_counts[, seed_spix$barcodes[
-    #     #     seed_spix$Segment %in% spix[[i]]$norm_with]]
-    #     # max_count <- max(seed_local)
-    #     # if (is.null(ncol(seed_local))) {
-    #     #     sd_count <- sd(query_local)
-    #     # } else {
-    #     #     sd_count <- max(apply(seed_local, 1, sd))
-    #     # }
-    #     # query_local <- query_local * (max_count / sd_count)
-
-    #     if (is.null(ncol(query_local))) {
-    #         query_local <- matrix(query_local[order(names(query_local))],
-    #             ncol = 1)
-    #         colnames(query_local) <- spix[[i]]$barcodes
-    #     } else {
-    #         query_local <- query_local[order(rownames(query_local)), ]
-    #     }
-    #     integrated_counts[[i]] <- query_local
-    # }
-    # if (verbose){cat("\n")}
-    
-    # #-------------------------------------------------------------------------#
-    # # Bind everything together - this needs to be cleaned
-    # #-------------------------------------------------------------------------#
-    # integrated_counts <- do.call("cbind", integrated_counts)
-   
-    # #-------------------------------------------------------------------------#
-    # # Now re can rebuild the coordinates 
-    # #-------------------------------------------------------------------------#
-    # query_coordinates <- aligned_graph[, c("barcodes", "x", "y")]
-    # common_loc <- intersect(query_coordinates$barcodes,
-    #     colnames(integrated_counts))
-    # query_coordinates <- query_coordinates[query_coordinates$barcodes %in% common_loc, ]
-    # integrated_counts <- integrated_counts[, common_loc]
-    # query_coordinates$barcodes <- gsub("_et_", "_l_", common_loc)
-    # colnames(integrated_counts) <- gsub("_et_", "_l_", common_loc)
-    #-------------------------------------------------------------------------#
     # rebuild vesalius
     #-------------------------------------------------------------------------#
-    
+    browser()
     vesalius_assay <- build_vesalius_assay(coordinates = aligned_graph[[1]][ ,1:3],
         counts = get_counts(query[[1]], type = "raw"),
         assay = "integrated",

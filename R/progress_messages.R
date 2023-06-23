@@ -131,6 +131,10 @@ message_switch <- function(type, verbose = TRUE, ...) {
             " Solving Graph Alignment\n")),
         "landmarks_found" = cat(paste(t,
             " Found", args$anchors, "landmarks at current threshold\n")),
+        "spix_nn" = cat(paste(t,
+            " Finding Spatial Mutal Nearest Neighbors\n")),
+        "cor_mat" = cat(paste(t,
+            " Computing Cross-Correlation Matrix\n")),
         "get_traj" = cat(paste(t,
             " Getting anchor trajectories\n")),
         "apply_traj" = cat(paste(t,
@@ -156,6 +160,8 @@ dyn_message_switch <- function(type, verbose = TRUE, ...) {
         "graph_matching" = cat(paste(t, " Optimising graph match: ",
             args$prog, "%   \r")),
         "cost_mat" = cat(paste(t, " Preparing cost matrix: ",
+            args$prog, "%   \r")),
+        "spix_nn" = cat(paste(t, " Mapped SPIX: ",
             args$prog, "%   \r"))
         )
     } else {

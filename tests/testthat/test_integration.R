@@ -268,9 +268,9 @@ jitter_ves <- build_vesalius_assay(jitter_coord, jitter_counts)
 vesalius <- generate_embeddings(vesalius)
 vesalius <- smooth_image(vesalius, embedding = "PCA", sigma = 5, iter = 5)
 # vesalius <- segment_image(vesalius,
-#     method = "som",
+#     method = "kmeans",
 #     dimensions = 1:3,
-#     col_resolution = 10,
+#     col_resolution = 3,
 #     compactness = 1,
 #     scaling = 0.2)
 
@@ -288,9 +288,9 @@ jitter_ves <- smooth_image(jitter_ves, embedding = "PCA", sigma = 5, iter = 5)
 test <- integrate_horizontally(vesalius,
     jitter_ves,
     signal = "variable_features",
-    mapping = "mesh",
+    mapping = "spix_nn",
     index_selection = "bubble",
-    n_landmarks = 50,
+    n_landmarks = 20,
     depth = 1,
     threshold = 0,
     grid = 100)
