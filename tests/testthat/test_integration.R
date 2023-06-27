@@ -66,10 +66,10 @@ count_mat <- read.table(counts[f], header = TRUE, row.names = 1)
 
 
 vesalius <- build_vesalius_assay(coord, count_mat) %>%
-    generate_embeddings(dim_reduction = "PCA", tensor_resolution = 0.3) %>%
-    regularise_image(dimensions = 1:30, lambda = 5) %>%
-    equalize_image(dimensions = 1:30, sleft = 5, sright = 5) %>%
-    smooth_image(dimensions = 1:30, method =c("iso", "box"), sigma = 2, box = 10, iter = 10) 
+    generate_embeddings(dim_reduction = "PCA", tensor_resolution = 0.3) #%>%
+    # regularise_image(dimensions = 1:30, lambda = 5) %>%
+    # equalize_image(dimensions = 1:30, sleft = 5, sright = 5) %>%
+    # smooth_image(dimensions = 1:30, method =c("iso", "box"), sigma = 2, box = 10, iter = 10) 
 
 f = 44
 coord <- read.csv(coordinates[f], header = FALSE, skip = 1)
@@ -78,20 +78,15 @@ count_mat <- read.table(counts[f], header = TRUE, row.names = 1)
 
 
 vesalius_query <- build_vesalius_assay(coord, count_mat) %>%
-    generate_embeddings(tensor_resolution = 0.3) %>%
-    regularise_image(dimensions = 1:30, lambda = 5) %>%
-    equalize_image(dimensions = 1:30, sleft = 5, sright = 5) %>%
-    smooth_image(dimensions = 1:30, method =c("iso", "box"), sigma = 2, box = 10, iter = 10)
+    generate_embeddings(tensor_resolution = 0.3) #%>%
+    # regularise_image(dimensions = 1:30, lambda = 5) %>%
+    # equalize_image(dimensions = 1:30, sleft = 5, sright = 5) %>%
+    # smooth_image(dimensions = 1:30, method =c("iso", "box"), sigma = 2, box = 10, iter = 10)
 
 
 
 test <- integrate_horizontally(vesalius,
     vesalius_query,
-    index_selection = "random",
-    mapping = "morph",
-    n_landmarks = 150,
-    threshold = 0.6,
-    depth = 4,
     signal = "variable_features")
 
 test <- generate_embeddings(test,tensor_resolution = 0.9999)
@@ -287,13 +282,7 @@ jitter_ves <- smooth_image(jitter_ves, embedding = "PCA", sigma = 5, iter = 5)
 
 test <- integrate_horizontally(vesalius,
     jitter_ves,
-    signal = "variable_features",
-    mapping = "spix_nn",
-    index_selection = "bubble",
-    n_landmarks = 20,
-    depth = 1,
-    threshold = 0,
-    grid = 100)
+    signal = "variable_features")
 
 
 test <- generate_embeddings(test)

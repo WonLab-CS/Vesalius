@@ -10,31 +10,11 @@
 #' Aling and integrate spatial assay from the same modality using super pixels
 #' @param seed_assay vesalius_assay object - data to be mapped to
 #' @param query_assay vesalius_assay objecy - data to map
-#' @param seed_trial name of embedding to use for super pixel generation
-#' @param query_trial name of embedding to use for super pixel generation
-#' @param scoring_method method used to score the similarity between super
-#' pixels (pearson, spearman, kendall, coherence, index)
-#' @param index_selection character (random, bubble, hex)
-#' how should initial super pixel locations be selected. See detials
-#' @param mapping character - method used for mapping query data onto see data
-#' (mesh, spix, morph)
-#' @param dimensions integer vector - which latent space dimensions should be
-#' used for super pixel generation
-#' @param scaling numeric ]0,1] describing image scale to consider
-#' during super pixel selection
-#' @param compactness numeric ]0,Inf] - importance of the spatial component
-#' in relation to color similarity. See details
-#' @param grid integer [2, Inf[]
-#' How many grid elements should be use to create inital hex grid (see details)
-#' @param iter integer [1, Inf] - Number of iteration during graph matching
-#' phase.
-#' @param n_landmarks [1, N_spatial_index] - number of super pixels to use as
-#' landmarks for mesh adjustement.
-
-#' @param threshold numeric [0,1[ - similarity score threshold. Only super pixel
-#' that score above this threshold will be used for graph matching
+#' @param k int ]2, n_points] number of neareset neighbors to be considered for
+#' neighborhodd computation.
 #' @param signal character (features, counts, embeddings, "custom") - What should 
 #' be used as cell signal for super pixel scoring. Seed details 
+#' @param use_norm character - which count data to use 
 #' @param verbose logical - should I be a noisy boy?
 #' @details Hex grid is expanded to include all points and then reduced to exclude
 #' exmpty triangles.
@@ -43,17 +23,7 @@
 
 integrate_horizontally <- function(seed_assay,
     query_assay,
-    scoring_method = "pearson",
-    index_selection = "bubble",
-    mapping = "mesh",
-    trial = "last",
-    dimensions = seq(1, 30),
-    scaling = 0.2,
-    compactness = 5,
-    grid = 100,
-    n_landmarks = 50,
-    threshold = 0.7,
-    depth = 1,
+    k = 20,
     signal = "variable_features",
     use_norm = "raw",
     verbose = TRUE) {
@@ -90,15 +60,7 @@ integrate_horizontally <- function(seed_assay,
         seed_signal = signal$seed,
         query = query_assay,
         query_signal = signal$query,
-        trial = trial,
-        scoring_method = scoring_method,
-        index_selection = index_selection,
-        dimensions = dimensions,
-        scaling = scaling,
-        compactness = compactness,
-        n_landmarks = n_landmarks,
-        depth = depth,
-        threshold = threshold,
+        k = k,
         verbose = verbose)
     #-------------------------------------------------------------------------#
     # Mapping points from landmarks
@@ -299,102 +261,96 @@ get_spix_MNN <- function(seed,
     seed_signal,
     query,
     query_signal,
-    trial = "last",
-    scoring_method = "pearson",
-    index_selection = "random",
-    dimensions = seq(1,30),
-    scaling = 0.2,
-    compactness = 5,
-    n_landmarks = 50,
-    depth = 1,
-    threshold = 0.5,
+    k = 20,
     verbose = TRUE) {
     #-------------------------------------------------------------------------#
     # first we compute super pixels from embedding values
     # Note this could be updated to parallel 
     #-------------------------------------------------------------------------#
-    message_switch("landmarks", verbose, assay = get_assay_names(seed))
-    seed_spix <- slic_segmentation(seed,
-        dimensions = dimensions,
-        col_resolution = n_landmarks,
-        embedding = trial,
-        index_selection = index_selection,
-        compactness = compactness,
-        scaling = scaling,
-        verbose = FALSE)
-    seed_spix <- merge_spix(seed_spix)
-    message_switch("landmarks", verbose, assay = "Query List")
-    query_spix <- lapply(query, slic_segmentation,
-        dimensions = dimensions,
-        col_resolution = n_landmarks,
-        embedding = trial,
-        index_selection = index_selection,
-        compactness = compactness,
-        scaling = scaling,
-        verbose = FALSE)
-    query_spix <- lapply(query_spix, merge_spix)
+    seed <- get_tiles(seed) %>% filter(origin == 1)
+    query <- lapply(query, get_tiles) %>% lapply(.,filter, origin == 1)
     #-------------------------------------------------------------------------#
     # Next we create a scoring table for each spix
     #-------------------------------------------------------------------------#
-    message_switch("spix_MNN", verbose)
-    aligned_indices <- vector("list", length(query_spix))
-    for (i in seq_along(query_spix)) {
-        #---------------------------------------------------------------------#
-        # Preparing matrices to generate a cost matrix for hugarian solver
-        #---------------------------------------------------------------------#
-        seed_nodes <- sort(unique(seed_spix$segments$Segment))
-        query_nodes <- sort(unique(query_spix[[i]]$segments$Segment))
-        score_table <- data.frame(
-            "from" = rep(query_nodes, each = length(seed_nodes)),
-            "to" = rep(seed_nodes, times = length(query_nodes)))
+    aligned_indices <- vector("list", length(query))
+    for (i in seq_along(query)) {
         #---------------------------------------------------------------------#
         # First we create a transcriptional  matrix
         #---------------------------------------------------------------------#
+        message_switch("feature_cost", verbose,
+            assay = paste("Query Item", i))
         seed_local <- t(scale(t(as.matrix(seed_signal))))
         query_local <- t(scale(t(as.matrix(query_signal[[i]]))))
+
         feature_dist_mat <- RANN::nn2(t(seed_local),
             t(query_local),
             k = min(ncol(seed_local), ncol(query_local)))
-        ordered_mat <- feature_dist_mat$nn.idx
-        rownames(ordered_mat) <- colnames(query_local)
-        colnames(ordered_mat) <- colnames(seed_local)
+        feature_dist_mat <- arrange_knn_matrix(feature_dist_mat)
         feature_dist_mat <- 
-            (feature_dist_mat$nn.dists - min(feature_dist_mat$nn.dists)) /
-            (max(feature_dist_mat$nn.dists) - min(feature_dist_mat$nn.dists))
+            (feature_dist_mat - min(feature_dist_mat)) /
+            (max(feature_dist_mat) - min(feature_dist_mat))
         rownames(feature_dist_mat) <- colnames(query_local)
         colnames(feature_dist_mat) <- colnames(seed_local)
         #---------------------------------------------------------------------#
         # Next we create a relative spatial distance matrix
+        # Could be nice to use depth here instead k nearest neighbors
         #---------------------------------------------------------------------#
-        seed_dist <- RANN::nn2(seed_spix$segments[, c("x","y")],
-            k = nrow(seed_spix$segments))
-        query_dist <- RANN::nn2(query_spix[[i]]$segments[, c("x","y")],
-            k = nrow(query_spix[[i]]$segments))
+        message_switch("neighbor_cost", verbose,
+            assay = paste("Query Item", i))
+        seed_dist <- RANN::nn2(seed[, c("x", "y")],
+            k = k)
+        rownames(seed_dist$nn.idx) <- seed$barcodes
+        seed_neigborhood <- neighbor_expression(seed_dist$nn.idx,
+            seed_signal)
+        query_dist <- RANN::nn2(query[[i]][, c("x", "y")],
+            k = k)
+        rownames(query_dist$nn.idx) <- query[[i]]$barcodes
+        query_neigborhood <- neighbor_expression(query_dist$nn.idx,
+            query_signal[[i]])
+
+        seed_neigborhood <- t(scale(t(as.matrix(seed_neigborhood))))
+        query_neigborhood <- t(scale(t(as.matrix(query_neigborhood))))
+        feature_neighbor_mat <- RANN::nn2(t(seed_neigborhood),
+            t(query_neigborhood),
+            k = min(ncol(seed_neigborhood), ncol(query_neigborhood)))
+        feature_neighbor_mat <- arrange_knn_matrix(feature_neighbor_mat)
+        feature_neighbor_mat <-
+            (feature_neighbor_mat - min(feature_neighbor_mat)) /
+            (max(feature_neighbor_mat) - min(feature_neighbor_mat))
+        rownames(feature_neighbor_mat) <- colnames(query_neigborhood)
+        colnames(feature_neighbor_mat) <- colnames(seed_neigborhood)
         
         #---------------------------------------------------------------------#
-        # Now we create a spix neighbohood matrix - generates a score 
-        # for each super pixel 
+        # Get distance to best match
         #---------------------------------------------------------------------#
-        spix_score <- mutual_spix_score(ordered_mat,
-            graph = score_table,
-            seed = seed_spix$segments,
-            query = query_spix[[i]]$segments,
-            assay = paste("Query list" , i),
-            verbose = TRUE)
+        message_switch("distance_cost", verbose,
+            assay = paste("Query Item", i))
+        neighbor_dist <- neighbor_distance(query_dist$nn.idx,
+            seed,
+            feature_dist_mat)
+        neighbor_dist <-
+            (neighbor_dist - min(neighbor_dist)) /
+            (max(neighbor_dist) - min(neighbor_dist))
+        rownames(neighbor_dist) <- rownames(feature_dist_mat)
+        colnames(neighbor_dist) <- colnames(feature_dist_mat)
+
+        
         #---------------------------------------------------------------------#
         # Create a cost matrix
         #---------------------------------------------------------------------#
-        cost_mat <- feature_dist_mat + spix_score
+        cost_mat <- feature_dist_mat + feature_neighbor_mat + neighbor_dist
+        message_switch("hungarian", verbose)
         matched_indices <- match_index(cost_mat)
         #browser()
         aligned_indices[[i]] <- align_index(matched_indices,
-            seed_spix$segments,
-            query_spix[[i]]$segments,
+            seed,
+            query[[i]],
             verbose)
-       
     }
     return(aligned_indices)
 }
+
+
 
 spix_mapping <- function(landmarks) {
     seed <- landmarks$seed_spix
@@ -508,6 +464,46 @@ morph_mapping <- function(landmarks) {
     return(query)
 }
 
+
+neighbor_expression <- function(distance, features) {
+    neigborhood <- matrix(0,
+        ncol = ncol(features),
+        nrow = nrow(features))
+    colnames(neigborhood) <- colnames(features)
+    rownames(neigborhood) <- rownames(features)
+    for (i in seq_len(nrow(distance))) {
+        local_expression <- features[,
+            colnames(features) %in% rownames(distance)[distance[i, ]]]
+        local_expression <- rowMeans(local_expression)
+        neigborhood[, colnames(features) %in% rownames(distance)[i]] <-
+            local_expression
+    }
+    return(neigborhood)
+}
+
+neighbor_distance <- function(query_neigbbors, seed_coord, features) {
+    neigborhood <- matrix(0,
+        ncol = ncol(features),
+        nrow = nrow(features))
+    colnames(neigborhood) <- colnames(features)
+    rownames(neigborhood) <- rownames(features)
+    seed_dist <- as.matrix(dist(seed_coord[, c("x", "y")]))
+    colnames(seed_dist) <- seed_coord$barcodes
+    rownames(seed_dist) <- seed_coord$barcodes
+    for (i in seq_len(nrow(query_neigbbors))) {
+        best_matches <- features[
+            match(rownames(query_neigbbors)[query_neigbbors[i, ]],
+                rownames(features)), ]
+        #browser()
+        best_matches <- apply(best_matches, 1, function(x) {
+            return(which(x == min(x)))
+        })
+        best_matches <- colnames(features)[best_matches]
+        local_dist <- rowMeans(seed_dist[, best_matches])
+        neigborhood[i, ] <- local_dist
+    }
+    return(neigborhood)
+}
 
 mutual_spix_score <- function(ordered_mat,
     graph,
@@ -1023,12 +1019,12 @@ integrate_graph <- function(aligned_graph,
     #-------------------------------------------------------------------------#
     # rebuild vesalius
     #-------------------------------------------------------------------------#
-    browser()
     vesalius_assay <- build_vesalius_assay(coordinates = aligned_graph[[1]][ ,1:3],
         counts = get_counts(query[[1]], type = "raw"),
         assay = "integrated",
         layer = 1,
         verbose = FALSE)
+    simple_bar(verbose)
     return(vesalius_assay)
 
 }

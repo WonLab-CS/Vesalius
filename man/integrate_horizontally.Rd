@@ -7,17 +7,7 @@
 integrate_horizontally(
   seed_assay,
   query_assay,
-  scoring_method = "pearson",
-  index_selection = "bubble",
-  mapping = "mesh",
-  trial = "last",
-  dimensions = seq(1, 30),
-  scaling = 0.2,
-  compactness = 5,
-  grid = 100,
-  n_landmarks = 50,
-  threshold = 0.7,
-  depth = 1,
+  k = 20,
   signal = "variable_features",
   use_norm = "raw",
   verbose = TRUE
@@ -28,44 +18,15 @@ integrate_horizontally(
 
 \item{query_assay}{vesalius_assay objecy - data to map}
 
-\item{scoring_method}{method used to score the similarity between super
-pixels (pearson, spearman, kendall, coherence, index)}
-
-\item{index_selection}{character (random, bubble, hex)
-how should initial super pixel locations be selected. See detials}
-
-\item{mapping}{character - method used for mapping query data onto see data
-(mesh, spix, morph)}
-
-\item{dimensions}{integer vector - which latent space dimensions should be
-used for super pixel generation}
-
-\item{scaling}{numeric ]0,1] describing image scale to consider
-during super pixel selection}
-
-\item{compactness}{numeric ]0,Inf] - importance of the spatial component
-in relation to color similarity. See details}
-
-\item{grid}{integer [2, Inf[]
-How many grid elements should be use to create inital hex grid (see details)}
-
-\item{n_landmarks}{[1, N_spatial_index] - number of super pixels to use as
-landmarks for mesh adjustement.}
-
-\item{threshold}{numeric [0,1[ - similarity score threshold. Only super pixel
-that score above this threshold will be used for graph matching}
+\item{k}{int ]2, n_points] number of neareset neighbors to be considered for
+neighborhodd computation.}
 
 \item{signal}{character (features, counts, embeddings, "custom") - What should 
 be used as cell signal for super pixel scoring. Seed details}
 
+\item{use_norm}{character - which count data to use}
+
 \item{verbose}{logical - should I be a noisy boy?}
-
-\item{seed_trial}{name of embedding to use for super pixel generation}
-
-\item{query_trial}{name of embedding to use for super pixel generation}
-
-\item{iter}{integer [1, Inf] - Number of iteration during graph matching
-phase.}
 }
 \description{
 Aling and integrate spatial assay from the same modality using super pixels

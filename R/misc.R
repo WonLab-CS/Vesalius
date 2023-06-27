@@ -98,6 +98,13 @@ jaccard <- function(a, b) {
     union <- length(union(a, b))
     return(intersection / union)
 }
+
+arrange_knn_matrix <- function(knn) {
+   for (i in seq_len(nrow(knn$nn.idx))){
+      knn$nn.dists[i, ] <- knn$nn.dists[i, order(knn$nn.idx[i, ])]
+   }
+   return(knn$nn.dists)
+}
  
 #-------------------------/ Aligning Assays /--------------------------------#
 
