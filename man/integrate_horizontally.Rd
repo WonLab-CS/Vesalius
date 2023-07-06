@@ -8,6 +8,8 @@ integrate_horizontally(
   seed_assay,
   query_assay,
   k = 20,
+  dimensions = seq(1, 30),
+  mapping = "div",
   signal = "variable_features",
   use_norm = "raw",
   verbose = TRUE
@@ -20,6 +22,9 @@ integrate_horizontally(
 
 \item{k}{int ]2, n_points] number of neareset neighbors to be considered for
 neighborhodd computation.}
+
+\item{mapping}{character string (div - exact) - mapping strategy. 
+Divide and conquer (approximate) or Exact mapping.}
 
 \item{signal}{character (features, counts, embeddings, "custom") - What should 
 be used as cell signal for super pixel scoring. Seed details}

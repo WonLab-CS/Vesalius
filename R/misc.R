@@ -105,7 +105,17 @@ arrange_knn_matrix <- function(knn) {
    }
    return(knn$nn.dists)
 }
- 
+
+
+
+chunk <- function(x, n) {
+  chunk <- mapply(function(a, b) {
+      return(x[a:b])},
+    seq.int(from = 1, to = length(x), by = n),
+    pmin(seq.int(from = 1, to = length(x), by = n) + (n - 1), length(x)),
+    SIMPLIFY = FALSE)
+  return(chunk)
+}
 #-------------------------/ Aligning Assays /--------------------------------#
 
 polar_angle <- function(coord_x, coord_y, center_x, center_y) {
