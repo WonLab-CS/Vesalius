@@ -678,7 +678,7 @@ check_group_value <- function(territories, group) {
         tmp <- paste(group_sub, collapse = " ")
         warning(paste("Only group territory(ies)", tmp,
             "is (are) present in the selected trial. \n
-            Vesalius will discard the other!"))
+            Vesalius will discard the others!"))
         return(group_sub)
     } else {
         return(group_sub)
@@ -772,4 +772,26 @@ check_signal <- function(assay, signal, type) {
         variable_features, all_features, embeddings!
         Alternitively: vector of feature names you are interested in.")
     }
+}
+
+check_cost_matrix <- function(custom_cost, cost_mat) {
+    if (all(dim(custom_cost) != dim(cost_mat))) {
+        warning(paste0("Dimensions differ between matrices \n",
+        "Custom Cost = ", paste(dim(custom_cost), collapse = " "), "\n",
+        "Cost matrix = ", paste(dim(cost_mat), collapse = " "), "\n",
+        "Checking for overlaps - and subsetting \n"),
+        immediate. = TRUE)
+    }
+    row_over <- intersect(rownames(custom_cost), rownames(cost_mat))
+    col_over <- intersect(colnames(custom_cost), colnames(cost_mat))
+    if (length(row_over) == 0 || length(col_over) == 0) {
+        stop("No common cells between custom cost and cost matrix")
+    } else {
+        cost_mat <- cost_mat[match(row_over, rownames(cost_mat)),
+            match(col_over, colnames(cost_mat))]
+        custom_cost <- custom_cost[match(row_over, rownames(custom_cost)),
+            match(col_over, colnames(custom_cost))]
+    }
+    return(list("custom" = custom_cost, "cost" = cost_mat))
+
 }

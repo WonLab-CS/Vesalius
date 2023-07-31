@@ -60,8 +60,7 @@ Imports:
     ggnewscale,
     kohonen,
     geometry,
-    Morpho,
-    Rfast
+    Morpho
 Suggests:
     knitr,
     RUnit,

@@ -168,6 +168,8 @@ dyn_message_switch <- function(type, verbose = TRUE, ...) {
         "cost_mat" = cat(paste(t, " Preparing cost matrix: ",
             args$prog, "%   \r")),
         "spix_nn" = cat(paste(t, " Mapped SPIX: ",
+            args$prog, "%   \r")),
+        "hung" = cat(paste(t, " Solving Assignment Problem: ",
             args$prog, "%   \r"))
         )
     } else {

@@ -10,7 +10,7 @@ integrate_vertically(
   dimensions = seq(1, 30),
   embedding = "last",
   method = "interlace",
-  norm_method = "raw",
+  norm_method = "log_norm",
   dim_reduction = "PCA",
   verbose = TRUE
 )

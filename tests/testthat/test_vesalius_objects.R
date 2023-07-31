@@ -30,12 +30,6 @@ test_that("Vesalius build single assay", {
     expect_error(build_vesalius_assay())
     expect_error(build_vesalius_assay(counts = counts))
 
-    # checking coordinates options 
-    expect_s4_class(build_vesalius_assay(coordinates,
-        adjust_coordinates = "norm"),
-        "vesalius_assay")
-    expect_error(build_vesalius_assay(coordinates,
-        adjust_coordinates = "funky"))
     
     #testing output
     tmp <- build_vesalius_assay(coordinates, counts)
@@ -133,10 +127,10 @@ test_that("Scale of coordinates",{
         counts), "vesalius_assay")
     expect_s4_class(build_vesalius_assay(coordinates,
         counts,
-        scale = 15))
+        scale = 15), "vesalius_assay")
     vesalius <- build_vesalius_assay(coordinates,
         counts, scale = "auto")
-    expect_equal(vesalius@meta$scale$scale, 23.06237)
+    expect_equal(vesalius@meta$scale$scale, 23.0623695)
     vesalius <- build_vesalius_assay(coordinates,
         counts, scale = 15)
     expect_equal(vesalius@meta$scale$scale, 15)

@@ -116,6 +116,8 @@ chunk <- function(x, n) {
     SIMPLIFY = FALSE)
   return(chunk)
 }
+
+
 #-------------------------/ Aligning Assays /--------------------------------#
 
 polar_angle <- function(coord_x, coord_y, center_x, center_y) {
@@ -161,7 +163,7 @@ cart_coord <- function(d, a) {
 #' @importFrom RANN nn2
 calculate_scale <- function(coordinates, q = 0.999) {
     scale <- RANN::nn2(data = coordinates[, c("x", "y")], k = 2)
-    scale <- quantile(scale$nn.dist[, 2], q)
+    scale <- unname(quantile(scale$nn.dist[, 2], q))
     return(scale)
 }
 

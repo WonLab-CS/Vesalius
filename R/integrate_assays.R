@@ -12,14 +12,53 @@
 #' @param query_assay vesalius_assay objecy - data to map
 #' @param k int ]2, n_points] number of neareset neighbors to be considered for
 #' neighborhodd computation.
-#' @param mapping character string (div - exact) - mapping strategy. 
-#' Divide and conquer (approximate) or Exact mapping. 
-#' @param signal character (features, counts, embeddings, "custom") - What should 
-#' be used as cell signal for super pixel scoring. Seed details 
-#' @param use_norm character - which count data to use 
+#' @param dimensions Int vector containing latent space dimensions to use
+#' @param mapping character string (div - exact) - mapping strategy.
+#' Divide and conquer (approximate) or Exact mapping.
+#' @param batch_size number of points per batch in query during assignment
+#' problem solving
+#' @param signal character (variable_features, all_features, embeddings, custom)
+#' - What should  be used as cell signal to generate the cost matrix.
+#' Seed details 
+#' @param use_norm character - which count data to use
+#' @param custom_cost matrix - matrix of size n (query cells) by p (seed cells)
+#' containing custom cost matrix. Used instead of vesalius cost matrix
+#' @param overwrite logical - if custom_cost is not NULL, should this matrix
+#' be added to the vesalius matrix or should it overwrite it completely.
 #' @param verbose logical - should I be a noisy boy?
-#' @details Hex grid is expanded to include all points and then reduced to exclude
-#' exmpty triangles.
+#' @details The goal is to assign the best matching point between a seed set and
+#' a query set.
+#' 
+#' To do so, \code{integrate_horizontally} will first extract a
+#' biological signal. This can be latent space embeddings per cell, or by using
+#' gene counts (or any other modality).
+#'
+#' If using gene counts, there are a few more options available to
+#' you. First, you can select "variable_features" and vesalius will find the
+#' intersection between the variable features in your seed_assay and your
+#' query_assay. "all_features" will find the intersection of all genes across
+#' assays (even if they are not highly variable). Finally, you can also select
+#' a custom gene vector, containing only the gene set you are interested in.
+#' 
+#' The second step is to create a cost matrix. The cost matrix computes the
+#' distance (using the signal) betwwen each point in the seed and query. It
+#' also includes the distance in signal between each points neighborhoods.
+#' The neighborhood singal is computed by averaging the signal across k
+#' nearest neighbors in space. This cost matrix is then parsed to a
+#' Kuhn–Munkres algorithm that will generate point pairs that minimize
+#' the overall cost. 
+#' 
+#' Since the algorithm complexity is O(n3), it can be time consuming to
+#' to run on larger data sets. We recomned using "exact" mapping when
+#' there are less then 1500 points (a few minutes) and use "div" 
+#' with larger data sets. The "div" option will split the query data
+#' into random batches of pre-defined size (batch_size). The optimization
+#' will be run on each batch serately and the results will be concatenated
+#' together. Note this will not be an exact match but an approximation.
+#' 
+#' Finaly once the matches are found, the coordinates are mapped to its
+#' corresponding point and a new object is returned.
+#' @return vesalius_assay
 #' @export
 
 
@@ -31,12 +70,14 @@ integrate_horizontally <- function(seed_assay,
     batch_size = 1000,
     signal = "variable_features",
     use_norm = "raw",
+    custom_cost = NULL,
+    overwrite = FALSE,
     verbose = TRUE) {
     simple_bar(verbose)
     #-------------------------------------------------------------------------#
     # First let's get singal
     #-------------------------------------------------------------------------#
-    if (!is(query_assay,"list")) {
+    if (!is(query_assay, "list")) {
         query_assay <- list(query_assay)
     }
     signal <- get_features(seed_assay = seed_assay,
@@ -45,15 +86,16 @@ integrate_horizontally <- function(seed_assay,
         dimensions = dimensions,
         use_norm = use_norm,
         verbose = verbose)
-    
     spix_mnn <- point_mapping(seed = seed_assay,
         seed_signal = signal$seed,
         query = query_assay,
         query_signal = signal$query,
         k = k,
         mapping = mapping,
+        batch_size = batch_size,
+        custom_cost = custom_cost,
+        overwrite = overwrite,
         verbose = verbose)
-    
     integrated <- integrate_graph(spix_mnn,
         query_assay,
         verbose = verbose)
@@ -61,6 +103,16 @@ integrate_horizontally <- function(seed_assay,
     return(integrated)
 }
 
+#' get cell signal from vesalius assays
+#' @param seed_assay  vesalius_assay object
+#' @param query_assay vesalius_assay object
+#' @param signal character string where the signal should be taken from
+#' @param dimensions int vector - if signal is embeddings which 
+#' embeddings should be selected
+#' @param use_norm charcater string which counts should be use when
+#' extracting signal
+#' @param verbose logical - should progress messages be outputed.
+#' @return list contain seed signal, query signal and features used
 get_features <- function(seed_assay,
     query_assay,
     signal,
@@ -100,71 +152,82 @@ get_features <- function(seed_assay,
 
 }
 
-
+#' mapping points between data sets
+#' @param seed vesalius_assay object
+#' @param seed_signal processed seed signal from seed assay
+#' @param query vesalius_assay object
+#' @param query_signal processed query signal from query assay
+#' @param mapping exact mapping or div (divide and conquer)
+#' @param k int size of niche (knn)
+#' @param batch_size int number of points in each query batch
+#' @param custom_cost matrix - matrix of size n (query cells) by p (seed cells)
+#' containing custom cost matrix. Used instead of vesalius cost matrix
+#' @param overwrite logical - if custom_cost is not NULL, should this matrix
+#' be added to the vesalius matrix or should it overwrite it completely.
+#' @param verbose logical - out progress to console
+#' @return list of matched and aligned coordinates in query
+#' @importFrom future.apply future_lapply
 point_mapping <- function(seed,
     seed_signal,
     query,
     query_signal,
     mapping = "div",
     k = 20,
+    batch_size = 1000,
+    custom_cost = NULL,
+    overwrite = FALSE,
     verbose = TRUE) {
     #-------------------------------------------------------------------------#
     # first we compute super pixels from embedding values
-    # Note this could be updated to parallel 
+    # Note this could be updated to parallel
     #-------------------------------------------------------------------------#
     seed <- get_tiles(seed) %>% filter(origin == 1)
-    query <- lapply(query, get_tiles) %>% lapply(.,filter, origin == 1)
+    query <- lapply(query, get_tiles) %>% lapply(., filter, origin == 1)
     #-------------------------------------------------------------------------#
     # Next we create a scoring table for each spix
     #-------------------------------------------------------------------------#
     aligned_indices <- vector("list", length(query))
     for (i in seq_along(query)) {
         #---------------------------------------------------------------------#
-        # First we create a transcriptional  matrix
+        # Check if we parse a custom matrix or let vesalius compute the cost
         #---------------------------------------------------------------------#
-        message_switch("feature_cost", verbose,
-            assay = paste("Query Item", i))
-        seed_local <- t(scale(t(as.matrix(seed_signal))))
-        query_local <- t(scale(t(as.matrix(query_signal[[i]]))))
-        cost_mat <- feature_dissim(seed_local, query_local)
-        #---------------------------------------------------------------------#
-        # Next we create a relative spatial distance matrix
-        # Could be nice to use depth here instead k nearest neighbors
-        #---------------------------------------------------------------------#
-        message_switch("neighbor_cost", verbose,
-            assay = paste("Query Item", i))
-        seed_dist <- RANN::nn2(seed[, c("x", "y")],
-            k = k)
-        rownames(seed_dist$nn.idx) <- seed$barcodes
-        seed_local <- neighbor_expression(seed_dist$nn.idx,
-            seed_signal)
-        query_dist <- RANN::nn2(query[[i]][, c("x", "y")],
-            k = k)
-        rownames(query_dist$nn.idx) <- query[[i]]$barcodes
-        query_local <- neighbor_expression(query_dist$nn.idx,
-            query_signal[[i]])
-
-        seed_local <- t(scale(t(as.matrix(seed_local))))
-        query_local <- t(scale(t(as.matrix(query_local))))
-        cost_mat <- feature_dissim(seed_local, query_local) +
-            cost_mat
-        #---------------------------------------------------------------------#
-        # Get distance to best match
-        #---------------------------------------------------------------------#
-        # message_switch("distance_cost", verbose,
-        #     assay = paste("Query Item", i))
-        # cost_mat <- neighbor_distance(query_dist$nn.idx,
-        #     seed,
-        #     cost_mat) + cost_mat
-        
+        if (!is.null(custom_cost) && overwrite) {
+            cost_mat <- custom_cost
+        } else {
+            #-----------------------------------------------------------------#
+            # compute cost matrix using euclidean distance between cells 
+            # and euclidean distance between local neighbohoods 
+            #-----------------------------------------------------------------#
+            cost_mat <- compute_cell_cost(seed_signal,
+                query_signal[[i]],
+                i,
+                verbose)
+            cost_mat <- compute_neighbor_cost(cost_mat,
+                seed,
+                query[[i]],
+                seed_signal,
+                query_signal[[i]],
+                k,
+                i,
+                verbose)
+            #-----------------------------------------------------------------#
+            # If a custom matrix is provided and the user wants to add this
+            # this cost to cost matrix prodivided by vesalius 
+            #-----------------------------------------------------------------#
+            if (!is.null(custom_cost) && !overwrite) {
+                custom_cost <- check_cost_matrix(custom_cost, cost_mat)
+                cost_mat <- custom_cost$custom + custom_cost$cost
+            }
+        }
         #---------------------------------------------------------------------#
         # devide cost matrix
         #---------------------------------------------------------------------#
         if (mapping == "div") {
             message_switch("div_hungarian", verbose)
-            cost_mat <- divide_and_conquer(cost_mat, seed, query[[i]])
-            matched_indices <- lapply(cost_mat,
-                match_index)
+            cost_mat <- divide_and_conquer(cost_mat, batch_size)
+            matched_indices <- match_index_batch(seq_along(cost_mat),
+                cost_mat,
+                verbose = verbose)
             matched_indices <- concat_matches(matched_indices)
         } else {
             message_switch("hungarian", verbose)
@@ -178,13 +241,56 @@ point_mapping <- function(seed,
     return(aligned_indices)
 }
 
+
+compute_cell_cost <- function(seed_signal, query_signal, i, verbose) {
+    message_switch("feature_cost", verbose,
+            assay = paste("Query Item", i))
+    seed_local <- t(scale(t(as.matrix(seed_signal))))
+    query_local <- t(scale(t(as.matrix(query_signal))))
+    cost_mat <- feature_dissim(seed_local, query_local)
+    return(cost_mat)
+}
+
+compute_neighbor_cost <- function(cost_mat,
+    seed,
+    query,
+    seed_signal,
+    query_signal,
+    k,
+    i,
+    verbose) {
+    message_switch("neighbor_cost", verbose,
+            assay = paste("Query Item", i))
+    seed_dist <- RANN::nn2(seed[, c("x", "y")],
+        k = k)
+    rownames(seed_dist$nn.idx) <- seed$barcodes
+    seed_local <- neighbor_expression(seed_dist$nn.idx,
+        seed_signal)
+    query_dist <- RANN::nn2(query[, c("x", "y")],
+            k = k)
+    rownames(query_dist$nn.idx) <- query$barcodes
+    query_local <- neighbor_expression(query_dist$nn.idx,
+        query_signal)
+
+    seed_local <- t(scale(t(as.matrix(seed_local))))
+    query_local <- t(scale(t(as.matrix(query_local))))
+    cost_mat <- feature_dissim(seed_local, query_local) +
+            cost_mat
+    return(cost_mat)
+}
+
+#' compute the distance between seed and query signals
+#' @param seed seed signal
+#' @param query query signal
+#' @return matrix with query as rows and seed as colmuns
+#' @importFrom RANN nn2
 feature_dissim <- function(seed, query) {
     cores <- nbrOfWorkers()
     seed_index <- chunk(seq_len(ncol(seed)), ceiling(ncol(seed) / cores))
     query_index <- chunk(seq_len(ncol(query)), ceiling(ncol(query) / cores))
 
     box <- vector("list", length(query_index))
-    for(i in seq_along(query_index)){
+    for (i in seq_along(query_index)){
         local_query <- t(query[, query_index[[i]]])
         seeds <- future_lapply(seed_index, function(idx, seed, query) {
             local_seed <- t(seed[, idx])
@@ -222,17 +328,18 @@ neighbor_expression <- function(distance, features) {
     return(neigborhood)
 }
 
-spatial_batching <- function(coord, batch_size) {
-    
-}
 
-
-#' @importFrom Rfast rowMins
-divide_and_conquer <- function(cost_mat, seed, query) {
-    cores <- nbrOfWorkers()
-    seed <- spatial_batching(seed, cores)
-    query <- spatial_batching(query, cores)
-    
+divide_and_conquer <- function(cost_mat, batch_size) {
+    query_batch <- chunk(seq(1, nrow(cost_mat)), batch_size)
+    query_idx <- sample(seq(1, nrow(cost_mat)), size = nrow(cost_mat))
+    seed_batch <- chunk(seq(1, ncol(cost_mat)),
+        ceiling(ncol(cost_mat) / length(query_batch)))
+    seed_idx <- sample(seq(1, ncol(cost_mat)), size = ncol(cost_mat))
+    cost_list <- vector("list", length(query_batch))
+    for (i in seq_along(query_batch)) {
+        cost_list[[i]] <- cost_mat[query_idx[query_batch[[i]]],
+            seed_idx[seed_batch[[i]]]]
+    }
     return(cost_list)
 }
 
@@ -241,7 +348,7 @@ match_index <- function(cost_matrix) {
         cost_matrix <- t(cost_matrix)
         with_transpose <- TRUE
     } else {
-        with_transpose <- FALSE 
+        with_transpose <- FALSE
     }
     map <- RcppHungarian::HungarianSolver(cost_matrix)
     mapping <- as.data.frame(map$pairs)
@@ -262,6 +369,47 @@ match_index <- function(cost_matrix) {
         mapping$to <- colnames(cost_matrix)[mapping$to]
         mapping$from <- rownames(cost_matrix)[mapping$from]
     }
+    return(mapping)
+}
+
+match_index_batch <- function(idx, cost_matrix, verbose) {
+    mapping <- future_lapply(idx, function(idx,
+        cost_matrix,
+        verbose) {
+        tot <- length(cost_matrix)
+        cost_matrix <- cost_matrix[[idx]]
+        if (nrow(cost_matrix) > ncol(cost_matrix)) {
+            cost_matrix <- t(cost_matrix)
+            with_transpose <- TRUE
+        } else {
+            with_transpose <- FALSE
+        }
+        map <- RcppHungarian::HungarianSolver(cost_matrix)
+        mapping <- as.data.frame(map$pairs)
+        if (with_transpose){
+            colnames(mapping) <- c("to", "from")
+            scores <- mapply(function(i, j, cost) {
+                return(cost[i, j])
+            }, mapping$to, mapping$from, MoreArgs = list(cost_matrix))
+            mapping$score <- scores
+            mapping$to <- rownames(cost_matrix)[mapping$to]
+            mapping$from <- colnames(cost_matrix)[mapping$from]
+        } else {
+            colnames(mapping) <- c("from", "to")
+            scores <- mapply(function(i, j, cost) {
+                return(cost[i, j])
+            }, mapping$from, mapping$to, MoreArgs = list(cost_matrix))
+            mapping$score <- scores
+            mapping$to <- colnames(cost_matrix)[mapping$to]
+            mapping$from <- rownames(cost_matrix)[mapping$from]
+        }
+        if (verbose) {
+            dyn_message_switch("hung", verbose,
+            prog = round(idx / tot, digits = 4) * 100)
+        }
+        return(mapping)
+    }, cost_matrix = cost_matrix,
+    verbose = verbose)
     return(mapping)
 }
 
@@ -289,7 +437,7 @@ align_index <- function(matched_index,
 }
 
 
-#' @importFrom dplyr select
+
 integrate_graph <- function(aligned_graph,
     query,
     verbose = TRUE) {
