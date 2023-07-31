@@ -35,6 +35,9 @@ used for concat integration (PCA,PCA_L,UMAP,LSI,LSI_UMAP,NMF)}
 \item{verbose}{logical - should progress message be outputed to the 
 console.}
 }
+\value{
+vesalius object containing new image embeddings
+}
 \description{
 Integrate jointly measured spatial omic assays
 }

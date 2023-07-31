@@ -241,7 +241,13 @@ point_mapping <- function(seed,
     return(aligned_indices)
 }
 
-
+#' compute cell matching cost wrapper
+#' @param seed_signal count matrix taken from seed data set
+#' @param query_signal count matrix taken from query data set
+#' @param i numeric - iteration value in query list
+#' @param verbose logical - should progress message be outputed
+#' @return cost matrix with nrow = # cells in query and 
+#' ncol = # cells in seed
 compute_cell_cost <- function(seed_signal, query_signal, i, verbose) {
     message_switch("feature_cost", verbose,
             assay = paste("Query Item", i))
@@ -251,6 +257,20 @@ compute_cell_cost <- function(seed_signal, query_signal, i, verbose) {
     return(cost_mat)
 }
 
+#' compute cell neighborhood matching cost
+#' @param cost_matrix matrix containing assignement cost 
+#' from each cell in query to each cell in seed (rows x cols)
+#' @param seed data.frame of coordinates for seed
+#' @param query data.frame of coordinates for query
+#' @param seed_signal matrix - count matrix for seed
+#' @param query_signal matrix - count matrix for query
+#' @param k integer - how many neighbors should be considered as 
+#' part of the local neighborhood
+#' @param i numeric - iteration value in query list
+#' @param verbose logical - should progress message be outputed
+#' @return cost matrix with nrow = # cells in query and 
+#' ncol = # cells in seed
+#' @importFrom RANN nn2
 compute_neighbor_cost <- function(cost_mat,
     seed,
     query,
@@ -311,7 +331,11 @@ feature_dissim <- function(seed, query) {
     return(box)
 }
 
-
+#' compute average expression of local neighborhood
+#' @param distance knn neighbor matrix
+#' @param features count matrix or feature matrix to average
+#' @return average feature matrix. The expression of each cell 
+#' is replace by the average expression of the k nearest neighbors
 neighbor_expression <- function(distance, features) {
     neigborhood <- matrix(0,
         ncol = ncol(features),
@@ -329,6 +353,10 @@ neighbor_expression <- function(distance, features) {
 }
 
 
+#' splitting cost matrix into batches for batch processing
+#' @param cost_mat matrix 
+#' @param batch_size integer - size of each batch 
+#' @return list containing cost matrix batches 
 divide_and_conquer <- function(cost_mat, batch_size) {
     query_batch <- chunk(seq(1, nrow(cost_mat)), batch_size)
     query_idx <- sample(seq(1, nrow(cost_mat)), size = nrow(cost_mat))
@@ -343,6 +371,13 @@ divide_and_conquer <- function(cost_mat, batch_size) {
     return(cost_list)
 }
 
+#' Finding optimal mapping between query and seed
+#' @param cost_matrix matrix with cost between query (rows) and 
+#' seed (columns)
+#' @details Uses a Hungarian solver to minimize overall cost of 
+#' pair assignement.
+#' @return data.frame with point in query (from) mapped to 
+#' which point in seed (to) as well as cost of mapping for that pair
 match_index <- function(cost_matrix) {
     if (nrow(cost_matrix) > ncol(cost_matrix)) {
         cost_matrix <- t(cost_matrix)
@@ -372,6 +407,17 @@ match_index <- function(cost_matrix) {
     return(mapping)
 }
 
+
+#' Finding optimal mapping between query and seed using a mini batch 
+#' approach
+#' @param idx integer - index of batch 
+#' @param cost_matrix list of matrices with cost between query (rows) and 
+#' seed (columns)
+#' @param verbose logical - should progress messages be outpute to the console
+#' @details Uses a Hungarian solver to minimize overall cost of 
+#' pair assignement.
+#' @return data.frame with point in query (from) mapped to 
+#' which point in seed (to) as well as cost of mapping for that pair
 match_index_batch <- function(idx, cost_matrix, verbose) {
     mapping <- future_lapply(idx, function(idx,
         cost_matrix,
@@ -413,6 +459,9 @@ match_index_batch <- function(idx, cost_matrix, verbose) {
     return(mapping)
 }
 
+#' merging batch matches together
+#' @param matched_indices list containing matched points in each batch
+#' @return data.frame with matched points
 concat_matches <- function(matched_indices) {
     matched_indices <- lapply(matched_indices, function(x) {
         return(x[, c("from", "to", "score")])
@@ -421,7 +470,15 @@ concat_matches <- function(matched_indices) {
     return(matched_indices)
 }
 
-
+#' assign coordinates to matched indices
+#' @param matched_index data.frame containing matching pairs of 
+#' coordinates
+#' @param seed data.frame containing seed coordinates 
+#' @param query data.frame containing quert cooridates
+#' @param verbose logical - should progress message be outputed to the 
+#' console
+#' @return adjusted query coordinate data.frame where each point
+#' receives the coordinates of its best matche in the seed. 
 align_index <- function(matched_index,
     seed,
     query,
@@ -453,19 +510,7 @@ integrate_graph <- function(aligned_graph,
 
 }
 
-build_integrated_matrix <- function(...) {
-    data_sets <- list(...)
-    gene_set <- unique(unlist(lapply(data_sets, rownames)))
-    cells <- unlist(lapply(seq(1, length(data_sets)), function(i, d) {
-        return(paste0("data", i, "_", colnames(d[[i]])))
-    }, d = data_sets))
-    integrated_counts <- Matrix(0,
-        ncol = length(cells),
-        nrow = length(gene_set))
-    colnames(integrated_counts) <- cells
-    rownames(integrated_counts) <- gene_set
-    return(integrated_counts)
-}
+
 
 
 
@@ -488,6 +533,7 @@ build_integrated_matrix <- function(...) {
 #' used for concat integration (PCA,PCA_L,UMAP,LSI,LSI_UMAP,NMF)
 #' @param verbose logical - should progress message be outputed to the 
 #' console.
+#' @return vesalius object containing new image embeddings
 #' @export
 integrate_vertically <- function(mod1,
     mod2,
@@ -531,6 +577,16 @@ integrate_vertically <- function(mod1,
 
 }
 
+#' interlace image stack between seed and query
+#' @param seed matrix - seed embedding image stack
+#' @param query matrix - query embedding image stack
+#' @param dimensions int vector describing which embeddings
+#' should be selected
+#' @details Takes selected embedding from seed and query and 
+#' creates and interlaced embedding matrix starting with the 
+#' first seed embedding
+#' @return embedding matrix containing seed embeddings + query 
+#' embeddings.
 interlace_embeds <- function(seed, query, dimensions) {
     seed <- seed[, dimensions]
     query <- query[match(rownames(seed), rownames(query)), dimensions]
@@ -546,6 +602,16 @@ interlace_embeds <- function(seed, query, dimensions) {
     return(interlaced_embed)
 }
 
+#' average image stack between seed and query
+#' @param seed matrix - seed embedding image stack
+#' @param query matrix - query embedding image stack
+#' @param dimensions int vector describing which embeddings
+#' should be selected
+#' @details Takes select embedding from seed and query and 
+#' creates and avarage the grey scale pixel values for each spatial
+#' location
+#' @return embedding matrix containing average pixel value for both seed
+#' query
 average_embed <- function(seed, query, dimensions) {
     seed <- seed[, dimensions]
     query <- query[match(rownames(seed), rownames(query)), dimensions]
@@ -562,6 +628,20 @@ average_embed <- function(seed, query, dimensions) {
     return(averaged_embed)
 }
 
+
+#' create new embedding from jointly measure spatial omics 
+#' @param seed vesalius_assay object of the first modality 
+#' @param query vesalius_assay object of the second modality
+#' @param dimensions int - number of gray scale images to create
+#' @param norm_method string describing which normalisation 
+#' method to use. One of the following "log_norm", "SCT", "TFIDF", "raw"
+#' @param dim_reduction string describing which dimensionality
+#' reduction method should be used. One of the following:
+#' "PCA", "PCA_L", "UMAP", "LSI", "LSI_UMAP"
+#' @details Create new latent space using feature from both modalities
+#' Creates a new feature matrix than in nromalized and converted to latent
+#' space image stack.
+#' @return embedding matrix used as grey scale image stack
 concat_embed <- function(seed,
     query,
     dimensions,
