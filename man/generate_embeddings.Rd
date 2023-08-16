@@ -12,7 +12,7 @@ generate_embeddings(
   dimensions = 30,
   tensor_resolution = 1,
   filter_grid = 0.01,
-  filter_threshold = 0.995,
+  filter_threshold = 1,
   nfeatures = 2000,
   features = NULL,
   min_cutoff = "q5",

@@ -27,8 +27,7 @@ adjust_counts <- function(coordinates, counts, throw = TRUE, verbose = TRUE) {
     # First get all barcode names and compare which ones are missing
     #--------------------------------------------------------------------------#
     coord_bar_uni <- unique(coordinates$barcodes)
-    coord_bar <- coord_bar_uni[
-      sapply(strsplit(coord_bar_uni, "_et_"), length) > 1]
+    coord_bar <- grep(pattern = "_et_", x = coord_bar_uni, value = TRUE)
     if (length(coord_bar) == 0) {
       loc <- check_barcodes(colnames(counts), coord_bar_uni, throw)
       return(counts[, loc])
@@ -372,11 +371,13 @@ add_integration_tag <- function(vesalius_assay, integrated) {
 #' @importFrom dplyr %>%
 #' @importFrom utils tail
 add_active_count_tag <- function(vesalius_assay, norm) {
-    if (norm != "last") {
+    if (norm != "last" && norm != "joint") {
         active <- names(vesalius_assay@counts)
         active <- grep(norm, active, value = TRUE) %>%
             tail(1)
         comment(vesalius_assay@counts) <- active
+    } else if (norm == "joint") {
+        comment(vesalius_assay@counts) <- norm
     }
     return(vesalius_assay)
 }

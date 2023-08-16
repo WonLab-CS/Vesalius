@@ -126,13 +126,17 @@ setMethod("show",
         # check and show counts
         #---------------------------------------------------------------------#
         counts <- get_counts(object, type = "all")
-        if (comment(counts) != "empty") {
+        if (comment(counts) != "empty" && comment(counts) != "joint") {
             cat("\n")
             active <- comment(counts)
             counts <- counts[[active]]
             cat(paste(nrow(counts), "observations in the",
                 active,
                 "count matrix. \n"))
+        } else if (comment(counts) == "joint"){
+            cat("\n")
+            cat(paste(length(counts), "count matrices in object \n"))
+            cat(paste(paste(names(counts), collapse = " "), "\n"))
         }
 
         #---------------------------------------------------------------------#

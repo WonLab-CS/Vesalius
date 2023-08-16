@@ -5,7 +5,7 @@
 \title{Finding optimal mapping between query and seed using a mini batch 
 approach}
 \usage{
-match_index_batch(idx, cost_matrix, verbose)
+match_index_batch(idx, cost_matrix)
 }
 \arguments{
 \item{idx}{integer - index of batch}

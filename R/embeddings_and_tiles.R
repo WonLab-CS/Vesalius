@@ -84,7 +84,7 @@ generate_embeddings <- function(vesalius_assay,
   dimensions = 30,
   tensor_resolution = 1,
   filter_grid = 0.01,
-  filter_threshold = 0.995,
+  filter_threshold = 1,
   nfeatures = 2000,
   features = NULL,
   min_cutoff = "q5",
@@ -282,7 +282,7 @@ generate_tiles <- function(vesalius_assay,
   if (tensor_resolution < 1 && tensor_resolution > 0) {
     message_switch("tensor_res", verbose)
     coordinates <- reduce_tensor_resolution(coordinates = coordinates,
-      tensor_resolution = tensor_resolution)
+        tensor_resolution = tensor_resolution)
     rescale <- calculate_scale(coordinates)
     scale_factor <- rescale / vesalius_assay@meta$scale$scale
     vesalius_assay@meta$scale <- list("scale" = vesalius_assay@meta$scale$scale,
@@ -305,7 +305,6 @@ generate_tiles <- function(vesalius_assay,
   # Resterise tiles
   #----------------------------------------------------------------------#
   message_switch("raster", verbose)
-  #browser()
   tiles <- rasterise(filtered)
   #------------------------------------------------------------------------#
   # adjusted counts if necessary
@@ -557,12 +556,14 @@ rasterise <- function(filtered) {
         # in this case we select the mid point of the ordered coordinates
         #----------------------------------------------------------------------#
         cent <- which(max_x == round(indx) & max_y == round(indy))
-        if (length(cent) == 0) {
-            cent <- as.integer(length(max_y) / 2)
-        }
         centers <- rep(0, length(max_x))
         orig_x <- rep(0, length(max_x))
         orig_y <- rep(0, length(max_x))
+        if (length(centers) == 1) {
+            cent <- 1
+        } else if (length(cent) == 0) {
+            cent <- as.integer(length(centers) / 2)
+        }
         centers[cent] <- 1
         orig_x[cent] <- x_orig
         orig_y[cent] <- y_orig

@@ -4,7 +4,7 @@
 \alias{concat_embed}
 \title{create new embedding from jointly measure spatial omics}
 \usage{
-concat_embed(seed, query, dimensions, norm_method, dim_reduction)
+concat_embed(seed, query, dimensions, norm_method, dim_reduction, signal)
 }
 \arguments{
 \item{seed}{vesalius_assay object of the first modality}

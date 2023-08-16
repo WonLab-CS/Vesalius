@@ -62,7 +62,7 @@
 #' @export
 
 
-integrate_horizontally <- function(seed_assay,
+align_assays <- function(seed_assay,
     query_assay,
     k = 20,
     dimensions = seq(1, 30),
@@ -86,7 +86,7 @@ integrate_horizontally <- function(seed_assay,
         dimensions = dimensions,
         use_norm = use_norm,
         verbose = verbose)
-    spix_mnn <- point_mapping(seed = seed_assay,
+    mapped <- point_mapping(seed = seed_assay,
         seed_signal = signal$seed,
         query = query_assay,
         query_signal = signal$query,
@@ -96,7 +96,7 @@ integrate_horizontally <- function(seed_assay,
         custom_cost = custom_cost,
         overwrite = overwrite,
         verbose = verbose)
-    integrated <- integrate_graph(spix_mnn,
+    integrated <- integrate_graph(mapped,
         query_assay,
         verbose = verbose)
     simple_bar(verbose)
@@ -183,21 +183,38 @@ point_mapping <- function(seed,
     #-------------------------------------------------------------------------#
     seed <- get_tiles(seed) %>% filter(origin == 1)
     query <- lapply(query, get_tiles) %>% lapply(., filter, origin == 1)
+    custom_cost <- check_cost_matrix_validity(custom_cost,
+        seed,
+        seed_signal,
+        query,
+        query_signal)
     #-------------------------------------------------------------------------#
     # Next we create a scoring table for each spix
     #-------------------------------------------------------------------------#
     aligned_indices <- vector("list", length(query))
     for (i in seq_along(query)) {
-        #---------------------------------------------------------------------#
-        # Check if we parse a custom matrix or let vesalius compute the cost
-        #---------------------------------------------------------------------#
-        if (!is.null(custom_cost) && overwrite) {
-            cost_mat <- custom_cost
+        if (!is.null(custom_cost) && !overwrite) {
+            cost_mat <- compute_cell_cost(custom_cost$seed_signal[[i]],
+                custom_cost$query_signal[[i]],
+                i,
+                verbose)
+            
+            cost_mat <- compute_neighbor_cost(cost_mat,
+                custom_cost$seed[[i]],
+                custom_cost$query[[i]],
+                custom_cost$seed_signal[[i]],
+                custom_cost$query_signal[[i]],
+                k,
+                i,
+                verbose)
+            cost_mat <- cost_mat + custom_cost$cost[[i]]
+        } else if (!is.null(custom_cost) && overwrite) {
+            #-----------------------------------------------------------------#
+            # Check if we parse a custom matrix or let vesalius compute the 
+            #cost
+            #-----------------------------------------------------------------#
+            cost_mat <- custom_cost[[i]]
         } else {
-            #-----------------------------------------------------------------#
-            # compute cost matrix using euclidean distance between cells 
-            # and euclidean distance between local neighbohoods 
-            #-----------------------------------------------------------------#
             cost_mat <- compute_cell_cost(seed_signal,
                 query_signal[[i]],
                 i,
@@ -210,14 +227,6 @@ point_mapping <- function(seed,
                 k,
                 i,
                 verbose)
-            #-----------------------------------------------------------------#
-            # If a custom matrix is provided and the user wants to add this
-            # this cost to cost matrix prodivided by vesalius 
-            #-----------------------------------------------------------------#
-            if (!is.null(custom_cost) && !overwrite) {
-                custom_cost <- check_cost_matrix(custom_cost, cost_mat)
-                cost_mat <- custom_cost$custom + custom_cost$cost
-            }
         }
         #---------------------------------------------------------------------#
         # devide cost matrix
@@ -226,17 +235,24 @@ point_mapping <- function(seed,
             message_switch("div_hungarian", verbose)
             cost_mat <- divide_and_conquer(cost_mat, batch_size)
             matched_indices <- match_index_batch(seq_along(cost_mat),
-                cost_mat,
-                verbose = verbose)
+                cost_mat)
             matched_indices <- concat_matches(matched_indices)
         } else {
             message_switch("hungarian", verbose)
             matched_indices <- match_index(cost_mat)
         }
-        aligned_indices[[i]] <- align_index(matched_indices,
-            seed,
-            query[[i]],
-            verbose)
+        if (!is.null(custom_cost) && !overwrite) {
+             aligned_indices[[i]] <- align_index(matched_indices,
+                custom_cost$seed[[i]],
+                custom_cost$query[[i]],
+                verbose)
+        } else {
+           aligned_indices[[i]] <- align_index(matched_indices,
+                seed,
+                query[[i]],
+                verbose)
+        }
+        
     }
     return(aligned_indices)
 }
@@ -418,11 +434,9 @@ match_index <- function(cost_matrix) {
 #' pair assignement.
 #' @return data.frame with point in query (from) mapped to 
 #' which point in seed (to) as well as cost of mapping for that pair
-match_index_batch <- function(idx, cost_matrix, verbose) {
+match_index_batch <- function(idx, cost_matrix) {
     mapping <- future_lapply(idx, function(idx,
-        cost_matrix,
-        verbose) {
-        tot <- length(cost_matrix)
+        cost_matrix) {
         cost_matrix <- cost_matrix[[idx]]
         if (nrow(cost_matrix) > ncol(cost_matrix)) {
             cost_matrix <- t(cost_matrix)
@@ -449,13 +463,9 @@ match_index_batch <- function(idx, cost_matrix, verbose) {
             mapping$to <- colnames(cost_matrix)[mapping$to]
             mapping$from <- rownames(cost_matrix)[mapping$from]
         }
-        if (verbose) {
-            dyn_message_switch("hung", verbose,
-            prog = round(idx / tot, digits = 4) * 100)
-        }
         return(mapping)
     }, cost_matrix = cost_matrix,
-    verbose = verbose)
+    future.seed = TRUE)
     return(mapping)
 }
 
@@ -501,13 +511,22 @@ integrate_graph <- function(aligned_graph,
     #-------------------------------------------------------------------------#
     # rebuild vesalius
     #-------------------------------------------------------------------------#
-    vesalius_assay <- build_vesalius_assay(coordinates = aligned_graph[[1]][ ,1:3],
-        counts = get_counts(query[[1]], type = "raw"),
-        assay = "integrated",
-        layer = 1,
-        verbose = FALSE)
-    return(vesalius_assay)
-
+    for (i in seq_along(query)) {
+        local_counts <- get_counts(query[[i]], type = "raw")
+        local_counts <- local_counts[,
+                colnames(local_counts) %in% aligned_graph[[i]]$barcodes]
+        query[[i]] <- build_vesalius_assay(
+            coordinates = aligned_graph[[i]][, c("barcodes", "x", "y")],
+            counts = local_counts,
+            assay = "integrated",
+            layer = max(query[[i]]@meta$orig_coord$z) + 1,
+            verbose = FALSE)
+    }
+    if (length(query) == 1) {
+        return(query[[1]])
+    } else {
+        return(query)
+    }
 }
 
 
@@ -517,10 +536,10 @@ integrate_graph <- function(aligned_graph,
 
 
 #-----------------------------------------------------------------------------#
-############################ VERTICAL INTEGRATION #############################
+############################### Joint Measure #################################
 #-----------------------------------------------------------------------------#
 
-#' Integrate jointly measured spatial omic assays
+#' Jointly measured spatial omic assays territories
 #' @param mod1 vesalius_assay object containing first modality
 #' @param mod2 vesalius_assay objecty containing second modality
 #' @param dimensions numeric vector describing latent space dimensions 
@@ -535,13 +554,14 @@ integrate_graph <- function(aligned_graph,
 #' console.
 #' @return vesalius object containing new image embeddings
 #' @export
-integrate_vertically <- function(mod1,
+joint_territories <- function(mod1,
     mod2,
     dimensions = seq(1, 30),
     embedding = "last",
     method = "interlace",
     norm_method = "log_norm",
     dim_reduction = "PCA",
+    signal = "variable_features",
     verbose = TRUE) {
     simple_bar(verbose)
     #-------------------------------------------------------------------------#
@@ -555,6 +575,13 @@ integrate_vertically <- function(mod1,
     mod1_embed <- check_embedding_selection(mod1, embedding, dimensions)
     mod2_embed <- check_embedding_selection(mod2, embedding, dimensions)
     #-------------------------------------------------------------------------#
+    # Get counts from each vesalius object
+    #-------------------------------------------------------------------------#
+    mod1_counts <- get_counts(mod1, type = "all")
+    names(mod1_counts) <- paste0("mod1_", names(mod1_counts))
+    mod2_counts <- get_counts(mod2, type = "all")
+    names(mod2_counts) <- paste0("mod2_", names(mod2_counts))
+    #-------------------------------------------------------------------------#
     # method switch - which method is best 
     #-------------------------------------------------------------------------#
     integrated_embeds <- switch(EXPR = method,
@@ -564,14 +591,39 @@ integrate_vertically <- function(mod1,
             mod2,
             dimensions,
             norm_method,
-            dim_reduction))
+            dim_reduction,
+            signal = signal))
     integrated_embeds <- list(integrated_embeds)
     names(integrated_embeds) <- method
+    #-------------------------------------------------------------------------#
+    # get tile overlap - it is possible that there is not a perfect overlap
+    # so we will filter
+    #-------------------------------------------------------------------------#
+    tiles <- mod1@tiles
+    tiles <- tiles[tiles$barcodes %in% rownames(integrated_embeds[[1]]), ]
     integrated <- new("vesalius_assay",
         assay = "integrated",
         embeddings = integrated_embeds,
         active = integrated_embeds[[1]],
-        tiles = mod1@tiles)
+        tiles = tiles)
+    integrated_counts <- c(mod1_counts, mod2_counts)
+    integrated <- update_vesalius_assay(vesalius_assay = integrated,
+      data = integrated_counts,
+      slot = "counts",
+      append = FALSE)
+    #--------------------------------------------------------------------------#
+    # we can update the comment on the count slot list 
+    # this comment will indicate which count matrix is set as default
+    #--------------------------------------------------------------------------#
+    integrated <- add_active_count_tag(integrated, norm = "joint")
+    #--------------------------------------------------------------------------#
+    # Finally we update the vesalius commit log
+    #--------------------------------------------------------------------------#
+    commit <- create_commit_log(arg_match = as.list(match.call()),
+      default = formals(joint_territories))
+    integrated <- commit_log(integrated,
+      commit,
+      "integrated")
     simple_bar(verbose)
     return(integrated)
 
@@ -588,8 +640,14 @@ integrate_vertically <- function(mod1,
 #' @return embedding matrix containing seed embeddings + query 
 #' embeddings.
 interlace_embeds <- function(seed, query, dimensions) {
-    seed <- seed[, dimensions]
-    query <- query[match(rownames(seed), rownames(query)), dimensions]
+    locs <- intersect(rownames(seed), rownames(query))
+    seed <- seed[rownames(seed) %in% locs,
+        dimensions]
+    query <- query[rownames(query) %in% locs,
+        dimensions]
+    seed <- seed[order(rownames(seed)), ]
+    query <- query[order(rownames(query)), ]
+
     interlaced_embed <- matrix(0,
         ncol = ncol(seed) + ncol(query),
         nrow = nrow(seed))
@@ -613,8 +671,13 @@ interlace_embeds <- function(seed, query, dimensions) {
 #' @return embedding matrix containing average pixel value for both seed
 #' query
 average_embed <- function(seed, query, dimensions) {
-    seed <- seed[, dimensions]
-    query <- query[match(rownames(seed), rownames(query)), dimensions]
+    locs <- intersect(rownames(seed), rownames(query))
+    seed <- seed[rownames(seed) %in% locs,
+        dimensions]
+    query <- query[rownames(query) %in% locs,
+        dimensions]
+    seed <- seed[order(rownames(seed)), ]
+    query <- query[order(rownames(query)), ]
     averaged_embed <- matrix(0,
         ncol = length(dimensions),
         nrow = nrow(seed))
@@ -646,16 +709,30 @@ concat_embed <- function(seed,
     query,
     dimensions,
     norm_method,
-    dim_reduction) {
-
-    seed_features <- seed@meta$variable_features
-    query_features <- query@meta$variable_features
+    dim_reduction,
+    signal) {
+    #-------------------------------------------------------------------------#
+    # first we get signal - i.e. these features that should be used
+    #-------------------------------------------------------------------------#
+    seed_features <- check_signal(seed, signal, type = norm_method)
+    query_features <- check_signal(query, signal, type = norm_method)
+    #-------------------------------------------------------------------------#
+    # next we extract counts and make sure that they are int he right order
+    # before rbidning the whole thing 
+    #-------------------------------------------------------------------------#
     seed_counts <- get_counts(seed, type = "raw")
-    seed_counts <- seed_counts[rownames(seed_counts) %in% seed_features, ]
     query_counts <- get_counts(query, type = "raw")
+    locs <- intersect(colnames(seed_counts), colnames(query_counts))
+    seed_counts <- seed_counts[rownames(seed_counts) %in% seed_features,
+        colnames(seed_counts) %in% locs]
     query_counts <- query_counts[rownames(query_counts) %in% query_features,
-        match(colnames(seed_counts), colnames(query_counts))]
+        colnames(query_counts) %in% locs]
+    seed_counts <- seed_counts[, order(colnames(seed_counts))]
+    query_counts <- query_counts[, order(colnames(query_counts))]
     integrated_counts <- rbind(seed_counts, query_counts)
+    #-------------------------------------------------------------------------#
+    # Now we can process the counts and create a new embedding
+    #-------------------------------------------------------------------------#
     integrated_counts <- process_counts(integrated_counts,
         assay = "integrated",
         method = norm_method,
@@ -667,6 +744,7 @@ concat_embed <- function(seed,
         dimensions = max(dimensions),
         remove_lsi_1 = FALSE,
         verbose = FALSE)
+    
     return(integrated_embeds[[1]])
 }
 

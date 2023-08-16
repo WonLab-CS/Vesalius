@@ -25,12 +25,12 @@ gene_vec <- sample(rownames(counts), 200)
 
 test_that("input sanity checks", {
     # signal sanity 
-    expect_error(integrate_horizontally(vesalius,
+    expect_error(align_assays(vesalius,
         jitter_ves,
         signal = "funky",
         map = "exact"))
     # if custom genes 
-    expect_error(integrate_horizontally(vesalius,
+    expect_error(align_assays(vesalius,
         jitter_ves,
         signal = c("Never", "Gonna", "Give", "You", "Up"),
         map = "exact"))
@@ -39,27 +39,41 @@ test_that("input sanity checks", {
         nrow = 500)
     rownames(custom_matrix) <- sample(colnames(jitter_counts), 500)
     colnames(custom_matrix) <- sample(colnames(counts), 500)
-    expect_warning(integrate_horizontally(vesalius,
+    expect_warning(align_assays(vesalius,
         jitter_ves,
         custom_cost = custom_matrix,
         overwrite = FALSE
+        ))
+    expect_warning(align_assays(vesalius,
+        jitter_ves,
+        custom_cost = custom_matrix,
+        overwrite = TRUE
         ))
     rownames(custom_matrix) <- make.unique(sample(LETTERS, 500, replace = TRUE))
     colnames(custom_matrix) <- make.unique(sample(LETTERS, 500, replace = TRUE))
-    expect_error(integrate_horizontally(vesalius,
+    expect_error(align_assays(vesalius,
         jitter_ves,
         custom_cost = custom_matrix,
         overwrite = FALSE
         ))
+    custom_matrix <- matrix(0.5, ncol = ncol(counts),
+        nrow = ncol(jitter_counts))
+    colnames(custom_matrix) <- colnames(counts)
+    rownames(custom_matrix) <- colnames(jitter_counts)
+    expect_s4_class(align_assays(vesalius,
+        jitter_ves,
+        custom_cost = custom_matrix,
+        overwrite = FALSE
+        ),"vesalius_assay")
 })
 test_that("horizontal - exact", {
     # check that we can get exact match
-    expect_s4_class(integrate_horizontally(vesalius,
+    expect_s4_class(align_assays(vesalius,
         jitter_ves,
         signal = "variable_features",
         map = "exact"), "vesalius_assay")
     # checks?
-    expect_s4_class(integrate_horizontally(vesalius,
+    expect_s4_class(align_assays(vesalius,
         jitter_ves,
         signal = gene_vec,
         map = "exact"), "vesalius_assay")
@@ -68,15 +82,16 @@ test_that("horizontal - exact", {
 
 test_that("horizontal - div", {
     # check that we can get exact match
-    expect_s4_class(integrate_horizontally(vesalius,
+    expect_s4_class(align_assays(vesalius,
         jitter_ves,
         signal = "variable_features",
         map = "div"), "vesalius_assay")
     # checks?
-    expect_s4_class(integrate_horizontally(vesalius,
+    expect_s4_class(align_assays(vesalius,
         jitter_ves,
         signal = gene_vec,
         map = "div"), "vesalius_assay")
 })
+
 
 
