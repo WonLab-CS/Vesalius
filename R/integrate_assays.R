@@ -183,6 +183,9 @@ point_mapping <- function(seed,
     #-------------------------------------------------------------------------#
     seed <- get_tiles(seed) %>% filter(origin == 1)
     query <- lapply(query, get_tiles) %>% lapply(., filter, origin == 1)
+    #-------------------------------------------------------------------------#
+    # size based filter??
+    #-------------------------------------------------------------------------#
     custom_cost <- check_cost_matrix_validity(custom_cost,
         seed,
         seed_signal,
