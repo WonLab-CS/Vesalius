@@ -1,44 +1,66 @@
-Package: vesalius
+Package:  vesalius
 Type: Package
 Title: Vesalius: Dissecting Tissue Anatomy from Spatial Transcriptomic Data
-Version: 1.0.1
+Version: 2.0.0
 Author: Patrick C.N. Martin
-Maintainer: Patrick C.N. Martin <patrick.martin@bric.ku.dk>
+Maintainer: Patrick C.N. Martin <patrick.martin@cshs.org>
 Description: We present Vesalius to decipher tissue anatomy by embracing various
    image analysis techniques for high-resolution ST data. Vesalius identifies
    spatially expressed genes linked to the morphology of tissue structures.
    Vesalius is a tool to perform high-resolution in silico anatomization and
    molecular characterization from ST data.
 License: GPL-3 + file LICENSE
-Collate: IsolatingTerritories.R
-    morph.R
+Collate: image_processing.R
+    morphology_operators.R
     misc.R
-    PCA_to_RGB.R
-    Prog.R
-    Territory_identity.R
-    viz.R
-    GB.R
+    progress_messages.R
+    territory_identity_and_markers.R
+    visualization.R
+    global_bindings.R
     data.R
+    objects.R
+    embeddings_and_tiles.R
+    format_and_dispatch.R
+    object_utilities_and_methods.R
+    sanity_checks.R
+    object_modification.R
+    integrate_assays.R
+    interoperability.R
 Depends: R (>= 4.0.0),
-    Seurat,
-    imager,
-    dplyr,
-    tidyr,
-    ggplot2
+         NMF
 Imports:
     grDevices,
-    graphics,
     stats,
     utils,
     deldir,
     sp,
     tvR,
-    concaveman,
     Matrix,
     RColorBrewer,
-    parallel,
+    future,
+    future.apply,
     imagerExtra,
-    methods
+    methods,
+    Signac,
+    ggpubr,
+    lmtest,
+    infix,
+    Seurat,
+    imager,
+    DESeq2,
+    RANN,
+    dplyr,
+    edgeR,
+    ggplot2,
+    igraph,
+    pwr,
+    purrr,
+    patchwork,
+    RcppHungarian,
+    ggnewscale,
+    kohonen,
+    geometry,
+    Morpho
 Suggests:
     knitr,
     RUnit,
@@ -46,8 +68,7 @@ Suggests:
     testthat (>= 3.0.0)
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 7.2.1
+RoxygenNote: 7.2.3
 VignetteBuilder: knitr
-URL: https://patrickcnmartin.github.io/Vesalius/,
-    https://github.com/patrickCNMartin/Vesalius
+URL: https://patrickcnmartin.github.io/Vesalius/,https://github.com/patrickCNMartin/Vesalius
 Config/testthat/edition: 3

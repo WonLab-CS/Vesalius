@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">vesalius</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">1.0.0</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">0.1.0</span>
       </span>
     </div>
 
@@ -29,7 +29,7 @@
   <a href="../reference/index.html">Reference</a>
 </li>
 <li class="dropdown">
-  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
     Articles
      
     <span class="caret"></span>
@@ -66,14 +66,14 @@
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">viewGeneExpression</span><span class="op">(</span></span>
-<span>  <span class="va">image</span>,</span>
-<span>  <span class="va">counts</span>,</span>
-<span>  ter <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  genes <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  normalise <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  cex <span class="op">=</span> <span class="fl">10</span></span>
-<span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">viewGeneExpression</span><span class="op">(</span>
+  <span class="va">image</span>,
+  <span class="va">counts</span>,
+  ter <span class="op">=</span> <span class="cn">NULL</span>,
+  genes <span class="op">=</span> <span class="cn">NULL</span>,
+  normalise <span class="op">=</span> <span class="cn">TRUE</span>,
+  cex <span class="op">=</span> <span class="fl">10</span>
+<span class="op">)</span></code></pre></div>
     </div>
 
     <div id="arguments">
@@ -81,36 +81,23 @@
     <dl><dt>image</dt>
 <dd><p>a Vesalius data frame containing barcodes, x, y, cc, value,
 cluster, and territory.</p></dd>
-
-
 <dt>counts</dt>
 <dd><p>count matrix - either matrix, sparse matrix or seurat object
 This matrix should contain genes as rownames and cells/barcodes as colnames</p></dd>
-
-
 <dt>ter</dt>
 <dd><p>integer - Territory ID in which gene expression will be viewed. If
 NULL, all territories will be selected.</p></dd>
-
-
 <dt>genes</dt>
 <dd><p>character - gene of interest (only on gene at a time)</p></dd>
-
-
 <dt>normalise</dt>
 <dd><p>logical - If TRUE, gene expression values will be min/max
 normalised.</p></dd>
-
-
 <dt>cex</dt>
 <dd><p>numeric - font size modulator</p></dd>
-
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    
-
-<p>a ggplot object (geom_raster)</p>
+    <p>a ggplot object (geom_raster)</p>
     </div>
     <div id="details">
     <h2>Details</h2>
@@ -128,23 +115,23 @@ However - this will increase file size to unreasonable heights.</p>
 
     <div id="ref-examples">
     <h2>Examples</h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span></span></span>
-<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">vesalius</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="co"># Seurat pre-processing</span></span></span>
-<span class="r-in"><span><span class="va">image</span> <span class="op">&lt;-</span> <span class="fu">NormalizeData</span><span class="op">(</span><span class="va">vesalius</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">image</span> <span class="op">&lt;-</span> <span class="fu">FindVariableFeatures</span><span class="op">(</span><span class="va">image</span>, nfeatures <span class="op">=</span> <span class="fl">2000</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">image</span> <span class="op">&lt;-</span> <span class="fu">ScaleData</span><span class="op">(</span><span class="va">image</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="co"># converting to rgb</span></span></span>
-<span class="r-in"><span><span class="va">image</span> <span class="op">&lt;-</span> <span class="fu"><a href="rgbPCA.html">rgbPCA</a></span><span class="op">(</span><span class="va">image</span>,slices <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">image</span> <span class="op">&lt;-</span> <span class="fu"><a href="buildImageArray.html">buildImageArray</a></span><span class="op">(</span><span class="va">image</span>, sliceID<span class="op">=</span><span class="fl">1</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="co"># One segmentation round</span></span></span>
-<span class="r-in"><span><span class="va">image</span> <span class="op">&lt;-</span> <span class="fu"><a href="iterativeSegmentation.array.html">iterativeSegmentation.array</a></span><span class="op">(</span><span class="va">image</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">image</span> <span class="op">&lt;-</span> <span class="fu"><a href="isolateTerritories.array.html">isolateTerritories.array</a></span><span class="op">(</span><span class="va">image</span>, minBar <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="co"># In all points</span></span></span>
-<span class="r-in"><span><span class="va">g</span> <span class="op">&lt;-</span> <span class="fu">viewGeneExpression</span><span class="op">(</span><span class="va">image</span>,<span class="va">vesalius</span>, genes <span class="op">=</span> <span class="st">"Cst3"</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="co"># In a specific territory</span></span></span>
-<span class="r-in"><span><span class="va">g1</span> <span class="op">&lt;-</span> <span class="fu">viewGeneExpression</span><span class="op">(</span><span class="va">image</span>, <span class="va">vesalius</span>, ter <span class="op">=</span> <span class="fl">1</span>, genes <span class="op">=</span> <span class="st">"Cst3"</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="op">}</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span></span>
+<span class="r-in"><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">vesalius</span><span class="op">)</span></span>
+<span class="r-in"><span class="co"># Seurat pre-processing</span></span>
+<span class="r-in"><span class="va">image</span> <span class="op">&lt;-</span> <span class="fu">NormalizeData</span><span class="op">(</span><span class="va">vesalius</span><span class="op">)</span></span>
+<span class="r-in"><span class="va">image</span> <span class="op">&lt;-</span> <span class="fu">FindVariableFeatures</span><span class="op">(</span><span class="va">image</span>, nfeatures <span class="op">=</span> <span class="fl">2000</span><span class="op">)</span></span>
+<span class="r-in"><span class="va">image</span> <span class="op">&lt;-</span> <span class="fu">ScaleData</span><span class="op">(</span><span class="va">image</span><span class="op">)</span></span>
+<span class="r-in"><span class="co"># converting to rgb</span></span>
+<span class="r-in"><span class="va">image</span> <span class="op">&lt;-</span> <span class="fu"><a href="rgbPCA.html">rgbPCA</a></span><span class="op">(</span><span class="va">image</span>,slices <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
+<span class="r-in"><span class="va">image</span> <span class="op">&lt;-</span> <span class="fu"><a href="buildImageArray.html">buildImageArray</a></span><span class="op">(</span><span class="va">image</span>, sliceID<span class="op">=</span><span class="fl">1</span><span class="op">)</span></span>
+<span class="r-in"><span class="co"># One segmentation round</span></span>
+<span class="r-in"><span class="va">image</span> <span class="op">&lt;-</span> <span class="fu"><a href="iterativeSegmentation.array.html">iterativeSegmentation.array</a></span><span class="op">(</span><span class="va">image</span><span class="op">)</span></span>
+<span class="r-in"><span class="va">image</span> <span class="op">&lt;-</span> <span class="fu"><a href="isolateTerritories.array.html">isolateTerritories.array</a></span><span class="op">(</span><span class="va">image</span>, minBar <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span>
+<span class="r-in"><span class="co"># In all points</span></span>
+<span class="r-in"><span class="va">g</span> <span class="op">&lt;-</span> <span class="fu">viewGeneExpression</span><span class="op">(</span><span class="va">image</span>,<span class="va">vesalius</span>, genes <span class="op">=</span> <span class="st">"Cst3"</span><span class="op">)</span></span>
+<span class="r-in"><span class="co"># In a specific territory</span></span>
+<span class="r-in"><span class="va">g1</span> <span class="op">&lt;-</span> <span class="fu">viewGeneExpression</span><span class="op">(</span><span class="va">image</span>, <span class="va">vesalius</span>, ter <span class="op">=</span> <span class="fl">1</span>, genes <span class="op">=</span> <span class="st">"Cst3"</span><span class="op">)</span></span>
+<span class="r-in"><span class="op">}</span></span>
 </code></pre></div>
     </div>
   </div>
@@ -159,7 +146,7 @@ However - this will increase file size to unreasonable heights.</p>
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.1.</p>
 </div>
 
       </footer></div>

@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">vesalius</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">1.0.0</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">0.1.0</span>
       </span>
     </div>
 
@@ -29,7 +29,7 @@
   <a href="../reference/index.html">Reference</a>
 </li>
 <li class="dropdown">
-  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
     Articles
      
     <span class="caret"></span>
@@ -66,14 +66,14 @@
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">isolateTerritories.array</span><span class="op">(</span></span>
-<span>  <span class="va">image</span>,</span>
-<span>  method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"distance"</span><span class="op">)</span>,</span>
-<span>  captureRadius <span class="op">=</span> <span class="fl">0.025</span>,</span>
-<span>  global <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  minBar <span class="op">=</span> <span class="fl">10</span>,</span>
-<span>  verbose <span class="op">=</span> <span class="cn">TRUE</span></span>
-<span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">isolateTerritories.array</span><span class="op">(</span>
+  <span class="va">image</span>,
+  method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"distance"</span><span class="op">)</span>,
+  captureRadius <span class="op">=</span> <span class="fl">0.025</span>,
+  global <span class="op">=</span> <span class="cn">TRUE</span>,
+  minBar <span class="op">=</span> <span class="fl">10</span>,
+  verbose <span class="op">=</span> <span class="cn">TRUE</span>
+<span class="op">)</span></code></pre></div>
     </div>
 
     <div id="arguments">
@@ -81,37 +81,24 @@
     <dl><dt>image</dt>
 <dd><p>data.frame - Vesalius formatted data.frame (i.e. barcodes,
 x,y,cc,value,tile) - Segmentation must have been applied beforehand!</p></dd>
-
-
 <dt>method</dt>
 <dd><p>character describing barcode pooling method.
 Currently, only "distance" availble</p></dd>
-
-
 <dt>captureRadius</dt>
 <dd><p>numeric - proportion of maximum distance between
 barcodes that will be used to pool barcodes together (range 0 - 1).</p></dd>
-
-
 <dt>global</dt>
 <dd><p>logical - If TRUE, territories will be numbered across all
 colour segments. If FALSE, territories will be numbered within each colour
 segment.</p></dd>
-
-
 <dt>minBar</dt>
 <dd><p>integer - minimum number of barcodes allowed in each territory</p></dd>
-
-
 <dt>verbose</dt>
 <dd><p>logical - progress message output.</p></dd>
-
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    
-
-<p>Returns a Vesalius data.frame with "barcodes","x","y","cc",
+    <p>Returns a Vesalius data.frame with "barcodes","x","y","cc",
 "value","tile","cluster","territory".
 "cluster" represents the colour segment the pixel belongs to and "territory"
 describe the tissue territory after pooling.</p>
@@ -139,19 +126,19 @@ regardless of colour cluster of origin.</p>
 
     <div id="ref-examples">
     <h2>Examples</h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span></span></span>
-<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">vesalius</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="co"># Seurat pre-processing</span></span></span>
-<span class="r-in"><span><span class="va">image</span> <span class="op">&lt;-</span> <span class="fu">NormalizeData</span><span class="op">(</span><span class="va">vesalius</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">image</span> <span class="op">&lt;-</span> <span class="fu">FindVariableFeatures</span><span class="op">(</span><span class="va">image</span>, nfeatures <span class="op">=</span> <span class="fl">2000</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">image</span> <span class="op">&lt;-</span> <span class="fu">ScaleData</span><span class="op">(</span><span class="va">image</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="co"># converting to rgb</span></span></span>
-<span class="r-in"><span><span class="va">image</span> <span class="op">&lt;-</span> <span class="fu"><a href="rgbPCA.html">rgbPCA</a></span><span class="op">(</span><span class="va">image</span>,slices <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">image</span> <span class="op">&lt;-</span> <span class="fu"><a href="buildImageArray.html">buildImageArray</a></span><span class="op">(</span><span class="va">image</span>, sliceID<span class="op">=</span><span class="fl">1</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="co"># One segmentation round</span></span></span>
-<span class="r-in"><span><span class="va">image</span> <span class="op">&lt;-</span> <span class="fu"><a href="iterativeSegmentation.array.html">iterativeSegmentation.array</a></span><span class="op">(</span><span class="va">image</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">image</span> <span class="op">&lt;-</span> <span class="fu">isolateTerritories.array</span><span class="op">(</span><span class="va">image</span>, minBar <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="op">}</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span></span>
+<span class="r-in"><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">vesalius</span><span class="op">)</span></span>
+<span class="r-in"><span class="co"># Seurat pre-processing</span></span>
+<span class="r-in"><span class="va">image</span> <span class="op">&lt;-</span> <span class="fu">NormalizeData</span><span class="op">(</span><span class="va">vesalius</span><span class="op">)</span></span>
+<span class="r-in"><span class="va">image</span> <span class="op">&lt;-</span> <span class="fu">FindVariableFeatures</span><span class="op">(</span><span class="va">image</span>, nfeatures <span class="op">=</span> <span class="fl">2000</span><span class="op">)</span></span>
+<span class="r-in"><span class="va">image</span> <span class="op">&lt;-</span> <span class="fu">ScaleData</span><span class="op">(</span><span class="va">image</span><span class="op">)</span></span>
+<span class="r-in"><span class="co"># converting to rgb</span></span>
+<span class="r-in"><span class="va">image</span> <span class="op">&lt;-</span> <span class="fu"><a href="rgbPCA.html">rgbPCA</a></span><span class="op">(</span><span class="va">image</span>,slices <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
+<span class="r-in"><span class="va">image</span> <span class="op">&lt;-</span> <span class="fu"><a href="buildImageArray.html">buildImageArray</a></span><span class="op">(</span><span class="va">image</span>, sliceID<span class="op">=</span><span class="fl">1</span><span class="op">)</span></span>
+<span class="r-in"><span class="co"># One segmentation round</span></span>
+<span class="r-in"><span class="va">image</span> <span class="op">&lt;-</span> <span class="fu"><a href="iterativeSegmentation.array.html">iterativeSegmentation.array</a></span><span class="op">(</span><span class="va">image</span><span class="op">)</span></span>
+<span class="r-in"><span class="va">image</span> <span class="op">&lt;-</span> <span class="fu">isolateTerritories.array</span><span class="op">(</span><span class="va">image</span>, minBar <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span>
+<span class="r-in"><span class="op">}</span></span>
 </code></pre></div>
     </div>
   </div>
@@ -166,7 +153,7 @@ regardless of colour cluster of origin.</p>
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.1.</p>
 </div>
 
       </footer></div>

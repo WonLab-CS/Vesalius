@@ -2,247 +2,216 @@
 ############################   ST package        ###############################
 ################################################################################
 
-# Misc functions function that may or may not be dropped in the future.
-# Who knows? I certainly don't. But you designed and wrote this packages.
-# That means diddly squat!! Since when do programmers know what they are doing?
 
-#' subSetTerritories gets all barcodes associated with a territory from a
-#' Seurat object.
-#' @param territories vector of barcode values (generally character strings)
-#' @param seurat Seurat object containing all barcode values from ST assay
-#' @details Essentially a wrapper function to the Seurat \code{subset} function.
-#' The function serves mainly the purpose of a place holder function for
-#' future iterations of Vesalius.
-#' @return Seurat object only containing the desired barcodes.
-#' @examples
-#' \dontrun{
-#' data(vesalius)
-#' # Seurat pre-processing
-#' image <- NormalizeData(vesalius)
-#' image <- FindVariableFeatures(image, nfeatures = 2000)
-#' image <- ScaleData(image)
-#' # converting to rgb
-#' image <- rgbPCA(image,slices = 1)
-#' image <- buildImageArray(image, sliceID=1)
-#' # One segmentation round
-#' image <- iterativeSegmentation.array(image)
-#' image <- isolateTerritories.array(image, minBar = 5)
-#' # subset 
-#' sub <- subSetTerritories(image$barcodes[image$territory ==1],vesalius)
-#' 
 
-#' }
-
-subSetTerritories <- function(territories,seurat){
-    #--------------------------------------------------------------------------#
-    # Simplified version for now
-    # It might be worth while getting away from seurat later
-    # essentially this is a template function
-    #--------------------------------------------------------------------------#
-    
-    seurat <- subset(seurat, cells = territories)
-    return(seurat)
+#' globalise territories
+#' converts territories number from territory values per segment
+#' to territory values overall the entire spatial omics assay.
+#' @param img a vesalius territory data frame containing segments
+#' and new territory trial
+#' @return the same data frame but with adjusted terriroty values
+#' @importFrom dplyr filter %>%
+globalise_territories <- function(img) {
+  img_tmp <- img %>% filter(trial != "isolated")
+  ter <- paste0(img_tmp$Segment, "_", img_tmp$trial)
+  all_ter <- unique(ter)
+  ter <- seq_along(all_ter)[match(ter, all_ter)]
+  img$trial[img$trial != "isolated"] <- ter
+  return(img)
 }
 
 
-#' getSeuratCoordinates get barcode coordinates from a seurat object
-#' @param seurat Seurat object containing all barcode values from ST assay
-#' @details Essentially a wrapper function to the Seurat
-#' \code{GetTissueCoordinates} function.
-#' Mainly serve as a way if generalising output format.
-#' @return Seurat object only containing the desired barcodes.
-#' @examples
-#' \dontrun{
-#' data(Vesalius)
-#' }
-getSeuratCoordinates <- function(seurat){
-  ret <-GetTissueCoordinates(seurat)
-  if(sum(colnames(ret) %in% c("imagerow","imagecol"))==2){
-      colnames(ret) <- c("y","x")
+
+#' detect_edges
+#' detect territory edges in black and white images with sobel filter
+#' @param img a cimg image
+#' @return a pix set containing deteced edges
+#' @importFrom dplyr %>%
+#' @importFrom imager imgradient enorm add
+detect_edges <- function(img) {
+  img <- img %>%
+    imager::imgradient("xy") %>%
+    imager::enorm() %>%
+    imager::add() %>%
+    sqrt()
+  return(img)
+}
+
+
+
+
+
+#------------------------/ Normalising Embeds /--------------------------------#
+
+#' pixel normalisation dispatch function
+#' @param embeds a embedding vector 
+#' @param type string "minmax" or "quantileNorm"
+#' @details how pixels should be normalised 
+#' At the moment only miman is used. Quantile needs to be tested.
+norm_pixel <- function(embeds, type = c("minmax", "quantile_norm", "z_norm")) {
+    #--------------------------------------------------------------------------#
+    # Normalise pixels values
+    # at the moment i am only using min max but just in case
+    # context: Dr Hong suggest imnvestigating the influence of dat normalisation
+    #--------------------------------------------------------------------------#
+    embeds <- switch(type[1L],
+                     "minmax" = min_max(embeds),
+                     "quantile_norm" = quantile_norm(embeds),
+                     "z_norm" = z_norm(embeds))
+    return(embeds)
+}
+
+
+#' min max normalisation
+#' @param x numeric vector
+#' @return min max nornalised vector
+min_max <- function(x) {
+  if (length(table(x)) == 1) {
+    return(x)
+    warning("Cannot minmax normalise - all values are equal!")
+  } else {
+    return((x - min(x)) / (max(x) - min(x)))
   }
-  return(ret)
+}
+
+z_norm <- function(x) {
+  if (length(table(x)) == 1) {
+    return(x)
+    warning("Cannot minmax normalise - all values are equal!")
+  } else {
+    return((x - mean(x)) / sd(x))
+  }
+}
+
+scale_data_spatial <- function(data, compactness, scale) {
+  scale_spat <- max(c(max(data$x), max(data$x))  * scale)
+  scale_dat <- apply(data[, !colnames(data) %in% c("x", "y")], 2, sd) %>%
+    max()
+  ratio <- (scale_spat / scale_dat) / compactness
+  data[, !colnames(data) %in% c("x", "y")] <-
+    data[, !colnames(data) %in% c("x", "y")] * ratio
+  return(data)
+}
+
+jaccard <- function(a, b) {
+    intersection <- length(intersect(a, b))
+    union <- length(union(a, b))
+    return(intersection / union)
+}
+
+arrange_knn_matrix <- function(knn) {
+   for (i in seq_len(nrow(knn$nn.idx))){
+      knn$nn.dists[i, ] <- knn$nn.dists[i, order(knn$nn.idx[i, ])]
+   }
+   return(knn$nn.dists)
 }
 
 
 
-# not in use
-.bindCounts <- function(territories,counts){
-    #--------------------------------------------------------------------------#
-    # Binding all count matrices together and filling all the "gaps"
-    #--------------------------------------------------------------------------#
-
-    cells <- unlist(lapply(territories,colnames))
-    counts <- counts[,cells]
-    return(counts)
+chunk <- function(x, n) {
+  chunk <- mapply(function(a, b) {
+      return(x[a:b])},
+    seq.int(from = 1, to = length(x), by = n),
+    pmin(seq.int(from = 1, to = length(x), by = n) + (n - 1), length(x)),
+    SIMPLIFY = FALSE)
+  return(chunk)
 }
 
 
-# Extracting count values for each cell in a cluster/territory
-# not in use
-.getGeneCounts <- function(object,by){
-    #--------------------------------------------------------------------------#
-    # This is just some cleaning and data extraction
-    # Note that this code relies on Seurat code
-    # This will need to be changed when refactoring
-    #--------------------------------------------------------------------------#
-    if(by == "cluster"){
-      clusters <- FetchData(object,"seurat_clusters")
-      #------------------------------------------------------------------------#
-      # Get all barcodes associated with each cluster
-      #------------------------------------------------------------------------#
-      barcodes <- lapply(unique(clusters$seurat_clusters),function(idx,obj){
-                return(WhichCells(obj,idx))
-      }, object)
-      #------------------------------------------------------------------------#
-      # Get counts associated to each clusters
-      #------------------------------------------------------------------------#
-      counts <- lapply(barcodes, function(bar,obj){
-                return(subset(obj, cells = bar))
-      })
-      #------------------------------------------------------------------------#
-      # Rebuild subsetted count matrix
-      ## Will need to change this for more felxibility
-      # Set to default assay or reduction based
-      #------------------------------------------------------------------------#
-      newCount <- lapply(counts, function(x){
-                  return(GetAssayData(x,slot ="data"))
-      })
-    } else if(by == "territory"){
-      #------------------------------------------------------------------------#
-      # Just return all cells for that territory
-      # Normalised counts ! This is important and will need to change the code
-      # accordingly
-      # This just considers normalised data
-      #------------------------------------------------------------------------#
-      newCount <- GetAssayData(object, slot ="data")
-    } else {
-      #------------------------------------------------------------------------#
-      # Placeholder for now
-      #------------------------------------------------------------------------#
-      newCount <- NULL
-    }
+#-------------------------/ Aligning Assays /--------------------------------#
 
-
-    return(newCount)
-
-}
-
-
-### might be dropped in final version
-### Not in use
-.addTerritories <- function(dat,coordinates = NULL, global = TRUE){
-
-    ters <- names(dat)
-
-    dat <- lapply(seq_along(ters), function(idx,ters,dat){
-                  dat[[idx]]$territory <- ters[idx]
-                  return(dat[[idx]])
-    },ters,dat)
-
-    if(!is.null(coordinates)){
-        dat <- mapply(function(dat,coordinates){
-                      tmp <- cbind(dat,coordinates[,c("x","y")])
-                      return(tmp)
-        },dat,coordinates, SIMPLIFY = FALSE)
-    }
-
-
-    dat <- do.call("rbind",dat)
-    if(global){
-      dat <- .globaliseTerritories(dat, seurat = TRUE)
-    }
-
-    return(dat)
+polar_angle <- function(coord_x, coord_y, center_x, center_y) {
+  x <- coord_x - center_x
+  y <- coord_y - center_y
+  angle <- mapply(function(x, y) {
+    if (x >= 0 & y >= 0) angle <- atan(abs(y) / abs(x)) * (180 / pi)
+    if (x < 0 & y >= 0) angle <- 180 - (atan(abs(y) / abs(x)) * (180 / pi))
+    if (x < 0 & y < 0) angle <- 180 + (atan(abs(y) / abs(x)) * (180 / pi))
+    if (x >= 0 & y < 0) angle <- 360 - (atan(abs(y) / abs(x)) * (180 / pi))
+    return(angle)
+  }, x = x, y = y, SIMPLIFY = TRUE)
+  if (is.na(angle)) {
+      angle <- 0
+  }
+  return(angle)
 }
 
 
 
-
-
-# Used to convert territories per cluster to territories across the whole
-# ST array
-.globaliseTerritories <- function(img,seurat=FALSE){
-    if(!seurat){
-      imgTmp <- img %>% filter(territory != "isolated")
-      ter <- paste0(imgTmp$cluster,"_", imgTmp$territory)
-      allTer <- unique(ter)
-      ter <- seq_along(allTer)[match(ter,allTer)]
-      img$territory[img$territory != "isolated"] <- ter
-      return(img)
-    } else {
-      imgTmp <- img %>% filter(territory != "isolated")
-      ter <- paste0(img$seurat_clusters,"_", img$territory)
-      allTer <- unique(ter)
-      ter <- seq_along(allTer)[match(ter,allTer)]
-      img$seurat_clusters[img$territory != "isolated"] <- ter
-      return(img)
-    }
-
-
+cart_coord <- function(d, a) {
+  if (a < pi / 2) {
+    delta_x <- d * cos(a)
+    delta_y <- d * sin(a)
+  } else if (a < pi) {
+    delta_x <- -d * sin(a - pi/ 2)
+    delta_y <- d * cos(a - pi/ 2)
+  } else if (a < 3 * pi / 2) {
+    delta_x <- -d * cos(a - pi)
+    delta_y <- -d * sin(a - pi)
+  } else {
+    delta_x <- d * sin(a - 3 * pi / 2)
+    delta_y <- -d * cos(a - 3 * pi / 2)
+  }
+  return(list("delta_x" = delta_x, "delta_y" = delta_y))
 }
 
-
-.selectSimilar <- function(img,cols,segment,threshold = "auto"){
-  img <- img %>% { . - imfill(dim=dim(img),val=cols[segment,2:4]) } %>%
-         imsplit("c") %>%
-         enorm()
-  img <- !threshold(img,threshold)
-  img <- as.cimg(img)
-  return(img)
-}
-.detectEdges <- function(img){
-  img <- img %>% imgradient("xy") %>%
-         enorm() %>%
-         add() %>%
-         sqrt()
-  return(img)
+#-----------------------------/ Scaling  /----------------------------------#
+#' calculate scale of assay
+#' @param coordinates Spatial coordinates as data frame
+#' @details Calculate the average distance between spots/beads/indeces
+#' @return Single float 
+#' @importFrom RANN nn2
+calculate_scale <- function(coordinates, q = 0.999) {
+    scale <- RANN::nn2(data = coordinates[, c("x", "y")], k = 2)
+    scale <- unname(quantile(scale$nn.dist[, 2], q))
+    return(scale)
 }
 
-.pmap <- function(edges,method = c("inverse","none")){
-    pmap <- switch(method[1],
-                   "inverse" = 1 /(1+ edges),
-                   "none" = edges)
-    return(pmap)
-}
-
-.watershed <- function(img,pmap){
-  #----------------------------------------------------------------------------#
-  # First create empty image to fill
-  #----------------------------------------------------------------------------#
-  seed <- imfill(dim=dim(pmap))
-  #----------------------------------------------------------------------------#
-  # Next we can get back ground and foreground pixels
-  # basing this on the pixSet object describing similar "colours"
-  # Fill in seed
-  #----------------------------------------------------------------------------#
-  back <- which(img == 0, arr.ind = TRUE)
-  back <- back[sample(seq_len(nrow(back)),1),]
-  seed[back[1],back[2],back[3],back[4]]<- 0
-  fore <- which(img == 1, arr.ind = TRUE)
-  fore <- fore[sample(seq_len(nrow(fore)),1),]
-  seed[fore[1],fore[2],fore[3],fore[4]]<- 1
-  #----------------------------------------------------------------------------#
-  # watershed using seed image and priority map built using the pixset
-  # describing similar colours
-  #----------------------------------------------------------------------------#
-  wt <- watershed(seed, pmap)
-  return(wt)
-}
-
-.removeWaterPool <- function(water, image){
-  #----------------------------------------------------------------------------#
-  # Now that we have one territory, we want to remove from the original pool
-  # and start again with the next water pool
-  #----------------------------------------------------------------------------#
-  water <- as.cimg(water) %>% as.data.frame() %>% filter(value == 1)
-  image <- as.cimg(image) %>% as.data.frame()
-  #----------------------------------------------------------------------------#
-  # using this method because we want the index not the actual values
-  #----------------------------------------------------------------------------#
-  w <- paste0(water[,"x"],"_",water[,"y"])
-  i <- paste0(image[,"x"],"_",image[,"y"])
-  locs <- match(w,i)
-
-  image[locs,"value"] <- 0
-  return(image)
+#' Calculate the total area of a territory
+#' @param vesalius_assay a vesalius_assay object
+#' @param territory numeric/character/vector describing wich terriory(ies)
+#' that will be use to compute area.
+#' @param trial which territory trial should be used
+#' @param use_rescaled logical - which value should be use for 
+#' @details Compute the total area of a territory 
+#' @return territory area
+compute_territory_area <- function(vesalius_assay,
+  territory = NULL,
+  trial = "last",
+  use_rescaled = FALSE,
+  verbose = TRUE) {
+  #---------------------------------------------------------------------------#
+  # First lets check the territory selection
+  #--------------------------------------------------------------------------#
+  territory <- territory %||%
+      stop("No specified territory! Cannot compute Area.")
+  ter <- check_territory_trial(vesalius_assay, trial)
+  territory <- check_group_value(ter, territory)
+  ter <- filter(ter, trial %in% territory)
+  #--------------------------------------------------------------------------#
+  # Next we can get the scale and use this as the capture radius
+  #--------------------------------------------------------------------------#
+  if (use_rescaled) {
+    scale <- vesalius_assay@meta$scale$rescale
+  } else {
+    scale <- vesalius_assay@meta$scale$scale
+  }
+  #--------------------------------------------------------------------------#
+  # run distance pooling to seperate potential patches
+  #--------------------------------------------------------------------------#
+  patches <- distance_pooling(ter,
+    capture_radius = scale,
+    min_spatial_index = 3)
+  ter$trial <- patches
+  patches <- unique(ter$trial)
+  patches <- patches[!patches %in% "isolated"]
+  area <- rep(0,length(patches))
+  message_switch("area_comp", verbose, patches = length(patches))
+  for (i in seq_along(patches)) {
+      area[i] <- deldir::deldir(
+        as.numeric(ter$x[ter$trial == patches[i]]),
+        as.numeric(ter$y[ter$trial == patches[i]]))$del.area
+  }
+  area <- sum(area)
+  return(area)
 }

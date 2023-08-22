@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">vesalius</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">1.0.0</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">0.1.0</span>
       </span>
     </div>
 
@@ -29,7 +29,7 @@
   <a href="../reference/index.html">Reference</a>
 </li>
 <li class="dropdown">
-  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
     Articles
      
     <span class="caret"></span>
@@ -66,18 +66,18 @@
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">buildImageArray</span><span class="op">(</span></span>
-<span>  <span class="va">coordinates</span>,</span>
-<span>  sliceID <span class="op">=</span> <span class="fl">1</span>,</span>
-<span>  invert <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  na.rm <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  resolution <span class="op">=</span> <span class="fl">100</span>,</span>
-<span>  filterGrid <span class="op">=</span> <span class="fl">0.01</span>,</span>
-<span>  filterThreshold <span class="op">=</span> <span class="fl">1</span>,</span>
-<span>  interpolation_type <span class="op">=</span> <span class="fl">1</span>,</span>
-<span>  cores <span class="op">=</span> <span class="fl">1</span>,</span>
-<span>  verbose <span class="op">=</span> <span class="cn">TRUE</span></span>
-<span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">buildImageArray</span><span class="op">(</span>
+  <span class="va">coordinates</span>,
+  sliceID <span class="op">=</span> <span class="fl">1</span>,
+  invert <span class="op">=</span> <span class="cn">FALSE</span>,
+  na.rm <span class="op">=</span> <span class="cn">TRUE</span>,
+  resolution <span class="op">=</span> <span class="fl">100</span>,
+  filterGrid <span class="op">=</span> <span class="fl">0.01</span>,
+  filterThreshold <span class="op">=</span> <span class="fl">1</span>,
+  interpolation_type <span class="op">=</span> <span class="fl">1</span>,
+  cores <span class="op">=</span> <span class="fl">1</span>,
+  verbose <span class="op">=</span> <span class="cn">TRUE</span>
+<span class="op">)</span></code></pre></div>
     </div>
 
     <div id="arguments">
@@ -85,36 +85,22 @@
     <dl><dt>coordinates</dt>
 <dd><p>a Vesalius data.frame with "barcodes","x","y","cc",
 "value","slice". Output from <code>rgbPCA</code>.</p></dd>
-
-
 <dt>sliceID</dt>
 <dd><p>integer - PC slice used in image building. Only one value!</p></dd>
-
-
 <dt>invert</dt>
 <dd><p>logical describing if colour pattern should be inverted
 (i.e 1-R,1-G,1-B)</p></dd>
-
-
 <dt>na.rm</dt>
 <dd><p>logical indicating if NA should be removed from bead list.</p></dd>
-
-
 <dt>resolution</dt>
 <dd><p>numeric (range 0 - 100) describing a percentage of original
 image size. Used to reduce image size.</p></dd>
-
-
 <dt>filterGrid</dt>
 <dd><p>numeric between (range 0 - 1) describing size of grid used
 to filter stray beads.</p></dd>
-
-
 <dt>filterThreshold</dt>
 <dd><p>numeric (range 0 - 1) describing the quantile threshold
 at which barcodes and tiles should be retained (seed details)</p></dd>
-
-
 <dt>interpolation_type</dt>
 <dd><p>Method of interpolation during image resizing:</p><dl><dt>-1</dt>
 <dd><p>no interpolation: raw memory resizing.</p></dd>
@@ -143,21 +129,14 @@ at which barcodes and tiles should be retained (seed details)</p></dd>
 
 
 </dl></dd>
-
-
 <dt>cores</dt>
 <dd><p>integer describing number of cores used (Default = 1)</p></dd>
-
-
 <dt>verbose</dt>
 <dd><p>logical - progress message output.</p></dd>
-
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    
-
-<p>Returns a Vesalius data.frame with "barcodes","x","y","cc",
+    <p>Returns a Vesalius data.frame with "barcodes","x","y","cc",
 "value",and "tile".</p>
     </div>
     <div id="details">
@@ -181,17 +160,17 @@ will be retained.</p>
 
     <div id="ref-examples">
     <h2>Examples</h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span></span></span>
-<span class="r-in"><span><span class="va">image</span> <span class="op">&lt;-</span> <span class="fu">NormalizeData</span><span class="op">(</span><span class="va">vesalius</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">image</span> <span class="op">&lt;-</span> <span class="fu">FindVariableFeatures</span><span class="op">(</span><span class="va">image</span>, nfeatures <span class="op">=</span> <span class="fl">2000</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">image</span> <span class="op">&lt;-</span> <span class="fu">ScaleData</span><span class="op">(</span><span class="va">image</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="co"># converting to rgb</span></span></span>
-<span class="r-in"><span><span class="va">image</span> <span class="op">&lt;-</span> <span class="fu"><a href="rgbPCA.html">rgbPCA</a></span><span class="op">(</span><span class="va">image</span>,slices <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="co"># Slice ID = PCA slice</span></span></span>
-<span class="r-in"><span><span class="va">image</span> <span class="op">&lt;-</span> <span class="fu">buildImageArray</span><span class="op">(</span><span class="va">image</span>, sliceID <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="co"># If rgbUMAP was run - no need to specifiy slice</span></span></span>
-<span class="r-in"><span><span class="va">image</span> <span class="op">&lt;-</span> <span class="fu">buildImageArray</span><span class="op">(</span><span class="va">image</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="op">}</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span></span>
+<span class="r-in"><span class="va">image</span> <span class="op">&lt;-</span> <span class="fu">NormalizeData</span><span class="op">(</span><span class="va">vesalius</span><span class="op">)</span></span>
+<span class="r-in"><span class="va">image</span> <span class="op">&lt;-</span> <span class="fu">FindVariableFeatures</span><span class="op">(</span><span class="va">image</span>, nfeatures <span class="op">=</span> <span class="fl">2000</span><span class="op">)</span></span>
+<span class="r-in"><span class="va">image</span> <span class="op">&lt;-</span> <span class="fu">ScaleData</span><span class="op">(</span><span class="va">image</span><span class="op">)</span></span>
+<span class="r-in"><span class="co"># converting to rgb</span></span>
+<span class="r-in"><span class="va">image</span> <span class="op">&lt;-</span> <span class="fu"><a href="rgbPCA.html">rgbPCA</a></span><span class="op">(</span><span class="va">image</span>,slices <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
+<span class="r-in"><span class="co"># Slice ID = PCA slice</span></span>
+<span class="r-in"><span class="va">image</span> <span class="op">&lt;-</span> <span class="fu">buildImageArray</span><span class="op">(</span><span class="va">image</span>, sliceID <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
+<span class="r-in"><span class="co"># If rgbUMAP was run - no need to specifiy slice</span></span>
+<span class="r-in"><span class="va">image</span> <span class="op">&lt;-</span> <span class="fu">buildImageArray</span><span class="op">(</span><span class="va">image</span><span class="op">)</span></span>
+<span class="r-in"><span class="op">}</span></span>
 </code></pre></div>
     </div>
   </div>
@@ -206,7 +185,7 @@ will be retained.</p>
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.1.</p>
 </div>
 
       </footer></div>

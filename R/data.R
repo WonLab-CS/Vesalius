@@ -1,10 +1,29 @@
-#' @title vesalius dummy data for ST analysis
-#' \itemize{
-#'   \item vesalius. Seurat object containing gene counts and coordinates
-#' }
+#' Spatial coordinates
+#'
+#'
 #' @docType data
 #' @keywords datasets
-#' @name vesalius
+#' @name coordinates 
 #' @usage data(vesalius)
-#' @format Seurat Object
+#' @source \url{https://singlecell.broadinstitute.org/single_cell/study/SCP948/robust-decomposition-of-cell-type-mixtures-in-spatial-transcriptomics#study-download}
+#' @format coordinate data frame and sparse count matrix
+#' \describe{
+#'  \item{coordinates}{spatial coodinates of Puck_200815 taken from slide-seV2}
+#' }
+#'
+NULL
+
+#' Count matrix for vesalius
+#'
+#'
+#' @docType data
+#' @keywords datasets
+#' @name counts
+#' @usage data(vesalius)
+#' @source \url{https://singlecell.broadinstitute.org/single_cell/study/SCP948/robust-decomposition-of-cell-type-mixtures-in-spatial-transcriptomics#study-download}
+#' @format coordinate data frame and sparse count matrix
+#' \describe{
+#'  \item{counts}{gene counts of Puck_200815 taken from slide-seV2}
+#' }
+#'
 NULL

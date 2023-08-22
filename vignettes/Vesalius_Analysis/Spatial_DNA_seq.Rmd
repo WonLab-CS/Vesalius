@@ -1,0 +1,367 @@
+---
+title: "Vesalius: Spatial Genomics"
+author: Patrick C.N. Martin
+output:
+  word_document: default
+  html_document: default
+---
+
+# Forward
+
+The following notebook highlights the analysis shown in the Vesalius 2.0 manuscript.
+More specifcially, we show the analysis for Spatial Genomics Slide-SeqV2 in mouse
+liver.  
+
+The aim of this notebook is two-fold:
+
+1. Provide a clear demonstration of how the figures in the manuscript were produced.
+2. A contextual vignette that demonstrates how one could use Vesalius
+
+You will find through out this article subsection with the prefix "See also". 
+These sections will highlight link towards documentation that will enable you to go beyond 
+what we did with vesalius for this analysis. 
+
+
+# Introduction 
+
+## Vesalius 
+
+Vesalius is a tool to decipher tissue anatomy and spatial domains from spatial omics data. 
+To achieve this, Vesalius converts latent space embeddings into images upon which 
+image processing techniques can be applied. In contrast to many other tools, Vesalius does not
+create a spatially aware latent space but utilises images that *represent* latent space 
+to isolate tissue domains.  
+
+
+## Slide-DNA-seq
+
+[Slide-DNA-seq](https://www.nature.com/articles/s41586-021-04217-4) is a high resolution spatial 
+genomics data set. The authors have managed to create a high resolution assay that captures clonal 
+diversity by measuring Copy Number Variation at single cell level. As it is the case with 
+[Slide-RNA-seq](https://www.nature.com/articles/s41587-020-0739-1), you should keep in mind:
+
+
+*Spatially Indexed beads will not necessarily line up with the cells from the tissue. As a consequence,
+each bead can recover DNA from multiple cells. Conversly, in the case of large cells, transcripts
+might be spread over multiple spatial indices.*
+
+This data set also provides complementary Slide-RNA-seq data. Taken together, these data sets 
+enable an in dpeth exploration of clonal and transcriptonal landscapes.
+
+It should be noted that the Slide-DNA-seq data comes in 3 files: 
+
+1. A count matrix 
+2. A coordinate file 
+3. A bin file that is used to link spatial indices in the count matrix to their spatial coordinates
+
+## Aims 
+
+Vesalius aims to recover the finer details of spatial patterning by providing uniform tissue territories.
+
+Uniform territories enable:
+
+1. In depth analysis of spatial patterning. 
+2. Differential gene expression analysis between territories but also cell types present in different territories.
+3. Tissue border expression.
+4. Morphology dependant expression.
+
+# Spatial genomics analysis
+
+Before starting, make sure you have vesalius installed and that you have your data ready and downloaded.
+
+To facilitate the analysis process, we use input/output folder to store and save data. 
+For visualization purposes, we also load a few extra packages. We also load the `future` package
+to limit the number of cores being used. 
+
+```{r env_set_ip, eval = TRUE, echo = TRUE}
+# Load libraries and set seed
+library(vesalius, lib.loc = "/common/martinp4/R")
+library(pwr, lib.loc = "/common/martinp4/R")
+library(ggplot2)
+library(patchwork)
+library(ggpubr)
+library(future)
+library(Matrix)
+set.seed(1514)
+
+# Using Multi core !!! See note below !!!
+plan(multicore, workers = 10)
+
+
+# Input data directory slide-DNA-seq
+spatial_coordinates_dna <- "/common/martinp4/SSv2_DNA/mouse_liver_met_2_dna_200114_10.bead_locations.csv"
+counts_dna <- "/common/martinp4/SSv2_DNA/mouse_liver_met_2_dna_200114_10.sparse_counts_1Mb.txt"
+bins <- "/common/martinp4/SSv2_DNA/mm10_1Mb_bins.txt"
+# Input data directory slide-RNA-seq
+spatial_coordinates_rna <- "/common/martinp4/SSv2/mouse_liver_met_2_rna_201002_04.bead_locations.csv"
+counts_rna <- "/common/martinp4/SSv2/mouse_liver_met_2_rna_201002_04.sparse_expression.txt"
+
+# Output directory
+if (!dir.exists("/common/martinp4/output_plots/")) {
+    dir.create("/common/martinp4/output_plots/")
+}
+output_plots <- "/common/martinp4/output_plots/"
+
+if (!dir.exists("/common/martinp4/output_data/")) {
+    dir.create("/common/martinp4/output_data/")
+}
+output_data <- "/common/martinp4/output_data/"
+```
+
+**NOTE** Here, we use multicore processing from the [future](https://cran.r-project.org/web/packages/future/index.html) 
+and [future.apply](https://cran.r-project.org/web/packages/future.apply/index.html) packages.
+
+To use a single core, use `plan(sequential)`
+
+If you are using a windows machine, multicore is not supported. 
+Instead you can use `plan(multisession, workers = 10)`
+
+## Loading Slide-DNA-seq
+
+Both of the slide-DNA and slide-RNA comme in sparse format. We will start with the Slide-DNA-seq
+analysis. 
+
+```{r loading_and_building, eval = TRUE, echo  = TRUE}
+spatial_coordinates_dna <- read.table(spatial_coordinates_dna,
+    header = TRUE, sep = ",")
+counts_dna <- read.table(counts_dna,
+    header = FALSE)
+counts_dna <- sparseMatrix(i = counts_dna$V2,
+  j = counts_dna$V1,
+  x = counts_dna$V3)
+bins <- read.table(bins,
+    header = TRUE)
+colnames(counts_dna) <- spatial_coordinates_dna$barcodes
+rownames(counts_dna) <- bins$bin_ind
+
+head(spatial_coordinates_dna)
+head(bins)
+head(counts_dna)
+```
+
+Once the data is loaded, we can create a `vesalius_assay` object.
+
+```{r build_ves_assay, eval = TRUE, echo = TRUE}
+vesalius_dna <- build_vesalius_assay(coordinates = spatial_coordinates_dna,
+  counts = counts_dna,
+  assay = "spatial_genomics",
+  verbose = FALSE)
+vesalius_dna
+```
+
+### See also - Vesalius assays
+`vesalius_assay` objects require as minimal input the spatial coordinates. 
+
+- **To add custom counts** see [add_counts](https://patrickcnmartin.github.io/Vesalius/reference/add_counts). 
+
+## Generate embeddings
+
+In the context of Slide-DNA-seq and copy number variation, we expect to find 2 copies of each 
+"fragment" per cell in diploid organisms. Less would signify loss of a fragment (Deletions or Mutations)
+and more would signify duplication events. 
+
+However, since Slide-DNA-seq does not garuantee a perfect overlap between cells and 
+spatially resolved indices, these values might fluctuate more significantly. This has been 
+extesively explore in the original [Slide-DNA-seq](https://www.nature.com/articles/s41586-021-04217-4) paper.
+
+In general, this means that count value will be much lower than in transcriptomic data. 
+To account for this change, we recommend using `TFIDF` and `LSI` for normalisation and 
+generating embeddings. These methods were developped for 
+(Single-Cell chromatin state)[https://www.nature.com/articles/s41592-021-01282-5] analysis and 
+are better suited for super sparse data. 
+
+```{r dna_embeds, eval = TRUE, echo = TRUE}
+vesalius_dna <- generate_embeddings(vesalius_dna,
+    dim_reduction = "LSI",
+    normalisation = "TFIDF",
+    tensor_resolution = 0.2,
+    verbose = FALSE)
+vesalius_dna
+```
+
+### See also - Generating embeddings
+
+The `generate_embeddings` function generates tiles from spatial indices, pre-processes the count matrix
+(Finding variable features and normalisation)
+, and generates latent space embeddings used in the vesalius image stack. 
+
+- **To add custom counts** see [add_counts](https://patrickcnmartin.github.io/Vesalius/reference/add_counts). 
+- **To add custom embeddings** see [add_embeddings](https://patrickcnmartin.github.io/Vesalius/reference/add_embeddings).
+- **To only generate tiles** see[generate_tiles](https://patrickcnmartin.github.io/Vesalius/reference/generate_tiles)
+- **To run multiple embeddings**, see [user guide](https://patrickcnmartin.github.io/Vesalius/articles/vesalius.html)
+
+
+## Image prcessing
+
+The core concept of Vesalius is to provide spatial domains by utilizing image processing techniques.
+In contrast to other methods, Vesalius does not provide spatially aware latent space by default. 
+It utilises Principal Component Analsyis (as well as UMAP or SVD/LSI) to generate a reduced
+dimesnionaility space.
+
+Each latent space dimension will contain spatially expression patterns and we can 
+visualise this through the `image_plot` function. 
+
+```{ r viz_grey_dna, eval = TRUE, echo = TRUE}
+lsi_embedding_dna <- vector("list",  30)
+for (i in seq(1, 30)){
+    lsi_embedding_dna[[i]] <- image_plot(vesalius_dna,
+        embedding = "last",
+        dimensions = i)
+}
+print(ggarrange(plotlist = lsi_embedding_dna), ncol = 5)
+```
+
+The first thing that becomes apparent is that the majority of LSI dimesnions do not 
+contain any informative information. Only 1st three dimensions would be useful to 
+extract territories. With Vesalius, you can specify which dimensions should be used
+for analysis. 
+
+We will run the image processing only on the first 3 dimensions.
+
+```{r image_process_dna, eval = TRUE, echo = TRUE}
+vesalius_dna <- regularise_image(vesalius_dna,
+    dimensions = seq(1, 3),
+    verbose = FALSE)
+vesalius_dna <- equalize_image(vesalius_dna,
+    dimensions = seq(1, 3),
+    sleft = 5, sright = 5,
+    verbose = FALSE)
+vesalius_dna <- smooth_image(vesalius_dna,
+    dimensions = seq(1, 3),
+    method = c("iso", "box"),
+    sigma = 2,
+    box = 10,
+    iter = 10,
+    verbose = FALSE)
+```
+
+We can viszualise each dimension in the image tensor after image processing.
+
+```{r grey_scale_processed, eval = TRUE, echo = TRUE, fig.width = 12, fig.height = 4}
+lsi_embedding_dna <- vector("list",  3)
+
+for (i in seq(1, 3)){
+    lsi_embedding_dna[[i]] <- image_plot(vesalius_dna,
+        embedding = "last",
+        dimensions = i)
+}
+print(ggarrange(plotlist = lsi_embedding_dna), ncol = 3)
+```
+
+In vesalius, each latent space dimension is handled independantly in the form of a grey scale image. We can use
+this image stack to generate isolated spatial domains and recover subtle expression patterns. 
+The selection of image processing parameters is dependant on the data set used and on
+the biological question at hand. You might want to have more or less territory granularity.
+However, the ability to visualize PCs greatly aids is selecting the parameters that fits your needs. 
+
+### See also - image processing
+Image prcessing is iteratively applied to the active embedding. 
+
+- **Understanding active embeddings in vesalius** see [the user guide](https://patrickcnmartin.github.io/Vesalius/articles/vesalius.html)
+- **Selecting different Dimensions** see [the user guide](https://patrickcnmartin.github.io/Vesalius/articles/vesalius.html)
+
+## Image segmentation and territory isolation 
+
+
+The isolation of territories is achieved by a combination of image segmentation and 2D isolation 
+of image segments. By default, we use *kmeans* for image segmentation. This produces a series of 
+image segments that can then be further isolated if they are sperated in 2D space. 
+
+```{r image_seg, eval = TRUE, echo = TRUE}
+vesalius_dna <- segment_image(vesalius_dna,
+    dimensions = seq(1, 3),
+    method = "kmeans",
+    col_resolution = 3,
+    verbose = FALSE)
+vesalius_dna <- isolate_territories(vesalius_dna, verbose = FALSE)
+```
+
+In this instance, we select only the 1st three dimesnions 
+(note that this is actually the default number of dimensions).
+The `col_resolution` argument represents the number of clusters to 
+parse to `kmeans` however this does not necissarily define the final number of territories. These segments 
+will be subdivided into small segments based on the distribution in space. 
+
+
+### See also - Image segmentation & Territory Isolation
+By default, vesalius uses kmeans clustering as it provides a simple and effective way to segment 
+images. 
+
+- **Using louvain based segmentation** see the [image_segmentation function](https://patrickcnmartin.github.io/Vesalius/reference/image_segmentation)
+- **Using leiden based segmentation** see the [image_segmentation function](https://patrickcnmartin.github.io/Vesalius/reference/image_segmentation)
+
+## Visualization of territories
+
+We can visualise the territories obtain in Slide-DNA-seq.
+
+```{r viz_dna_ter, eval = TRUE, echo = TRUE, fig.width = 9.5, fig.height = 8}
+dna_ter <- territory_plot(vesalius_dna) + +
+  labs(title = "Clones")
+dna_ter
+```
+
+# Transcriptional diversity within clones
+## Slide-RNA quick analysis
+As mentioned previosuly, the authors of Slide-DNA-seq also provide a Slide-RNA-seq data set
+taken from an adjacent tissue slice. The clonal diversity shows 2 clones (territory 2 and 3) 
+and some healthy tissue (territory 1).
+
+Using this information, we analyse the Slide-RNA data and investigate transcriptional changes
+with respect to cancer clones. 
+
+For this, we will process Slide-RNA-seq using the 1st 16 PCs:
+
+```{r quick_rna, eval = TRUE, echo = TRUE}
+spatial_coordinates_rna <- read.csv(spatial_coordinates_rna, header = TRUE)
+colnames(spatial_coordinates_rna) <- c("barcodes", "x", "y")
+counts_rna <- read.table(counts_rna, sep = ",", header = FALSE)
+
+counts_rna <- sparseMatrix(i = count$V1, j = count$V2, x = count$V3)
+bins <- read.table(paste0(input, "SSv2/mouse_genes.txt"),
+    header = TRUE)
+colnames(counts_rna) <- spatial_coordinates_rna$barcodes
+rownames(counts_rna) <- bins$Var1
+
+## Building vesalius assay
+vesalius_rna <- build_vesalius_assay(coordinates = spatial_coordinates_rna,
+    counts = counts_rna,
+    assay = "Spatial_Transcriptomics_cancer",
+    verbose = FALSE)
+
+## Building vesalius embeddings
+vesalius_rna <- generate_embeddings(vesalius_rna,
+    dim_reduction = "PCA",
+    tensor_resolution = 0.5,
+    verbose = FALSE)
+
+## Image processing
+vesalius_rna <- regularise_image(vesalius_rna,
+    dimensions = seq(1, 16),
+    lambda = 10,
+    embedding = "PCA",
+    verbose = FALSE)
+vesalius_rna <- equalize_image(vesalius_rna,
+    dimensions = seq(1, 16),
+    sleft = 5, sright = 5,
+    verbose = FALSE)
+vesalius_rna <- smooth_image(vesalius_rna,
+    dimensions = seq(1, 16),
+    method = c("iso", "median"),
+    sigma = 2,
+    box = 10,
+    iter = 10,
+    verbose = FALSE)
+## Image segmentation
+vesalius_rna <- segment_image(vesalius_rna,
+    dimensions = seq(1, 16),
+    method = "kmeans",
+    col_resolution = 12,
+    verbose = FALSE)
+
+
+## Isolate territories
+vesalius_rna <- isolate_territories(vesalius_rna,
+  trial = "last",
+  min_spatial_index = 50,
+  verbose = FALSE)
+```

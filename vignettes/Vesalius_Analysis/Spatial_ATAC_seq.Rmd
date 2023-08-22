@@ -1,0 +1,7 @@
+---
+title: "Vesalius: Spatial Epigenomics - ATAC-seq"
+author: Patrick C.N. Martin
+output:
+  word_document: default
+  html_document: default
+---
