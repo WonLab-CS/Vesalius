@@ -68,7 +68,7 @@ To facilitate the analysis process, we use input/output folder to store and save
 For visualization purposes, we also load a few extra packages. We also load the `future` package
 to limit the number of cores being used. 
 
-```{r env_set_ip, eval = TRUE, echo = TRUE}
+```{r env_set_ip, eval = FALSE, echo = TRUE}
 # Load libraries and set seed
 library(vesalius, lib.loc = "/common/martinp4/R")
 library(pwr, lib.loc = "/common/martinp4/R")
@@ -120,7 +120,7 @@ The first step is to load the spatial transcriptomic data. Generally, spatial da
 2. Count matrix: This contains the number of gene counts at every spatial index. 
 
 Reading in spatial coordinates. 
-```{r load_spatial_coord, eval = TRUE, echo = TRUE}
+```{r load_spatial_coord, eval = FALSE, echo = TRUE}
 spatial_coordinates_brain <- read.csv(spatial_coordinates_brain,
   header = TRUE,
   skip = 1)
@@ -137,7 +137,7 @@ str(spatial_coordinates_embryo)
 Note the use of `skip = 1`. This may not be required depending on how your data is formatted. 
 
 Reading in count data
-```{r load_counts_not_sparse, eval = TRUE, echo = TRUE}
+```{r load_counts_not_sparse, eval = FALSE, echo = TRUE}
 counts_brain <- read.table(counts_brain, header = TRUE, row.names = 1)
 counts_embryo <- read.table(counts_embryo, header = TRUE, row.names = 1)
 counts_brain[1:5, 1:5]
@@ -152,7 +152,7 @@ the vesalius workflow and stores data after every round of computation.
 
 To build a `vesalius_assay` :
 
-```{r build_vesalius_assay, eval = TRUE, echo = TRUE}
+```{r build_vesalius_assay, eval = FALSE, echo = TRUE}
 vesalius_brain <- build_vesalius_assay(coordinates = spatial_coordinates_brain,
   counts = counts_brain,
   assay = "Spatial_transcriptomics_brain",
@@ -180,7 +180,7 @@ vesalius_embryo
 The next step is to generate pixels tiles from spatial coordinates and latent space 
 embedding that will be used to populate each tile with a grey scale color value. 
 
-```{r generrate_embedding, eval = TRUE, echo = TRUE}
+```{r generrate_embedding, eval = FALSE, echo = TRUE}
 vesalius_brain <- generate_embeddings(vesalius_brain,
     dim_reduction = "PCA",
     dimensions = 50,
@@ -205,7 +205,7 @@ the original spatial indices.
 
 For example:
 
-```{r get_merged, eval = TRUE, echo = TRUE}
+```{r get_merged, eval = FALSE, echo = TRUE}
 head(grep(pattern = "_et_",
   x = unique(get_tiles(vesalius_brain)$barcodes),
   value = TRUE))
@@ -233,7 +233,7 @@ dimesnionaility space.
 We find that Principal Components (PC) contain subtle spatial information already embedded within them.
 We can viszualise this by looking at the grey scale embeddings for each PC. 
 
-```{r grey_scale_raw, eval = TRUE, echo = TRUE}
+```{r grey_scale_raw, eval = FALSE, echo = TRUE}
 pca_embedding_brain <- vector("list",  30)
 pca_embedding_embryo <- vector("list",  30)
 for (i in seq(1, 30)){
@@ -248,12 +248,12 @@ for (i in seq(1, 30)){
 
 For the mouse brain:
 
-```{r plot_grey_raw_brain, eval = TRUE, echo = TRUE, fig.width = 20, fig.height =  20}
+```{r plot_grey_raw_brain, eval = FALSE, echo = TRUE, fig.width = 20, fig.height =  20}
 print(ggarrange(plotlist = pca_embedding_brain), ncol = 5)
 ```
 
 For the mouse embryo:
-```{r plot_grey_raw_embryo, eval = TRUE, echo = TRUE, fig.width = 20, fig.height =  20}
+```{r plot_grey_raw_embryo, eval = FALSE, echo = TRUE, fig.width = 20, fig.height =  20}
 print(ggarrange(plotlist = pca_embedding_embryo), ncol = 5)
 ```
 
@@ -261,7 +261,7 @@ We can see that many of these PCs contain spatially relevant information even th
 space was not produced in an explitely spatially aware manner. By using image processing, 
 we can further highlight these regions and better utilise them during spatial domain isolation. 
 
-```{r image_process, eval = TRUE, echo = TRUE}
+```{r image_process, eval = FALSE, echo = TRUE}
 vesalius_brain <- regularise_image(vesalius_brain,
     dimensions = seq(1, 50),
     verbose = FALSE)
@@ -299,7 +299,7 @@ vesalius_embryo <- smooth_image(vesalius_embryo,
 
 We can viszualise each PC in the image tensor after image processing.
 
-```{r grey_scale_processed, eval = TRUE, echo = TRUE}
+```{r grey_scale_processed, eval = FALSE, echo = TRUE}
 pca_embedding_brain <- vector("list",  30)
 pca_embedding_embryo <- vector("list",  30)
 for (i in seq(1, 30)){
@@ -314,12 +314,12 @@ for (i in seq(1, 30)){
 
 For example, in the mous brain, we can cleary see that PC17 contains information related to the CA2 field - 
 a field that is often lost during standard analysis. 
-```{r plot_grey_pro_brain, eval = TRUE, echo = TRUE, fig.width = 20, fig.height =  20}
+```{r plot_grey_pro_brain, eval = FALSE, echo = TRUE, fig.width = 20, fig.height =  20}
 print(ggarrange(plotlist = pca_embedding_brain), ncol = 5)
 ```
 
 For the mouse embryo:
-```{r plot_grey_pro_embryo, eval = TRUE, echo = TRUE, fig.width = 20, fig.height =  20}
+```{r plot_grey_pro_embryo, eval = FALSE, echo = TRUE, fig.width = 20, fig.height =  20}
 print(ggarrange(plotlist = pca_embedding_embryo), ncol = 5)
 ```
 
@@ -343,7 +343,7 @@ The isolation of territories is achieved by a combination of image segmentation 
 of image segments. By default, we use *kmeans* for image segmentation. This produces a series of 
 image segments that can then be further isolated if they are sperated in 2D space. 
 
-```{r image_seg, eval = TRUE, echo = TRUE}
+```{r image_seg, eval = FALSE, echo = TRUE}
 vesalius_brain <- segment_image(vesalius_brain,
     dimensions = seq(1, 30),
     method = "kmeans",
@@ -377,7 +377,7 @@ images.
 As mentionned above we distinguish image segements and territories. We can vizualise these 
 differences with the vesalius plotting functions.
 
-```{r viz_territories, eval = TRUE, echo = TRUE, fig.width = 16, fig.height = 14}
+```{r viz_territories, eval = FALSE, echo = TRUE, fig.width = 16, fig.height = 14}
 brain_segments <- territory_plot(vesalius_brain,
   trial = "Segment",
   cex_pt = 0.25) +
@@ -417,7 +417,7 @@ rather than comparing cell clusters.
 
 We can start by getting all genes that are differentially expressed in each territory and export the results. 
 
-```{r all_deg, eval = TRUE, echo = TRUE}
+```{r all_deg, eval = FALSE, echo = TRUE}
 vesalius_brain <- identify_markers(vesalius_brain,
   trial = "Territory", # Using PCA territories here
   method = "DESeq2",
@@ -455,7 +455,7 @@ vesalius_brain <- identify_markers(vesalius_brain,
 We can also use this option to compare territories between each other. If there are many 
 territories it can be easier to visualize each territory seperately. 
 
-```{r split_territories_brain, eval = TRUE, echo = TRUE, fig.width = 16 , fig.height = 16}
+```{r split_territories_brain, eval = FALSE, echo = TRUE, fig.width = 16 , fig.height = 16}
 brain_split  <- territory_plot(vesalius_brain,
   trial = "Territory",
   split = TRUE,
@@ -467,7 +467,7 @@ brain_split
 
 In this case, we can compare territory 18 and territory 3 (medial habenula compartments).
 
-```{r comp_med_hab, eval = TRUE, ehco = TRUE}
+```{r comp_med_hab, eval = FALSE, ehco = TRUE}
 vesalius_brain <- identify_markers(vesalius_brain,
     trial = "Territory",
     method = "DESeq2",
@@ -491,7 +491,7 @@ The final step is to visualise gene expression patterns.
 
 For *Pcp4* in the mouse hippocampus:
 
-```{r deg_viz_pcp, echo = TRUE, eval = TRUE, fig.width = 14, fig.height = 8}
+```{r deg_viz_pcp, echo = TRUE, eval = FALSE, fig.width = 14, fig.height = 8}
 pcp4 <- view_gene_expression(vesalius_brain,
   genes = "Pcp4",
   trial = "Territory",
@@ -508,7 +508,7 @@ pcp4 + pcp4_layer + plot_annotation(tag_levels = "A")
 ```
 
 For *Tac1* in the mouse hippocampus:
-```{r deg_viz_tac1, echo = TRUE, eval = TRUE, fig.width = 14, fig.height = 8}
+```{r deg_viz_tac1, echo = TRUE, eval = FALSE, fig.width = 14, fig.height = 8}
 Tac1 <- view_gene_expression(vesalius_brain,
   genes = "Tac1",
   trial = "Territory",
@@ -523,7 +523,7 @@ Tac1 + Tac1_layer + plot_annotation(tag_levels = "A")
 
 ```
 For *Pmel* in the mouse embryo:
-```{r deg_viz_pmel, echo = TRUE, eval = TRUE, fig.width = 14, fig.height = 8}
+```{r deg_viz_pmel, echo = TRUE, eval = FALSE, fig.width = 14, fig.height = 8}
 Pmel <- view_gene_expression(vesalius_embryo,
   genes = "Pmel",
   trial = "Territory",
@@ -551,47 +551,6 @@ object that can directly be plotted.
 - **Visualization of multiple genes** - see [view_gene_expression function](https://patrickcnmartin.github.io/Vesalius/reference/view_gene_expression)
 - **Understaing ggarrange** - see [ggpubr page](https://cran.r-project.org/web/packages/ggpubr/ggpubr.pdf)
 
-# Functional Analsyis
-
-This section does not contain any code related to the vesalius package but demonstrate the approach we took
-for gene functional analysis.
-
-```{r loading_func_lib, eval = TRUE , echo = TRUE}
-library(DOSE)
-library(pathview)
-library(clusterProfiler)
-library(gprofiler2)
-```
-
-Since we already have the data frames we can use these directly. Note that DEG data frame were saved as `.csv`.
-
-
-```{r gprofiler2, eval = TRUE, echo = TRUE}
-top_brain <- split(deg_brain, deg_brain$seed)
-brain_gost <- lapply(top_brain, function(x) {
-    over <- gost(x$genes,
-      organism = "mmusculus",
-      significant = TRUE)
-    under <- gost(x$genes,
-      organism = "mmusculus",
-      significant = TRUE,
-      measure_underrepresentation = TRUE)
-    return(list("over" = over, "under" = under))
-})
-
-top_embryo <- split(deg_embryo, deg_embryo$seed)
-embryo_gost <- lapply(top_embryo, function(x) {
-    over <- gost(x$genes,
-      organism = "mmusculus",
-      significant = TRUE)
-    under <- gost(x$genes,
-      organism = "mmusculus",
-      significant = TRUE,
-      measure_underrepresentation = TRUE)
-    return(list("over" = over, "under" = under))
-})
-
-```
 # Conclusion
 
 Here, we present a Vesalius workflow using 2 high resolution spatial transcriptomic data sets.
