@@ -1063,7 +1063,22 @@ embed_lsi_umap <- function(counts,
 #' @importFrom NMF basis
 embed_nmf <- function(counts, dimensions, verbose = TRUE) {
   #--------------------------------------------------------------------------#
-  # Get the normalized count matrix and matrix with variable features from the Seurat object
+  # adding this since I don't want to have this package as a dependancy 
+  # rather I want it to be selectively loaded via namespace 
+  #--------------------------------------------------------------------------#
+  if (!isNamespaceLoaded("NMF")) {
+    inst <- requireNamespace("NMF", quietly = TRUE)
+    if (!inst) {
+      stop("NMF is not installed - Please install NMF
+      install.packages('NMF')
+      https://cran.r-project.org/web/packages/NMF/index.html")
+    } else {
+      require("NMF")
+    }
+  }
+  #--------------------------------------------------------------------------#
+  # Get the normalized count matrix and matrix with variable features 
+  # from the Seurat object
   #--------------------------------------------------------------------------#
   vesalius:::message_switch("nmf_tensor", verbose)
   count_matrix <- as.matrix(Seurat::GetAssayData(counts, slot = "data"))

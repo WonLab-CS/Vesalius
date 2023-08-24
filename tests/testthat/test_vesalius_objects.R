@@ -36,9 +36,7 @@ test_that("Vesalius build single assay", {
     expect_output(show(tmp))
 })
 
-test_that("Vesalius build with image", {
-    ##
-})
+
 
 test_that("Adding counts to vesalius_assay", {
     # checking if count matrix can be added

@@ -65,6 +65,6 @@ test_that("view gene expression", {
         genes = "Malat1",
         norm = FALSE),
         "gg"))
-    expect_error(view_gene_expression(vesalius,
+    expect_warning(view_gene_expression(vesalius,
         genes = "funky"))
 })

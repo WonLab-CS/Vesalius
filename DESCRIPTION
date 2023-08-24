@@ -24,10 +24,9 @@ Collate: image_processing.R
     object_utilities_and_methods.R
     sanity_checks.R
     object_modification.R
-    integrate_assays.R
+    map_assays.R
     interoperability.R
-Depends: R (>= 4.0.0),
-         NMF
+Depends: R (>= 4.0.0)
 Imports:
     grDevices,
     stats,
@@ -58,14 +57,13 @@ Imports:
     patchwork,
     RcppHungarian,
     ggnewscale,
-    kohonen,
-    geometry,
-    Morpho
+    kohonen
 Suggests:
     knitr,
     RUnit,
     rmarkdown,
-    testthat (>= 3.0.0)
+    testthat (>= 3.0.0),
+    NMF
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 7.2.3

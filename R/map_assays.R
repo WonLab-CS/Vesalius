@@ -62,7 +62,7 @@
 #' @export
 
 
-align_assays <- function(seed_assay,
+map_assays <- function(seed_assay,
     query_assay,
     k = 20,
     dimensions = seq(1, 30),
@@ -145,7 +145,10 @@ get_features <- function(seed_assay,
         query_signal <- lapply(query_assay, function(assays, features, type) {
             return(get_counts(assays, type)[features, ])
         }, features = features, type = use_norm)
-    }
+        seed_signal <- t(scale(t(as.matrix(seed_signal))))
+        query_signal <- lapply(query_signal,function(mat){
+            return(t(scale(t(as.matrix(mat)))))})
+        }
     return(list("seed" = seed_signal,
         "query" = query_signal,
         "features" = features))
@@ -217,7 +220,8 @@ point_mapping <- function(seed,
             # Check if we parse a custom matrix or let vesalius compute the 
             #cost
             #-----------------------------------------------------------------#
-            cost_mat <- custom_cost[[i]]
+           
+            cost_mat <- custom_cost$cost[[i]]
         } else {
             cost_mat <- compute_cell_cost(seed_signal,
                 query_signal[[i]],
@@ -245,7 +249,7 @@ point_mapping <- function(seed,
             message_switch("hungarian", verbose)
             matched_indices <- match_index(cost_mat)
         }
-        if (!is.null(custom_cost) && !overwrite) {
+        if (!is.null(custom_cost)) {
              aligned_indices[[i]] <- align_index(matched_indices,
                 custom_cost$seed[[i]],
                 custom_cost$query[[i]],
@@ -271,9 +275,9 @@ point_mapping <- function(seed,
 compute_cell_cost <- function(seed_signal, query_signal, i, verbose) {
     message_switch("feature_cost", verbose,
             assay = paste("Query Item", i))
-    seed_local <- t(scale(t(as.matrix(seed_signal))))
-    query_local <- t(scale(t(as.matrix(query_signal))))
-    cost_mat <- feature_dissim(seed_local, query_local)
+    # seed_local <- t(scale(t(as.matrix(seed_signal))))
+    # query_local <- t(scale(t(as.matrix(query_signal))))
+    cost_mat <- feature_dissim(seed_signal, query_signal)
     return(cost_mat)
 }
 
@@ -312,8 +316,8 @@ compute_neighbor_cost <- function(cost_mat,
     query_local <- neighbor_expression(query_dist$nn.idx,
         query_signal)
 
-    seed_local <- t(scale(t(as.matrix(seed_local))))
-    query_local <- t(scale(t(as.matrix(query_local))))
+    # seed_local <- t(scale(t(as.matrix(seed_local))))
+    # query_local <- t(scale(t(as.matrix(query_local))))
     cost_mat <- feature_dissim(seed_local, query_local) +
             cost_mat
     return(cost_mat)

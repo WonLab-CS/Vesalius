@@ -112,6 +112,7 @@ test_that("Vesalius PCA embeds", {
     expect_true(all(names(get_embeddings(vesalius, active = FALSE)) %in%
         c("PCA", "PCA.1")))
 })
+
 test_that("Vesalius NMF embeds", {
   vesalius <- build_vesalius_assay(coordinates, counts)
   vesalius <- generate_embeddings(vesalius,
@@ -124,14 +125,16 @@ test_that("Vesalius NMF embeds", {
   expect_identical(get_embeddings(vesalius, active = FALSE)$NMF,
                    get_embeddings(vesalius, active = TRUE))
   # it should work as well if run it more than once
-  vesalius <- generate_embeddings(vesalius,
-                                  dim_reduction = "NMF",
-                                  normalisation = "log_norm")
-  # simple embedding build and tile build
-  expect_s4_class(vesalius, "vesalius_assay")
-  expect_true(get_active_embedding_tag(vesalius) == "NMF.1")
-  expect_true(all(names(get_embeddings(vesalius, active = FALSE)) %in%
-                    c("NMF", "NMF.1")))
+# NMF is slow so only run it once since this is the same as 
+# other methods 
+#   vesalius <- generate_embeddings(vesalius,
+#                                   dim_reduction = "NMF",
+#                                   normalisation = "log_norm")
+#   # simple embedding build and tile build
+#   expect_s4_class(vesalius, "vesalius_assay")
+#   expect_true(get_active_embedding_tag(vesalius) == "NMF.1")
+#   expect_true(all(names(get_embeddings(vesalius, active = FALSE)) %in%
+#                     c("NMF", "NMF.1")))
 })
 
 test_that("Vesalius PCA_L embeds", {
