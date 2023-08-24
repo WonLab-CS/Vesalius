@@ -170,7 +170,7 @@ generating embeddings. These methods were developped for
 (Single-Cell chromatin state)[https://www.nature.com/articles/s41592-021-01282-5] analysis and 
 are better suited for super sparse data. 
 
-```{r dna_embeds, eval = TRUE, echo = TRUE}
+```{r dna_embeds, eval = FALSE, echo = TRUE}
 vesalius_dna <- generate_embeddings(vesalius_dna,
     dim_reduction = "LSI",
     normalisation = "TFIDF",
