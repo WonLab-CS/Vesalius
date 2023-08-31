@@ -15,3 +15,7 @@ function name
 \description{
 get function name from commit list
 }
+\details{
+Using tail since if you make an explicit function call
+using pkg::func you get pkg as well. Neat. We only want the function
+}

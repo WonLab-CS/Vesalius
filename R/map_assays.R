@@ -10,8 +10,14 @@
 #' Aling and integrate spatial assay from the same modality using super pixels
 #' @param seed_assay vesalius_assay object - data to be mapped to
 #' @param query_assay vesalius_assay objecy - data to map
+#' @param neighborhood character - how should the neighborhood be selected?
+#' "knn", "radius", "depth" (See details)
 #' @param k int ]2, n_points] number of neareset neighbors to be considered for
 #' neighborhodd computation.
+#' @param radius numeric ]0,1[ proportion of max distance between points 
+#' to consider for the neighborhood
+#' @param depth int [1, NA] graph depth from cell to consider from neighborhood
+#' (See details)
 #' @param dimensions Int vector containing latent space dimensions to use
 #' @param mapping character string (div - exact) - mapping strategy.
 #' Divide and conquer (approximate) or Exact mapping.
@@ -44,7 +50,15 @@
 #' distance (using the signal) betwwen each point in the seed and query. It
 #' also includes the distance in signal between each points neighborhoods.
 #' The neighborhood singal is computed by averaging the signal across k
-#' nearest neighbors in space. This cost matrix is then parsed to a
+#' nearest neighbors in space if using Knn. If using radius, the neighborhood
+#' will be computed using all cells within a definined radius. 
+#' If using depth, coordinates will be used to create a voronoi graph. 
+#' The neighborhood will be composed of all cells with "depth" steps i.e.
+#' how many nodes in the graph do you need to go through to get to taget cell?
+#' A depth of one will contain all cells in direct contact with center cell. 
+#'
+#'
+#' This cost matrix is then parsed to a
 #' Kuhn–Munkres algorithm that will generate point pairs that minimize
 #' the overall cost. 
 #' 
@@ -58,13 +72,18 @@
 #' 
 #' Finaly once the matches are found, the coordinates are mapped to its
 #' corresponding point and a new object is returned.
+#'
+#'
 #' @return vesalius_assay
 #' @export
 
 
 map_assays <- function(seed_assay,
     query_assay,
+    neighborhood = "knn",
     k = 20,
+    radius = 0.05,
+    depth = 1,
     dimensions = seq(1, 30),
     mapping = "div",
     batch_size = 1000,
@@ -305,9 +324,7 @@ compute_neighbor_cost <- function(cost_mat,
     verbose) {
     message_switch("neighbor_cost", verbose,
             assay = paste("Query Item", i))
-    seed_dist <- RANN::nn2(seed[, c("x", "y")],
-        k = k)
-    rownames(seed_dist$nn.idx) <- seed$barcodes
+    
     seed_local <- neighbor_expression(seed_dist$nn.idx,
         seed_signal)
     query_dist <- RANN::nn2(query[, c("x", "y")],
@@ -316,11 +333,25 @@ compute_neighbor_cost <- function(cost_mat,
     query_local <- neighbor_expression(query_dist$nn.idx,
         query_signal)
 
-    # seed_local <- t(scale(t(as.matrix(seed_local))))
-    # query_local <- t(scale(t(as.matrix(query_local))))
+    
     cost_mat <- feature_dissim(seed_local, query_local) +
             cost_mat
     return(cost_mat)
+}
+
+knn_neighborhood <- function(coord, k) {
+    coord_dist <- RANN::nn2(coord[, c("x", "y")],
+        k = k)
+    rownames(coord_dist$nn.idx) <- coord$barcodes
+    return(coord_dist)
+}
+
+radius_neighborhood <- function(coord, radius) {
+
+}
+
+depth_neighborhood <- function(coord, detph) {
+
 }
 
 #' compute the distance between seed and query signals

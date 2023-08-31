@@ -136,9 +136,12 @@ commit_log <- function(vesalius_assay, commit, assay) {
 
 #' get function name from commit list
 #' @param commit commit list
+#' @details Using tail since if you make an explicit function call
+#' using pkg::func you get pkg as well. Neat. We only want the function
 #' @return function name
+#' @importFrom utils tail 
 get_func_from_commit <- function(commit) {
-    return(commit$fun)
+    return(tail(commit$fun, 1))
 }
 
 
