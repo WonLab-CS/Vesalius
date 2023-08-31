@@ -1,4 +1,4 @@
-Package: vesalius
+Package:  vesalius
 Type: Package
 Title: Vesalius: Dissecting Tissue Anatomy from Spatial Transcriptomic Data
 Version: 2.0.0
@@ -24,7 +24,8 @@ Collate: image_processing.R
     object_utilities_and_methods.R
     sanity_checks.R
     object_modification.R
-    integrate_assays.R
+    map_assays.R
+    interoperability.R
 Depends: R (>= 4.0.0)
 Imports:
     grDevices,
@@ -51,13 +52,18 @@ Imports:
     edgeR,
     ggplot2,
     igraph,
-    pwr
+    pwr,
+    purrr,
+    patchwork,
+    RcppHungarian,
+    ggnewscale,
+    kohonen
 Suggests:
     knitr,
     RUnit,
     rmarkdown,
-    patchwork,
-    testthat (>= 3.0.0)
+    testthat (>= 3.0.0),
+    NMF
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 7.2.3

@@ -11,22 +11,22 @@
 #' @param coordinates coordinate file
 #' @param image connection to image or image array
 #' @param assay string with assay name
-#' @param adjust_coordinates string describing how coordinates should be
-#' adjusted (origin or norm)
+#' @param layer int [1, Inf[ - depth layer when more than on assay is
+#' present
 #' @param verbose logical if progress message should be outputed.
 #' @return list containing checked counts, coordinates and assay
 check_inputs <- function(counts,
     coordinates,
     image,
     assay,
-    adjust_coordinates,
+    layer,
     verbose) {
     #--------------------------------------------------------------------------#
     # we can check the validity of the coordinates
     #--------------------------------------------------------------------------#
     coordinates <- check_coordinates(coordinates,
         assay,
-        adjust_coordinates,
+        layer,
         verbose)
     #--------------------------------------------------------------------------#
     # next let's check counts if they are present
@@ -85,6 +85,7 @@ check_image_input <- function(image) {
     return(image)
 }
 
+
 #' checking overlap between barcodes in counts and coordinates
 #' @param mat_barcodes character vector containing barcode names in matrix
 #' (count matrix or embedding matrix)
@@ -138,17 +139,17 @@ check_counts <- function(counts, assay, verbose) {
 #' adjust coordinate value to remove white edge space
 #' @param coordinates coordinate data 
 #' @param assay string - assay name
+#' @param layer int [1, Inf[ - depth layer 
 #' @param verbose logical if progress message should be printed
-#' @param adjust_coordinates string - how should coordinates be adjusted
 #' @details adjusts coordinates by either snapping coordinates to origin 
 #' or min max normalisation of coordinates. Might add polar for future tests.
 #' @return coordinates data.frame or error
 #' @importFrom methods is as
 check_coordinates <- function(coordinates,
     assay,
-    adjust_coordinates = c("origin", "norm"),
+    layer,
     verbose) {
-    message_switch("check_coord",verbose, assay = assay)
+    message_switch("check_coord", verbose, assay = assay)
     if (is(coordinates, "matrix")) {
         coordinates <- as.data.frame(coordinates)
     } else if (is(coordinates, "data.frame")) {
@@ -164,8 +165,10 @@ check_coordinates <- function(coordinates,
     if (all(c("barcodes", "xcoord", "ycoord") %in% colnames(coordinates))) {
         coordinates <- coordinates[, c("barcodes", "xcoord", "ycoord")]
         colnames(coordinates) <- c("barcodes",  "x", "y")
+        coordinates$z <- layer
     } else if (all(c("barcodes", "x", "y") %in% colnames(coordinates))) {
         coordinates <- coordinates[, c("barcodes", "x", "y")]
+        coordinates$z <- layer
     } else {
         stop("Unknown column names")
     }
@@ -175,19 +178,15 @@ check_coordinates <- function(coordinates,
     coordinates$barcodes <- as.character(coordinates$barcodes)
     coordinates$x <- as.numeric(coordinates$x)
     coordinates$y <- as.numeric(coordinates$y)
-    if (adjust_coordinates[1L] == "origin") {
-        coordinates$x_orig <- coordinates$x
-        coordinates$y_orig <- coordinates$y
-        coordinates$x <- (coordinates$x - min(coordinates$x)) + 1
-        coordinates$y <- (coordinates$y - min(coordinates$y)) + 1
-    } else if (adjust_coordinates[1L] == "norm") {
-        coordinates$x_orig <- coordinates$x
-        coordinates$y_orig <- coordinates$y
-        coordinates$x <- min_max((coordinates$x))
-        coordinates$y <- min_max((coordinates$y))
-    } else {
-        stop("Woops - not sure how you want me to adjust coordinates")
-    }
+    #--------------------------------------------------------------------------#
+    # snapping coordinates to origin - might need to change this 
+    # when using image - still the original coordinates though
+    #--------------------------------------------------------------------------#
+    coordinates$x_orig <- coordinates$x
+    coordinates$y_orig <- coordinates$y
+    coordinates$x <- (coordinates$x - min(coordinates$x)) + 1
+    coordinates$y <- (coordinates$y - min(coordinates$y)) + 1
+    
     return(coordinates)
 }
 
@@ -251,10 +250,10 @@ check_norm_methods <- function(norm, use_counts = NULL) {
 #' @param embed embedding method selected by user
 #' @return embedding method string or error
 check_embed_methods <- function(embed) {
-    if (any(!embed %in% c("PCA", "PCA_L", "UMAP", "LSI", "LSI_UMAP"))) {
+    if (any(!embed %in% c("PCA", "PCA_L", "UMAP", "LSI", "LSI_UMAP", "NMF"))) {
         stop("Embedding method provided does not match available options \n
             Select from: \n
-            PCA, PCA_L, UMAP, LSI, LSI_UMAP")
+            PCA, PCA_L, UMAP, LSI, LSI_UMAP, NMF")
     } else {
         return(embed)
     }
@@ -309,10 +308,16 @@ check_eq_method <- function(method) {
 #' @param method string - segmentation method
 #' @return segmentation method
 check_segmentation_method <- function(method) {
-    if (any(!method %in% c("kmeans", "louvain", "leiden", "slic"))) {
+    if (any(!method %in% c("kmeans",
+        "louvain",
+        "leiden",
+        "slic",
+        "louvain_slic",
+        "leiden_slice",
+        "som"))) {
         stop("Segmentation method provided does not match available options \n
             Select from: \n
-            kmeans, louvain, leiden, slic")
+            kmeans, louvain, leiden, slic, louvain_slic, leiden_slic, som")
     } else {
         return(method)
     }
@@ -560,7 +565,7 @@ check_segment_trial <- function(vesalius_assay, trial = "last") {
             value = TRUE)
     }
     territories <- territories[, c("barcodes", "x", "y", trial)]
-    colnames(territories) <- c("barcodes", "x", "y", "segment")
+    colnames(territories) <- c("barcodes", "x", "y", "Segment")
     return(territories)
 }
 
@@ -673,7 +678,7 @@ check_group_value <- function(territories, group) {
         tmp <- paste(group_sub, collapse = " ")
         warning(paste("Only group territory(ies)", tmp,
             "is (are) present in the selected trial. \n
-            Vesalius will discard the other!"))
+            Vesalius will discard the others!"))
         return(group_sub)
     } else {
         return(group_sub)
@@ -744,4 +749,110 @@ check_template_source <- function(vesalius_assay, from, dimensions) {
     }
     comment(template) <- type
     return(template)
+}
+
+
+check_signal <- function(assay, signal, type) {
+    if (any(signal %in% c("variable_features", "all_features"))) {
+        signal <- switch(EXPR = signal,
+            "variable_features" = assay@meta$variable_features,
+            "all_features" = rownames(get_counts(assay, type)))
+        return(signal)
+    } else if (any(signal %in% rownames(get_counts(assay, type)))) {
+        int <- intersect(signal, rownames(get_counts(assay, type)))
+        if (length(int) == 0) {
+            stop("Selected features are not present in count matrix!")
+        } else {
+            return(int)
+        }
+    } else if (signal == "embeddings") {
+        return(signal)
+    } else {
+        stop("Unknown signal type! Select from:
+        variable_features, all_features, embeddings!
+        Alternitively: vector of feature names you are interested in.")
+    }
+}
+
+check_cost_matrix_validity <- function(custom_cost,
+    seed,
+    seed_signal,
+    query,
+    query_signal) {
+    #-------------------------------------------------------------------------#
+    # preping for loops just - there might be more than one but
+    #-------------------------------------------------------------------------#
+    if (is.null(custom_cost)){
+        return(NULL)
+    } else if (is(custom_cost, "matrix") || is(custom_cost, "data.frame")) {
+        custom_cost <- list(custom_cost)
+    } else if (!is(custom_cost, "list")){
+        stop("Unsupported format for custom cost.
+        R-base matrix or data.frame required")
+    }
+    #-------------------------------------------------------------------------#
+    # Comparing list size between query and custom matrix 
+    # Not sure how to best implement this 
+    # Always have the same number of matrices? Add naming? what about 
+    # different types of alignement? atm only aligning to 1 seed
+    #-------------------------------------------------------------------------#
+    if (length(query) != length(custom_cost)) {
+        stop("Number of query datasets is not equal to number of custom costs")
+    }
+    #-------------------------------------------------------------------------#
+    # comparing size for potential downsample
+    # This is also a big issue - downsample to match the smaller data set
+    # problems will arise with the current approach to reducing tensor 
+    # resolution. You will get bar_et_bar situations that will not be 
+    # present in original data. I think the resolution issue has been an issue
+    # for a lot of things. Keep this approach for now 
+    #-------------------------------------------------------------------------#
+    seeds <- vector("list", length(query))
+    seed_signals <- vector("list", length(query))
+    for (i in seq_along(query)) {
+        cost_mat <- custom_cost[[i]]
+        potential_dim <- c(nrow(query[[i]]), nrow(seed))
+        if (all(potential_dim != dim(cost_mat))) {
+            warning(paste0("Dimensions differ between matrices \n",
+            "Custom Cost = ", paste(dim(cost_mat), collapse = " "), "\n",
+            "Cost matrix = ", paste(potential_dim, collapse = " "), "\n",
+            "Checking for overlaps - and subsetting \n"),
+            immediate. = TRUE)
+        }
+        
+        row_over <- intersect(query[[i]]$barcodes, rownames(cost_mat))
+        col_over <- intersect(seed$barcodes, colnames(cost_mat))
+        if (length(row_over) == 0 || length(col_over) == 0) {
+            stop("No common cells between custom cost and cost matrix")
+        }
+        cost_mat <- cost_mat[match(row_over, rownames(cost_mat)),
+            match(col_over, colnames(cost_mat))]
+        custom_cost[[i]] <- cost_mat
+        query[[i]] <- query[[i]][query[[i]]$barcodes %in% row_over, ]
+        seeds[[i]] <- seed[seed$barcodes %in% col_over, ]
+        #---------------------------------------------------------------------#
+        # filtering cells but also genes since scaling will not work if all 
+        # counts are zeroes
+        #---------------------------------------------------------------------#
+        q <- query_signal[[i]][,
+            colnames(query_signal[[i]]) %in% row_over]
+        s <- seed_signal[,
+            colnames(seed_signal) %in% col_over]
+        gene_intersect <- intersect(
+            check_gene_overlap(q),
+            check_gene_overlap(s))
+        query_signal[[i]] <- q[rownames(q) %in% gene_intersect, ]
+        seed_signals[[i]] <- s[rownames(s) %in% gene_intersect, ]
+    }
+    return(list("cost" = custom_cost,
+        "seed" = seeds,
+        "seed_signal" = seed_signals,
+        "query" = query,
+        "query_signal" = query_signal))
+
+}
+
+check_gene_overlap <- function(signal) {
+    non_zero <- Matrix::rowSums(signal) != 0
+    return(rownames(signal)[non_zero])
 }

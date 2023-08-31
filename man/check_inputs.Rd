@@ -4,7 +4,7 @@
 \alias{check_inputs}
 \title{check input checks the validity of input data to build_vesalius_assay}
 \usage{
-check_inputs(counts, coordinates, image, assay, adjust_coordinates, verbose)
+check_inputs(counts, coordinates, image, assay, layer, verbose)
 }
 \arguments{
 \item{counts}{count matrix}
@@ -15,8 +15,8 @@ check_inputs(counts, coordinates, image, assay, adjust_coordinates, verbose)
 
 \item{assay}{string with assay name}
 
-\item{adjust_coordinates}{string describing how coordinates should be
-adjusted (origin or norm)}
+\item{layer}{int [1, Inf[ - depth layer when more than on assay is
+present}
 
 \item{verbose}{logical if progress message should be outputed.}
 }

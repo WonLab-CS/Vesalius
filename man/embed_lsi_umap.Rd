@@ -4,12 +4,20 @@
 \alias{embed_lsi_umap}
 \title{embed lsi}
 \usage{
-embed_lsi_umap(counts, dimensions, remove_lsi_1, verbose = TRUE)
+embed_lsi_umap(
+  counts,
+  dimensions,
+  features = NULL,
+  remove_lsi_1,
+  verbose = TRUE
+)
 }
 \arguments{
 \item{counts}{Seurat object containing normalised counts}
 
 \item{dimensions}{numeric for number of latent space dimensions to use}
+
+\item{features}{custom vector of features}
 
 \item{remove_lsi_1}{logical if first LSI dimenions should be removed}
 

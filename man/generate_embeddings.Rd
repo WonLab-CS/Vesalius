@@ -12,8 +12,9 @@ generate_embeddings(
   dimensions = 30,
   tensor_resolution = 1,
   filter_grid = 0.01,
-  filter_threshold = 0.995,
+  filter_threshold = 1,
   nfeatures = 2000,
+  features = NULL,
   min_cutoff = "q5",
   remove_lsi_1 = TRUE,
   verbose = TRUE
@@ -45,6 +46,8 @@ outlier beads. Defined as a proportion of total image size. Default = 0.1}
 threshold at which tiles should be retained (seed details)}
 
 \item{nfeatures}{numeric describing the number of variable features to use.}
+
+\item{features}{custom set of features to generate embeddings}
 
 \item{min_cutoff}{only used when dimensionality reduction method is
 LSI or LSI_UMAP

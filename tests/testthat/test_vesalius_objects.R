@@ -30,21 +30,13 @@ test_that("Vesalius build single assay", {
     expect_error(build_vesalius_assay())
     expect_error(build_vesalius_assay(counts = counts))
 
-    # checking coordinates options 
-    expect_s4_class(build_vesalius_assay(coordinates,
-        adjust_coordinates = "norm"),
-        "vesalius_assay")
-    expect_error(build_vesalius_assay(coordinates,
-        adjust_coordinates = "funky"))
     
     #testing output
     tmp <- build_vesalius_assay(coordinates, counts)
     expect_output(show(tmp))
 })
 
-test_that("Vesalius build with image", {
-    ##
-})
+
 
 test_that("Adding counts to vesalius_assay", {
     # checking if count matrix can be added
@@ -126,5 +118,20 @@ test_that("Adding custom embeddings", {
     # We expect the same thing even if it is truncated
     expect_warning(add_embeddings(vesalius, embeds[-(1:20), ]))
     # Add sanity checks to make sure that barcodes overlap
+})
+
+test_that("Scale of coordinates",{
+    expect_s4_class(build_vesalius_assay(coordinates,
+        counts), "vesalius_assay")
+    expect_s4_class(build_vesalius_assay(coordinates,
+        counts,
+        scale = 15), "vesalius_assay")
+    vesalius <- build_vesalius_assay(coordinates,
+        counts, scale = "auto")
+    expect_equal(vesalius@meta$scale$scale, 23.0623695)
+    vesalius <- build_vesalius_assay(coordinates,
+        counts, scale = 15)
+    expect_equal(vesalius@meta$scale$scale, 15)
+    expect_equal(vesalius@meta$unit$unit, "um")
 })
 

@@ -4,13 +4,15 @@
 \alias{create_alpha}
 \title{create alpha value if territories need to be highlighted}
 \usage{
-create_alpha(territories, highlight)
+create_alpha(territories, highlight, alpha)
 }
 \arguments{
 \item{territories}{vesalius territories taken from a vesalius_assay}
 
 \item{highlight}{numeric vector describing which territories should 
 be highlighted}
+
+\item{alpha}{tranaparent factor}
 }
 \value{
 vector of alpha values

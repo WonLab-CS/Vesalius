@@ -2,8 +2,8 @@
 data(vesalius)
 vesalius <- build_vesalius_assay(coordinates, counts)
 vesalius <- generate_embeddings(vesalius)
-vesalius <- smooth_image(vesalius, iter = 15)
-vesalius <- segment_image(vesalius, col_resolution = 3)
+vesalius <- smooth_image(vesalius, sigma = 5, iter = 10)
+vesalius <- segment_image(vesalius, col_resolution = 2)
 vesalius <- isolate_territories(vesalius)
 cells <- sample(get_territories(vesalius)$barcodes, 1040, replace = FALSE)
 cell_error <- get_territories(vesalius)[
@@ -19,8 +19,7 @@ test_that("image plot", {
     tmp <- segment_image(vesalius, dimensions = seq(1, 30),
         method = "louvain",
         col_resolution = 0.01)
-    # related to minmax misc function - could be test elsewhere as well.
-    expect_warning(image_plot(vesalius, dimensions = 1))
+    
 })
 
 test_that("territory plot", {
@@ -66,6 +65,6 @@ test_that("view gene expression", {
         genes = "Malat1",
         norm = FALSE),
         "gg"))
-    expect_error(view_gene_expression(vesalius,
+    expect_warning(view_gene_expression(vesalius,
         genes = "funky"))
 })

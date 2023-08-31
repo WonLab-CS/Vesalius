@@ -41,6 +41,8 @@ message_switch <- function(type, verbose = TRUE, ...) {
             "===>", args$comp_type, "in", args$assay, "<===\n")),
         "pca_tensor" = cat(paste(t,
             " Running Principal Component Analysis \n")),
+        "nmf_tensor" = cat(paste(t,
+           " Running Non-Negative Matrix Factorization \n")),
         "pca_rgb_tensor" = cat(paste(t,
             " Converting PCA Embedding Values to gray scale \n")),
         "pcal_rgb_tensor" = cat(paste(t,
@@ -87,6 +89,8 @@ message_switch <- function(type, verbose = TRUE, ...) {
             " Checking Coordinates in", args$assay, "\n")),
         "check_counts" = cat(paste(t,
             " Checking Counts in", args$assay, "\n")),
+        "scale" = cat(paste(t,
+            " Calculating Assay scale from coordinates\n")),
         "vtc" = cat(paste(t,
             " Converting Vesalius to Image\n")),
         "ctv" = cat(paste(t,
@@ -111,12 +115,62 @@ message_switch <- function(type, verbose = TRUE, ...) {
             " Connecting Super Pixels\n")),
         "signal" = cat(paste(t,
             " Extracting assay signal\n")),
+        "landmarks" = cat(paste(t,
+            " Finding landmarks in", args$assay, "\n")),
+        "optimal_land" = cat(paste(t,
+            " Finding Optimal Landmarks\n")),
         "slic_graph" = cat(paste(t,
-            " Generate SLIC graph in", args$data, "\n")),
+            " Generating mesh graph in", args$data, "\n")),
+        "mesh" = cat(paste(t,
+            " Generating Mesh \n")),
         "score_graph" = cat(paste(t,
             " Scoring graphs\n")),
         "matching_graphs" = cat(paste(t,
-            " Matching and Mapping Graphs\n"))
+            " Matching Graphs\n")),
+        "hungarian" = cat(paste(t,
+            " Solving Assignment Problem\n")),
+        "div_hungarian" = cat(paste(t,
+            " Solving Assignment Problem with Divide & Conquer\n")),
+        "feature_cost" = cat(paste(t,
+            " Computing feature cost in", args$assay, "\n")),
+        "neighbor_cost" = cat(paste(t,
+            " Computing neighborhood cost in", args$assay, "\n")),
+        "distance_cost" = cat(paste(t,
+            " Computing distance cost in", args$assay, "\n")),
+        "spix_nn" = cat(paste(t,
+            " Finding Spatial Mutal Nearest Neighbors\n")),
+        "cor_mat" = cat(paste(t,
+            " Computing Cross-Correlation Matrix\n")),
+        "get_traj" = cat(paste(t,
+            " Getting anchor trajectories\n")),
+        "apply_traj" = cat(paste(t,
+            " Applying anchor trajectories to cells\n")),
+        "area_comp" = cat(paste(t,
+            " Computing Territory Area from", args$patches, "patches\n"))
+        )
+    } else {
+        return(NULL)
+    }
+}
+
+
+dyn_message_switch <- function(type, verbose = TRUE, ...) {
+    args <- list(...)
+    t <- Sys.time()
+    if (verbose) {
+        switch(EXPR = type,
+        "score_graph" = cat(paste(t, " Scoring", args$assay, "graph: ",
+            args$prog, "%   \r")),
+        "integrate_graph" = cat(paste(t, " Integrating graph: ",
+            args$prog, "%   \r")),
+        "graph_matching" = cat(paste(t, " Optimising graph match: ",
+            args$prog, "%   \r")),
+        "cost_mat" = cat(paste(t, " Preparing cost matrix: ",
+            args$prog, "%   \r")),
+        "spix_nn" = cat(paste(t, " Mapped SPIX: ",
+            args$prog, "%   \r")),
+        "hung" = cat(paste(t, " Solving Assignment Problem: ",
+            args$prog, "%   \r"))
         )
     } else {
         return(NULL)

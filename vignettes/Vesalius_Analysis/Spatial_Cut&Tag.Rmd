@@ -1,9 +1,0 @@
----
-title: "Vesalius: Spatial Epigenomics - Cut & Tag"
-author: Patrick C.N. Martin
-output:
-  word_document: default
-  html_document: default
----
-
-

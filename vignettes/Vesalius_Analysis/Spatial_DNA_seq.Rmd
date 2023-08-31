@@ -73,7 +73,7 @@ To facilitate the analysis process, we use input/output folder to store and save
 For visualization purposes, we also load a few extra packages. We also load the `future` package
 to limit the number of cores being used. 
 
-```{r env_set_ip, eval = TRUE, echo = TRUE}
+```{r env_set_ip, eval = FALSE, echo = TRUE}
 # Load libraries and set seed
 library(vesalius, lib.loc = "/common/martinp4/R")
 library(pwr, lib.loc = "/common/martinp4/R")
@@ -121,7 +121,7 @@ Instead you can use `plan(multisession, workers = 10)`
 Both of the slide-DNA and slide-RNA comme in sparse format. We will start with the Slide-DNA-seq
 analysis. 
 
-```{r loading_and_building, eval = TRUE, echo  = TRUE}
+```{r loading_and_building, eval = FALSE, echo  = TRUE}
 spatial_coordinates_dna <- read.table(spatial_coordinates_dna,
     header = TRUE, sep = ",")
 counts_dna <- read.table(counts_dna,
@@ -141,7 +141,7 @@ head(counts_dna)
 
 Once the data is loaded, we can create a `vesalius_assay` object.
 
-```{r build_ves_assay, eval = TRUE, echo = TRUE}
+```{r build_ves_assay, eval = FALSE, echo = TRUE}
 vesalius_dna <- build_vesalius_assay(coordinates = spatial_coordinates_dna,
   counts = counts_dna,
   assay = "spatial_genomics",
@@ -170,7 +170,7 @@ generating embeddings. These methods were developped for
 (Single-Cell chromatin state)[https://www.nature.com/articles/s41592-021-01282-5] analysis and 
 are better suited for super sparse data. 
 
-```{r dna_embeds, eval = TRUE, echo = TRUE}
+```{r dna_embeds, eval = FALSE, echo = TRUE}
 vesalius_dna <- generate_embeddings(vesalius_dna,
     dim_reduction = "LSI",
     normalisation = "TFIDF",
@@ -201,7 +201,7 @@ dimesnionaility space.
 Each latent space dimension will contain spatially expression patterns and we can 
 visualise this through the `image_plot` function. 
 
-```{ r viz_grey_dna, eval = TRUE, echo = TRUE}
+```{ r viz_grey_dna, eval = FALSE, echo = TRUE}
 lsi_embedding_dna <- vector("list",  30)
 for (i in seq(1, 30)){
     lsi_embedding_dna[[i]] <- image_plot(vesalius_dna,
@@ -218,7 +218,7 @@ for analysis.
 
 We will run the image processing only on the first 3 dimensions.
 
-```{r image_process_dna, eval = TRUE, echo = TRUE}
+```{r image_process_dna, eval = FALSE, echo = TRUE}
 vesalius_dna <- regularise_image(vesalius_dna,
     dimensions = seq(1, 3),
     verbose = FALSE)
@@ -237,7 +237,7 @@ vesalius_dna <- smooth_image(vesalius_dna,
 
 We can viszualise each dimension in the image tensor after image processing.
 
-```{r grey_scale_processed, eval = TRUE, echo = TRUE, fig.width = 12, fig.height = 4}
+```{r grey_scale_processed, eval = FALSE, echo = TRUE, fig.width = 12, fig.height = 4}
 lsi_embedding_dna <- vector("list",  3)
 
 for (i in seq(1, 3)){
@@ -267,7 +267,7 @@ The isolation of territories is achieved by a combination of image segmentation 
 of image segments. By default, we use *kmeans* for image segmentation. This produces a series of 
 image segments that can then be further isolated if they are sperated in 2D space. 
 
-```{r image_seg, eval = TRUE, echo = TRUE}
+```{r image_seg, eval = FALSE, echo = TRUE}
 vesalius_dna <- segment_image(vesalius_dna,
     dimensions = seq(1, 3),
     method = "kmeans",
@@ -294,7 +294,7 @@ images.
 
 We can visualise the territories obtain in Slide-DNA-seq.
 
-```{r viz_dna_ter, eval = TRUE, echo = TRUE, fig.width = 9.5, fig.height = 8}
+```{r viz_dna_ter, eval = FALSE, echo = TRUE, fig.width = 9.5, fig.height = 8}
 dna_ter <- territory_plot(vesalius_dna) + +
   labs(title = "Clones")
 dna_ter
@@ -311,7 +311,7 @@ with respect to cancer clones.
 
 For this, we will process Slide-RNA-seq using the 1st 16 PCs:
 
-```{r quick_rna, eval = TRUE, echo = TRUE}
+```{r quick_rna, eval = FALSE, echo = TRUE}
 spatial_coordinates_rna <- read.csv(spatial_coordinates_rna, header = TRUE)
 colnames(spatial_coordinates_rna) <- c("barcodes", "x", "y")
 counts_rna <- read.table(counts_rna, sep = ",", header = FALSE)

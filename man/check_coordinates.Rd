@@ -5,19 +5,14 @@
 \title{check if coordinates are of the correct type and format and
 adjust coordinate value to remove white edge space}
 \usage{
-check_coordinates(
-  coordinates,
-  assay,
-  adjust_coordinates = c("origin", "norm"),
-  verbose
-)
+check_coordinates(coordinates, assay, layer, verbose)
 }
 \arguments{
 \item{coordinates}{coordinate data}
 
 \item{assay}{string - assay name}
 
-\item{adjust_coordinates}{string - how should coordinates be adjusted}
+\item{layer}{int [1, Inf[ - depth layer}
 
 \item{verbose}{logical if progress message should be printed}
 }
