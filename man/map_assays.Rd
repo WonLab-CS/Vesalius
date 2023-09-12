@@ -7,14 +7,19 @@
 map_assays(
   seed_assay,
   query_assay,
+  neighborhood = "knn",
   k = 20,
+  radius = 0.05,
+  depth = 1,
   dimensions = seq(1, 30),
+  norm = "noise",
   mapping = "div",
   batch_size = 1000,
   signal = "variable_features",
   use_norm = "raw",
   custom_cost = NULL,
   overwrite = FALSE,
+  merge = FALSE,
   verbose = TRUE
 )
 }
@@ -23,8 +28,17 @@ map_assays(
 
 \item{query_assay}{vesalius_assay objecy - data to map}
 
+\item{neighborhood}{character - how should the neighborhood be selected?
+"knn", "radius", "depth" (See details)}
+
 \item{k}{int ]2, n_points] number of neareset neighbors to be considered for
 neighborhodd computation.}
+
+\item{radius}{numeric ]0,1[ proportion of max distance between points 
+to consider for the neighborhood}
+
+\item{depth}{int [1, NA] graph depth from cell to consider from neighborhood
+(See details)}
 
 \item{dimensions}{Int vector containing latent space dimensions to use}
 
@@ -73,7 +87,15 @@ The second step is to create a cost matrix. The cost matrix computes the
 distance (using the signal) betwwen each point in the seed and query. It
 also includes the distance in signal between each points neighborhoods.
 The neighborhood singal is computed by averaging the signal across k
-nearest neighbors in space. This cost matrix is then parsed to a
+nearest neighbors in space if using Knn. If using radius, the neighborhood
+will be computed using all cells within a definined radius. 
+If using depth, coordinates will be used to create a voronoi graph. 
+The neighborhood will be composed of all cells with "depth" steps i.e.
+how many nodes in the graph do you need to go through to get to taget cell?
+A depth of one will contain all cells in direct contact with center cell. 
+
+
+This cost matrix is then parsed to a
 Kuhn–Munkres algorithm that will generate point pairs that minimize
 the overall cost. 
 

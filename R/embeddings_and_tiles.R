@@ -83,7 +83,7 @@ generate_embeddings <- function(vesalius_assay,
   use_count = "raw",
   dimensions = 30,
   tensor_resolution = 1,
-  filter_grid = 0.01,
+  filter_grid = 1,
   filter_threshold = 1,
   nfeatures = 2000,
   features = NULL,
@@ -711,9 +711,9 @@ raw_norm <- function(counts, use_count = "raw") {
 log_norm <- function(counts, nfeatures) {
   counts <- Seurat::NormalizeData(counts, verbose = FALSE)
   counts <- Seurat::ScaleData(counts, verbose = FALSE)
-  counts <- Seurat::FindVariableFeatures(counts,
+  counts <- suppressWarnings(Seurat::FindVariableFeatures(counts,
     nfeatures = nfeatures,
-    verbose = FALSE)
+    verbose = FALSE))
   norm_counts <- list(Seurat::GetAssayData(counts, slot = "data"))
   names(norm_counts) <- "log_norm"
   return(list("SO" = counts, "norm" = norm_counts))
@@ -750,7 +750,8 @@ int_sctransform <- function(counts, nfeatures) {
 tfidf_norm <- function(counts, min_cutoff) {
   counts <- Signac::RunTFIDF(counts, verbose = FALSE)
   counts <- Seurat::ScaleData(counts, verbose = FALSE)
-  counts <- Signac::FindTopFeatures(counts, min.cutoff = min_cutoff)
+  counts <- suppressWarnings(
+    Signac::FindTopFeatures(counts, min.cutoff = min_cutoff))
   norm_counts <- list(Seurat::GetAssayData(counts, slot = "data"))
   names(norm_counts) <- "TFIDF"
   return(list("SO" = counts, "norm" = norm_counts))

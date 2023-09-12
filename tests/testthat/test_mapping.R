@@ -66,6 +66,27 @@ test_that("input sanity checks", {
         overwrite = FALSE
         ),"vesalius_assay")
 })
+
+test_that("horizontal - neighborhood", {
+    # check that we can get exact match
+    expect_s4_class(map_assays(vesalius,
+        jitter_ves,
+        signal = "variable_features",
+        neighborhood = "knn",
+        k = 10), "vesalius_assay")
+    # checks?
+    expect_s4_class(map_assays(vesalius,
+        jitter_ves,
+        signal = "variable_features",
+        neighborhood = "radius",
+        radius = 20), "vesalius_assay")
+    expect_s4_class(map_assays(vesalius,
+        jitter_ves,
+        signal = "variable_features",
+        neighborhood = "depth",
+        depth = 2), "vesalius_assay")
+
+})
 test_that("horizontal - exact", {
     # check that we can get exact match
     expect_s4_class(map_assays(vesalius,

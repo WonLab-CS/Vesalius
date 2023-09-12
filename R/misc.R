@@ -155,6 +155,29 @@ cart_coord <- function(d, a) {
   return(list("delta_x" = delta_x, "delta_y" = delta_y))
 }
 
+graph_from_voronoi <- function(centers) {
+    voronoi <- deldir::deldir(x = as.numeric(centers$x),
+        y = as.numeric(centers$y))$delsgs
+    center <- seq_len(nrow(centers))
+    graph <- lapply(center, function(idx, voronoi){
+        tri <- voronoi %>% filter(ind2 == idx)
+        tri <- c(tri$ind1, idx)
+        graph <- data.frame("from" = rep(idx, length(tri)),
+            "to" = tri)
+        return(graph)
+    }, voronoi = voronoi) %>%
+    do.call("rbind", .)
+    return(graph)
+}
+
+#'@importFrom igraph graph_from_data_frame distances
+graph_path_length <- function(graph) {
+    gr <- igraph::graph_from_data_frame(graph, directed = FALSE)
+    path_length <- igraph::distances(gr)
+    return(path_length)
+}
+
+
 #-----------------------------/ Scaling  /----------------------------------#
 #' calculate scale of assay
 #' @param coordinates Spatial coordinates as data frame
