@@ -20,6 +20,17 @@ jitter_ves <- equalize_image(jitter_ves, sleft = 5, sright = 5)
 jitter_ves <- segment_image(jitter_ves, col_resolution = 2)
 jitter_ves <- isolate_territories(jitter_ves)
 
+
+noise_coord <- data.frame("barcodes" = paste0("bar_", 1:1000),
+    "x" = runif(1000, min = 1, max =  1000),
+    "y" = runif(1000, min = 1, max =  1000))
+noise_counts <- round(runif(1000 * nrow(counts), min = 0, max = 100))
+dim(noise_counts) <- c(nrow(counts), 1000)
+colnames(noise_counts) <- noise_coord$barcodes
+rownames(noise_counts) <- rownames(counts)
+noise_ves <- build_vesalius_assay(noise_coord, noise_counts)
+noise_ves <- generate_embeddings(noise_ves)
+
 gene_vec <- sample(rownames(counts), 200)
 
 
@@ -114,5 +125,18 @@ test_that("horizontal - div", {
         map = "div"), "vesalius_assay")
 })
 
-
+test_that("noise based norm", {
+    n <- map_assays(vesalius,
+        noise_ves,
+        norm = "minmax",
+        signal = "variable_features",
+        map = "exact")
+    n_p <- n[[1]]@meta$mapping_probability
+    d <- map_assays(vesalius,
+        jitter_ves,
+        norm = "minmax",
+        signal = "variable_features",
+        map = "exact")
+    d_p <- d[[1]]@meta$mapping_probability
+})
 

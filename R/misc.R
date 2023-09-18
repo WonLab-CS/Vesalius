@@ -118,6 +118,35 @@ chunk <- function(x, n) {
 }
 
 
+chunkable <- function(seed, query) {
+    seed_names <- colnames(seed)
+    seed <- lapply(seq(1, ncol(seed)), function(i, seed){
+        return(seed[, i])
+    }, seed = seed)
+    query_names <- colnames(query)
+    query <- lapply(seq(1, ncol(query)), function(i, query){
+        return(query[, i])
+    }, query = query)
+    chunk <- vector("list", length(seed) * length(query))
+    chunk_names <- rep("", length(seed) * length(query))
+    count <- 1
+    for (i in seq_along(seed)){
+        for(j in seq_along(query)) {
+            chunk[[count]] <- list("seed" = seed[[i]], "query" = query[[j]])
+            chunk_names[count] <- paste0(seed_names[i],"_", query_names[j])
+            count <- count + 1
+        }
+    }
+    names(chunk) <- chunk_names
+    return(chunk)
+}
+
+clip_cost <- function(cost) {
+    cost[which(cost <= 0, arr.ind = TRUE)] <- 0
+    return(clip_cost)
+}
+
+
 #-------------------------/ Aligning Assays /--------------------------------#
 
 polar_angle <- function(coord_x, coord_y, center_x, center_y) {

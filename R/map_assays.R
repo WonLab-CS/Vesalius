@@ -255,7 +255,8 @@ point_mapping <- function(query_signal,
             radius)
         message_switch("neighbor_cost", verbose, assay = assay)
         cost <- cost + feature_dist(seed_signal, query_signal, norm, batch_size)
-    }
+    } 
+    
     #---------------------------------------------------------------------#
     # devide cost matrix
     #---------------------------------------------------------------------#
@@ -273,7 +274,7 @@ point_mapping <- function(query_signal,
         seed,
         query,
         verbose)
-    return(aligned)
+    return(list("aligned" = aligned, "prob" = prob))
 }
 
 #' compute the distance between seed and query signals
@@ -281,7 +282,27 @@ point_mapping <- function(query_signal,
 #' @param query query signal
 #' @return matrix with query as rows and seed as colmuns
 #' @importFrom RANN nn2
+
 feature_dist <- function(seed,
+    query,
+    norm = "noise",
+    batch_size = 1000) {
+    chunky <- chunkable(seed, query)
+    chunky <- lapply(chunky, function(chunk){
+        co <- cor(chunk$seed, chunk$query)
+    })
+    chunky <- unlist(chunky)
+    dim(chunky) <- c(ncol(query), ncol(seed))
+    rownames(chunky) <- colnames(query)
+    colnames(chunky) <- colnames(seed)
+    chunky <- clip_cost(chunky)
+    chunky <- 1 - chunky
+    return(chunky)
+}
+
+
+
+feature_dist_stable <- function(seed,
     query,
     norm = "noise",
     batch_size = 1000) {
@@ -308,8 +329,13 @@ feature_dist <- function(seed,
     return(box)
 }
 
-normalize_cost <- function(box, seed, query, batch_size, norm) {
-    if (norm == "noise") {
+normalize_cost <- function(box, seed, query, batch_size, norm = "noise") {
+    if (norm == "entropy") {
+        prob <- convert_to_prob(box)
+        box <- 1 - prob
+    } else if (norm == "minmax") {
+        box <- (box - min(box)) / (max(box) - min(box))
+    } else if (norm == "noise") {
         n_features <- max(c(nrow(seed), nrow(query)))
         max_counts <- max(c(max(seed), max(query)))
         min_counts <- min(c(min(seed), min(query)))
@@ -320,12 +346,20 @@ normalize_cost <- function(box, seed, query, batch_size, norm) {
         noise <- RANN::nn2(data = noise,
             query = t(cbind(seed, query)),
             k = batch_size)$nn.dists
-        noise <- mean(rowMeans(noise))
+        noise <- max(noise)
         box <- box / noise
-    } else if (norm == "minmax") {
-        box <- (box - min(box)) / (max(box) - min(box))
+    } else if ( norm == "none"){
+        return(box)
     }
     return(box)
+}
+
+convert_to_prob <- function(cost) {
+    prob <- max(cost) - cost
+    for (i in seq_len(nrow(prob))) {
+        prob[i, ] <- prob[i, ] / ncol(cost)
+    }
+    return(prob)
 }
 
 
@@ -538,9 +572,9 @@ align_index <- function(matched_index,
 integrate_map <- function(aligned_graph,
     query,
     verbose = TRUE) {
-    #-------------------------------------------------------------------------#
-    # rebuild vesalius
-    #-------------------------------------------------------------------------#
+    prob <- list(aligned_graph$prob)
+    names(prob) <- "mapping_probability"
+    aligned_graph <- aligned_graph$aligned
     local_counts <- get_counts(query, type = "raw")
     local_counts <- local_counts[,
                 colnames(local_counts) %in% aligned_graph$barcodes]
@@ -550,6 +584,7 @@ integrate_map <- function(aligned_graph,
         assay = "integrated",
         layer = max(query@meta$orig_coord$z) + 1,
         verbose = FALSE)
+    query@meta <- c(query@meta, prob)
     return(query)
 }
 
