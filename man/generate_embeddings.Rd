@@ -11,7 +11,7 @@ generate_embeddings(
   use_count = "raw",
   dimensions = 30,
   tensor_resolution = 1,
-  filter_grid = 0.01,
+  filter_grid = 1,
   filter_threshold = 1,
   nfeatures = 2000,
   features = NULL,

@@ -118,6 +118,35 @@ chunk <- function(x, n) {
 }
 
 
+chunkable <- function(seed, query) {
+    seed_names <- colnames(seed)
+    seed <- lapply(seq(1, ncol(seed)), function(i, seed){
+        return(seed[, i])
+    }, seed = seed)
+    query_names <- colnames(query)
+    query <- lapply(seq(1, ncol(query)), function(i, query){
+        return(query[, i])
+    }, query = query)
+    chunk <- vector("list", length(seed) * length(query))
+    chunk_names <- rep("", length(seed) * length(query))
+    count <- 1
+    for (i in seq_along(seed)){
+        for(j in seq_along(query)) {
+            chunk[[count]] <- list("seed" = seed[[i]], "query" = query[[j]])
+            chunk_names[count] <- paste0(seed_names[i],"_", query_names[j])
+            count <- count + 1
+        }
+    }
+    names(chunk) <- chunk_names
+    return(chunk)
+}
+
+clip_cost <- function(cost) {
+    cost[which(cost <= 0, arr.ind = TRUE)] <- 0
+    return(clip_cost)
+}
+
+
 #-------------------------/ Aligning Assays /--------------------------------#
 
 polar_angle <- function(coord_x, coord_y, center_x, center_y) {
@@ -154,6 +183,29 @@ cart_coord <- function(d, a) {
   }
   return(list("delta_x" = delta_x, "delta_y" = delta_y))
 }
+
+graph_from_voronoi <- function(centers) {
+    voronoi <- deldir::deldir(x = as.numeric(centers$x),
+        y = as.numeric(centers$y))$delsgs
+    center <- seq_len(nrow(centers))
+    graph <- lapply(center, function(idx, voronoi){
+        tri <- voronoi %>% filter(ind2 == idx)
+        tri <- c(tri$ind1, idx)
+        graph <- data.frame("from" = rep(idx, length(tri)),
+            "to" = tri)
+        return(graph)
+    }, voronoi = voronoi) %>%
+    do.call("rbind", .)
+    return(graph)
+}
+
+#'@importFrom igraph graph_from_data_frame distances
+graph_path_length <- function(graph) {
+    gr <- igraph::graph_from_data_frame(graph, directed = FALSE)
+    path_length <- igraph::distances(gr)
+    return(path_length)
+}
+
 
 #-----------------------------/ Scaling  /----------------------------------#
 #' calculate scale of assay

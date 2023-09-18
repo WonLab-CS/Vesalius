@@ -85,43 +85,68 @@ map_assays <- function(seed_assay,
     radius = 0.05,
     depth = 1,
     dimensions = seq(1, 30),
+    norm = "noise",
     mapping = "div",
     batch_size = 1000,
     signal = "variable_features",
     use_norm = "raw",
     custom_cost = NULL,
     overwrite = FALSE,
+    merge = FALSE,
     verbose = TRUE) {
     simple_bar(verbose)
     #-------------------------------------------------------------------------#
-    # First let's get singal
+    # making sure we are formatted to accomodate lapplys and mapplys
     #-------------------------------------------------------------------------#
-    if (!is(query_assay, "list")) {
-        query_assay <- list(query_assay)
-    }
+    query_assay <- check_query_assay_validity(query_assay)
+    custom_cost <- check_cost_matrix_validity(custom_cost, query_assay)
+    
+    #-------------------------------------------------------------------------#
+    # First let's get singal
+    # to minimise the memory print - only one seed signal and list for query
+    #-------------------------------------------------------------------------#
     signal <- get_features(seed_assay = seed_assay,
         query_assay = query_assay,
         signal = signal,
         dimensions = dimensions,
         use_norm = use_norm,
         verbose = verbose)
-    mapped <- point_mapping(seed = seed_assay,
-        seed_signal = signal$seed,
-        query = query_assay,
+    #-------------------------------------------------------------------------#
+    # Next we map points in the query assay onto the seed assay
+    #-------------------------------------------------------------------------#
+    mapped <- mapply(point_mapping,
         query_signal = signal$query,
-        k = k,
-        mapping = mapping,
-        batch_size = batch_size,
-        custom_cost = custom_cost,
-        overwrite = overwrite,
-        verbose = verbose)
-    integrated <- integrate_graph(mapped,
+        query_assay = query_assay,
+        cost = custom_cost,
+        MoreArgs = list(
+            seed_signal = signal$seed,
+            seed_assay = seed_assay,
+            neighborhood = neighborhood,
+            k = k,
+            radius = radius,
+            depth = depth,
+            batch_size = batch_size,
+            norm = norm,
+            mapping = mapping,
+            overwrite = overwrite,
+            verbose = verbose),
+        SIMPLIFY = FALSE)
+    #-------------------------------------------------------------------------#
+    # This is where we actually create a return object that can be used
+    # for integrate analysis 
+    # this functions needs to be updated
+    #-------------------------------------------------------------------------#
+    integrated <- mapply(integrate_map,
+        mapped,
         query_assay,
-        verbose = verbose)
+        MoreArgs = list(verbose = verbose),
+        SIMPLIFY = FALSE)
+    if (merge) {
+        integrated <- merge_assay(integrated)
+    }
     simple_bar(verbose)
     return(integrated)
 }
-
 #' get cell signal from vesalius assays
 #' @param seed_assay  vesalius_assay object
 #' @param query_assay vesalius_assay object
@@ -175,183 +200,81 @@ get_features <- function(seed_assay,
 }
 
 #' mapping points between data sets
-#' @param seed vesalius_assay object
-#' @param seed_signal processed seed signal from seed assay
-#' @param query vesalius_assay object
 #' @param query_signal processed query signal from query assay
-#' @param mapping exact mapping or div (divide and conquer)
-#' @param k int size of niche (knn)
-#' @param batch_size int number of points in each query batch
+#' @param query vesalius_assay object
 #' @param custom_cost matrix - matrix of size n (query cells) by p (seed cells)
 #' containing custom cost matrix. Used instead of vesalius cost matrix
+#' @param seed_signal processed seed signal from seed assay
+#' @param seed vesalius_assay object
+#' @param k int size of niche (knn)
+#' @param radius 0.05 proportion of max distance to use as radius for 
+#' neighborhood
+#' @param depth graph path depth to condsider for neighborhood. 
+#' @param batch_size int number of points in each query batch
+#' @param mapping exact mapping or div (divide and conquer)
 #' @param overwrite logical - if custom_cost is not NULL, should this matrix
 #' be added to the vesalius matrix or should it overwrite it completely.
 #' @param verbose logical - out progress to console
 #' @return list of matched and aligned coordinates in query
 #' @importFrom future.apply future_lapply
-point_mapping <- function(seed,
+point_mapping <- function(query_signal,
+    query_assay,
+    cost,
     seed_signal,
-    query,
-    query_signal,
-    mapping = "div",
+    seed_assay,
+    neighborhood = "knn",
     k = 20,
+    radius = 0.05,
+    depth = 1,
     batch_size = 1000,
-    custom_cost = NULL,
+    norm = "noise",
+    mapping = "div",
     overwrite = FALSE,
     verbose = TRUE) {
-    #-------------------------------------------------------------------------#
-    # first we compute super pixels from embedding values
-    # Note this could be updated to parallel
-    #-------------------------------------------------------------------------#
-    seed <- get_tiles(seed) %>% filter(origin == 1)
-    query <- lapply(query, get_tiles) %>% lapply(., filter, origin == 1)
-    #-------------------------------------------------------------------------#
-    # size based filter??
-    # just checking at this point
-    #-------------------------------------------------------------------------#
-    custom_cost <- check_cost_matrix_validity(custom_cost,
-        seed,
+    assay <- get_assay_names(query_assay)
+    check_cost_validity(cost,
+        seed_assay,
         seed_signal,
-        query,
+        query_assay,
         query_signal)
-    #-------------------------------------------------------------------------#
-    # Next we create a scoring table for each spix
-    #-------------------------------------------------------------------------#
-    aligned_indices <- vector("list", length(query))
-    for (i in seq_along(query)) {
-        if (!is.null(custom_cost) && !overwrite) {
-            cost_mat <- compute_cell_cost(custom_cost$seed_signal[[i]],
-                custom_cost$query_signal[[i]],
-                i,
-                verbose)
-            
-            cost_mat <- compute_neighbor_cost(cost_mat,
-                custom_cost$seed[[i]],
-                custom_cost$query[[i]],
-                custom_cost$seed_signal[[i]],
-                custom_cost$query_signal[[i]],
-                k,
-                i,
-                verbose)
-            cost_mat <- cost_mat + custom_cost$cost[[i]]
-        } else if (!is.null(custom_cost) && overwrite) {
-            #-----------------------------------------------------------------#
-            # Check if we parse a custom matrix or let vesalius compute the 
-            #cost
-            #-----------------------------------------------------------------#
-           
-            cost_mat <- custom_cost$cost[[i]]
-        } else {
-            cost_mat <- compute_cell_cost(seed_signal,
-                query_signal[[i]],
-                i,
-                verbose)
-            cost_mat <- compute_neighbor_cost(cost_mat,
-                seed,
-                query[[i]],
-                seed_signal,
-                query_signal[[i]],
-                k,
-                i,
-                verbose)
-        }
-        #---------------------------------------------------------------------#
-        # devide cost matrix
-        #---------------------------------------------------------------------#
-        if (mapping == "div") {
-            message_switch("div_hungarian", verbose)
-            cost_mat <- divide_and_conquer(cost_mat, batch_size)
-            matched_indices <- match_index_batch(seq_along(cost_mat),
-                cost_mat)
-            matched_indices <- concat_matches(matched_indices)
-        } else {
-            message_switch("hungarian", verbose)
-            matched_indices <- match_index(cost_mat)
-        }
-        if (!is.null(custom_cost)) {
-             aligned_indices[[i]] <- align_index(matched_indices,
-                custom_cost$seed[[i]],
-                custom_cost$query[[i]],
-                verbose)
-        } else {
-           aligned_indices[[i]] <- align_index(matched_indices,
-                seed,
-                query[[i]],
-                verbose)
-        }
-        
+    if (!overwrite) {
+        message_switch("feature_cost", verbose, assay = assay)
+        cost <- cost + feature_dist(seed_signal, query_signal, norm, batch_size)
+        message_switch("get_neigh", verbose, assay = assay)
+        seed_signal <- get_neighborhood(seed,
+            seed_signal,
+            neighborhood,
+            k,
+            depth,
+            radius)
+        query_signal <- get_neighborhood(query,
+            query_signal,
+            neighborhood,
+            k,
+            depth,
+            radius)
+        message_switch("neighbor_cost", verbose, assay = assay)
+        cost <- cost + feature_dist(seed_signal, query_signal, norm, batch_size)
+    } 
+    
+    #---------------------------------------------------------------------#
+    # devide cost matrix
+    #---------------------------------------------------------------------#
+    if (mapping == "div") {
+        message_switch("div_hungarian", verbose)
+        cost <- divide_and_conquer(cost, batch_size)
+        matched_indices <- match_index_batch(seq_along(cost),
+            cost)
+        matched_indices <- concat_matches(matched_indices)
+    } else {
+        message_switch("hungarian", verbose)
+        matched_indices <- match_index(cost)
     }
-    return(aligned_indices)
-}
-
-#' compute cell matching cost wrapper
-#' @param seed_signal count matrix taken from seed data set
-#' @param query_signal count matrix taken from query data set
-#' @param i numeric - iteration value in query list
-#' @param verbose logical - should progress message be outputed
-#' @return cost matrix with nrow = # cells in query and 
-#' ncol = # cells in seed
-compute_cell_cost <- function(seed_signal, query_signal, i, verbose) {
-    message_switch("feature_cost", verbose,
-            assay = paste("Query Item", i))
-    # seed_local <- t(scale(t(as.matrix(seed_signal))))
-    # query_local <- t(scale(t(as.matrix(query_signal))))
-    cost_mat <- feature_dissim(seed_signal, query_signal)
-    return(cost_mat)
-}
-
-#' compute cell neighborhood matching cost
-#' @param cost_matrix matrix containing assignement cost 
-#' from each cell in query to each cell in seed (rows x cols)
-#' @param seed data.frame of coordinates for seed
-#' @param query data.frame of coordinates for query
-#' @param seed_signal matrix - count matrix for seed
-#' @param query_signal matrix - count matrix for query
-#' @param k integer - how many neighbors should be considered as 
-#' part of the local neighborhood
-#' @param i numeric - iteration value in query list
-#' @param verbose logical - should progress message be outputed
-#' @return cost matrix with nrow = # cells in query and 
-#' ncol = # cells in seed
-#' @importFrom RANN nn2
-compute_neighbor_cost <- function(cost_mat,
-    seed,
-    query,
-    seed_signal,
-    query_signal,
-    k,
-    i,
-    verbose) {
-    message_switch("neighbor_cost", verbose,
-            assay = paste("Query Item", i))
-    
-    seed_local <- neighbor_expression(seed_dist$nn.idx,
-        seed_signal)
-    query_dist <- RANN::nn2(query[, c("x", "y")],
-            k = k)
-    rownames(query_dist$nn.idx) <- query$barcodes
-    query_local <- neighbor_expression(query_dist$nn.idx,
-        query_signal)
-
-    
-    cost_mat <- feature_dissim(seed_local, query_local) +
-            cost_mat
-    return(cost_mat)
-}
-
-knn_neighborhood <- function(coord, k) {
-    coord_dist <- RANN::nn2(coord[, c("x", "y")],
-        k = k)
-    rownames(coord_dist$nn.idx) <- coord$barcodes
-    return(coord_dist)
-}
-
-radius_neighborhood <- function(coord, radius) {
-
-}
-
-depth_neighborhood <- function(coord, detph) {
-
+    aligned <- align_index(matched_indices,
+        seed,
+        query,
+        verbose)
+    return(list("aligned" = aligned, "prob" = prob))
 }
 
 #' compute the distance between seed and query signals
@@ -359,11 +282,33 @@ depth_neighborhood <- function(coord, detph) {
 #' @param query query signal
 #' @return matrix with query as rows and seed as colmuns
 #' @importFrom RANN nn2
-feature_dissim <- function(seed, query) {
-    cores <- nbrOfWorkers()
-    seed_index <- chunk(seq_len(ncol(seed)), ceiling(ncol(seed) / cores))
-    query_index <- chunk(seq_len(ncol(query)), ceiling(ncol(query) / cores))
 
+feature_dist <- function(seed,
+    query,
+    norm = "noise",
+    batch_size = 1000) {
+    chunky <- chunkable(seed, query)
+    chunky <- lapply(chunky, function(chunk){
+        co <- cor(chunk$seed, chunk$query)
+    })
+    chunky <- unlist(chunky)
+    dim(chunky) <- c(ncol(query), ncol(seed))
+    rownames(chunky) <- colnames(query)
+    colnames(chunky) <- colnames(seed)
+    chunky <- clip_cost(chunky)
+    chunky <- 1 - chunky
+    return(chunky)
+}
+
+
+
+feature_dist_stable <- function(seed,
+    query,
+    norm = "noise",
+    batch_size = 1000) {
+    batch_size <- min(c(batch_size, ncol(seed), ncol(query)))
+    seed_index <- chunk(seq_len(ncol(seed)), batch_size)
+    query_index <- chunk(seq_len(ncol(query)), batch_size)
     box <- vector("list", length(query_index))
     for (i in seq_along(query_index)){
         local_query <- t(query[, query_index[[i]]])
@@ -373,9 +318,6 @@ feature_dissim <- function(seed, query) {
                 query = query,
                 k = nrow(local_seed))
             feature_dist_mat <- arrange_knn_matrix(feature_dist_mat)
-            feature_dist_mat <-
-                (feature_dist_mat - min(feature_dist_mat)) /
-                (max(feature_dist_mat) - min(feature_dist_mat))
             rownames(feature_dist_mat) <- rownames(query)
             colnames(feature_dist_mat) <- rownames(local_seed)
             return(feature_dist_mat)
@@ -383,28 +325,111 @@ feature_dissim <- function(seed, query) {
         box[[i]] <- do.call("cbind", seeds)
     }
     box <- do.call("rbind", box)
+    box <- normalize_cost(box, seed, query, batch_size, norm)
     return(box)
 }
 
+normalize_cost <- function(box, seed, query, batch_size, norm = "noise") {
+    if (norm == "entropy") {
+        prob <- convert_to_prob(box)
+        box <- 1 - prob
+    } else if (norm == "minmax") {
+        box <- (box - min(box)) / (max(box) - min(box))
+    } else if (norm == "noise") {
+        n_features <- max(c(nrow(seed), nrow(query)))
+        max_counts <- max(c(max(seed), max(query)))
+        min_counts <- min(c(min(seed), min(query)))
+        noise <- runif(n_features * batch_size,
+            min = min_counts,
+            max = max_counts)
+        dim(noise) <- c(batch_size, n_features)
+        noise <- RANN::nn2(data = noise,
+            query = t(cbind(seed, query)),
+            k = batch_size)$nn.dists
+        noise <- max(noise)
+        box <- box / noise
+    } else if ( norm == "none"){
+        return(box)
+    }
+    return(box)
+}
+
+convert_to_prob <- function(cost) {
+    prob <- max(cost) - cost
+    for (i in seq_len(nrow(prob))) {
+        prob[i, ] <- prob[i, ] / ncol(cost)
+    }
+    return(prob)
+}
+
+
+get_neighborhood <- function(coord,
+    signal,
+    method,
+    k = 20,
+    depth = 3,
+    radius = 20) {
+    niches <- switch(method,
+        "knn" = knn_neighborhood(coord, k),
+        "radius" = radius_neighborhood(coord, radius),
+        "depth" = depth_neighborhood(coord, depth))
+    niches <- neighborhood_signal(niches, signal)
+    return(niches)
+}
+
+knn_neighborhood <- function(coord, k) {
+    coord_dist <- RANN::nn2(coord[, c("x", "y")],
+        k = k)
+    coord_dist <- lapply(seq(1, nrow(coord_dist$nn.idx)),
+        function(i,x){return(x[i,])}, x = coord_dist$nn.idx)
+    coord_dist <- lapply(coord_dist,
+        function(i, coord){return(coord$barcodes[i])}, coord = coord)
+    names(coord_dist) <- coord$barcodes
+    return(coord_dist)
+}
+
+radius_neighborhood <- function(coord, radius) {
+    coord_dist <- RANN::nn2(coord[, c("x", "y")],
+        k = nrow(coord))
+    coord_dist <- lapply(seq(1, nrow(coord_dist$nn.idx)),
+        function(i,x,r){
+            tmp <- x$nn.idx[i, x$nn.dists[i, ] <= r]
+            return(tmp)
+    }, x = coord_dist, r = radius)
+    coord_dist <- lapply(coord_dist,
+        function(i, coord){return(coord$barcodes[i])}, coord = coord)
+    names(coord_dist) <- coord$barcodes
+    return(coord_dist)
+}
+
+depth_neighborhood <- function(coord, depth) {
+    coord_dist <- graph_from_voronoi(coord)
+    coord_dist <- graph_path_length(coord_dist)
+    coord_dist <- lapply(seq(1, nrow(coord)),
+        function(i, g, coord, d) {
+        tmp <- g[ ,i] <= d
+        return(coord$barcodes[tmp])
+    }, g = coord_dist, coord = coord, d = depth)
+    names(coord_dist) <- coord$barcodes
+    return(coord_dist)
+}
+
 #' compute average expression of local neighborhood
-#' @param distance knn neighbor matrix
-#' @param features count matrix or feature matrix to average
+#' @param neighbors list of local neighbors
+#' @param signal count matrix or feature matrix to average
 #' @return average feature matrix. The expression of each cell 
 #' is replace by the average expression of the k nearest neighbors
-neighbor_expression <- function(distance, features) {
-    neigborhood <- matrix(0,
-        ncol = ncol(features),
-        nrow = nrow(features))
-    colnames(neigborhood) <- colnames(features)
-    rownames(neigborhood) <- rownames(features)
-    for (i in seq_len(nrow(distance))) {
-        local_expression <- features[,
-            colnames(features) %in% rownames(distance)[distance[i, ]]]
-        local_expression <- rowMeans(local_expression)
-        neigborhood[, colnames(features) %in% rownames(distance)[i]] <-
-            local_expression
-    }
-    return(neigborhood)
+neighborhood_signal <- function(neighbors, signal) {
+    n_signal <- lapply(neighbors, function(i, signal){
+        tmp <- signal[, colnames(signal) %in% i]
+        if (is.null(dim(tmp))){
+            return(matrix(tmp, ncol = 1))
+        } else {
+            return(rowMeans(tmp))
+        }
+    }, signal = signal)
+    n_signal <- do.call("cbind", n_signal)
+    return(n_signal)
 }
 
 
@@ -544,31 +569,29 @@ align_index <- function(matched_index,
 
 
 
-integrate_graph <- function(aligned_graph,
+integrate_map <- function(aligned_graph,
     query,
     verbose = TRUE) {
-    #-------------------------------------------------------------------------#
-    # rebuild vesalius
-    #-------------------------------------------------------------------------#
-    for (i in seq_along(query)) {
-        local_counts <- get_counts(query[[i]], type = "raw")
-        local_counts <- local_counts[,
-                colnames(local_counts) %in% aligned_graph[[i]]$barcodes]
-        query[[i]] <- build_vesalius_assay(
-            coordinates = aligned_graph[[i]][, c("barcodes", "x", "y")],
-            counts = local_counts,
-            assay = "integrated",
-            layer = max(query[[i]]@meta$orig_coord$z) + 1,
-            verbose = FALSE)
-    }
-    if (length(query) == 1) {
-        return(query[[1]])
-    } else {
-        return(query)
-    }
+    prob <- list(aligned_graph$prob)
+    names(prob) <- "mapping_probability"
+    aligned_graph <- aligned_graph$aligned
+    local_counts <- get_counts(query, type = "raw")
+    local_counts <- local_counts[,
+                colnames(local_counts) %in% aligned_graph$barcodes]
+    query <- build_vesalius_assay(
+        coordinates = aligned_graph[, c("barcodes", "x", "y")],
+        counts = local_counts,
+        assay = "integrated",
+        layer = max(query@meta$orig_coord$z) + 1,
+        verbose = FALSE)
+    query@meta <- c(query@meta, prob)
+    return(query)
 }
 
-
+# Feature to add
+merge_assays <- function(assays) {
+    return(NULL)
+}
 
 
 

@@ -5,40 +5,49 @@
 \title{mapping points between data sets}
 \usage{
 point_mapping(
-  seed,
-  seed_signal,
-  query,
   query_signal,
-  mapping = "div",
+  query_assay,
+  cost,
+  seed_signal,
+  seed_assay,
+  neighborhood = "knn",
   k = 20,
+  radius = 0.05,
+  depth = 1,
   batch_size = 1000,
-  custom_cost = NULL,
+  norm = "noise",
+  mapping = "div",
   overwrite = FALSE,
   verbose = TRUE
 )
 }
 \arguments{
-\item{seed}{vesalius_assay object}
+\item{query_signal}{processed query signal from query assay}
 
 \item{seed_signal}{processed seed signal from seed assay}
 
-\item{query}{vesalius_assay object}
-
-\item{query_signal}{processed query signal from query assay}
-
-\item{mapping}{exact mapping or div (divide and conquer)}
-
 \item{k}{int size of niche (knn)}
+
+\item{radius}{0.05 proportion of max distance to use as radius for 
+neighborhood}
+
+\item{depth}{graph path depth to condsider for neighborhood.}
 
 \item{batch_size}{int number of points in each query batch}
 
-\item{custom_cost}{matrix - matrix of size n (query cells) by p (seed cells)
-containing custom cost matrix. Used instead of vesalius cost matrix}
+\item{mapping}{exact mapping or div (divide and conquer)}
 
 \item{overwrite}{logical - if custom_cost is not NULL, should this matrix
 be added to the vesalius matrix or should it overwrite it completely.}
 
 \item{verbose}{logical - out progress to console}
+
+\item{query}{vesalius_assay object}
+
+\item{custom_cost}{matrix - matrix of size n (query cells) by p (seed cells)
+containing custom cost matrix. Used instead of vesalius cost matrix}
+
+\item{seed}{vesalius_assay object}
 }
 \value{
 list of matched and aligned coordinates in query

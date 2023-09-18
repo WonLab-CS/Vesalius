@@ -774,31 +774,42 @@ check_signal <- function(assay, signal, type) {
     }
 }
 
-check_cost_matrix_validity <- function(custom_cost,
-    seed,
+check_cost_matrix_validity <- function(custom_cost, query_assay) {
+    #-------------------------------------------------------------------------#
+    # making sure that we have a proper list 
+    #-------------------------------------------------------------------------#
+    if (!is.null(custom_cost)) {
+        if(!is(custom_cost, "list")) {
+            custom_cost <- list(custom_cost)
+        }
+    } else {
+        custom_cost <- vector("list", length(query_assay))
+    }
+    return(custom_cost)
+}
+
+check_query_assay_validity <- function(query_assay) {
+    if (is(query_assay, "vesalius_assay")) {
+        query_assay <- list(query_assay)
+    } else if (is(query_assay, "list")) {
+        assays <- sapply(query_assay, is, "vesalius_assay")
+        if (!all(assays)) {
+            stop("Query Assay list contains unrecognised types!
+                Only vesalius_assay object are supported at the moment.")
+        }
+    } else {
+        stop("Query assay is not a vesalius_assay or list")
+    }
+    return(query_assay)
+}
+
+check_cost_validity <- function(cost,
+    seed_assay,
     seed_signal,
-    query,
+    query_assay,
     query_signal) {
-    #-------------------------------------------------------------------------#
-    # preping for loops just - there might be more than one but
-    #-------------------------------------------------------------------------#
-    if (is.null(custom_cost)){
-        return(NULL)
-    } else if (is(custom_cost, "matrix") || is(custom_cost, "data.frame")) {
-        custom_cost <- list(custom_cost)
-    } else if (!is(custom_cost, "list")){
-        stop("Unsupported format for custom cost.
-        R-base matrix or data.frame required")
-    }
-    #-------------------------------------------------------------------------#
-    # Comparing list size between query and custom matrix 
-    # Not sure how to best implement this 
-    # Always have the same number of matrices? Add naming? what about 
-    # different types of alignement? atm only aligning to 1 seed
-    #-------------------------------------------------------------------------#
-    if (length(query) != length(custom_cost)) {
-        stop("Number of query datasets is not equal to number of custom costs")
-    }
+    seed <- get_tiles(seed_assay) %>% filter(origin == 1)
+    query <- get_tiles(query_assay) %>% filter(origin == 1)
     #-------------------------------------------------------------------------#
     # comparing size for potential downsample
     # This is also a big issue - downsample to match the smaller data set
@@ -807,49 +818,56 @@ check_cost_matrix_validity <- function(custom_cost,
     # present in original data. I think the resolution issue has been an issue
     # for a lot of things. Keep this approach for now 
     #-------------------------------------------------------------------------#
-    seeds <- vector("list", length(query))
-    seed_signals <- vector("list", length(query))
-    for (i in seq_along(query)) {
-        cost_mat <- custom_cost[[i]]
-        potential_dim <- c(nrow(query[[i]]), nrow(seed))
-        if (all(potential_dim != dim(cost_mat))) {
-            warning(paste0("Dimensions differ between matrices \n",
-            "Custom Cost = ", paste(dim(cost_mat), collapse = " "), "\n",
-            "Cost matrix = ", paste(potential_dim, collapse = " "), "\n",
-            "Checking for overlaps - and subsetting \n"),
-            immediate. = TRUE)
-        }
-        
-        row_over <- intersect(query[[i]]$barcodes, rownames(cost_mat))
-        col_over <- intersect(seed$barcodes, colnames(cost_mat))
-        if (length(row_over) == 0 || length(col_over) == 0) {
-            stop("No common cells between custom cost and cost matrix")
-        }
-        cost_mat <- cost_mat[match(row_over, rownames(cost_mat)),
-            match(col_over, colnames(cost_mat))]
-        custom_cost[[i]] <- cost_mat
-        query[[i]] <- query[[i]][query[[i]]$barcodes %in% row_over, ]
-        seeds[[i]] <- seed[seed$barcodes %in% col_over, ]
-        #---------------------------------------------------------------------#
-        # filtering cells but also genes since scaling will not work if all 
-        # counts are zeroes
-        #---------------------------------------------------------------------#
-        q <- query_signal[[i]][,
-            colnames(query_signal[[i]]) %in% row_over]
-        s <- seed_signal[,
-            colnames(seed_signal) %in% col_over]
-        gene_intersect <- intersect(
-            check_gene_overlap(q),
-            check_gene_overlap(s))
-        query_signal[[i]] <- q[rownames(q) %in% gene_intersect, ]
-        seed_signals[[i]] <- s[rownames(s) %in% gene_intersect, ]
+    if (is.null(cost)) {
+        cost <- matrix(0,
+            nrow = ncol(query_signal),
+            ncol = ncol(seed_signal))
+        rownames(cost) <- colnames(query_signal)
+        colnames(cost) <- colnames(seed_signal)
+        assign("seed", seed, env = parent.frame())
+        assign("query", query, env = parent.frame())
+        assign("seed_signal", seed_signal, env = parent.frame())
+        assign("query_signal", query_signal, env = parent.frame())
+        assign("cost", cost, env = parent.frame())
+        return(NULL) 
     }
-    return(list("cost" = custom_cost,
-        "seed" = seeds,
-        "seed_signal" = seed_signals,
-        "query" = query,
-        "query_signal" = query_signal))
-
+    potential_dim <- c(nrow(query), nrow(seed))
+    if (all(potential_dim != dim(cost))) {
+        warning(paste0("Dimensions differ between matrices \n",
+        "Custom Cost = ", paste(dim(cost), collapse = " "), "\n",
+        "Cost matrix = ", paste(potential_dim, collapse = " "), "\n",
+        "Checking for overlaps - and subsetting \n"),
+        immediate. = TRUE)
+    }
+        
+    row_over <- intersect(query$barcodes, rownames(cost))
+    col_over <- intersect(seed$barcodes, colnames(cost))
+    if (length(row_over) == 0 || length(col_over) == 0) {
+        stop("No common cells between custom cost and cost matrix")
+    }
+    cost <- cost[match(row_over, rownames(cost)),
+        match(col_over, colnames(cost))]
+    query <- query[query$barcodes %in% row_over, ]
+    seed <- seed[seed$barcodes %in% col_over, ]
+    #---------------------------------------------------------------------#
+    # filtering cells but also genes since scaling will not work if all 
+    # counts are zeroes
+    #---------------------------------------------------------------------#
+    q <- query_signal[,
+        colnames(query_signal) %in% row_over]
+    s <- seed_signal[,
+        colnames(seed_signal) %in% col_over]
+    gene_intersect <- intersect(
+        check_gene_overlap(q),
+        check_gene_overlap(s))
+    query_signal <- q[rownames(q) %in% gene_intersect, ]
+    seed_signal <- s[rownames(s) %in% gene_intersect, ]
+    assign("seed", seed, env = parent.frame())
+    assign("query", query, env = parent.frame())
+    assign("seed_signal", seed_signal, env = parent.frame())
+    assign("query_signal", query_signal, env = parent.frame())
+    assign("cost",cost, env = parent.frame())
+    return(NULL)
 }
 
 check_gene_overlap <- function(signal) {

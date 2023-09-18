@@ -275,3 +275,40 @@ build_vesalius_assay <- function(coordinates,
     return(vesalius_assay)
 }
 
+#----------------------------/Vesalius Objects/--------------------------------#
+#------------------------------------------------------------------------------#
+# INTERNAL OBJECTS 
+#------------------------------------------------------------------------------#
+
+# setClassUnion("cost", c("data.frame", "matrix", NULL))
+# setClassUnion("signal", c("matrix","Matrix", NULL))
+# setClass("map_assay",
+#     slot = list(
+#         cost_matrix = "cost",
+#         seed_coord = "data.frame",
+#         query_coord = "data.frame",
+#         seed_signal = "signal",
+#         query_signal = "signal",
+#         mapping = "data.frame",
+#         scale = "numeric",
+#         neighborhood = "character"))
+
+# build_map_assay <- function(cost_matrix,
+#     seed_coord,
+#     query_coord,
+#     seed_signal,
+#     query_signal,
+#     mapping,
+#     scale,
+#     neighborhood) {
+#     map_assay <- new("map_assay",
+#         cost_matrix = cost_matrix,
+#         seed_coord = seed_coord,
+#         query_coord = query_coord,
+#         seed_signal = seed_signal,
+#         query_signal = query_signal,
+#         mapping = mapping,
+#         scale = scale,
+#         neighborhood = neighborhood)
+#     return(map_assay)
+# }
