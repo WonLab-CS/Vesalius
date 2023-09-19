@@ -143,7 +143,7 @@ chunkable <- function(seed, query) {
 
 clip_cost <- function(cost) {
     cost[which(cost <= 0, arr.ind = TRUE)] <- 0
-    return(clip_cost)
+    return(cost)
 }
 
 

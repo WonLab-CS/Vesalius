@@ -4,7 +4,7 @@
 \alias{feature_dist}
 \title{compute the distance between seed and query signals}
 \usage{
-feature_dist(seed, query, norm = "noise", batch_size = 1000)
+feature_dist(seed, query)
 }
 \arguments{
 \item{seed}{seed signal}

@@ -232,6 +232,7 @@ point_mapping <- function(query_signal,
     overwrite = FALSE,
     verbose = TRUE) {
     assay <- get_assay_names(query_assay)
+    n_cost <- length(cost)
     check_cost_validity(cost,
         seed_assay,
         seed_signal,
@@ -239,7 +240,7 @@ point_mapping <- function(query_signal,
         query_signal)
     if (!overwrite) {
         message_switch("feature_cost", verbose, assay = assay)
-        cost <- cost + feature_dist(seed_signal, query_signal, norm, batch_size)
+        cost <- cost + feature_dist(seed_signal, query_signal)
         message_switch("get_neigh", verbose, assay = assay)
         seed_signal <- get_neighborhood(seed,
             seed_signal,
@@ -254,8 +255,10 @@ point_mapping <- function(query_signal,
             depth,
             radius)
         message_switch("neighbor_cost", verbose, assay = assay)
-        cost <- cost + feature_dist(seed_signal, query_signal, norm, batch_size)
-    } 
+        cost <- cost + feature_dist(seed_signal, query_signal)
+    }
+    prob <- cost_to_prob(cost, n_cost, overwrite)
+
     
     #---------------------------------------------------------------------#
     # devide cost matrix
@@ -277,27 +280,19 @@ point_mapping <- function(query_signal,
     return(list("aligned" = aligned, "prob" = prob))
 }
 
+
+
+
 #' compute the distance between seed and query signals
 #' @param seed seed signal
 #' @param query query signal
 #' @return matrix with query as rows and seed as colmuns
-#' @importFrom RANN nn2
-
-feature_dist <- function(seed,
-    query,
-    norm = "noise",
-    batch_size = 1000) {
-    chunky <- chunkable(seed, query)
-    chunky <- lapply(chunky, function(chunk){
-        co <- cor(chunk$seed, chunk$query)
-    })
-    chunky <- unlist(chunky)
-    dim(chunky) <- c(ncol(query), ncol(seed))
-    rownames(chunky) <- colnames(query)
-    colnames(chunky) <- colnames(seed)
-    chunky <- clip_cost(chunky)
-    chunky <- 1 - chunky
-    return(chunky)
+feature_dist <- function(seed, query) {
+    cost <- feature_dist_fast(seed, query)
+    colnames(cost) <- colnames(seed)
+    rownames(cost) <- colnames(query)
+    cost <- clip_cost(cost)
+    return(1 - cost)
 }
 
 
