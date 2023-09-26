@@ -140,6 +140,8 @@ map_assays <- function(seed_assay,
         SIMPLIFY = FALSE)
     if (merge) {
         integrated <- merge_assay(integrated)
+    } else if (length(integrated) == 1){
+        integrated <- integrated[[1]]
     }
     simple_bar(verbose)
     return(integrated)
@@ -371,37 +373,57 @@ divide_and_conquer <- function(cost_mat, batch_size, verbose) {
     # If no batching -> return list - "loop" over one element list
     # I should do a benchmarking test to see if this would take a performance 
     # hit 
+    # also adding comment to all of them even though only need the reduce tag
+    # just keep this for later just in case
     #-------------------------------------------------------------------------#
-    if (ncol(cost_mat) > batch_size || nrow(cost_mat) > batch_size) {
-        #---------------------------------------------------------------------#
-        # Here is something that could be improved
-        # Here I assume that we can take a random sample and that it doesn't
-        # matter if there are duplicate seed cells. Since it will be 
-        # an approximate match because I am using a random sub-sample
-        # the cost difference between 2 query cells mapping to the same
-        # seed cell should negligeable - at least compared to random
-        # sampling error overall.
-        # using unique cells means that we can map to a unique coordinate
-        # this might not be possible or relevant.
-        # For now I will use a random sampling method
-        #---------------------------------------------------------------------#
+    if (ncol(cost_mat) >= batch_size && nrow(cost_mat) >= batch_size) {
+        message_switch("div_hungarian", verbose)
         query_batch <- chunk(sample(seq(1, nrow(cost_mat)), nrow(cost_mat)),
                 batch_size)
-        seed_batch <- lapply(query_batch, function(query, max_idx) {
-                return(sample(seq(1, max_idx), length(query)))
-        }, max_idx = ncol(cost_mat))
+        if (ncol(cost_mat) >= nrow(cost_mat)) {
+            seed_batch <- chunk(sample(seq(1, ncol(cost_mat)), ncol(cost_mat)),
+                floor(ncol(cost_mat) / length(query_batch)))
+            coms <- "subsample"
+        } else {
+            seed_batch <- lapply(query_batch, function(query, max_idx) {
+                    return(sample(seq(1, max_idx), length(query)))
+                }, max_idx = ncol(cost_mat))
+            coms <- "oversample"
+        }
+        
+    } else if (nrow(cost_mat) >= batch_size && nrow(cost_mat) >= ncol(cost_mat)) {
         message_switch("div_hungarian", verbose)
-        cost_list <- mapply(function(q, s, cost) {
+        query_batch <- chunk(sample(seq(1, nrow(cost_mat)), nrow(cost_mat)),
+                batch_size)
+        seed_batch <- rep(list(seq_len(ncol(cost_mat))),
+            times = length(query_batch))
+        coms <- "subsample"
+    } else if (ncol(cost_mat) >= batch_size && ncol(cost_mat) > nrow(cost_mat)) {
+        message_switch("div_hungarian", verbose)
+        seed_batch <- chunk(sample(seq(1, ncol(cost_mat)), ncol(cost_mat)),
+                batch_size)
+        query_batch <- rep(list(seq_len(nrow(cost_mat))),
+            times = length(seed_batch))
+        coms <- "reduce"
+    } else if (nrow(cost_mat) > ncol(cost_mat)){
+        message_switch("hungarian", verbose)
+        query_batch <- list(seq_len(nrow(cost_mat)))
+        seed_batch <- list(sample(seq_len(ncol(cost_mat)),
+            nrow(cost_mat), replace = TRUE))
+        coms <- "oversample"
+    } else {
+        query_batch <- list(seq_len(nrow(cost_mat)))
+        seed_batch <- list(seq_len(ncol(cost_mat)))
+        coms <- "exact"
+    }
+    cost_list <- mapply(function(q, s, cost) {
                 return(cost[q, s])
             },
             query_batch,
             seed_batch,
             MoreArgs = list(cost_mat),
-            SIMPLIFY = FALSE)
-    } else {
-        message_switch("hungarian", verbose)
-        cost_list <- list(cost_mat)
-    }
+            SIMPLIFY = FALSE)   
+    comment(cost_list) <- coms
     return(cost_list)
 }
 
@@ -453,6 +475,7 @@ divide_and_conquer <- function(cost_mat, batch_size, verbose) {
 #' @return data.frame with point in query (from) mapped to 
 #' which point in seed (to) as well as cost of mapping for that pair
 match_index <- function(idx, cost_matrix, n_cost) {
+    coms <- comment(cost_matrix)
     mapping <- future_lapply(idx, function(idx,
         cost_matrix, n_cost) {
         cost_matrix <- n_cost - cost_matrix[[idx]] 
@@ -473,7 +496,7 @@ match_index <- function(idx, cost_matrix, n_cost) {
     cost_matrix = cost_matrix,
     n_cost = n_cost,
     future.seed = TRUE)
-    mapping <- concat_matches(mapping)
+    mapping <- concat_matches(mapping, coms)
     return(mapping)
 }
 
@@ -482,11 +505,20 @@ match_index <- function(idx, cost_matrix, n_cost) {
 #' merging batch matches together
 #' @param matched_indices list containing matched points in each batch
 #' @return data.frame with matched points
-concat_matches <- function(matched_indices) {
+concat_matches <- function(matched_indices, coms) {
     matched_indices <- lapply(matched_indices, function(x) {
         return(x[, c("from", "to", "score")])
     })
-    matched_indices <- do.call("rbind", matched_indices)
+    if (coms == "reduce") {
+        loc <- sapply(matched_indices, function(x){
+                return(sum(x$score))
+            })
+        loc <- which(loc == min(loc))
+        matched_indices <- matched_indices[[loc]]
+    } else {
+        matched_indices <- do.call("rbind", matched_indices)
+    }
+    
     return(matched_indices)
 }
 

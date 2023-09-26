@@ -98,44 +98,45 @@ test_that("horizontal - neighborhood", {
         depth = 2), "vesalius_assay")
 
 })
-test_that("horizontal - exact", {
-    # check that we can get exact match
+test_that("batching case", {
     expect_s4_class(map_assays(vesalius,
         jitter_ves,
-        signal = "variable_features",
-        map = "exact"), "vesalius_assay")
-    # checks?
+        batch_size = 1000,
+        signal = "variable_features"),
+        "vesalius_assay")
+    expect_s4_class(map_assays(jitter_ves,
+        vesalius,
+        batch_size = 1000,
+        signal = "variable_features"),
+        "vesalius_assay")
     expect_s4_class(map_assays(vesalius,
         jitter_ves,
-        signal = gene_vec,
-        map = "exact"), "vesalius_assay")
-
+        batch_size = 500,
+        signal = "variable_features"),
+        "vesalius_assay")
+    expect_s4_class(map_assays(jitter_ves,
+        vesalius,
+        batch_size = 500,
+        signal = "variable_features"),
+        "vesalius_assay")
+    expect_s4_class(map_assays(vesalius,
+        jitter_ves,
+        batch_size = 1100,
+        signal = "variable_features"),
+        "vesalius_assay")
+    expect_s4_class(map_assays(jitter_ves,
+        vesalius,
+        batch_size = 1100,
+        signal = "variable_features"),
+        "vesalius_assay")
+    expect_s4_class(map_assays(vesalius,
+        jitter_ves,
+        batch_size = 2000,
+        signal = "variable_features"),
+        "vesalius_assay")
+    expect_s4_class(map_assays(jitter_ves,
+        vesalius,
+        batch_size = 2000,
+        signal = "variable_features"),
+        "vesalius_assay")
 })
-
-test_that("horizontal - div", {
-    # check that we can get exact match
-    expect_s4_class(map_assays(vesalius,
-        jitter_ves,
-        signal = "variable_features",
-        map = "div"), "vesalius_assay")
-    # checks?
-    expect_s4_class(map_assays(vesalius,
-        jitter_ves,
-        signal = gene_vec,
-        map = "div"), "vesalius_assay")
-})
-
-test_that("noise based norm", {
-    n <- map_assays(vesalius,
-        noise_ves,
-        batch_size = 1300,
-        norm = "minmax",
-        signal = "variable_features")
-    n_p <- n[[1]]@meta$mapping_probability
-    d <- map_assays(vesalius,
-        jitter_ves,
-        norm = "minmax",
-        signal = "variable_features")
-    d_p <- d[[1]]@meta$mapping_probability
-})
-

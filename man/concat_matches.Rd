@@ -4,7 +4,7 @@
 \alias{concat_matches}
 \title{merging batch matches together}
 \usage{
-concat_matches(matched_indices)
+concat_matches(matched_indices, coms)
 }
 \arguments{
 \item{matched_indices}{list containing matched points in each batch}
