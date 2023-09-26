@@ -13,10 +13,10 @@ map_assays(
   depth = 1,
   dimensions = seq(1, 30),
   norm = "noise",
-  mapping = "div",
   batch_size = 1000,
   signal = "variable_features",
   use_norm = "raw",
+  cost_threshold = 0.3,
   custom_cost = NULL,
   overwrite = FALSE,
   merge = FALSE,
@@ -41,9 +41,6 @@ to consider for the neighborhood}
 (See details)}
 
 \item{dimensions}{Int vector containing latent space dimensions to use}
-
-\item{mapping}{character string (div - exact) - mapping strategy.
-Divide and conquer (approximate) or Exact mapping.}
 
 \item{batch_size}{number of points per batch in query during assignment
 problem solving}

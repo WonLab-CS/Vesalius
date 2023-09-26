@@ -4,7 +4,7 @@
 \alias{divide_and_conquer}
 \title{splitting cost matrix into batches for batch processing}
 \usage{
-divide_and_conquer(cost_mat, batch_size)
+divide_and_conquer(cost_mat, batch_size, verbose)
 }
 \arguments{
 \item{cost_mat}{matrix}

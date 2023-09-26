@@ -2,20 +2,26 @@
 % Please edit documentation in R/map_assays.R
 \name{match_index}
 \alias{match_index}
-\title{Finding optimal mapping between query and seed}
+\title{Finding optimal mapping between query and seed using a mini batch 
+approach}
 \usage{
-match_index(cost_matrix)
+match_index(idx, cost_matrix, n_cost)
 }
 \arguments{
-\item{cost_matrix}{matrix with cost between query (rows) and 
+\item{idx}{integer - index of batch}
+
+\item{cost_matrix}{list of matrices with cost between query (rows) and 
 seed (columns)}
+
+\item{verbose}{logical - should progress messages be outpute to the console}
 }
 \value{
 data.frame with point in query (from) mapped to 
 which point in seed (to) as well as cost of mapping for that pair
 }
 \description{
-Finding optimal mapping between query and seed
+Finding optimal mapping between query and seed using a mini batch 
+approach
 }
 \details{
 Uses a Hungarian solver to minimize overall cost of 

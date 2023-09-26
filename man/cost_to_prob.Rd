@@ -4,33 +4,16 @@
 \alias{cost_to_prob}
 \title{convert cost to prob}
 \usage{
-cost_to_prob(cost, n_cost, overwrite)
+cost_to_prob(cost, n_cost)
 }
 \arguments{
 \item{cost}{matrix containing cost}
 
 \item{n_cost}{number of custom cost matrices parsed}
-
-\item{overwrite}{logical should custom cost matrix be overwritten}
 }
 \value{
 a probability matrix
 }
 \description{
 convert cost to prob
-}
-\details{
-Here we assume that mapping probability is equal to 1 -
-cost since the lower the cost the better the maping chance between
-2 cells. 
-If the user uses a custom cost and wants to overwrite/skip
-vesalius cost computations, we assume that the cost matrix is already
-If the user provides a cost matrix and wants to add this matrix 
-to the vesalius cost matrices, we assume that the max sum of cost should
-be equal to number of matrices provided by user + feature matrix + 
-neighborhood feature matrix (this should be 3)
-If the user does not provide any matrix, we assume that the max cost
-should be equal to 2 (feature cost + neighborhood feature cost)
-not sure if this is the best method but for now it helps in
-seeing how well 2 cells are being matched.
 }

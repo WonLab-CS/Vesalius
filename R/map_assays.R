@@ -19,8 +19,6 @@
 #' @param depth int [1, NA] graph depth from cell to consider from neighborhood
 #' (See details)
 #' @param dimensions Int vector containing latent space dimensions to use
-#' @param mapping character string (div - exact) - mapping strategy.
-#' Divide and conquer (approximate) or Exact mapping.
 #' @param batch_size number of points per batch in query during assignment
 #' problem solving
 #' @param signal character (variable_features, all_features, embeddings, custom)
@@ -86,10 +84,10 @@ map_assays <- function(seed_assay,
     depth = 1,
     dimensions = seq(1, 30),
     norm = "noise",
-    mapping = "div",
     batch_size = 1000,
     signal = "variable_features",
     use_norm = "raw",
+    cost_threshold = 0.3,
     custom_cost = NULL,
     overwrite = FALSE,
     merge = FALSE,
@@ -127,7 +125,6 @@ map_assays <- function(seed_assay,
             depth = depth,
             batch_size = batch_size,
             norm = norm,
-            mapping = mapping,
             overwrite = overwrite,
             verbose = verbose),
         SIMPLIFY = FALSE)
@@ -232,14 +229,18 @@ point_mapping <- function(query_signal,
     overwrite = FALSE,
     verbose = TRUE) {
     assay <- get_assay_names(query_assay)
-    n_cost <- length(cost)
     check_cost_validity(cost,
         seed_assay,
         seed_signal,
         query_assay,
         query_signal)
     if (!overwrite) {
+        n_cost <- ifelse(all(range(cost) == 0), 2, 3)
         message_switch("feature_cost", verbose, assay = assay)
+        #---------------------------------------------------------------------#
+        # Not sure happy with this - is there a way to avoid creating 
+        # seperate matrices? 
+        #---------------------------------------------------------------------#
         cost <- cost + feature_dist(seed_signal, query_signal)
         message_switch("get_neigh", verbose, assay = assay)
         seed_signal <- get_neighborhood(seed,
@@ -256,28 +257,20 @@ point_mapping <- function(query_signal,
             radius)
         message_switch("neighbor_cost", verbose, assay = assay)
         cost <- cost + feature_dist(seed_signal, query_signal)
-    }
-    prob <- cost_to_prob(cost, n_cost, overwrite)
-
-    
-    #---------------------------------------------------------------------#
-    # devide cost matrix
-    #---------------------------------------------------------------------#
-    if (mapping == "div") {
-        message_switch("div_hungarian", verbose)
-        cost <- divide_and_conquer(cost, batch_size)
-        matched_indices <- match_index_batch(seq_along(cost),
-            cost)
-        matched_indices <- concat_matches(matched_indices)
     } else {
-        message_switch("hungarian", verbose)
-        matched_indices <- match_index(cost)
+        n_cost <- 1
     }
+    #--------------------------------------------------------------------------#
+    # devide cost matrix
+    #--------------------------------------------------------------------------#
+    cost <- divide_and_conquer(cost, batch_size, verbose)
+    matched_indices <- match_index(seq(1,length(cost)), cost, n_cost)
+    matched_indices <- cost_to_prob(matched_indices, n_cost)
     aligned <- align_index(matched_indices,
         seed,
         query,
         verbose)
-    return(list("aligned" = aligned, "prob" = prob))
+    return(list("aligned" = aligned, "prob" = matched_indices))
 }
 
 
@@ -292,70 +285,10 @@ feature_dist <- function(seed, query) {
     colnames(cost) <- colnames(seed)
     rownames(cost) <- colnames(query)
     cost <- clip_cost(cost)
-    return(1 - cost)
+    return(cost)
 }
 
 
-
-feature_dist_stable <- function(seed,
-    query,
-    norm = "noise",
-    batch_size = 1000) {
-    batch_size <- min(c(batch_size, ncol(seed), ncol(query)))
-    seed_index <- chunk(seq_len(ncol(seed)), batch_size)
-    query_index <- chunk(seq_len(ncol(query)), batch_size)
-    box <- vector("list", length(query_index))
-    for (i in seq_along(query_index)){
-        local_query <- t(query[, query_index[[i]]])
-        seeds <- future_lapply(seed_index, function(idx, seed, query) {
-            local_seed <- t(seed[, idx])
-            feature_dist_mat <- RANN::nn2(data = local_seed,
-                query = query,
-                k = nrow(local_seed))
-            feature_dist_mat <- arrange_knn_matrix(feature_dist_mat)
-            rownames(feature_dist_mat) <- rownames(query)
-            colnames(feature_dist_mat) <- rownames(local_seed)
-            return(feature_dist_mat)
-        }, seed = seed, query = local_query, future.seed = TRUE)
-        box[[i]] <- do.call("cbind", seeds)
-    }
-    box <- do.call("rbind", box)
-    box <- normalize_cost(box, seed, query, batch_size, norm)
-    return(box)
-}
-
-normalize_cost <- function(box, seed, query, batch_size, norm = "noise") {
-    if (norm == "entropy") {
-        prob <- convert_to_prob(box)
-        box <- 1 - prob
-    } else if (norm == "minmax") {
-        box <- (box - min(box)) / (max(box) - min(box))
-    } else if (norm == "noise") {
-        n_features <- max(c(nrow(seed), nrow(query)))
-        max_counts <- max(c(max(seed), max(query)))
-        min_counts <- min(c(min(seed), min(query)))
-        noise <- runif(n_features * batch_size,
-            min = min_counts,
-            max = max_counts)
-        dim(noise) <- c(batch_size, n_features)
-        noise <- RANN::nn2(data = noise,
-            query = t(cbind(seed, query)),
-            k = batch_size)$nn.dists
-        noise <- max(noise)
-        box <- box / noise
-    } else if ( norm == "none"){
-        return(box)
-    }
-    return(box)
-}
-
-convert_to_prob <- function(cost) {
-    prob <- max(cost) - cost
-    for (i in seq_len(nrow(prob))) {
-        prob[i, ] <- prob[i, ] / ncol(cost)
-    }
-    return(prob)
-}
 
 
 get_neighborhood <- function(coord,
@@ -432,55 +365,81 @@ neighborhood_signal <- function(neighbors, signal) {
 #' @param cost_mat matrix 
 #' @param batch_size integer - size of each batch 
 #' @return list containing cost matrix batches 
-divide_and_conquer <- function(cost_mat, batch_size) {
-    query_batch <- chunk(seq(1, nrow(cost_mat)), batch_size)
-    query_idx <- sample(seq(1, nrow(cost_mat)), size = nrow(cost_mat))
-    seed_batch <- chunk(seq(1, ncol(cost_mat)),
-        ceiling(ncol(cost_mat) / length(query_batch)))
-    seed_idx <- sample(seq(1, ncol(cost_mat)), size = ncol(cost_mat))
-    cost_list <- vector("list", length(query_batch))
-    for (i in seq_along(query_batch)) {
-        cost_list[[i]] <- cost_mat[query_idx[query_batch[[i]]],
-            seed_idx[seed_batch[[i]]]]
+divide_and_conquer <- function(cost_mat, batch_size, verbose) {
+    #-------------------------------------------------------------------------#
+    # First check if we are going to be batching
+    # If no batching -> return list - "loop" over one element list
+    # I should do a benchmarking test to see if this would take a performance 
+    # hit 
+    #-------------------------------------------------------------------------#
+    if (ncol(cost_mat) > batch_size || nrow(cost_mat) > batch_size) {
+        #---------------------------------------------------------------------#
+        # Here is something that could be improved
+        # Here I assume that we can take a random sample and that it doesn't
+        # matter if there are duplicate seed cells. Since it will be 
+        # an approximate match because I am using a random sub-sample
+        # the cost difference between 2 query cells mapping to the same
+        # seed cell should negligeable - at least compared to random
+        # sampling error overall.
+        # using unique cells means that we can map to a unique coordinate
+        # this might not be possible or relevant.
+        # For now I will use a random sampling method
+        #---------------------------------------------------------------------#
+        query_batch <- chunk(sample(seq(1, nrow(cost_mat)), nrow(cost_mat)),
+                batch_size)
+        seed_batch <- lapply(query_batch, function(query, max_idx) {
+                return(sample(seq(1, max_idx), length(query)))
+        }, max_idx = ncol(cost_mat))
+        message_switch("div_hungarian", verbose)
+        cost_list <- mapply(function(q, s, cost) {
+                return(cost[q, s])
+            },
+            query_batch,
+            seed_batch,
+            MoreArgs = list(cost_mat),
+            SIMPLIFY = FALSE)
+    } else {
+        message_switch("hungarian", verbose)
+        cost_list <- list(cost_mat)
     }
     return(cost_list)
 }
 
-#' Finding optimal mapping between query and seed
-#' @param cost_matrix matrix with cost between query (rows) and 
-#' seed (columns)
-#' @details Uses a Hungarian solver to minimize overall cost of 
-#' pair assignement.
-#' @return data.frame with point in query (from) mapped to 
-#' which point in seed (to) as well as cost of mapping for that pair
-match_index <- function(cost_matrix) {
-    if (nrow(cost_matrix) > ncol(cost_matrix)) {
-        cost_matrix <- t(cost_matrix)
-        with_transpose <- TRUE
-    } else {
-        with_transpose <- FALSE
-    }
-    map <- RcppHungarian::HungarianSolver(cost_matrix)
-    mapping <- as.data.frame(map$pairs)
-    if (with_transpose){
-        colnames(mapping) <- c("to", "from")
-        scores <- mapply(function(i, j, cost) {
-            return(cost[i, j])
-        }, mapping$to, mapping$from, MoreArgs = list(cost_matrix))
-        mapping$score <- scores
-        mapping$to <- rownames(cost_matrix)[mapping$to]
-        mapping$from <- colnames(cost_matrix)[mapping$from]
-    } else {
-        colnames(mapping) <- c("from", "to")
-        scores <- mapply(function(i, j, cost) {
-            return(cost[i, j])
-        }, mapping$from, mapping$to, MoreArgs = list(cost_matrix))
-        mapping$score <- scores
-        mapping$to <- colnames(cost_matrix)[mapping$to]
-        mapping$from <- rownames(cost_matrix)[mapping$from]
-    }
-    return(mapping)
-}
+# #' Finding optimal mapping between query and seed
+# #' @param cost_matrix matrix with cost between query (rows) and 
+# #' seed (columns)
+# #' @details Uses a Hungarian solver to minimize overall cost of 
+# #' pair assignement.
+# #' @return data.frame with point in query (from) mapped to 
+# #' which point in seed (to) as well as cost of mapping for that pair
+# match_index <- function(cost_matrix) {
+#     if (nrow(cost_matrix) > ncol(cost_matrix)) {
+#         cost_matrix <- t(cost_matrix)
+#         with_transpose <- TRUE
+#     } else {
+#         with_transpose <- FALSE
+#     }
+#     map <- RcppHungarian::HungarianSolver(cost_matrix)
+#     mapping <- as.data.frame(map$pairs)
+#     if (with_transpose){
+#         colnames(mapping) <- c("to", "from")
+#         scores <- mapply(function(i, j, cost) {
+#             return(cost[i, j])
+#         }, mapping$to, mapping$from, MoreArgs = list(cost_matrix))
+#         mapping$score <- scores
+#         mapping$to <- rownames(cost_matrix)[mapping$to]
+#         mapping$from <- colnames(cost_matrix)[mapping$from]
+#     } else {
+#         colnames(mapping) <- c("from", "to")
+#         scores <- mapply(function(i, j, cost) {
+#             return(cost[i, j])
+#         }, mapping$from, mapping$to, MoreArgs = list(cost_matrix))
+#         mapping$score <- scores
+#         mapping$to <- colnames(cost_matrix)[mapping$to]
+#         mapping$from <- rownames(cost_matrix)[mapping$from]
+#     }
+#     return(mapping)
+# }
 
 
 #' Finding optimal mapping between query and seed using a mini batch 
@@ -493,40 +452,32 @@ match_index <- function(cost_matrix) {
 #' pair assignement.
 #' @return data.frame with point in query (from) mapped to 
 #' which point in seed (to) as well as cost of mapping for that pair
-match_index_batch <- function(idx, cost_matrix) {
+match_index <- function(idx, cost_matrix, n_cost) {
     mapping <- future_lapply(idx, function(idx,
-        cost_matrix) {
-        cost_matrix <- cost_matrix[[idx]]
-        if (nrow(cost_matrix) > ncol(cost_matrix)) {
-            cost_matrix <- t(cost_matrix)
-            with_transpose <- TRUE
-        } else {
-            with_transpose <- FALSE
-        }
+        cost_matrix, n_cost) {
+        cost_matrix <- n_cost - cost_matrix[[idx]] 
         map <- RcppHungarian::HungarianSolver(cost_matrix)
         mapping <- as.data.frame(map$pairs)
-        if (with_transpose){
-            colnames(mapping) <- c("to", "from")
-            scores <- mapply(function(i, j, cost) {
+        colnames(mapping) <- c("from", "to")
+        scores <- mapply(function(i, j, cost) {
                 return(cost[i, j])
-            }, mapping$to, mapping$from, MoreArgs = list(cost_matrix))
-            mapping$score <- scores
-            mapping$to <- rownames(cost_matrix)[mapping$to]
-            mapping$from <- colnames(cost_matrix)[mapping$from]
-        } else {
-            colnames(mapping) <- c("from", "to")
-            scores <- mapply(function(i, j, cost) {
-                return(cost[i, j])
-            }, mapping$from, mapping$to, MoreArgs = list(cost_matrix))
-            mapping$score <- scores
-            mapping$to <- colnames(cost_matrix)[mapping$to]
-            mapping$from <- rownames(cost_matrix)[mapping$from]
-        }
+            },
+            mapping$from,
+            mapping$to,
+            MoreArgs = list(cost_matrix))
+        mapping$score <- scores
+        mapping$to <- colnames(cost_matrix)[mapping$to]
+        mapping$from <- rownames(cost_matrix)[mapping$from]
         return(mapping)
-    }, cost_matrix = cost_matrix,
+    },
+    cost_matrix = cost_matrix,
+    n_cost = n_cost,
     future.seed = TRUE)
+    mapping <- concat_matches(mapping)
     return(mapping)
 }
+
+
 
 #' merging batch matches together
 #' @param matched_indices list containing matched points in each batch

@@ -128,7 +128,7 @@ message_switch <- function(type, verbose = TRUE, ...) {
         "matching_graphs" = cat(paste(t,
             " Matching Graphs\n")),
         "hungarian" = cat(paste(t,
-            " Solving Assignment Problem\n")),
+            " Solving Assignment Problem using exact matches\n")),
         "div_hungarian" = cat(paste(t,
             " Solving Assignment Problem with Divide & Conquer\n")),
         "feature_cost" = cat(paste(t,

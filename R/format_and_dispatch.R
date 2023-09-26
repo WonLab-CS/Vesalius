@@ -307,30 +307,8 @@ dispatch_deg_group <- function(ter, seed, query, cells, verbose) {
 #' convert cost to prob
 #' @param cost matrix containing cost 
 #' @param n_cost number of custom cost matrices parsed
-#' @param overwrite logical should custom cost matrix be overwritten
-#' @details Here we assume that mapping probability is equal to 1 -
-#' cost since the lower the cost the better the maping chance between
-#' 2 cells. 
-#' If the user uses a custom cost and wants to overwrite/skip
-#' vesalius cost computations, we assume that the cost matrix is already
-# bound between [0,1]
-#' If the user provides a cost matrix and wants to add this matrix 
-#' to the vesalius cost matrices, we assume that the max sum of cost should
-#' be equal to number of matrices provided by user + feature matrix + 
-#' neighborhood feature matrix (this should be 3)
-#' If the user does not provide any matrix, we assume that the max cost
-#' should be equal to 2 (feature cost + neighborhood feature cost)
-#' not sure if this is the best method but for now it helps in
-#' seeing how well 2 cells are being matched.
 #' @return a probability matrix 
-cost_to_prob <- function(cost, n_cost, overwrite) {
-    if (overwrite) {
-        return(1 - cost)
-    } else {
-        if (n_cost == 0) {
-            return(1 - cost / 2)
-        } else {
-            return(1 - cost / (n_cost + 2))
-        }
-    }
+cost_to_prob <- function(cost, n_cost) {
+    cost$score <- (n_cost - cost$score) / n_cost
+    return(cost)
 }

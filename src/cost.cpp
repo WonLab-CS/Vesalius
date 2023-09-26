@@ -6,17 +6,6 @@
 using namespace Rcpp;
 
 
-// double fast_mean(const NumericVector& array) {
-//     int l = array.size();
-//     double mean = 0.0;
-//     for (int i = 0; i < l; i++) {
-//         mean += array[i];
-//     }
-//     mean = mean / l;
-//     return mean;
-// }
-
-
 float fast_cor(const NumericVector& cell_1, const NumericVector& cell_2){
     int n = cell_1.size();
     double sum_cell_1 = 0.0, sum_cell_2 = 0.0, sum_cell_1_2 = 0.0;
@@ -43,7 +32,7 @@ NumericMatrix feature_dist_fast(const NumericMatrix seed, const NumericMatrix qu
         for (int j = 0; j < cell_query; j++){
             NumericVector s = seed(_,i);
             NumericVector q = query(_,j);
-            cost(i,j) = fast_cor(s,q);
+            cost(j,i) = fast_cor(s,q);
         }
     }
     return cost;
