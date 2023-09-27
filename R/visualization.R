@@ -768,3 +768,27 @@ view_gene_expression <- function(vesalius_assay,
     return(gene_list)
 }
 
+
+#' @export 
+view_mapping_score <- function(vesalius_assay,
+    score = "total_score",
+    cex_pt = 1,
+    cex = 15) {
+    coord <- get_tiles(vesalius_assay) %>%
+        filter(origin == 1)
+    scores <- vesalius_assay@meta$mapping_probability
+    scores <- scores[match(coord$barcodes, scores$from), score]
+    coord$score <- scores
+    g <- ggplot(coord, aes(x,y, col = score)) +
+        geom_point(size = cex_pt) +
+        scale_color_gradientn(colors = rev(brewer.pal(11, "Spectral")),
+            limits = c(0,1)) +
+        theme_classic() +
+        theme(legend.title = element_text(size = cex),
+          legend.text = element_text(size = cex),
+          plot.margin = margin(1, 1, 1, 1, "cm")) +
+        labs(col = "Mapping score", title = score) +
+        guides(shape = guide_legend(override.aes = list(size = cex * 0.5)))
+    return(g)
+}
+

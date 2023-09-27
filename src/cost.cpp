@@ -23,18 +23,36 @@ float fast_cor(const NumericVector& cell_1, const NumericVector& cell_2){
     return corr;
 }
 
+
+
 // [[Rcpp::export]]
-NumericMatrix feature_dist_fast(const NumericMatrix seed, const NumericMatrix query) {
+NumericMatrix feature_cost(const NumericMatrix& seed,
+    const NumericMatrix& query,
+    NumericMatrix cost) {
     int cell_seed = seed.ncol();
     int cell_query = query.ncol();
-    NumericMatrix cost(cell_query, cell_seed);
+    //NumericMatrix cost(cell_query, cell_seed);
     for (int i = 0 ; i < cell_seed; i++){
         for (int j = 0; j < cell_query; j++){
             NumericVector s = seed(_,i);
             NumericVector q = query(_,j);
-            cost(j,i) = fast_cor(s,q);
+            cost(j,i) += 1 - fast_cor(s,q);
         }
     }
     return cost;
 }
+
+// [[Rcpp::export]]
+NumericVector feature_score(const NumericMatrix& seed,
+    const NumericMatrix& query) {
+    int point = seed.ncol();
+    NumericVector score(point);
+    for (int i = 0 ; i < point; i++) {
+        NumericVector s = seed(_,i);
+        NumericVector q = query(_,i);
+        score[i] = fast_cor(s,q);
+    }
+    return score;
+}
+
 

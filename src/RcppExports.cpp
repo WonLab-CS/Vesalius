@@ -10,21 +10,35 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
-// feature_dist_fast
-NumericMatrix feature_dist_fast(const NumericMatrix seed, const NumericMatrix query);
-RcppExport SEXP _vesalius_feature_dist_fast(SEXP seedSEXP, SEXP querySEXP) {
+// feature_cost
+NumericMatrix feature_cost(const NumericMatrix& seed, const NumericMatrix& query, NumericMatrix cost);
+RcppExport SEXP _vesalius_feature_cost(SEXP seedSEXP, SEXP querySEXP, SEXP costSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const NumericMatrix >::type seed(seedSEXP);
-    Rcpp::traits::input_parameter< const NumericMatrix >::type query(querySEXP);
-    rcpp_result_gen = Rcpp::wrap(feature_dist_fast(seed, query));
+    Rcpp::traits::input_parameter< const NumericMatrix& >::type seed(seedSEXP);
+    Rcpp::traits::input_parameter< const NumericMatrix& >::type query(querySEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type cost(costSEXP);
+    rcpp_result_gen = Rcpp::wrap(feature_cost(seed, query, cost));
+    return rcpp_result_gen;
+END_RCPP
+}
+// feature_score
+NumericVector feature_score(const NumericMatrix& seed, const NumericMatrix& query);
+RcppExport SEXP _vesalius_feature_score(SEXP seedSEXP, SEXP querySEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const NumericMatrix& >::type seed(seedSEXP);
+    Rcpp::traits::input_parameter< const NumericMatrix& >::type query(querySEXP);
+    rcpp_result_gen = Rcpp::wrap(feature_score(seed, query));
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_vesalius_feature_dist_fast", (DL_FUNC) &_vesalius_feature_dist_fast, 2},
+    {"_vesalius_feature_cost", (DL_FUNC) &_vesalius_feature_cost, 3},
+    {"_vesalius_feature_score", (DL_FUNC) &_vesalius_feature_score, 2},
     {NULL, NULL, 0}
 };
 

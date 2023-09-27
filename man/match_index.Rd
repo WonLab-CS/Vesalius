@@ -5,15 +5,13 @@
 \title{Finding optimal mapping between query and seed using a mini batch 
 approach}
 \usage{
-match_index(idx, cost_matrix, n_cost)
+match_index(idx, cost_matrix)
 }
 \arguments{
 \item{idx}{integer - index of batch}
 
 \item{cost_matrix}{list of matrices with cost between query (rows) and 
 seed (columns)}
-
-\item{verbose}{logical - should progress messages be outpute to the console}
 }
 \value{
 data.frame with point in query (from) mapped to 

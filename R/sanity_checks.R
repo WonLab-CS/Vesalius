@@ -829,6 +829,7 @@ check_cost_validity <- function(cost,
         assign("seed_signal", seed_signal, env = parent.frame())
         assign("query_signal", query_signal, env = parent.frame())
         assign("cost", cost, env = parent.frame())
+        assign("cost_cp", NULL, env = parent.frame())
         return(NULL) 
     }
     potential_dim <- c(nrow(query), nrow(seed))
@@ -866,7 +867,8 @@ check_cost_validity <- function(cost,
     assign("query", query, env = parent.frame())
     assign("seed_signal", seed_signal, env = parent.frame())
     assign("query_signal", query_signal, env = parent.frame())
-    assign("cost",cost, env = parent.frame())
+    assign("cost", cost, env = parent.frame())
+    assign("cost_cp", cost, env = parent.frame())
     return(NULL)
 }
 

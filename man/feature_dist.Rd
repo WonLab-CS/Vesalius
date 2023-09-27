@@ -4,12 +4,14 @@
 \alias{feature_dist}
 \title{compute the distance between seed and query signals}
 \usage{
-feature_dist(seed, query)
+feature_dist(seed, query, cost)
 }
 \arguments{
 \item{seed}{seed signal}
 
 \item{query}{query signal}
+
+\item{cost}{cost matrix}
 }
 \value{
 matrix with query as rows and seed as colmuns

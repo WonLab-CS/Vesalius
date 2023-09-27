@@ -237,42 +237,44 @@ point_mapping <- function(query_signal,
         query_assay,
         query_signal)
     if (!overwrite) {
-        n_cost <- ifelse(all(range(cost) == 0), 2, 3)
         message_switch("feature_cost", verbose, assay = assay)
         #---------------------------------------------------------------------#
         # Not sure happy with this - is there a way to avoid creating 
         # seperate matrices? 
         #---------------------------------------------------------------------#
-        cost <- cost + feature_dist(seed_signal, query_signal)
+        cost <- feature_dist(seed_signal, query_signal, cost)
         message_switch("get_neigh", verbose, assay = assay)
-        seed_signal <- get_neighborhood(seed,
+        seed_signal_niche <- get_neighborhood(seed,
             seed_signal,
             neighborhood,
             k,
             depth,
             radius)
-        query_signal <- get_neighborhood(query,
+        query_signal_niche <- get_neighborhood(query,
             query_signal,
             neighborhood,
             k,
             depth,
             radius)
         message_switch("neighbor_cost", verbose, assay = assay)
-        cost <- cost + feature_dist(seed_signal, query_signal)
-    } else {
-        n_cost <- 1
+        cost <- feature_dist(seed_signal_niche, query_signal_niche, cost)
     }
     #--------------------------------------------------------------------------#
     # devide cost matrix
     #--------------------------------------------------------------------------#
     cost <- divide_and_conquer(cost, batch_size, verbose)
-    matched_indices <- match_index(seq(1,length(cost)), cost, n_cost)
-    matched_indices <- cost_to_prob(matched_indices, n_cost)
+    matched_indices <- match_index(seq(1,length(cost)), cost)
+    scores <- score_matches(matched_indices,
+        seed_signal,
+        query_signal,
+        seed_signal_niche,
+        query_signal_niche,
+        cost_cp)
     aligned <- align_index(matched_indices,
         seed,
         query,
         verbose)
-    return(list("aligned" = aligned, "prob" = matched_indices))
+    return(list("aligned" = aligned, "prob" = scores))
 }
 
 
@@ -281,12 +283,12 @@ point_mapping <- function(query_signal,
 #' compute the distance between seed and query signals
 #' @param seed seed signal
 #' @param query query signal
+#' @param cost cost matrix 
 #' @return matrix with query as rows and seed as colmuns
-feature_dist <- function(seed, query) {
-    cost <- feature_dist_fast(seed, query)
+feature_dist <- function(seed, query, cost) {
+    cost <- feature_cost(seed, query, cost)
     colnames(cost) <- colnames(seed)
     rownames(cost) <- colnames(query)
-    cost <- clip_cost(cost)
     return(cost)
 }
 
@@ -427,58 +429,21 @@ divide_and_conquer <- function(cost_mat, batch_size, verbose) {
     return(cost_list)
 }
 
-# #' Finding optimal mapping between query and seed
-# #' @param cost_matrix matrix with cost between query (rows) and 
-# #' seed (columns)
-# #' @details Uses a Hungarian solver to minimize overall cost of 
-# #' pair assignement.
-# #' @return data.frame with point in query (from) mapped to 
-# #' which point in seed (to) as well as cost of mapping for that pair
-# match_index <- function(cost_matrix) {
-#     if (nrow(cost_matrix) > ncol(cost_matrix)) {
-#         cost_matrix <- t(cost_matrix)
-#         with_transpose <- TRUE
-#     } else {
-#         with_transpose <- FALSE
-#     }
-#     map <- RcppHungarian::HungarianSolver(cost_matrix)
-#     mapping <- as.data.frame(map$pairs)
-#     if (with_transpose){
-#         colnames(mapping) <- c("to", "from")
-#         scores <- mapply(function(i, j, cost) {
-#             return(cost[i, j])
-#         }, mapping$to, mapping$from, MoreArgs = list(cost_matrix))
-#         mapping$score <- scores
-#         mapping$to <- rownames(cost_matrix)[mapping$to]
-#         mapping$from <- colnames(cost_matrix)[mapping$from]
-#     } else {
-#         colnames(mapping) <- c("from", "to")
-#         scores <- mapply(function(i, j, cost) {
-#             return(cost[i, j])
-#         }, mapping$from, mapping$to, MoreArgs = list(cost_matrix))
-#         mapping$score <- scores
-#         mapping$to <- colnames(cost_matrix)[mapping$to]
-#         mapping$from <- rownames(cost_matrix)[mapping$from]
-#     }
-#     return(mapping)
-# }
-
 
 #' Finding optimal mapping between query and seed using a mini batch 
 #' approach
 #' @param idx integer - index of batch 
 #' @param cost_matrix list of matrices with cost between query (rows) and 
 #' seed (columns)
-#' @param verbose logical - should progress messages be outpute to the console
 #' @details Uses a Hungarian solver to minimize overall cost of 
 #' pair assignement.
 #' @return data.frame with point in query (from) mapped to 
 #' which point in seed (to) as well as cost of mapping for that pair
-match_index <- function(idx, cost_matrix, n_cost) {
+match_index <- function(idx, cost_matrix) {
     coms <- comment(cost_matrix)
     mapping <- future_lapply(idx, function(idx,
         cost_matrix, n_cost) {
-        cost_matrix <- n_cost - cost_matrix[[idx]] 
+        cost_matrix <- cost_matrix[[idx]] 
         map <- RcppHungarian::HungarianSolver(cost_matrix)
         mapping <- as.data.frame(map$pairs)
         colnames(mapping) <- c("from", "to")
@@ -488,13 +453,12 @@ match_index <- function(idx, cost_matrix, n_cost) {
             mapping$from,
             mapping$to,
             MoreArgs = list(cost_matrix))
-        mapping$score <- scores
+        mapping$cost <- scores
         mapping$to <- colnames(cost_matrix)[mapping$to]
         mapping$from <- rownames(cost_matrix)[mapping$from]
         return(mapping)
     },
     cost_matrix = cost_matrix,
-    n_cost = n_cost,
     future.seed = TRUE)
     mapping <- concat_matches(mapping, coms)
     return(mapping)
@@ -507,7 +471,7 @@ match_index <- function(idx, cost_matrix, n_cost) {
 #' @return data.frame with matched points
 concat_matches <- function(matched_indices, coms) {
     matched_indices <- lapply(matched_indices, function(x) {
-        return(x[, c("from", "to", "score")])
+        return(x[, c("from", "to", "cost")])
     })
     if (coms == "reduce") {
         loc <- sapply(matched_indices, function(x){
@@ -519,6 +483,39 @@ concat_matches <- function(matched_indices, coms) {
         matched_indices <- do.call("rbind", matched_indices)
     }
     
+    return(matched_indices)
+}
+
+
+score_matches <- function(matched_indices,
+    seed_signal,
+    query_signal,
+    seed_signal_niche,
+    query_signal_niche,
+    cost_cp) {
+    if (!is.null(cost_cp)) {
+        matched_indices$custom_cost <- sapply(seq_len(matched_indices),
+            function(i, matched, cost_cp){
+                return(cost_cp[rownames(cost_cp) %in% matched$from[i],
+                   colnames(cost_cp) %in% matched$to[i]])
+            },matched_indices, cost_cp)
+        matched_indices$custom_cost <- 1 - matched_indices$custom_cost
+    }
+
+    matched_indices$feature_score <- feature_score(
+        seed_signal[,match(matched_indices$to, colnames(seed_signal))],
+        query_signal[,match(matched_indices$from, colnames(query_signal))])
+
+    matched_indices$niche_score <- feature_score(
+        seed_signal_niche[,
+            match(matched_indices$to, colnames(seed_signal_niche))],
+        query_signal_niche[,
+            match(matched_indices$from, colnames(query_signal_niche))])
+
+
+    matched_indices$total_score <- apply(matched_indices[,4:ncol(matched_indices)],
+        1,
+        mean) 
     return(matched_indices)
 }
 
