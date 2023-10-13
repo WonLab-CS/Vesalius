@@ -10,6 +10,8 @@ divide_and_conquer(cost_mat, batch_size, verbose)
 \item{cost_mat}{matrix}
 
 \item{batch_size}{integer - size of each batch}
+
+\item{verbose}{logical out message to console}
 }
 \value{
 list containing cost matrix batches

@@ -4,7 +4,7 @@
 \alias{feature_dist}
 \title{compute the distance between seed and query signals}
 \usage{
-feature_dist(seed, query, cost)
+feature_dist(seed, query, cost, batch_size)
 }
 \arguments{
 \item{seed}{seed signal}
@@ -12,10 +12,21 @@ feature_dist(seed, query, cost)
 \item{query}{query signal}
 
 \item{cost}{cost matrix}
+
+\item{batch_size}{int describing size of each batch parse to the loops}
 }
 \value{
 matrix with query as rows and seed as colmuns
 }
 \description{
 compute the distance between seed and query signals
+}
+\details{
+Chunking cost and signal into smaller chunks to run the 
+correlation score in paralell. There is room for improvement here.
+First we could dispatch the longer list to future_lapply
+but cannot know which one it is and we need to know that so we can 
+subset the cost. 
+Also the functions calls feature_cost which is a R wrapper for a 
+c++ function (cost.cpp).
 }

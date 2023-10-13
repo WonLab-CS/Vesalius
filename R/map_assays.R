@@ -83,7 +83,6 @@ map_assays <- function(seed_assay,
     radius = 0.05,
     depth = 1,
     dimensions = seq(1, 30),
-    norm = "noise",
     batch_size = 1000,
     signal = "variable_features",
     use_norm = "raw",
@@ -124,7 +123,6 @@ map_assays <- function(seed_assay,
             radius = radius,
             depth = depth,
             batch_size = batch_size,
-            norm = norm,
             overwrite = overwrite,
             verbose = verbose),
         SIMPLIFY = FALSE)
@@ -242,7 +240,10 @@ point_mapping <- function(query_signal,
         # Not sure happy with this - is there a way to avoid creating 
         # seperate matrices? 
         #---------------------------------------------------------------------#
-        cost <- feature_dist(seed_signal, query_signal, cost)
+        cost <- feature_dist(seed_signal,
+            query_signal,
+            cost,
+            batch_size)
         message_switch("get_neigh", verbose, assay = assay)
         seed_signal_niche <- get_neighborhood(seed,
             seed_signal,
@@ -257,7 +258,10 @@ point_mapping <- function(query_signal,
             depth,
             radius)
         message_switch("neighbor_cost", verbose, assay = assay)
-        cost <- feature_dist(seed_signal_niche, query_signal_niche, cost)
+        cost <- feature_dist(seed_signal_niche,
+            query_signal_niche,
+            cost,
+            batch_size)
     }
     #--------------------------------------------------------------------------#
     # devide cost matrix
@@ -283,15 +287,49 @@ point_mapping <- function(query_signal,
 #' compute the distance between seed and query signals
 #' @param seed seed signal
 #' @param query query signal
-#' @param cost cost matrix 
+#' @param cost cost matrix
+#' @param batch_size int describing size of each batch parse to the loops
+#' @details Chunking cost and signal into smaller chunks to run the 
+#' correlation score in paralell. There is room for improvement here.
+#' First we could dispatch the longer list to future_lapply
+#' but cannot know which one it is and we need to know that so we can 
+#' subset the cost. 
+#' Also the functions calls feature_cost which is a R wrapper for a 
+#' c++ function (cost.cpp).
 #' @return matrix with query as rows and seed as colmuns
-feature_dist <- function(seed, query, cost) {
-    cost <- feature_cost(seed, query, cost)
-    colnames(cost) <- colnames(seed)
-    rownames(cost) <- colnames(query)
-    return(cost)
+feature_dist <- function(seed, query, cost, batch_size) {
+    seed_batch <- chunk(seq(1, ncol(seed)), batch_size)
+    query_batch <- chunk(seq(1, ncol(query)), batch_size)
+    new_cost <- vector("list", length(seed_batch))
+    for (i in seq_along(seed_batch)) {
+        local_seed <- matrix(seed[,seed_batch[[i]]],
+            ncol = length(seed_batch[[i]]))
+        colnames(local_seed) <- colnames(seed)[seed_batch[[i]]]
+        local_cost <- future_lapply(query_batch,
+            function(query_batch, seed, query, cost) {
+                local_cost <- matrix(cost[query_batch, colnames(seed)],
+                    ncol = ncol(seed),
+                    nrow = length(query_batch))
+                colnames(local_cost) <- colnames(seed)
+                rownames(local_cost) <- colnames(query)[query_batch]
+                local_query <- matrix(query[, query_batch],
+                    ncol = length(query_batch))
+                colnames(local_query) <- colnames(query)[query_batch]
+                
+                local_cost <- feature_cost(seed, local_query, local_cost)
+                return(local_cost)
+            }, seed = local_seed,
+            query = query,
+            cost = cost,
+            future.seed = TRUE)
+        local_cost <- do.call("rbind", local_cost)
+        new_cost[[i]] <- local_cost
+    }
+    new_cost <- do.call("cbind", new_cost)
+    colnames(new_cost) <- colnames(seed)
+    rownames(new_cost) <- colnames(query)
+    return(new_cost)
 }
-
 
 
 
@@ -361,22 +399,20 @@ neighborhood_signal <- function(neighbors, signal) {
         }
     }, signal = signal)
     n_signal <- do.call("cbind", n_signal)
+    colnames(n_signal) <- names(neighbors)
     return(n_signal)
 }
 
 
 #' splitting cost matrix into batches for batch processing
 #' @param cost_mat matrix 
-#' @param batch_size integer - size of each batch 
+#' @param batch_size integer - size of each batch
+#' @param verbose logical out message to console
 #' @return list containing cost matrix batches 
 divide_and_conquer <- function(cost_mat, batch_size, verbose) {
     #-------------------------------------------------------------------------#
-    # First check if we are going to be batching
-    # If no batching -> return list - "loop" over one element list
-    # I should do a benchmarking test to see if this would take a performance 
-    # hit 
-    # also adding comment to all of them even though only need the reduce tag
-    # just keep this for later just in case
+    # checking case
+    # case 1 : large data sets both need batching
     #-------------------------------------------------------------------------#
     if (ncol(cost_mat) >= batch_size && nrow(cost_mat) >= batch_size) {
         message_switch("div_hungarian", verbose)
@@ -384,8 +420,9 @@ divide_and_conquer <- function(cost_mat, batch_size, verbose) {
                 batch_size)
         if (ncol(cost_mat) >= nrow(cost_mat)) {
             seed_batch <- chunk(sample(seq(1, ncol(cost_mat)), ncol(cost_mat)),
-                floor(ncol(cost_mat) / length(query_batch)))
-            coms <- "subsample"
+                floor(ncol(cost_mat) / length(query_batch)),
+                l = length(query_batch))
+            coms <- "dispatch"
         } else {
             seed_batch <- lapply(query_batch, function(query, max_idx) {
                     return(sample(seq(1, max_idx), length(query)))
@@ -441,9 +478,9 @@ divide_and_conquer <- function(cost_mat, batch_size, verbose) {
 #' which point in seed (to) as well as cost of mapping for that pair
 match_index <- function(idx, cost_matrix) {
     coms <- comment(cost_matrix)
-    mapping <- future_lapply(idx, function(idx,
+    mapping <- lapply(idx, function(idx,
         cost_matrix, n_cost) {
-        cost_matrix <- cost_matrix[[idx]] 
+        cost_matrix <- cost_matrix[[idx]]
         map <- RcppHungarian::HungarianSolver(cost_matrix)
         mapping <- as.data.frame(map$pairs)
         colnames(mapping) <- c("from", "to")
@@ -453,13 +490,14 @@ match_index <- function(idx, cost_matrix) {
             mapping$from,
             mapping$to,
             MoreArgs = list(cost_matrix))
+
         mapping$cost <- scores
         mapping$to <- colnames(cost_matrix)[mapping$to]
         mapping$from <- rownames(cost_matrix)[mapping$from]
         return(mapping)
     },
-    cost_matrix = cost_matrix,
-    future.seed = TRUE)
+    cost_matrix = cost_matrix)#,
+    #future.seed = TRUE)
     mapping <- concat_matches(mapping, coms)
     return(mapping)
 }
@@ -494,7 +532,7 @@ score_matches <- function(matched_indices,
     query_signal_niche,
     cost_cp) {
     if (!is.null(cost_cp)) {
-        matched_indices$custom_cost <- sapply(seq_len(matched_indices),
+        matched_indices$custom_cost <- sapply(seq_len(nrow(matched_indices)),
             function(i, matched, cost_cp){
                 return(cost_cp[rownames(cost_cp) %in% matched$from[i],
                    colnames(cost_cp) %in% matched$to[i]])
@@ -532,7 +570,7 @@ align_index <- function(matched_index,
     seed,
     query,
     verbose = TRUE) {
-    query$norm_with <- 0
+    
     query$x[match(matched_index$from, query$barcodes)] <-
         seed$x[match(matched_index$to, seed$barcodes)]
     query$y[match(matched_index$from, query$barcodes)] <-

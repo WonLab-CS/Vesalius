@@ -108,13 +108,17 @@ arrange_knn_matrix <- function(knn) {
 
 
 
-chunk <- function(x, n) {
-  chunk <- mapply(function(a, b) {
+chunk <- function(x, n, l = NULL) {
+    chunk <- mapply(function(a, b) {
       return(x[a:b])},
     seq.int(from = 1, to = length(x), by = n),
     pmin(seq.int(from = 1, to = length(x), by = n) + (n - 1), length(x)),
     SIMPLIFY = FALSE)
-  return(chunk)
+    if (!is.null(l) && length(chunk) > l){
+        chunk[[l]] <- unlist(chunk[l:length(chunk)])
+        chunk <- chunk[seq(1,l)]
+    }
+    return(chunk)
 }
 
 

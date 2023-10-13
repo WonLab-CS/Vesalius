@@ -690,7 +690,7 @@ raw_norm <- function(counts, use_count = "raw") {
     # We are using this just for formating at the moment
     # We have to be a bit hacky with the Seurat object
     #--------------------------------------------------------------------------#
-    norm_counts <- list(Seurat::GetAssayData(counts, slot = "counts"))
+    norm_counts <- list(Seurat::GetAssayData(counts, layer = "counts"))
     counts@assays$RNA@scale.data <- as.matrix(Seurat::GetAssayData(counts,
       slot = "counts"))
     names(norm_counts) <- use_count
@@ -714,7 +714,7 @@ log_norm <- function(counts, nfeatures) {
   counts <- suppressWarnings(Seurat::FindVariableFeatures(counts,
     nfeatures = nfeatures,
     verbose = FALSE))
-  norm_counts <- list(Seurat::GetAssayData(counts, slot = "data"))
+  norm_counts <- list(Seurat::GetAssayData(counts, layer = "data"))
   names(norm_counts) <- "log_norm"
   return(list("SO" = counts, "norm" = norm_counts))
 }
@@ -731,7 +731,7 @@ log_norm <- function(counts, nfeatures) {
 int_sctransform <- function(counts, nfeatures) {
     counts <- suppressWarnings(Seurat::SCTransform(counts,
       variable.features.n = nfeatures, verbose = FALSE))
-    norm_counts <- list(GetAssayData(counts, slot = "data"))
+    norm_counts <- list(GetAssayData(counts, layer = "data"))
     names(norm_counts) <- "SCTransform"
     return(list("SO" = counts, "norm" = norm_counts))
 }
@@ -752,7 +752,7 @@ tfidf_norm <- function(counts, min_cutoff) {
   counts <- Seurat::ScaleData(counts, verbose = FALSE)
   counts <- suppressWarnings(
     Signac::FindTopFeatures(counts, min.cutoff = min_cutoff))
-  norm_counts <- list(Seurat::GetAssayData(counts, slot = "data"))
+  norm_counts <- list(Seurat::GetAssayData(counts, layer = "data"))
   names(norm_counts) <- "TFIDF"
   return(list("SO" = counts, "norm" = norm_counts))
 }

@@ -12,7 +12,6 @@ map_assays(
   radius = 0.05,
   depth = 1,
   dimensions = seq(1, 30),
-  norm = "noise",
   batch_size = 1000,
   signal = "variable_features",
   use_norm = "raw",

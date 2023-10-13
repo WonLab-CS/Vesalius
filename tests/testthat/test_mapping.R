@@ -104,6 +104,26 @@ test_that("batching case", {
         batch_size = 1000,
         signal = "variable_features"),
         "vesalius_assay")
+    expect_s4_class(map_assays(vesalius,
+        jitter_ves,
+        batch_size = 600,
+        signal = "variable_features"),
+        "vesalius_assay")
+    expect_s4_class(map_assays(vesalius,
+        jitter_ves,
+        batch_size = 1001,
+        signal = "variable_features"),
+        "vesalius_assay")
+    expect_s4_class(map_assays(vesalius,
+        jitter_ves,
+        batch_size = 1051,
+        signal = "variable_features"),
+        "vesalius_assay")
+    expect_s4_class(map_assays(vesalius,
+        jitter_ves,
+        batch_size = 1053,
+        signal = "variable_features"),
+        "vesalius_assay")
     expect_s4_class(map_assays(jitter_ves,
         vesalius,
         batch_size = 1000,
@@ -111,7 +131,7 @@ test_that("batching case", {
         "vesalius_assay")
     expect_s4_class(map_assays(vesalius,
         jitter_ves,
-        batch_size = 500,
+        batch_size = 100,
         signal = "variable_features"),
         "vesalius_assay")
     expect_s4_class(map_assays(jitter_ves,
