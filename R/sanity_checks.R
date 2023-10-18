@@ -819,35 +819,56 @@ check_cost_validity <- function(cost,
     # for a lot of things. Keep this approach for now 
     #-------------------------------------------------------------------------#
     if (is.null(cost)) {
-        cost <- matrix(0,
-            nrow = ncol(query_signal),
-            ncol = ncol(seed_signal))
-        rownames(cost) <- colnames(query_signal)
-        colnames(cost) <- colnames(seed_signal)
         assign("seed", seed, env = parent.frame())
         assign("query", query, env = parent.frame())
         assign("seed_signal", seed_signal, env = parent.frame())
         assign("query_signal", query_signal, env = parent.frame())
-        assign("cost", cost, env = parent.frame())
-        assign("cost_cp", NULL, env = parent.frame())
+        assign("cost", NULL, env = parent.frame())
         return(NULL) 
     }
-    potential_dim <- c(nrow(query), nrow(seed))
-    if (all(potential_dim != dim(cost))) {
-        warning(paste0("Dimensions differ between matrices \n",
-        "Custom Cost = ", paste(dim(cost), collapse = " "), "\n",
-        "Cost matrix = ", paste(potential_dim, collapse = " "), "\n",
-        "Checking for overlaps - and subsetting \n"),
-        immediate. = TRUE)
+    #-------------------------------------------------------------------------#
+    # First we check if the cost matrices are consitent
+    #-------------------------------------------------------------------------#
+    if ( is.null(names(cost))){
+        cost_names <- paste0("cost_", seq(1,length(cost)))
+    } else {
+        cost_names <- names(cost)
     }
+    seed_barcodes <- unique(unlist(lapply(cost, colnames)))
+    query_barcodes <- unique(unlist(lapply(cost, rownames)))
+    cost <- lapply(cost, function(cost, seed_barcodes, query_barcodes){
+            cost <- cost[rownames(cost) %in% query_barcodes,
+                colnames(cost) %in% seed_barcodes]
+            if (is.null(dim(cost))){
+                stop("Barcodes between cost matrices do not match!")
+            }
+        }, seed_barcodes, query_barcodes)
+    names(cost) <- cost_names
+    #-------------------------------------------------------------------------#
+    # Next we check if these barcodes overlap with the seed and query data
+    #-------------------------------------------------------------------------#
+    for (i in seq_along(cost)) {
+        potential_dim <- c(nrow(query), nrow(seed))
+        if (all(potential_dim != dim(cost[[i]]))) {
+            warning(paste0("Dimensions differ between matrices \n",
+            "Custom Cost = ", paste(dim(cost[[i]]), collapse = " "), "\n",
+            "Cost matrix = ", paste(potential_dim, collapse = " "), "\n",
+            "Checking for overlaps - and subsetting \n"),
+            immediate. = TRUE)
+        }
+        row_over <- intersect(query$barcodes, rownames(cost[[i]]))
+        col_over <- intersect(seed$barcodes, colnames(cost[[i]]))
+        if (length(row_over) == 0 || length(col_over) == 0) {
+            stop("No common cells between custom cost and cost matrix")
+        }
+        cost[[i]] <- cost[[i]][match(row_over, rownames(cost[[i]])),
+            match(col_over, colnames(cost[[i]]))]
         
-    row_over <- intersect(query$barcodes, rownames(cost))
-    col_over <- intersect(seed$barcodes, colnames(cost))
-    if (length(row_over) == 0 || length(col_over) == 0) {
-        stop("No common cells between custom cost and cost matrix")
     }
-    cost <- cost[match(row_over, rownames(cost)),
-        match(col_over, colnames(cost))]
+    #-------------------------------------------------------------------------#
+    # now we subset - the last iteration should contain the same 
+    # barcodes as all the other cost matrices since we filtered them above
+    #-------------------------------------------------------------------------#
     query <- query[query$barcodes %in% row_over, ]
     seed <- seed[seed$barcodes %in% col_over, ]
     #---------------------------------------------------------------------#
@@ -863,12 +884,12 @@ check_cost_validity <- function(cost,
         check_gene_overlap(s))
     query_signal <- q[rownames(q) %in% gene_intersect, ]
     seed_signal <- s[rownames(s) %in% gene_intersect, ]
+    
     assign("seed", seed, env = parent.frame())
     assign("query", query, env = parent.frame())
     assign("seed_signal", seed_signal, env = parent.frame())
     assign("query_signal", query_signal, env = parent.frame())
     assign("cost", cost, env = parent.frame())
-    assign("cost_cp", cost, env = parent.frame())
     return(NULL)
 }
 

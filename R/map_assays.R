@@ -27,8 +27,6 @@
 #' @param use_norm character - which count data to use
 #' @param custom_cost matrix - matrix of size n (query cells) by p (seed cells)
 #' containing custom cost matrix. Used instead of vesalius cost matrix
-#' @param overwrite logical - if custom_cost is not NULL, should this matrix
-#' be added to the vesalius matrix or should it overwrite it completely.
 #' @param verbose logical - should I be a noisy boy?
 #' @details The goal is to assign the best matching point between a seed set and
 #' a query set.
@@ -87,8 +85,8 @@ map_assays <- function(seed_assay,
     signal = "variable_features",
     use_norm = "raw",
     cost_threshold = 0.3,
+    use_cost = c("feature","niche"),
     custom_cost = NULL,
-    overwrite = FALSE,
     merge = FALSE,
     verbose = TRUE) {
     simple_bar(verbose)
@@ -123,7 +121,7 @@ map_assays <- function(seed_assay,
             radius = radius,
             depth = depth,
             batch_size = batch_size,
-            overwrite = overwrite,
+            use_cost = use_cost,
             verbose = verbose),
         SIMPLIFY = FALSE)
     #-------------------------------------------------------------------------#
@@ -226,7 +224,7 @@ point_mapping <- function(query_signal,
     batch_size = 1000,
     norm = "noise",
     mapping = "div",
-    overwrite = FALSE,
+    use_cost = c("feature", "niche"),
     verbose = TRUE) {
     assay <- get_assay_names(query_assay)
     check_cost_validity(cost,
@@ -234,16 +232,15 @@ point_mapping <- function(query_signal,
         seed_signal,
         query_assay,
         query_signal)
-    if (!overwrite) {
+    
+    if (grepl("feature", use_cost)){
         message_switch("feature_cost", verbose, assay = assay)
-        #---------------------------------------------------------------------#
-        # Not sure happy with this - is there a way to avoid creating 
-        # seperate matrices? 
-        #---------------------------------------------------------------------#
-        cost <- feature_dist(seed_signal,
+        cost <- c(cost, feature_dist(seed_signal,
             query_signal,
-            cost,
-            batch_size)
+            batch_size))
+        names(cost) <- c(names(cost), "feature")
+    }
+    if ( grepl("niche", use_cost)) {
         message_switch("get_neigh", verbose, assay = assay)
         seed_signal_niche <- get_neighborhood(seed,
             seed_signal,
@@ -258,22 +255,24 @@ point_mapping <- function(query_signal,
             depth,
             radius)
         message_switch("neighbor_cost", verbose, assay = assay)
-        cost <- feature_dist(seed_signal_niche,
+        cost <- c(cost, feature_dist(seed_signal_niche,
             query_signal_niche,
-            cost,
-            batch_size)
+            batch_size))
+        names(cost) <- c(names(cost), "niche")
     }
+    #--------------------------------------------------------------------------#
+    # pairwise addition of cost matrices
+    #--------------------------------------------------------------------------#
+    cost <- c(cost, concat_cost(cost, use_cost))
+    names(cost) <- c(names(cost), "total_cost")
     #--------------------------------------------------------------------------#
     # devide cost matrix
     #--------------------------------------------------------------------------#
-    cost <- divide_and_conquer(cost, batch_size, verbose)
-    matched_indices <- match_index(seq(1,length(cost)), cost)
+    map_cost <- divide_and_conquer(cost$total_cost, batch_size, verbose)
+    matched_indices <- match_index(seq(1, length(map_cost)), map_cost)
     scores <- score_matches(matched_indices,
-        seed_signal,
-        query_signal,
-        seed_signal_niche,
-        query_signal_niche,
-        cost_cp)
+        cost,
+        use_cost = use_cost)
     aligned <- align_index(matched_indices,
         seed,
         query,
@@ -281,6 +280,24 @@ point_mapping <- function(query_signal,
     return(list("aligned" = aligned, "prob" = scores))
 }
 
+concat_cost <- function(cost, use_cost) { 
+    if ( length(use_cost == 0)) {
+        stop("Please specify at least one score matrix to use")
+    }
+    cost <- cost[use_cost]
+    if (length(cost) == 0) {
+        stop(paste(paste(use_cost, collapse = " "), ": not available in score matrix list"))
+    } else if (length(cost) == 1) {
+        return(1 - cost[[1]])
+    } else {
+        buffer <- 1 - cost[[1]]
+        for (i in seq(2, length(cost))){
+            buffer <- buffer + (1 - cost[[i]])
+        }
+        return(buffer)
+    }
+
+}
 
 
 
@@ -526,34 +543,15 @@ concat_matches <- function(matched_indices, coms) {
 
 
 score_matches <- function(matched_indices,
-    seed_signal,
-    query_signal,
-    seed_signal_niche,
-    query_signal_niche,
-    cost_cp) {
-    if (!is.null(cost_cp)) {
-        matched_indices$custom_cost <- sapply(seq_len(nrow(matched_indices)),
-            function(i, matched, cost_cp){
-                return(cost_cp[rownames(cost_cp) %in% matched$from[i],
-                   colnames(cost_cp) %in% matched$to[i]])
-            },matched_indices, cost_cp)
-        matched_indices$custom_cost <- 1 - matched_indices$custom_cost
+    cost,
+    use_cost) {
+    for (i in seq_along(use_cost)) {
+        inter_score <- cost[[use_cost[i]]][
+            matched_indices$from %in% rownames(cost[[use_cost[i]]]),
+            matched_indices$to %in% colnames(cost[[use_cost[i]]])]
+        matched_indices$inter_score <- inter_score
+        colnames(matched_indices) <- gsub("inter_score", use_cost[i], colnames(matched_indices))
     }
-
-    matched_indices$feature_score <- feature_score(
-        seed_signal[,match(matched_indices$to, colnames(seed_signal))],
-        query_signal[,match(matched_indices$from, colnames(query_signal))])
-
-    matched_indices$niche_score <- feature_score(
-        seed_signal_niche[,
-            match(matched_indices$to, colnames(seed_signal_niche))],
-        query_signal_niche[,
-            match(matched_indices$from, colnames(query_signal_niche))])
-
-
-    matched_indices$total_score <- apply(matched_indices[,4:ncol(matched_indices)],
-        1,
-        mean) 
     return(matched_indices)
 }
 
