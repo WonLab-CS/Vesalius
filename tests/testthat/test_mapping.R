@@ -52,29 +52,27 @@ test_that("input sanity checks", {
     colnames(custom_matrix) <- sample(colnames(counts), 500)
     expect_warning(map_assays(vesalius,
         jitter_ves,
-        custom_cost = custom_matrix,
-        overwrite = FALSE
-        ))
-    expect_warning(map_assays(vesalius,
-        jitter_ves,
-        custom_cost = custom_matrix,
-        overwrite = TRUE
+        custom_cost = custom_matrix
         ))
     rownames(custom_matrix) <- make.unique(sample(LETTERS, 500, replace = TRUE))
     colnames(custom_matrix) <- make.unique(sample(LETTERS, 500, replace = TRUE))
     expect_error(map_assays(vesalius,
         jitter_ves,
-        custom_cost = custom_matrix,
-        overwrite = FALSE
+        custom_cost = custom_matrix
         ))
     custom_matrix <- matrix(0.5, ncol = ncol(counts),
         nrow = ncol(jitter_counts))
     colnames(custom_matrix) <- colnames(counts)
     rownames(custom_matrix) <- colnames(jitter_counts)
+    custom_matrix <- list(custom_matrix)
+    expect_warning(map_assays(vesalius,
+        jitter_ves,
+        custom_cost = custom_matrix
+        ))
+    names(custom_matrix) <- "custom_cost"
     expect_s4_class(map_assays(vesalius,
         jitter_ves,
-        custom_cost = custom_matrix,
-        overwrite = FALSE
+        custom_cost = custom_matrix
         ),"vesalius_assay")
 })
 

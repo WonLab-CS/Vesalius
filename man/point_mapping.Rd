@@ -15,9 +15,8 @@ point_mapping(
   radius = 0.05,
   depth = 1,
   batch_size = 1000,
-  norm = "noise",
   mapping = "div",
-  overwrite = FALSE,
+  use_cost = c("feature", "niche"),
   verbose = TRUE
 )
 }
@@ -37,9 +36,6 @@ neighborhood}
 
 \item{mapping}{exact mapping or div (divide and conquer)}
 
-\item{overwrite}{logical - if custom_cost is not NULL, should this matrix
-be added to the vesalius matrix or should it overwrite it completely.}
-
 \item{verbose}{logical - out progress to console}
 
 \item{query}{vesalius_assay object}
@@ -48,6 +44,9 @@ be added to the vesalius matrix or should it overwrite it completely.}
 containing custom cost matrix. Used instead of vesalius cost matrix}
 
 \item{seed}{vesalius_assay object}
+
+\item{overwrite}{logical - if custom_cost is not NULL, should this matrix
+be added to the vesalius matrix or should it overwrite it completely.}
 }
 \value{
 list of matched and aligned coordinates in query

@@ -774,7 +774,7 @@ check_signal <- function(assay, signal, type) {
     }
 }
 
-check_cost_matrix_validity <- function(custom_cost, query_assay) {
+check_cost_matrix_validity <- function(custom_cost) {
     #-------------------------------------------------------------------------#
     # making sure that we have a proper list 
     #-------------------------------------------------------------------------#
@@ -782,32 +782,17 @@ check_cost_matrix_validity <- function(custom_cost, query_assay) {
         if(!is(custom_cost, "list")) {
             custom_cost <- list(custom_cost)
         }
-    } else {
-        custom_cost <- vector("list", length(query_assay))
     }
     return(custom_cost)
 }
 
-check_query_assay_validity <- function(query_assay) {
-    if (is(query_assay, "vesalius_assay")) {
-        query_assay <- list(query_assay)
-    } else if (is(query_assay, "list")) {
-        assays <- sapply(query_assay, is, "vesalius_assay")
-        if (!all(assays)) {
-            stop("Query Assay list contains unrecognised types!
-                Only vesalius_assay object are supported at the moment.")
-        }
-    } else {
-        stop("Query assay is not a vesalius_assay or list")
-    }
-    return(query_assay)
-}
 
 check_cost_validity <- function(cost,
     seed_assay,
     seed_signal,
     query_assay,
-    query_signal) {
+    query_signal,
+    use_cost) {
     seed <- get_tiles(seed_assay) %>% filter(origin == 1)
     query <- get_tiles(query_assay) %>% filter(origin == 1)
     #-------------------------------------------------------------------------#
@@ -821,16 +806,21 @@ check_cost_validity <- function(cost,
     if (is.null(cost)) {
         assign("seed", seed, env = parent.frame())
         assign("query", query, env = parent.frame())
-        assign("seed_signal", seed_signal, env = parent.frame())
-        assign("query_signal", query_signal, env = parent.frame())
-        assign("cost", NULL, env = parent.frame())
-        return(NULL) 
+        # assign("seed_signal", seed_signal, env = parent.frame())
+        # assign("query_signal", query_signal, env = parent.frame())
+        # assign("cost", NULL, env = parent.frame())
+        # assign("use_cost", use_cost, env = parent.frame())
+        return(NULL)
     }
     #-------------------------------------------------------------------------#
     # First we check if the cost matrices are consitent
     #-------------------------------------------------------------------------#
-    if ( is.null(names(cost))){
-        cost_names <- paste0("cost_", seq(1,length(cost)))
+    if (is.null(names(cost))){
+        warning("No names assigned to cost list!
+        Creating Names and appending to use_cost list",
+        immediate. = TRUE)
+        cost_names <- paste0("cost_", seq(1, length(cost)))
+        use_cost <- c(cost_names, use_cost)
     } else {
         cost_names <- names(cost)
     }
@@ -842,6 +832,7 @@ check_cost_validity <- function(cost,
             if (is.null(dim(cost))){
                 stop("Barcodes between cost matrices do not match!")
             }
+            return(cost)
         }, seed_barcodes, query_barcodes)
     names(cost) <- cost_names
     #-------------------------------------------------------------------------#
@@ -890,6 +881,7 @@ check_cost_validity <- function(cost,
     assign("seed_signal", seed_signal, env = parent.frame())
     assign("query_signal", query_signal, env = parent.frame())
     assign("cost", cost, env = parent.frame())
+    assign("use_cost", use_cost, env = parent.frame())
     return(NULL)
 }
 

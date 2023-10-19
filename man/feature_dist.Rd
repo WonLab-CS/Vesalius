@@ -4,14 +4,12 @@
 \alias{feature_dist}
 \title{compute the distance between seed and query signals}
 \usage{
-feature_dist(seed, query, cost, batch_size)
+feature_dist(seed, query, batch_size)
 }
 \arguments{
 \item{seed}{seed signal}
 
 \item{query}{query signal}
-
-\item{cost}{cost matrix}
 
 \item{batch_size}{int describing size of each batch parse to the loops}
 }

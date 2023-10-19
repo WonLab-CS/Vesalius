@@ -16,8 +16,8 @@ map_assays(
   signal = "variable_features",
   use_norm = "raw",
   cost_threshold = 0.3,
+  use_cost = c("feature", "niche"),
   custom_cost = NULL,
-  overwrite = FALSE,
   merge = FALSE,
   verbose = TRUE
 )
@@ -52,9 +52,6 @@ Seed details}
 
 \item{custom_cost}{matrix - matrix of size n (query cells) by p (seed cells)
 containing custom cost matrix. Used instead of vesalius cost matrix}
-
-\item{overwrite}{logical - if custom_cost is not NULL, should this matrix
-be added to the vesalius matrix or should it overwrite it completely.}
 
 \item{verbose}{logical - should I be a noisy boy?}
 }
