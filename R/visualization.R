@@ -774,8 +774,7 @@ view_mapping_score <- function(vesalius_assay,
     score = "cost",
     cex_pt = 1,
     cex = 15) {
-    coord <- get_tiles(vesalius_assay) %>%
-        filter(origin == 1)
+    coord <- get_coordinates(vesalius_assay)
     scores <- vesalius_assay@meta$mapping_scores
     scores <- scores[match(coord$barcodes, scores$from), score]
     coord$score <- as.numeric(scores)

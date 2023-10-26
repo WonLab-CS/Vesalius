@@ -526,6 +526,8 @@ check_territory_trial <- function(vesalius_assay, trial) {
     return(territories)
 }
 
+
+
 #' check if segment selection is a valid option
 #' @param vesalius_assay a vesalius_assay object
 #' @param trial string - trial selection parse by user

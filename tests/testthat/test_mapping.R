@@ -183,31 +183,62 @@ test_that("filtering", {
 
 })
 
+# Split this into sections for each type and composite selections
 
-test_that("cost_types", {
+
+test_that("feature score", {
     expect_s4_class(map_assays(vesalius,
         jitter_ves,
         batch_size = 1000,
         threshold = 0.1,
         use_cost = "feature"),
         "vesalius_assay")
+})
+
+test_that("niche score", {
     expect_s4_class(map_assays(vesalius,
         jitter_ves,
         batch_size = 1000,
         threshold = 0.1,
         use_cost = "niche"),
         "vesalius_assay")
-     expect_s4_class(map_assays(vesalius,
+})
+
+test_that("territory score", {
+    expect_s4_class(map_assays(vesalius,
         jitter_ves,
         batch_size = 1000,
         threshold = 0.1,
         use_cost = "territory"),
         "vesalius_assay")
+})
+
+
+test_that("niche composition", {
+    ves_cells <- sample(LETTERS[1:10],
+        size = nrow(vesalius@territories),
+        replace = TRUE)
+    names(ves_cells) <- vesalius@territories$barcodes
+    jitter_cells <- sample(LETTERS[3:15],
+        size = nrow(jitter_ves@territories),
+        replace = TRUE)
+    names(jitter_cells) <- jitter_ves@territories$barcodes
+    vesalius <- add_cells(vesalius, cells = ves_cells)
+    jitter_ves <- add_cells(jitter_ves, cells = jitter_cells)
     expect_s4_class(map_assays(vesalius,
         jitter_ves,
         batch_size = 1000,
         threshold = 0.1,
-        use_cost = c("feature", "niche","territory")),
+        use_cost = "composition"),
+        "vesalius_assay")
+})
+
+test_that("multi_cost_types", {
+    expect_s4_class(map_assays(vesalius,
+        jitter_ves,
+        batch_size = 1000,
+        threshold = 0.1,
+        use_cost = c("feature", "niche", "territory", "composition")),
         "vesalius_assay")
 
     custom_matrix <- matrix(0.5, ncol = ncol(counts),
@@ -227,7 +258,7 @@ test_that("cost_types", {
         batch_size = 1000,
         threshold = 0.1,
         use_cost = c("feature", "niche", "funky"),
-        ustom_cost = custom_matrix),
+        custom_cost = custom_matrix),
         "vesalius_assay")
     expect_error(map_assays(vesalius,
         jitter_ves,
@@ -248,6 +279,7 @@ test_that("cost_types", {
         batch_size = 1000,
         threshold = 0.1,
         use_cost = c("feature", "niche", "A", "B", "C"),
-        ustom_cost = custom_matrix),
+        custom_cost = custom_matrix),
         "vesalius_assay")
 })
+

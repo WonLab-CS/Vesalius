@@ -344,6 +344,20 @@ get_markers <- function(vesalius_assay, trial = "last") {
     }
 }
 
+#' @export
+get_mapping_scores <- function(vesalius_assay) {
+    coord <- get_coordinates(vesalius_assay)
+    scores <- vesalius_assay@meta$mapping_scores
+    scores <- scores[match(coord$barcodes, scores$from), ]
+    mapped <- data.frame("barcodes" = scores$from,
+        "ref_barcodes" = scores$to,
+        "x" = coord$x,
+        "y" = coord$y)
+    mapped <- cbind(mapped,
+        scores[, seq(grep("cost", colnames(scores)), ncol(scores))])
+    return(mapped)
+}
+
 #' get active embedding
 #' @param vesalius_assay a vesalius_assay object
 #' @return character string with name of last embedding used
@@ -436,3 +450,4 @@ summarise_territories <- function(vesalius_assay, as_log = FALSE) {
     }
     return(log)
 }
+

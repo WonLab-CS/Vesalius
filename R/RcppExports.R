@@ -5,3 +5,7 @@ feature_cost <- function(seed, query) {
     .Call('_vesalius_feature_cost', PACKAGE = 'vesalius', seed, query)
 }
 
+compare_niche_fast <- function(seed, query) {
+    .Call('_vesalius_compare_niche_fast', PACKAGE = 'vesalius', seed, query)
+}
+

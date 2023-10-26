@@ -271,6 +271,27 @@ point_mapping <- function(query_signal,
         names(cost)[length(cost)] <-  "territory"
     }
     #--------------------------------------------------------------------------#
+    # Computing nich compisition
+    #--------------------------------------------------------------------------#
+    if (any(grepl("composition", use_cost))) {
+        message_switch("composition_cost", verbose, assay = assay)
+        seed_niche <- niche_composition(seed,
+            seed_assay,
+            method = neighborhood,
+            k = k,
+            depth = depth,
+            radius = radius)
+        query_niche <- niche_composition(query,
+            query_assay,
+            method = neighborhood,
+            k = k,
+            depth = depth,
+            radius = radius)
+
+        cost <- c(cost, list(compare_niches(seed_niche, query_niche)))
+        names(cost)[length(cost)] <-  "composition"
+    }
+    #--------------------------------------------------------------------------#
     # filtering and pairwise addition of cost matrices and
     #--------------------------------------------------------------------------#
     
@@ -507,6 +528,36 @@ neighborhood_signal <- function(neighbors, signal) {
 }
 
 
+niche_composition <- function(coord,
+    vesalius_assay,
+    method,
+    k = 20,
+    depth = 3,
+    radius = 20) {
+    niches <- switch(method,
+        "knn" = knn_neighborhood(coord, k),
+        "radius" = radius_neighborhood(coord, radius),
+        "depth" = depth_neighborhood(coord, depth),
+        "territory" = territory_neighborhood(coord))
+    niches <- lapply(niches, function(n, assay) {
+            composition <- get_territories(assay) %>%
+                filter(barcodes %in% n)
+            if (!any(grepl("Cells", colnames(composition)))) {
+                stop("No cell labels have been added! See add_cells function")
+            }
+            composition <- composition[, tail(grep("Cells", colnames(composition)),1)]
+            return(make.unique(composition))
+    }, assay = vesalius_assay)
+    return(niches)
+}
+
+compare_niches <- function(seed, query) {
+    jacques <- compare_niche_fast(seed, query)
+    colnames(jacques) <- names(seed)
+    rownames(jacques) <- names(query)
+    return(jacques)
+}
+
 #' splitting cost matrix into batches for batch processing
 #' @param cost_mat matrix 
 #' @param batch_size integer - size of each batch
@@ -627,7 +678,6 @@ concat_matches <- function(matched_indices, coms) {
     } else {
         matched_indices <- do.call("rbind", matched_indices)
     }
-    
     return(matched_indices)
 }
 

@@ -22,9 +22,22 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// compare_niche_fast
+NumericMatrix compare_niche_fast(const List& seed, const List& query);
+RcppExport SEXP _vesalius_compare_niche_fast(SEXP seedSEXP, SEXP querySEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const List& >::type seed(seedSEXP);
+    Rcpp::traits::input_parameter< const List& >::type query(querySEXP);
+    rcpp_result_gen = Rcpp::wrap(compare_niche_fast(seed, query));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_vesalius_feature_cost", (DL_FUNC) &_vesalius_feature_cost, 2},
+    {"_vesalius_compare_niche_fast", (DL_FUNC) &_vesalius_compare_niche_fast, 2},
     {NULL, NULL, 0}
 };
 

@@ -2,6 +2,7 @@
 #include <iostream>
 #include <vector>
 #include <cmath>
+#include <unordered_set>
 
 using namespace Rcpp;
 
@@ -23,23 +24,59 @@ float fast_cor(const NumericVector& cell_1, const NumericVector& cell_2){
     return corr;
 }
 
+double fast_jaccard(const CharacterVector& niche_1, const CharacterVector& niche_2){
+    // Create sets from the input vectors
+    std::unordered_set<std::string> niche_set1(niche_1.begin(), niche_1.end());
+    std::unordered_set<std::string> niche_set2(niche_2.begin(), niche_2.end());
 
+    // Calculate the size of the intersection
+    std::unordered_set<std::string> intersection;
+    for (const std::string& element : niche_set1) {
+        if (niche_set2.find(element) != niche_set2.end()) {
+            intersection.insert(element);
+        }
+    }
+    size_t union_size = niche_set1.size() + niche_2.size() - intersection.size();
+    if (union_size == 0) {
+        return 0.0;
+    } else {
+        return static_cast<double>(intersection.size()) / union_size;
+    }
+}
 
 // [[Rcpp::export]]
 NumericMatrix feature_cost(const NumericMatrix& seed,
     const NumericMatrix& query) {
     int cell_seed = seed.ncol();
     int cell_query = query.ncol();
-    NumericMatrix cost(cell_query, cell_seed);
+    NumericMatrix score(cell_query, cell_seed);
     for (int i = 0 ; i < cell_seed; i++){
         for (int j = 0; j < cell_query; j++){
             NumericVector s = seed(_,i);
             NumericVector q = query(_,j);
-            cost(j,i) = fast_cor(s,q);
+            score(j,i) = fast_cor(s,q);
         }
     }
-    return cost;
+    return score;
 }
+
+
+// [[Rcpp::export]]
+NumericMatrix compare_niche_fast(const List& seed,
+    const List& query) {
+    int cell_seed = seed.size();
+    int cell_query = query.size();
+    NumericMatrix composition(cell_query, cell_seed);
+    for (int i = 0 ; i < cell_seed; i++){
+        for (int j = 0; j < cell_query; j++){
+            CharacterVector s = seed[i];
+            CharacterVector q = query[j];
+            composition(j,i) = fast_jaccard(s,q);
+        }
+    }
+    return composition;
+}
+
 
 
 
