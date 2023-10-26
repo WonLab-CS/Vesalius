@@ -146,6 +146,8 @@ test_that("Adding Cells",{
     # adding new territory slot
     names(cells) <- coordinates$barcodes
     expect_s4_class(add_cells(vesalius, cells), "vesalius_assay")
+    cells <- sample(LETTERS[1:13], size = nrow(coordinates), replace = TRUE)
+    names(cells) <- coordinates$barcodes
     expect_s4_class(add_cells(vesalius, cells, add_name = "funky"),
         "vesalius_assay")
 
