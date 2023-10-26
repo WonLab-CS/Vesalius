@@ -629,10 +629,10 @@ check_norm <- function(vesalius_assay,
 #' @param ter string selected territories in the form of chacater string
 #' @param cell_barcodes character vector containing barcodes of cells
 #' of interest
-#' @param verbose logical if progress message should be outputed
+
 #' @return charcater vector of common barcodes between territory 
 #' barcodes and cell barcodes.
-check_cells <- function(territory_barcodes, ter, cell_barcodes, verbose) {
+check_cells <- function(territory_barcodes, ter, cell_barcodes) {
     common <- intersect(territory_barcodes, cell_barcodes)
     if (length(common) == 0) {
         warning(paste0("No cells of interest are present in ", ter,
@@ -815,7 +815,7 @@ check_cost_validity <- function(cost,
     #-------------------------------------------------------------------------#
     # First we check if the cost matrices are consitent
     #-------------------------------------------------------------------------#
-    if (is.null(names(cost))){
+    if (is.null(names(cost))) {
         warning("No names assigned to cost list!
         Creating Names and appending to use_cost list",
         immediate. = TRUE)
@@ -829,7 +829,7 @@ check_cost_validity <- function(cost,
     cost <- lapply(cost, function(cost, seed_barcodes, query_barcodes){
             cost <- cost[rownames(cost) %in% query_barcodes,
                 colnames(cost) %in% seed_barcodes]
-            if (is.null(dim(cost))){
+            if (is.null(dim(cost))) {
                 stop("Barcodes between cost matrices do not match!")
             }
             return(cost)

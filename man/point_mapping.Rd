@@ -17,6 +17,7 @@ point_mapping(
   batch_size = 1000,
   mapping = "div",
   use_cost = c("feature", "niche"),
+  threshold = 0.5,
   verbose = TRUE
 )
 }

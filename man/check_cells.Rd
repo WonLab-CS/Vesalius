@@ -4,7 +4,7 @@
 \alias{check_cells}
 \title{check if provided cells are contained withing provided territory}
 \usage{
-check_cells(territory_barcodes, ter, cell_barcodes, verbose)
+check_cells(territory_barcodes, ter, cell_barcodes)
 }
 \arguments{
 \item{territory_barcodes}{character vector containing spatial barcodes
@@ -14,8 +14,6 @@ of territories}
 
 \item{cell_barcodes}{character vector containing barcodes of cells
 of interest}
-
-\item{verbose}{logical if progress message should be outputed}
 }
 \value{
 charcater vector of common barcodes between territory 

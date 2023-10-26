@@ -9,7 +9,7 @@ add_counts(
   vesalius_assay,
   counts,
   raw_counts = NULL,
-  count_type = "custom_counts",
+  add_name = NULL,
   force = FALSE,
   verbose = TRUE
 )
@@ -21,13 +21,13 @@ add_counts(
 
 \item{raw_counts}{matrix or sparse matrix containing raw counts}
 
-\item{count_type}{character string defining the name of the count matrix
-being added.}
-
 \item{force}{logical indicating if count matrix provided should also be used
 as raw count matrix.}
 
 \item{verbose}{logical indicating if progress messages should be outputed.}
+
+\item{count_type}{character string defining the name of the count matrix
+being added.}
 }
 \value{
 a vesalius_assay object

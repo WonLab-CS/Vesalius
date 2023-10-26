@@ -135,3 +135,19 @@ test_that("Scale of coordinates",{
     expect_equal(vesalius@meta$unit$unit, "um")
 })
 
+test_that("Adding Cells",{
+    # generating base object
+    vesalius <- build_vesalius_assay(coordinates, counts)
+    cells <- sample(LETTERS[1:10], size = nrow(coordinates), replace = TRUE)
+    # expect error if no names assigned to cell type
+    expect_error(add_cells(vesalius, cells))
+    names(cells) <- make.unique(sample(LETTERS, nrow(coordinates), replace = TRUE))
+    expect_error(add_cells(vesalius, cells))
+    # adding new territory slot
+    names(cells) <- coordinates$barcodes
+    expect_s4_class(add_cells(vesalius, cells), "vesalius_assay")
+    expect_s4_class(add_cells(vesalius, cells, add_name = "funky"),
+        "vesalius_assay")
+
+})
+

@@ -11,7 +11,7 @@
 #' @param seed_assay vesalius_assay object - data to be mapped to
 #' @param query_assay vesalius_assay objecy - data to map
 #' @param neighborhood character - how should the neighborhood be selected?
-#' "knn", "radius", "depth" (See details)
+#' "knn", "radius", "depth"(See details)
 #' @param k int ]2, n_points] number of neareset neighbors to be considered for
 #' neighborhodd computation.
 #' @param radius numeric ]0,1[ proportion of max distance between points 
@@ -84,10 +84,9 @@ map_assays <- function(seed_assay,
     batch_size = 1000,
     signal = "variable_features",
     use_norm = "raw",
-    cost_threshold = 0.3,
+    threshold = 0.3,
     use_cost = c("feature","niche"),
     custom_cost = NULL,
-    merge = FALSE,
     verbose = TRUE) {
     simple_bar(verbose)
     #-------------------------------------------------------------------------#
@@ -120,6 +119,7 @@ map_assays <- function(seed_assay,
         depth = depth,
         batch_size = batch_size,
         use_cost = use_cost,
+        threshold = threshold,
         verbose = verbose)
     #-------------------------------------------------------------------------#
     # This is where we actually create a return object that can be used
@@ -209,6 +209,7 @@ point_mapping <- function(query_signal,
     batch_size = 1000,
     mapping = "div",
     use_cost = c("feature", "niche"),
+    threshold = 0.5,
     verbose = TRUE) {
     assay <- get_assay_names(query_assay)
     check_cost_validity(cost,
@@ -217,37 +218,63 @@ point_mapping <- function(query_signal,
         query_assay,
         query_signal,
         use_cost)
-    
+    #--------------------------------------------------------------------------#
+    # Correlation between individual cells 
+    #--------------------------------------------------------------------------#
     if (any(grepl("feature", use_cost))){
         message_switch("feature_cost", verbose, assay = assay)
         cost <- c(cost, feature_dist(seed_signal,
             query_signal,
             batch_size))
         names(cost)[length(cost)] <-  "feature"
+
     }
+    #--------------------------------------------------------------------------#
+    # Correlation between the cellular niche centered around the cell
+    #--------------------------------------------------------------------------#
     if (any(grepl("niche", use_cost))) {
         message_switch("get_neigh", verbose, assay = assay)
-        seed_signal <- get_neighborhood(seed,
+        seed_signal_niche <- get_neighborhood(seed,
             seed_signal,
             neighborhood,
             k,
             depth,
             radius)
-        query_signal <- get_neighborhood(query,
+        query_signal_niche <- get_neighborhood(query,
             query_signal,
             neighborhood,
             k,
             depth,
             radius)
         message_switch("neighbor_cost", verbose, assay = assay)
-        cost <- c(cost, feature_dist(seed_signal,
-            query_signal,
+        cost <- c(cost, feature_dist(seed_signal_niche,
+            query_signal_niche,
             batch_size))
         names(cost)[length(cost)] <-  "niche"
     }
     #--------------------------------------------------------------------------#
-    # pairwise addition of cost matrices
+    # Correlation between territories centered around the cell
+    # Note: this can be sped up using much smaller matrices and then dispatchin
+    # score after
     #--------------------------------------------------------------------------#
+    if (any(grepl("territory", use_cost))) {
+        message_switch("territory_cost", verbose, assay = assay)
+        seed_signal_niche <- get_neighborhood(seed_assay,
+            seed_signal,
+            "territory")
+        query_signal_niche <- get_neighborhood(query_assay,
+            query_signal,
+            "territory")
+        cost <- c(cost, feature_dist(seed_signal_niche,
+            query_signal_niche,
+            batch_size))
+        names(cost)[length(cost)] <-  "territory"
+    }
+    #--------------------------------------------------------------------------#
+    # filtering and pairwise addition of cost matrices and
+    #--------------------------------------------------------------------------#
+    
+    cost <- filter_cost(cost, threshold, use_cost)
     cost <- c(cost, concat_cost(cost, use_cost))
     names(cost)[length(cost)] <- "total_cost"
     #--------------------------------------------------------------------------#
@@ -284,6 +311,54 @@ concat_cost <- function(cost, use_cost) {
 
 }
 
+
+filter_cost <- function(cost, threshold = 0.3, use_cost) {
+    if (length(use_cost) == 0) {
+        stop("Please specify at least one score matrix to use")
+    }
+    
+    if (length(cost[use_cost]) == 0) {
+        stop(paste(paste(use_cost, collapse = " "), ": not available in score matrix list"))
+    } else {
+        #---------------------------------------------------------------------#
+        # First check which barcodes have at least one barcodes above 
+        # threshold - checking seed and query
+        # using a for loop for cleaner replacement 
+        #---------------------------------------------------------------------#
+        for (i in seq_along(use_cost)) {
+            tmp <- cost[[use_cost[i]]]
+            above <- apply(tmp, 2, function(i, threshold) {
+                return(sum(i >= threshold))
+            }, threshold = threshold)
+            tmp <- tmp[, above > 0]
+            # then check query cost
+            above <- apply(tmp, 1, function(i, threshold) {
+                return(sum(i >= threshold))
+            }, threshold = threshold)
+            tmp <- tmp[above > 0, ]
+            cost[[use_cost[i]]] <- tmp
+           
+        }
+        #---------------------------------------------------------------------#
+        # check which barcodes I should keep across all cost that will be
+        # used
+        #---------------------------------------------------------------------#
+        seed_barcodes <- Reduce(intersect, lapply(cost[use_cost], colnames))
+        query_barcodes <- Reduce(intersect, lapply(cost[use_cost], rownames))
+        if (length(seed_barcodes) == 0 || length(query_barcodes) == 0) {
+            stop("Filtering threhsold to High! No indices retained!")
+        }
+        for (i in seq_along(use_cost)){
+            tmp <- cost[[use_cost[i]]]
+            tmp <- tmp[rownames(tmp) %in% query_barcodes,
+                colnames(tmp)  %in% seed_barcodes]
+            cost[[use_cost[i]]] <- tmp
+        }
+    }
+    
+    return(cost)
+
+}
 
 
 #' compute the distance between seed and query signals
@@ -358,7 +433,8 @@ get_neighborhood <- function(coord,
     niches <- switch(method,
         "knn" = knn_neighborhood(coord, k),
         "radius" = radius_neighborhood(coord, radius),
-        "depth" = depth_neighborhood(coord, depth))
+        "depth" = depth_neighborhood(coord, depth),
+        "territory" = territory_neighborhood(coord))
     niches <- neighborhood_signal(niches, signal)
     return(niches)
 }
@@ -396,6 +472,17 @@ depth_neighborhood <- function(coord, depth) {
         tmp <- g[ ,i] <= d
         return(coord$barcodes[tmp])
     }, g = coord_dist, coord = coord, d = depth)
+    names(coord_dist) <- coord$barcodes
+    return(coord_dist)
+}
+
+territory_neighborhood <- function(coord) {
+    # for now only last trial 
+    coord <- check_territory_trial(coord, "last")
+    coord_dist <- lapply(seq(1, nrow(coord)),function(i, coord) {
+        bars <- coord$barcodes[coord$trial == coord$trial[i]]
+        return(bars)
+    }, coord = coord)
     names(coord_dist) <- coord$barcodes
     return(coord_dist)
 }
@@ -470,6 +557,7 @@ divide_and_conquer <- function(cost_mat, batch_size, verbose) {
             nrow(cost_mat), replace = TRUE))
         coms <- "oversample"
     } else {
+        message_switch("hungarian", verbose)
         query_batch <- list(seq_len(nrow(cost_mat)))
         seed_batch <- list(seq_len(ncol(cost_mat)))
         coms <- "exact"
@@ -572,13 +660,12 @@ align_index <- function(matched_index,
     seed,
     query,
     verbose = TRUE) {
-    
-    query$x[match(matched_index$from, query$barcodes)] <-
-        seed$x[match(matched_index$to, seed$barcodes)]
-    query$y[match(matched_index$from, query$barcodes)] <-
-        seed$y[match(matched_index$to, seed$barcodes)]
-    query$x <- jitter(query$x, factor = 1)
-    query$y <- jitter(query$y, factor = 1)
+    query <- query[match(matched_index$from, query$barcodes), ]
+    seed <- seed[match(matched_index$to, seed$barcodes), ]
+    query$x <- seed$x
+    query$y <- seed$y
+    query$x <- jitter(query$x , factor = 0.1)
+    query$y <- jitter(query$y , factor = 0.1)
     return(query)
 }
 

@@ -5,19 +5,14 @@
 \title{Add embeddings
 Add custom embeddings to vesalius objects}
 \usage{
-add_embeddings(
-  vesalius_assay,
-  embeddings,
-  embedding_type = "custom_embedding",
-  verbose = TRUE
-)
+add_embeddings(vesalius_assay, embeddings, add_name = NULL, verbose = TRUE)
 }
 \arguments{
 \item{vesalius_assay}{a vesalius_assay object}
 
 \item{embeddings}{a matrix containing embedding values (see details)}
 
-\item{embedding_type}{character string to be used as embedding name.}
+\item{add_name}{character string to be used as embedding name.}
 
 \item{verbose}{logical indicating if progress message should be outputed.}
 }

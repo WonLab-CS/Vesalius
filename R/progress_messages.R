@@ -135,6 +135,8 @@ message_switch <- function(type, verbose = TRUE, ...) {
             " Computing feature cost in", args$assay, "\n")),
         "neighbor_cost" = cat(paste(t,
             " Computing neighborhood cost in", args$assay, "\n")),
+        "territory_cost" = cat(paste(t,
+            " Computing Territory cost in", args$assay, "\n")),
         "get_neigh" = cat(paste(t,
             " Getting Neighborhoods in", args$assay, "\n")),
         "spix_nn" = cat(paste(t,

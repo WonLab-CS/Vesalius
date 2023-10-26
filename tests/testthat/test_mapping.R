@@ -96,6 +96,8 @@ test_that("horizontal - neighborhood", {
         depth = 2), "vesalius_assay")
 
 })
+
+
 test_that("batching case", {
     expect_s4_class(map_assays(vesalius,
         jitter_ves,
@@ -156,5 +158,96 @@ test_that("batching case", {
         vesalius,
         batch_size = 2000,
         signal = "variable_features"),
+        "vesalius_assay")
+})
+
+
+test_that("filtering", {
+   expect_s4_class(map_assays(vesalius,
+        jitter_ves,
+        batch_size = 2000,
+        threshold = 0.6,
+        signal = "variable_features"),
+        "vesalius_assay")
+    tmp <- map_assays(vesalius,
+        jitter_ves,
+        batch_size = 2000,
+        threshold = 0.6,
+        signal = "variable_features")
+    expect_true(nrow(get_tiles(tmp)) == 82)
+    expect_error(map_assays(jitter_ves,
+        vesalius,
+        batch_size = 2000,
+        threshold = 1,
+        signal = "variable_features"))
+
+})
+
+
+test_that("cost_types", {
+    expect_s4_class(map_assays(vesalius,
+        jitter_ves,
+        batch_size = 1000,
+        threshold = 0.1,
+        use_cost = "feature"),
+        "vesalius_assay")
+    expect_s4_class(map_assays(vesalius,
+        jitter_ves,
+        batch_size = 1000,
+        threshold = 0.1,
+        use_cost = "niche"),
+        "vesalius_assay")
+     expect_s4_class(map_assays(vesalius,
+        jitter_ves,
+        batch_size = 1000,
+        threshold = 0.1,
+        use_cost = "territory"),
+        "vesalius_assay")
+    expect_s4_class(map_assays(vesalius,
+        jitter_ves,
+        batch_size = 1000,
+        threshold = 0.1,
+        use_cost = c("feature", "niche","territory")),
+        "vesalius_assay")
+
+    custom_matrix <- matrix(0.5, ncol = ncol(counts),
+        nrow = ncol(jitter_counts))
+    rownames(custom_matrix) <- colnames(jitter_counts)
+    colnames(custom_matrix) <- colnames(counts)
+    expect_warning(map_assays(vesalius,
+        jitter_ves,
+        batch_size = 1000,
+        threshold = 0.1,
+        use_cost = c("feature", "niche"),
+        custom_cost = custom_matrix))
+    custom_matrix <- list(custom_matrix)
+    names(custom_matrix) <- "funky"
+    expect_s4_class(map_assays(vesalius,
+        jitter_ves,
+        batch_size = 1000,
+        threshold = 0.1,
+        use_cost = c("feature", "niche", "funky"),
+        ustom_cost = custom_matrix),
+        "vesalius_assay")
+    expect_error(map_assays(vesalius,
+        jitter_ves,
+        batch_size = 1000,
+        threshold = 0.1,
+        use_cost = c("feature", "niche","Not_so_funky"),
+        custom_cost = custom_matrix))
+    expect_waring(map_assays(vesalius,
+        jitter_ves,
+        batch_size = 1000,
+        threshold = 0.1,
+        use_cost = c("feature", "niche"),
+        custom_cost = custom_matrix))
+    custom_matrix <- c(custom_matrix, custom_matrix, custom_matrix)
+    names(custom_matrix) <- LETTERS[1:3]
+    expect_s4_class(map_assays(vesalius,
+        jitter_ves,
+        batch_size = 1000,
+        threshold = 0.1,
+        use_cost = c("feature", "niche", "A", "B", "C"),
+        ustom_cost = custom_matrix),
         "vesalius_assay")
 })

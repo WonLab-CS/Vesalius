@@ -265,6 +265,21 @@ get_tiles <- function(vesalius_assay) {
     return(tiles)
 }
 
+
+#' get coordinates from vesalius_assay
+#' @param vesalius_assay a vesalius_assay
+#' @return coordinate data frame
+#' @rdname get_coordinayes
+#' @export
+#' @importFrom methods slot
+get_coordinates <- function(vesalius_assay) {
+    tiles <- slot(vesalius_assay, "tiles")
+    if ("origin" %in% colnames(tiles)) {
+        tiles <- tiles %>% filter(origin == 1)
+    } 
+    return(tiles)
+}
+
 #' get embeddings from vesalius_assay
 #' @param vesalius_assay a vesalius_assay
 #' @param active logical if active embedding should be return 
@@ -293,6 +308,7 @@ get_embeddings <- function(vesalius_assay, active = TRUE) {
 #' @importFrom methods slot
 get_territories <- function(vesalius_assay) {
     territories <- slot(vesalius_assay, "territories")
+
     return(territories)
 }
 

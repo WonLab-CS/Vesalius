@@ -771,14 +771,14 @@ view_gene_expression <- function(vesalius_assay,
 
 #' @export 
 view_mapping_score <- function(vesalius_assay,
-    score = "total_score",
+    score = "cost",
     cex_pt = 1,
     cex = 15) {
     coord <- get_tiles(vesalius_assay) %>%
         filter(origin == 1)
-    scores <- vesalius_assay@meta$mapping_probability
+    scores <- vesalius_assay@meta$mapping_scores
     scores <- scores[match(coord$barcodes, scores$from), score]
-    coord$score <- scores
+    coord$score <- as.numeric(scores)
     g <- ggplot(coord, aes(x,y, col = score)) +
         geom_point(size = cex_pt) +
         scale_color_gradientn(colors = rev(brewer.pal(11, "Spectral")),

@@ -35,7 +35,7 @@
 add_counts <- function(vesalius_assay,
     counts,
     raw_counts = NULL,
-    count_type = "custom_counts",
+    add_name = NULL,
     force = FALSE,
     verbose = TRUE) {
     simple_bar(verbose)
@@ -67,6 +67,17 @@ add_counts <- function(vesalius_assay,
     # Next we compare the barcodes present in tiles and adjust count
     # matrix if necesary
     #--------------------------------------------------------------------------#
+    if (!is.null(add_name)){
+            new_trial <- create_trial_tag(
+                names(get_counts(vesalius_assay, type = "all")),
+                add_name) %>%
+                tail(1)
+    } else {
+             new_trial <- create_trial_tag(
+                names(get_counts(vesalius_assay, type = "all")),
+                "custom_counts") %>%
+                tail(1)
+    }
     tiles <- get_tiles(vesalius_assay)
     counts <- adjust_counts(tiles, counts, verbose)
     raw_counts <- adjust_counts(tiles, raw_counts, verbose)
@@ -75,10 +86,10 @@ add_counts <- function(vesalius_assay,
     #--------------------------------------------------------------------------#
     counts <- list(raw_counts, counts)
     if (raw) {
-      message_switch("raw_count", verbose, count_type = count_type)
-      names(counts) <- c(paste0("raw_", count_type), count_type)
+      message_switch("raw_count", verbose, count_type = new_trial)
+      names(counts) <- c(paste0("raw_", new_trial), new_trial)
     } else {
-      names(counts) <- c("raw", count_type)
+      names(counts) <- c("raw", new_trial)
     }
     vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
       data = counts,
@@ -88,7 +99,7 @@ add_counts <- function(vesalius_assay,
     # we can update the comment on the count slot list 
     # this comment will indicate which count matrix is set as default
     #--------------------------------------------------------------------------#
-    vesalius_assay <- add_active_count_tag(vesalius_assay, norm = count_type)
+    vesalius_assay <- add_active_count_tag(vesalius_assay, norm = new_trial)
     #--------------------------------------------------------------------------#
     # Finally we update the vesalius commit log
     #--------------------------------------------------------------------------#
@@ -106,7 +117,7 @@ add_counts <- function(vesalius_assay,
 #' Add custom embeddings to vesalius objects
 #' @param vesalius_assay a vesalius_assay object
 #' @param embeddings a matrix containing embedding values (see details)
-#' @param embedding_type character string to be used as embedding name.
+#' @param add_name character string to be used as embedding name.
 #' @param verbose logical indicating if progress message should be outputed.
 #' @details Vesalius objects accepts custom embedding values that will be
 #' used to generate images.
@@ -129,7 +140,7 @@ add_counts <- function(vesalius_assay,
 #' @export
 add_embeddings <- function(vesalius_assay,
     embeddings,
-    embedding_type = "custom_embedding",
+    add_name = NULL,
     verbose = TRUE) {
     simple_bar(verbose)
     assay <- get_assay_names(vesalius_assay)
@@ -155,8 +166,19 @@ add_embeddings <- function(vesalius_assay,
     # We create a list element that will be appended to the embedding list
     # present in the vesalius_assay
     #--------------------------------------------------------------------------#
+    if (!is.null(add_name)){
+            new_trial <- create_trial_tag(
+                names(get_embeddings(vesalius_assay, active = FALSE)),
+                add_name) %>%
+                tail(1)
+    } else {
+             new_trial <- create_trial_tag(
+                names(get_embeddings(vesalius_assay, active = FALSE)),
+                "custom_embeddings") %>%
+                tail(1)
+    }
     embeddings <- list(embeddings)
-    names(embeddings) <- embedding_type
+    names(embeddings) <- new_trial
     vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
       data = embeddings,
       slot = "embeddings",
@@ -165,7 +187,7 @@ add_embeddings <- function(vesalius_assay,
     # we can update the comment on the embedding slot list 
     # this comment will indicate which embedding is actually active 
     #--------------------------------------------------------------------------#
-    vesalius_assay <- add_active_embedding_tag(vesalius_assay, embedding_type)
+    vesalius_assay <- add_active_embedding_tag(vesalius_assay, new_trial)
     #--------------------------------------------------------------------------#
     # Finally we update the vesalius commit log
     #--------------------------------------------------------------------------#
@@ -174,6 +196,44 @@ add_embeddings <- function(vesalius_assay,
     vesalius_assay <- commit_log(vesalius_assay,
       commit,
       assay)
+    simple_bar(verbose)
+    return(vesalius_assay)
+}
+
+
+
+
+#' @export
+add_cells <- function(vesalius_assay, cells, add_name = NULL, verbose = TRUE){
+    simple_bar(verbose)
+    if (!is.null(add_name)){
+            new_trial <- create_trial_tag(
+                colnames(get_territories(vesalius_assay)),
+                add_name) %>%
+                tail(1)
+        } else {
+             new_trial <- create_trial_tag(
+                colnames(get_territories(vesalius_assay)),
+                "Cells") %>%
+                tail(1)
+    }
+    trial <- get_coordinates(vesalius_assay)[, c("barcodes","x","y")]
+    common <- intersect(trial$barcodes, names(cells))
+    if (length(common) == 0) {
+        stop("No common barcodes between vesalius_assay and provided cell names")
+    }
+    trial$trial <- cells[match(names(cells), trial$barcodes)]
+    trial$trial[is.na(trial$trial)] <- "Undefined"
+    colnames(trial) <- gsub("trial", new_trial, colnames(trial))
+    vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
+        data = trial,
+        slot = "territories",
+        append = TRUE)
+    commit <- create_commit_log(arg_match = as.list(match.call()),
+        default = formals(add_cells))
+    vesalius_assay <- commit_log(vesalius_assay,
+        commit,
+    get_assay_names(vesalius_assay))
     simple_bar(verbose)
     return(vesalius_assay)
 }

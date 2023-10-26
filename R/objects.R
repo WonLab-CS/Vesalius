@@ -163,6 +163,26 @@ setMethod("show",
                 cat(paste(ter[i], names(ter)[i], "trials. \n"))
             }
         }
+
+        #---------------------------------------------------------------------#
+        # check for cell types
+        #---------------------------------------------------------------------#
+        cells <- search_log(object, "add_cells")
+        if (length(cells) > 0) {
+            cat("\n")
+            if (is.null(tail(cells,1)[[1]]$add_name)){
+                cell_col <- get_territories(object)
+                n_cells <- length(unique(cell_col[,
+                    tail(grep("Cells", colnames(cell_col)))]))
+                cat(paste(n_cells, "cell types assigned. \n"))
+            } else {
+                add_name <- as.character(tail(cells,1)[[1]]$add_name)
+                cell_col <- get_territories(object)
+                n_cells <- length(unique(cell_col[,
+                    tail(grep(add_name, colnames(cell_col)))]))
+                cat(paste(n_cells, "cell types assigned. \n"))
+            }
+        }
         #---------------------------------------------------------------------#
         #check for DEGs
         #---------------------------------------------------------------------#
