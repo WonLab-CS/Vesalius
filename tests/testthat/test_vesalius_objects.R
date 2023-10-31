@@ -60,7 +60,7 @@ test_that("Adding counts to vesalius_assay", {
     tmp <- add_counts(vesalius,
         counts = counts,
         raw = counts,
-        count_type = "my_counts")
+        add_name = "my_counts")
     expect_identical(comment(tmp@counts), "my_counts")
     ## checking if count have been properly addjusted
     ## Note: this is check again when tiles have already 
@@ -148,7 +148,7 @@ test_that("Adding Cells",{
     expect_s4_class(add_cells(vesalius, cells), "vesalius_assay")
     cells <- sample(LETTERS[1:13], size = nrow(coordinates), replace = TRUE)
     names(cells) <- coordinates$barcodes
-    expect_s4_class(add_cells(vesalius, cells, add_name = "funky"),
+    expect_s4_class(add_cells(vesalius, cells),
         "vesalius_assay")
 
 })

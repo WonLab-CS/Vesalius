@@ -295,9 +295,9 @@ dispatch_deg_group <- function(ter, seed, query, cells, verbose) {
     }
     if (!is.null(cells)) {
       seed <-  mapply(check_cells, territory_barcodes = seed,
-        ter = seed_id, MoreArgs = list(cells, verbose), SIMPLIFY = FALSE)
+        ter = seed_id, MoreArgs = list(cells), SIMPLIFY = FALSE)
       query <- mapply(check_cells, territory_barcodes = query,
-        ter = query_id, MoreArgs = list(cells, verbose), SIMPLIFY = FALSE)
+        ter = query_id, MoreArgs = list(cells), SIMPLIFY = FALSE)
     }
     return(list("seed" = seed, "seed_id" = seed_id,
         "query" = query, "query_id" = query_id))

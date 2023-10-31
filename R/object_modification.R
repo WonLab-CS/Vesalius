@@ -9,7 +9,7 @@
 #' @param vesalius_assay a vesalius assay object 
 #' @param counts matrix or sparse matrix containing normalised counts
 #' @param raw_counts matrix or sparse matrix containing raw counts
-#' @param count_type character string defining the name of the count matrix
+#' @param add_name character string defining the name of the count matrix
 #' being added.
 #' @param force logical indicating if count matrix provided should also be used
 #' as raw count matrix.

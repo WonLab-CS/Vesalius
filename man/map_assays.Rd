@@ -49,6 +49,13 @@ Seed details}
 
 \item{use_norm}{character - which count data to use}
 
+\item{threshold}{score threshold below which indicices should be removed.
+Scores will always be between 0 and 1}
+
+\item{use_cost}{character string defining how should total cost be computer
+Available: feature, niche, territory, composition (See details for combinations
+and custom matrices)}
+
 \item{custom_cost}{matrix - matrix of size n (query cells) by p (seed cells)
 containing custom cost matrix. Used instead of vesalius cost matrix}
 
@@ -64,7 +71,7 @@ Aling and integrate spatial assay from the same modality using super pixels
 The goal is to assign the best matching point between a seed set and
 a query set.
 
-To do so, \code{integrate_horizontally} will first extract a
+To do so, \code{map_assays} will first extract a
 biological signal. This can be latent space embeddings per cell, or by using
 gene counts (or any other modality).
 
@@ -75,30 +82,47 @@ query_assay. "all_features" will find the intersection of all genes across
 assays (even if they are not highly variable). Finally, you can also select
 a custom gene vector, containing only the gene set you are interested in.
 
-The second step is to create a cost matrix. The cost matrix computes the
-distance (using the signal) betwwen each point in the seed and query. It
-also includes the distance in signal between each points neighborhoods.
-The neighborhood singal is computed by averaging the signal across k
-nearest neighbors in space if using Knn. If using radius, the neighborhood
-will be computed using all cells within a definined radius. 
-If using depth, coordinates will be used to create a voronoi graph. 
-The neighborhood will be composed of all cells with "depth" steps i.e.
-how many nodes in the graph do you need to go through to get to taget cell?
-A depth of one will contain all cells in direct contact with center cell. 
-
+The second step is to create a cost matrix. The creation of a cost matrix
+is achieved by pair-wise sum of various cost matrices. By default, 
+the map_assays function will use "feature" and "niche" cost matrices. 
+The feature matrix computes the pearson correlation between the seed and query
+using which ever signal was defined by the signal argument (variable_features)
+will compute the correlation between shared variable features in seed 
+and query).
+The niche matrix will be computed by using the pearson correlation between
+niche expression profiles (based on signal). Niche are defined using the
+neighborhood argument where knn represent the k nearest neighbors algorithm
+(with k defining the number of nearest neighbors), depth represents the 
+graph depth of a local neighborhood graph, and radius defining a spatial
+radius surrunding a center cell. The singal (expression or embedding) is
+average across all cells in the niche.
+The territory matrix will compare the average signal of vesalius 
+territories between seed and query. 
+The composition matrix will compute a frequency aware jaccard index
+between cell types present in a niche. Cell types must be assigned 
+to seed and query vesalius objects  (See add_cells function)
+Total cost matrix will be computed by computing the pairwise sum 
+of the complement (1 - p ) of each cost matrix. 
 
 This cost matrix is then parsed to a
 Kuhn–Munkres algorithm that will generate point pairs that minimize
 the overall cost. 
 
 Since the algorithm complexity is O(n3), it can be time consuming to
-to run on larger data sets. We recomned using "exact" mapping when
-there are less then 1500 points (a few minutes) and use "div" 
-with larger data sets. The "div" option will split the query data
-into random batches of pre-defined size (batch_size). The optimization
-will be run on each batch serately and the results will be concatenated
-together. Note this will not be an exact match but an approximation.
+to run on larger data sets. As such, mapping will be approximated by
+dividing seed and query into batches defined by batch size. For an
+exact mapping ensure that batch_size is larger than the number of cells
+in both query and seed.
 
 Finaly once the matches are found, the coordinates are mapped to its
 corresponding point and a new object is returned.
+}
+\examples{
+\dontrun{
+data(vesalius)
+# Create Vesalius object for processing
+vesalius <- build_vesalius_assay(coordinates, counts)
+jitter_ves <- build_vesalius_assay(jitter_coord, jitter_counts)
+mapped <- map_assays(vesalius, jitter_ves)
+}
 }

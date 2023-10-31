@@ -18,18 +18,15 @@ float fast_cor(const NumericVector& cell_1, const NumericVector& cell_2){
         sq_sum_cell_1 += cell_1[i] * cell_1[i];
         sq_sum_cell_2 += cell_2[i] * cell_2[i];
     }
-    float corr = (float)(n * sum_cell_1_2 - sum_cell_1 * sum_cell_2)
+    float corr = static_cast<float>((n * sum_cell_1_2 - sum_cell_1 * sum_cell_2)
                   / sqrt((n * sq_sum_cell_1 - sum_cell_1 * sum_cell_1)
-                      * (n * sq_sum_cell_2 - sum_cell_2 * sum_cell_2));
+                      * (n * sq_sum_cell_2 - sum_cell_2 * sum_cell_2)));
     return corr;
 }
 
-double fast_jaccard(const CharacterVector& niche_1, const CharacterVector& niche_2){
-    // Create sets from the input vectors
+float fast_jaccard(const CharacterVector& niche_1, const CharacterVector& niche_2){
     std::unordered_set<std::string> niche_set1(niche_1.begin(), niche_1.end());
     std::unordered_set<std::string> niche_set2(niche_2.begin(), niche_2.end());
-
-    // Calculate the size of the intersection
     std::unordered_set<std::string> intersection;
     for (const std::string& element : niche_set1) {
         if (niche_set2.find(element) != niche_set2.end()) {
@@ -40,12 +37,12 @@ double fast_jaccard(const CharacterVector& niche_1, const CharacterVector& niche
     if (union_size == 0) {
         return 0.0;
     } else {
-        return static_cast<double>(intersection.size()) / union_size;
+        return static_cast<float>(intersection.size()) / union_size;
     }
 }
 
 // [[Rcpp::export]]
-NumericMatrix feature_cost(const NumericMatrix& seed,
+Rcpp::NumericMatrix feature_cost(const NumericMatrix& seed,
     const NumericMatrix& query) {
     int cell_seed = seed.ncol();
     int cell_query = query.ncol();
@@ -62,7 +59,7 @@ NumericMatrix feature_cost(const NumericMatrix& seed,
 
 
 // [[Rcpp::export]]
-NumericMatrix compare_niche_fast(const List& seed,
+Rcpp::NumericMatrix compare_niche_fast(const List& seed,
     const List& query) {
     int cell_seed = seed.size();
     int cell_query = query.size();

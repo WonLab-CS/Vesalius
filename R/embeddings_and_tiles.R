@@ -642,7 +642,7 @@ convexify <- function(xside, yside, indx, indy, order = FALSE) {
 #' you gave your count matrix (see \code{\link{add_counts}}) and
 #' `generate_embeddings` will skip the normalization and use your custom
 #' count matrix to generate image embeddings. 
-#' @importFrom Seurat CreateSeuratObject
+#' @importFrom Seurat CreateSeuratObject CreateAssayObject
 process_counts <- function(counts,
   assay,
   method = "log_norm",
@@ -658,7 +658,8 @@ process_counts <- function(counts,
     # We are still going to use Seurat for now
     # rememmber that if we do decide to change things
     # we have to change things in the embbeddings as well
-    #--------------------------------------------------------------------------
+    #--------------------------------------------------------------------------#
+    counts <- Seurat::CreateAssayObject(counts = counts)
     counts <- suppressWarnings(Seurat::CreateSeuratObject(counts))
     counts <- switch(method,
                     "log_norm" = log_norm(counts, nfeatures),
@@ -692,7 +693,7 @@ raw_norm <- function(counts, use_count = "raw") {
     #--------------------------------------------------------------------------#
     norm_counts <- list(Seurat::GetAssayData(counts, layer = "counts"))
     counts@assays$RNA@scale.data <- as.matrix(Seurat::GetAssayData(counts,
-      slot = "counts"))
+      layer = "counts"))
     names(norm_counts) <- use_count
     return(list("SO" = counts, "norm" = norm_counts))
 }
@@ -709,7 +710,7 @@ raw_norm <- function(counts, use_count = "raw") {
 #' @importFrom Seurat FindVariableFeatures
 #' @importFrom Seurat GetAssayData
 log_norm <- function(counts, nfeatures) {
-  counts <- Seurat::NormalizeData(counts, verbose = FALSE)
+  counts <- Seurat::NormalizeData(object = counts, verbose = FALSE)
   counts <- Seurat::ScaleData(counts, verbose = FALSE)
   counts <- suppressWarnings(Seurat::FindVariableFeatures(counts,
     nfeatures = nfeatures,
@@ -750,8 +751,7 @@ int_sctransform <- function(counts, nfeatures) {
 tfidf_norm <- function(counts, min_cutoff) {
   counts <- Signac::RunTFIDF(counts, verbose = FALSE)
   counts <- Seurat::ScaleData(counts, verbose = FALSE)
-  counts <- suppressWarnings(
-    Signac::FindTopFeatures(counts, min.cutoff = min_cutoff))
+  counts <- Signac::FindTopFeatures(counts, min.cutoff = min_cutoff)
   norm_counts <- list(Seurat::GetAssayData(counts, layer = "data"))
   names(norm_counts) <- "TFIDF"
   return(list("SO" = counts, "norm" = norm_counts))
@@ -888,7 +888,7 @@ embed_pcal <- function(counts,
     #--------------------------------------------------------------------------#
     pca <- Seurat::Loadings(counts, reduction = "pca")
     pca <- apply(pca, 2, function(x) return(abs(x)))
-    mat <- as.matrix(Seurat::GetAssayData(counts, slot = "data") > 0)
+    mat <- as.matrix(Seurat::GetAssayData(counts, layer = "data") > 0)
     colour_matrix <- matrix(0, nrow = ncol(mat), ncol = ncol(pca))
     colnames(colour_matrix) <- colnames(pca)
     rownames(colour_matrix) <- colnames(mat)
@@ -947,7 +947,7 @@ embed_umap <- function(counts,
   #----------------------------------------------------------------------------#
   # Normalise
   #----------------------------------------------------------------------------#
-  counts <- Seurat::FetchData(counts, c("UMAP_1", "UMAP_2", "UMAP_3"))
+  counts <- Seurat::FetchData(counts, c("umap_1", "umap_2", "umap_3"))
   counts <- apply(counts, 2, norm_pixel, "minmax")
   counts <- list(as.matrix(counts))
   names(counts) <- "UMAP"
@@ -974,7 +974,7 @@ embed_lsi <- function(counts,
   # Run partial singular value decomposition(SVD) on TF-IDF normalized matrix
   #--------------------------------------------------------------------------#
   message_switch("svd_tensor", verbose)
-  
+  #counts[["RNA3"]] <- as(object = counts[["RNA"]], Class = "Assay")
   svd <- Signac::RunSVD(counts,
     n = dimensions + 1,
     features = features,
@@ -1044,7 +1044,7 @@ embed_lsi_umap <- function(counts,
   #--------------------------------------------------------------------------#
   # Getting embedding values and normalize
   #--------------------------------------------------------------------------#
-  colour_matrix <- Seurat::FetchData(reduc, c("UMAP_1", "UMAP_2", "UMAP_3"))
+  colour_matrix <- Seurat::FetchData(reduc, c("umap_1", "umap_2", "umap_3"))
 
   colour_matrix <- apply(colour_matrix, 2, norm_pixel, "minmax")
 
@@ -1065,25 +1065,25 @@ embed_lsi_umap <- function(counts,
 embed_nmf <- function(counts, dimensions, verbose = TRUE) {
   #--------------------------------------------------------------------------#
   # adding this since I don't want to have this package as a dependancy 
-  # rather I want it to be selectively loaded via namespace 
+  # The problem is that those functions are exported to name space
+  # but NMF only works if the package is attached.
   #--------------------------------------------------------------------------#
-  if (!isNamespaceLoaded("NMF")) {
-    inst <- requireNamespace("NMF", quietly = TRUE)
-    if (!inst) {
+  inst <- requireNamespace("NMF", quietly = TRUE)
+  if (!inst) {
       stop("NMF is not installed - Please install NMF
       install.packages('NMF')
       https://cran.r-project.org/web/packages/NMF/index.html")
-    } else {
-      require("NMF")
-    }
+  } else {
+      library("NMF")
   }
+
   #--------------------------------------------------------------------------#
   # Get the normalized count matrix and matrix with variable features 
   # from the Seurat object
   #--------------------------------------------------------------------------#
   vesalius:::message_switch("nmf_tensor", verbose)
-  count_matrix <- as.matrix(Seurat::GetAssayData(counts, slot = "data"))
-  features <- counts@assays[["RNA"]]@var.features
+  features <- check_features(counts)
+  count_matrix <- as.matrix(Seurat::GetAssayData(counts, layer = "data"))
   count_matrix <- count_matrix[features, ]
   #--------------------------------------------------------------------------#
   # Run NMF

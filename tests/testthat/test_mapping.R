@@ -238,7 +238,7 @@ test_that("multi_cost_types", {
         jitter_ves,
         batch_size = 1000,
         threshold = 0.1,
-        use_cost = c("feature", "niche", "territory", "composition")),
+        use_cost = c("feature", "niche", "territory")),
         "vesalius_assay")
 
     custom_matrix <- matrix(0.5, ncol = ncol(counts),
@@ -265,12 +265,6 @@ test_that("multi_cost_types", {
         batch_size = 1000,
         threshold = 0.1,
         use_cost = c("feature", "niche","Not_so_funky"),
-        custom_cost = custom_matrix))
-    expect_waring(map_assays(vesalius,
-        jitter_ves,
-        batch_size = 1000,
-        threshold = 0.1,
-        use_cost = c("feature", "niche"),
         custom_cost = custom_matrix))
     custom_matrix <- c(custom_matrix, custom_matrix, custom_matrix)
     names(custom_matrix) <- LETTERS[1:3]

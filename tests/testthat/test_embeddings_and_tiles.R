@@ -289,9 +289,8 @@ test_that("Vealius SCTransform", {
 test_that("Vealius TFIDF", {
     vesalius <- build_vesalius_assay(coordinates, counts)
     # signac throw warnin for zero counts
-    expect_warning(vesalius <- generate_embeddings(vesalius,
-        normalisation = "TFIDF"))
-    expect_s4_class(vesalius, "vesalius_assay")
+    expect_s4_class(generate_embeddings(vesalius,
+        normalisation = "TFIDF"), "vesalius_assay")
 })
 
 test_that("Vealius raw", {

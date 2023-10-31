@@ -74,37 +74,16 @@ min_max <- function(x) {
   }
 }
 
-z_norm <- function(x) {
-  if (length(table(x)) == 1) {
-    return(x)
-    warning("Cannot minmax normalise - all values are equal!")
-  } else {
-    return((x - mean(x)) / sd(x))
-  }
-}
+# z_norm <- function(x) {
+#   if (length(table(x)) == 1) {
+#     return(x)
+#     warning("Cannot minmax normalise - all values are equal!")
+#   } else {
+#     return((x - mean(x)) / sd(x))
+#   }
+# }
 
-scale_data_spatial <- function(data, compactness, scale) {
-  scale_spat <- max(c(max(data$x), max(data$x))  * scale)
-  scale_dat <- apply(data[, !colnames(data) %in% c("x", "y")], 2, sd) %>%
-    max()
-  ratio <- (scale_spat / scale_dat) / compactness
-  data[, !colnames(data) %in% c("x", "y")] <-
-    data[, !colnames(data) %in% c("x", "y")] * ratio
-  return(data)
-}
 
-jaccard <- function(a, b) {
-    intersection <- length(intersect(a, b))
-    union <- length(union(a, b))
-    return(intersection / union)
-}
-
-arrange_knn_matrix <- function(knn) {
-   for (i in seq_len(nrow(knn$nn.idx))){
-      knn$nn.dists[i, ] <- knn$nn.dists[i, order(knn$nn.idx[i, ])]
-   }
-   return(knn$nn.dists)
-}
 
 
 
@@ -122,71 +101,9 @@ chunk <- function(x, n, l = NULL) {
 }
 
 
-chunkable <- function(seed, query) {
-    seed_names <- colnames(seed)
-    seed <- lapply(seq(1, ncol(seed)), function(i, seed){
-        return(seed[, i])
-    }, seed = seed)
-    query_names <- colnames(query)
-    query <- lapply(seq(1, ncol(query)), function(i, query){
-        return(query[, i])
-    }, query = query)
-    chunk <- vector("list", length(seed) * length(query))
-    chunk_names <- rep("", length(seed) * length(query))
-    count <- 1
-    for (i in seq_along(seed)){
-        for(j in seq_along(query)) {
-            chunk[[count]] <- list("seed" = seed[[i]], "query" = query[[j]])
-            chunk_names[count] <- paste0(seed_names[i],"_", query_names[j])
-            count <- count + 1
-        }
-    }
-    names(chunk) <- chunk_names
-    return(chunk)
-}
-
-clip_cost <- function(cost) {
-    cost[which(cost <= 0, arr.ind = TRUE)] <- 0
-    return(cost)
-}
 
 
 #-------------------------/ Aligning Assays /--------------------------------#
-
-polar_angle <- function(coord_x, coord_y, center_x, center_y) {
-  x <- coord_x - center_x
-  y <- coord_y - center_y
-  angle <- mapply(function(x, y) {
-    if (x >= 0 & y >= 0) angle <- atan(abs(y) / abs(x)) * (180 / pi)
-    if (x < 0 & y >= 0) angle <- 180 - (atan(abs(y) / abs(x)) * (180 / pi))
-    if (x < 0 & y < 0) angle <- 180 + (atan(abs(y) / abs(x)) * (180 / pi))
-    if (x >= 0 & y < 0) angle <- 360 - (atan(abs(y) / abs(x)) * (180 / pi))
-    return(angle)
-  }, x = x, y = y, SIMPLIFY = TRUE)
-  if (is.na(angle)) {
-      angle <- 0
-  }
-  return(angle)
-}
-
-
-
-cart_coord <- function(d, a) {
-  if (a < pi / 2) {
-    delta_x <- d * cos(a)
-    delta_y <- d * sin(a)
-  } else if (a < pi) {
-    delta_x <- -d * sin(a - pi/ 2)
-    delta_y <- d * cos(a - pi/ 2)
-  } else if (a < 3 * pi / 2) {
-    delta_x <- -d * cos(a - pi)
-    delta_y <- -d * sin(a - pi)
-  } else {
-    delta_x <- d * sin(a - 3 * pi / 2)
-    delta_y <- -d * cos(a - 3 * pi / 2)
-  }
-  return(list("delta_x" = delta_x, "delta_y" = delta_y))
-}
 
 graph_from_voronoi <- function(centers) {
     voronoi <- deldir::deldir(x = as.numeric(centers$x),
@@ -221,53 +138,4 @@ calculate_scale <- function(coordinates, q = 0.999) {
     scale <- RANN::nn2(data = coordinates[, c("x", "y")], k = 2)
     scale <- unname(quantile(scale$nn.dist[, 2], q))
     return(scale)
-}
-
-#' Calculate the total area of a territory
-#' @param vesalius_assay a vesalius_assay object
-#' @param territory numeric/character/vector describing wich terriory(ies)
-#' that will be use to compute area.
-#' @param trial which territory trial should be used
-#' @param use_rescaled logical - which value should be use for 
-#' @details Compute the total area of a territory 
-#' @return territory area
-compute_territory_area <- function(vesalius_assay,
-  territory = NULL,
-  trial = "last",
-  use_rescaled = FALSE,
-  verbose = TRUE) {
-  #---------------------------------------------------------------------------#
-  # First lets check the territory selection
-  #--------------------------------------------------------------------------#
-  territory <- territory %||%
-      stop("No specified territory! Cannot compute Area.")
-  ter <- check_territory_trial(vesalius_assay, trial)
-  territory <- check_group_value(ter, territory)
-  ter <- filter(ter, trial %in% territory)
-  #--------------------------------------------------------------------------#
-  # Next we can get the scale and use this as the capture radius
-  #--------------------------------------------------------------------------#
-  if (use_rescaled) {
-    scale <- vesalius_assay@meta$scale$rescale
-  } else {
-    scale <- vesalius_assay@meta$scale$scale
-  }
-  #--------------------------------------------------------------------------#
-  # run distance pooling to seperate potential patches
-  #--------------------------------------------------------------------------#
-  patches <- distance_pooling(ter,
-    capture_radius = scale,
-    min_spatial_index = 3)
-  ter$trial <- patches
-  patches <- unique(ter$trial)
-  patches <- patches[!patches %in% "isolated"]
-  area <- rep(0,length(patches))
-  message_switch("area_comp", verbose, patches = length(patches))
-  for (i in seq_along(patches)) {
-      area[i] <- deldir::deldir(
-        as.numeric(ter$x[ter$trial == patches[i]]),
-        as.numeric(ter$y[ter$trial == patches[i]]))$del.area
-  }
-  area <- sum(area)
-  return(area)
 }

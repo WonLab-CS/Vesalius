@@ -8,6 +8,9 @@ concat_matches(matched_indices, coms)
 }
 \arguments{
 \item{matched_indices}{list containing matched points in each batch}
+
+\item{coms}{character - potential changes to be applied to data
+Attached to list as comment attribute}
 }
 \value{
 data.frame with matched points

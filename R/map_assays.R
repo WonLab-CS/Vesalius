@@ -25,13 +25,18 @@
 #' - What should  be used as cell signal to generate the cost matrix.
 #' Seed details 
 #' @param use_norm character - which count data to use
+#' @param threshold score threshold below which indicices should be removed.
+#' Scores will always be between 0 and 1
+#' @param use_cost character string defining how should total cost be computer
+#' Available: feature, niche, territory, composition (See details for combinations
+#' and custom matrices)
 #' @param custom_cost matrix - matrix of size n (query cells) by p (seed cells)
 #' containing custom cost matrix. Used instead of vesalius cost matrix
 #' @param verbose logical - should I be a noisy boy?
 #' @details The goal is to assign the best matching point between a seed set and
 #' a query set.
 #' 
-#' To do so, \code{integrate_horizontally} will first extract a
+#' To do so, \code{map_assays} will first extract a
 #' biological signal. This can be latent space embeddings per cell, or by using
 #' gene counts (or any other modality).
 #'
@@ -42,38 +47,53 @@
 #' assays (even if they are not highly variable). Finally, you can also select
 #' a custom gene vector, containing only the gene set you are interested in.
 #' 
-#' The second step is to create a cost matrix. The cost matrix computes the
-#' distance (using the signal) betwwen each point in the seed and query. It
-#' also includes the distance in signal between each points neighborhoods.
-#' The neighborhood singal is computed by averaging the signal across k
-#' nearest neighbors in space if using Knn. If using radius, the neighborhood
-#' will be computed using all cells within a definined radius. 
-#' If using depth, coordinates will be used to create a voronoi graph. 
-#' The neighborhood will be composed of all cells with "depth" steps i.e.
-#' how many nodes in the graph do you need to go through to get to taget cell?
-#' A depth of one will contain all cells in direct contact with center cell. 
-#'
+#' The second step is to create a cost matrix. The creation of a cost matrix
+#' is achieved by pair-wise sum of various cost matrices. By default, 
+#' the map_assays function will use "feature" and "niche" cost matrices. 
+#' The feature matrix computes the pearson correlation between the seed and query
+#' using which ever signal was defined by the signal argument (variable_features)
+#' will compute the correlation between shared variable features in seed 
+#' and query).
+#' The niche matrix will be computed by using the pearson correlation between
+#' niche expression profiles (based on signal). Niche are defined using the
+#' neighborhood argument where knn represent the k nearest neighbors algorithm
+#' (with k defining the number of nearest neighbors), depth represents the 
+#' graph depth of a local neighborhood graph, and radius defining a spatial
+#' radius surrunding a center cell. The singal (expression or embedding) is
+#' average across all cells in the niche.
+#' The territory matrix will compare the average signal of vesalius 
+#' territories between seed and query. 
+#' The composition matrix will compute a frequency aware jaccard index
+#' between cell types present in a niche. Cell types must be assigned 
+#' to seed and query vesalius objects  (See add_cells function)
+#' Total cost matrix will be computed by computing the pairwise sum 
+#' of the complement (1 - p ) of each cost matrix. 
 #'
 #' This cost matrix is then parsed to a
 #' Kuhn–Munkres algorithm that will generate point pairs that minimize
 #' the overall cost. 
 #' 
 #' Since the algorithm complexity is O(n3), it can be time consuming to
-#' to run on larger data sets. We recomned using "exact" mapping when
-#' there are less then 1500 points (a few minutes) and use "div" 
-#' with larger data sets. The "div" option will split the query data
-#' into random batches of pre-defined size (batch_size). The optimization
-#' will be run on each batch serately and the results will be concatenated
-#' together. Note this will not be an exact match but an approximation.
+#' to run on larger data sets. As such, mapping will be approximated by
+#' dividing seed and query into batches defined by batch size. For an
+#' exact mapping ensure that batch_size is larger than the number of cells
+#' in both query and seed.
 #' 
 #' Finaly once the matches are found, the coordinates are mapped to its
 #' corresponding point and a new object is returned.
 #'
 #'
+#' 
 #' @return vesalius_assay
+#' @examples
+#' \dontrun{
+#' data(vesalius)
+#' # Create Vesalius object for processing
+#' vesalius <- build_vesalius_assay(coordinates, counts)
+#' jitter_ves <- build_vesalius_assay(jitter_coord, jitter_counts)
+#' mapped <- map_assays(vesalius, jitter_ves)
+#'}
 #' @export
-
-
 map_assays <- function(seed_assay,
     query_assay,
     neighborhood = "knn",
@@ -98,7 +118,7 @@ map_assays <- function(seed_assay,
     # First let's get singal
     # to minimise the memory print - only one seed signal and list for query
     #-------------------------------------------------------------------------#
-    signal <- get_features(seed_assay = seed_assay,
+    signal <- get_signal(seed_assay = seed_assay,
         query_assay = query_assay,
         signal = signal,
         dimensions = dimensions,
@@ -144,7 +164,7 @@ map_assays <- function(seed_assay,
 #' extracting signal
 #' @param verbose logical - should progress messages be outputed.
 #' @return list contain seed signal, query signal and features used
-get_features <- function(seed_assay,
+get_signal <- function(seed_assay,
     query_assay,
     signal,
     dimensions = seq(1:30),
@@ -182,8 +202,8 @@ get_features <- function(seed_assay,
 #' mapping points between data sets
 #' @param query_signal processed query signal from query assay
 #' @param query vesalius_assay object
-#' @param custom_cost matrix - matrix of size n (query cells) by p (seed cells)
-#' containing custom cost matrix. Used instead of vesalius cost matrix
+#' @param cost matrix - matrix of size n (query cells) by p (seed cells)
+#' containing custom cost matrix. 
 #' @param seed_signal processed seed signal from seed assay
 #' @param seed vesalius_assay object
 #' @param k int size of niche (knn)
@@ -191,9 +211,10 @@ get_features <- function(seed_assay,
 #' neighborhood
 #' @param depth graph path depth to condsider for neighborhood. 
 #' @param batch_size int number of points in each query batch
-#' @param mapping exact mapping or div (divide and conquer)
-#' @param overwrite logical - if custom_cost is not NULL, should this matrix
-#' be added to the vesalius matrix or should it overwrite it completely.
+#' @param use_cost character string defining how should total cost be computer
+#' Available: feature, niche, territory, composition (See details for combinations
+#' @param threshold score threshold below which indicices should be removed.
+#' Scores will always be between 0 and 1
 #' @param verbose logical - out progress to console
 #' @return list of matched and aligned coordinates in query
 #' @importFrom future.apply future_lapply
@@ -207,7 +228,6 @@ point_mapping <- function(query_signal,
     radius = 0.05,
     depth = 1,
     batch_size = 1000,
-    mapping = "div",
     use_cost = c("feature", "niche"),
     threshold = 0.5,
     verbose = TRUE) {
@@ -294,7 +314,6 @@ point_mapping <- function(query_signal,
     #--------------------------------------------------------------------------#
     # filtering and pairwise addition of cost matrices and
     #--------------------------------------------------------------------------#
-    
     cost <- filter_cost(cost, threshold, use_cost)
     cost <- c(cost, concat_cost(cost, use_cost))
     names(cost)[length(cost)] <- "total_cost"
@@ -313,6 +332,10 @@ point_mapping <- function(query_signal,
     return(list("aligned" = aligned, "prob" = scores))
 }
 
+#' concat cost - pairwise sum of score complement
+#' @param cost list - named list contained score matrices
+#' @param use_cost character - which cost matrices to use 
+#' @return list with cost matrix 
 concat_cost <- function(cost, use_cost) { 
     if (length(use_cost) == 0) {
         stop("Please specify at least one score matrix to use")
@@ -332,7 +355,11 @@ concat_cost <- function(cost, use_cost) {
 
 }
 
-
+#' remove scores that are below a certain threshold 
+#' @param cost list - score list to be filtered 
+#' @param threshold numeric - score threshold [0,1]
+#' @param use_cost - character - which score matrices to filter
+#' @return filtered cost list 
 filter_cost <- function(cost, threshold = 0.3, use_cost) {
     if (length(use_cost) == 0) {
         stop("Please specify at least one score matrix to use")
@@ -444,7 +471,18 @@ feature_dist <- function(seed, query, batch_size) {
 }
 
 
-
+#' Method dispatch function for neighborhood selection
+#' @param coord data.frame - coordinates of assay (barcodes, x, y)
+#' @param signal matrix - matrix or sparse matrix containing assay 
+#' signal for all spatial indices contained in coord
+#' @param method character - which method should be use to collect 
+#' neighborhood - switch matches
+#' @param k int - how many nearest neighbors from KNN algorithm
+#' @param depth int - graph path depth to define neighborhood 
+#' 0 = self, 1 = direct neigbors, 2 = neighbors of neighbors, etc
+#' @param radius - numeric - radius around center cell 
+#' @return matrix of average signals for each spatial index and its 
+#' neighborhood.
 get_neighborhood <- function(coord,
     signal,
     method,
@@ -460,6 +498,12 @@ get_neighborhood <- function(coord,
     return(niches)
 }
 
+#' k nearest neighbors - niche selection
+#' @param coord data.frame - coordinates of spatial indices in assay
+#' @param k int - number of nearest neighbors to select
+#' @return list containing barcodes of nearest neighbors for each 
+#' spatial index.
+#' @importFrom RANN nn2
 knn_neighborhood <- function(coord, k) {
     coord_dist <- RANN::nn2(coord[, c("x", "y")],
         k = k)
@@ -471,6 +515,12 @@ knn_neighborhood <- function(coord, k) {
     return(coord_dist)
 }
 
+#' Radius based method to select niche
+#' @param coord data.frame - coordinates of spatial indices in assay
+#' @param radius - numeric - radius around center cell 
+#' @return list containing barcodes of nearest neighbors for each 
+#' spatial index.
+#' @importFrom RANN nn2
 radius_neighborhood <- function(coord, radius) {
     coord_dist <- RANN::nn2(coord[, c("x", "y")],
         k = nrow(coord))
@@ -484,7 +534,12 @@ radius_neighborhood <- function(coord, radius) {
     names(coord_dist) <- coord$barcodes
     return(coord_dist)
 }
-
+#' Graph depth method based method to select niche
+#' @param coord data.frame - coordinates of spatial indices in assay
+#' @param depth int - graph path depth to define neighborhood 
+#' 0 = self, 1 = direct neigbors, 2 = neighbors of neighbors, etc
+#' @return list containing barcodes of  neighbors for each 
+#' spatial index.
 depth_neighborhood <- function(coord, depth) {
     coord_dist <- graph_from_voronoi(coord)
     coord_dist <- graph_path_length(coord_dist)
@@ -497,6 +552,9 @@ depth_neighborhood <- function(coord, depth) {
     return(coord_dist)
 }
 
+#' Territory selection for large scale niche
+#' @param coord data.frame - coordinates of spatial indices in assay
+#' @return list containing barcodes of spatial indices in each territory
 territory_neighborhood <- function(coord) {
     # for now only last trial 
     coord <- check_territory_trial(coord, "last")
@@ -527,7 +585,18 @@ neighborhood_signal <- function(neighbors, signal) {
     return(n_signal)
 }
 
-
+#' Method dispatch function for neighborhood selection - added
+#' flavor specific to composition
+#' @param coord data.frame - coordinates of assay (barcodes, x, y)
+#' @param signal matrix - matrix or sparse matrix containing assay 
+#' signal for all spatial indices contained in coord
+#' @param method character - which method should be use to collect 
+#' neighborhood - switch matches
+#' @param k int - how many nearest neighbors from KNN algorithm
+#' @param depth int - graph path depth to define neighborhood 
+#' 0 = self, 1 = direct neigbors, 2 = neighbors of neighbors, etc
+#' @param radius - numeric - radius around center cell 
+#' @return list of all cells and cell types for each niche
 niche_composition <- function(coord,
     vesalius_assay,
     method,
@@ -551,7 +620,13 @@ niche_composition <- function(coord,
     return(niches)
 }
 
+#' Wrapper for fast niche composition 
+#' @param seed list - cell type list in seed
+#' @param query list - cell type list in query
+#' @return matrix - jaccard index between nich composition in 
+#' seed and query
 compare_niches <- function(seed, query) {
+    # Currently using jaccard but might change towards shannon diversity
     jacques <- compare_niche_fast(seed, query)
     colnames(jacques) <- names(seed)
     rownames(jacques) <- names(query)
@@ -664,6 +739,8 @@ match_index <- function(idx, cost_matrix) {
 
 #' merging batch matches together
 #' @param matched_indices list containing matched points in each batch
+#' @param coms character - potential changes to be applied to data
+#' Attached to list as comment attribute
 #' @return data.frame with matched points
 concat_matches <- function(matched_indices, coms) {
     matched_indices <- lapply(matched_indices, function(x) {
@@ -681,7 +758,11 @@ concat_matches <- function(matched_indices, coms) {
     return(matched_indices)
 }
 
-
+#' Extract score from best matches 
+#' @param matched_indices matrix - best matches between seed and query
+#' @param cost list - cost list essentially scores 
+#' @param use_cost character - which scores should be added to assay
+#' @return data frame containing matched indices and associated cost and scores 
 score_matches <- function(matched_indices,
     cost,
     use_cost) {
@@ -714,8 +795,8 @@ align_index <- function(matched_index,
     seed <- seed[match(matched_index$to, seed$barcodes), ]
     query$x <- seed$x
     query$y <- seed$y
-    query$x <- jitter(query$x , factor = 0.1)
-    query$y <- jitter(query$y , factor = 0.1)
+    query$x <- jitter(query$x, factor = 0.1)
+    query$y <- jitter(query$y, factor = 0.1)
     return(query)
 }
 
