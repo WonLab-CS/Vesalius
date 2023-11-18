@@ -141,12 +141,12 @@ test_that("batching case", {
         "vesalius_assay")
     expect_s4_class(map_assays(vesalius,
         jitter_ves,
-        batch_size = 1100,
+        batch_size = 1030,
         signal = "variable_features"),
         "vesalius_assay")
     expect_s4_class(map_assays(jitter_ves,
         vesalius,
-        batch_size = 1100,
+        batch_size = 1030,
         signal = "variable_features"),
         "vesalius_assay")
     expect_s4_class(map_assays(vesalius,

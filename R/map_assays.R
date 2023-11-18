@@ -107,6 +107,7 @@ map_assays <- function(seed_assay,
     threshold = 0.3,
     use_cost = c("feature","niche"),
     custom_cost = NULL,
+    merge = FALSE,
     verbose = TRUE) {
     simple_bar(verbose)
     #-------------------------------------------------------------------------#
@@ -147,8 +148,10 @@ map_assays <- function(seed_assay,
     # this functions needs to be updated
     #-------------------------------------------------------------------------#
     integrated <- integrate_map(
-        mapped,
-        query_assay,
+        aligned_graph = mapped,
+        query = query_assay,
+        seed = seed_assay,
+        merge = merge,
         verbose = verbose)
     
     simple_bar(verbose)
@@ -492,7 +495,7 @@ get_neighborhood <- function(coord,
     niches <- switch(method,
         "knn" = knn_neighborhood(coord, k),
         "radius" = radius_neighborhood(coord, radius),
-        "depth" = depth_neighborhood(coord, depth),
+        "graph" = graph_neighborhood(coord, depth),
         "territory" = territory_neighborhood(coord))
     niches <- neighborhood_signal(niches, signal)
     return(niches)
@@ -540,7 +543,7 @@ radius_neighborhood <- function(coord, radius) {
 #' 0 = self, 1 = direct neigbors, 2 = neighbors of neighbors, etc
 #' @return list containing barcodes of  neighbors for each 
 #' spatial index.
-depth_neighborhood <- function(coord, depth) {
+graph_neighborhood <- function(coord, depth) {
     coord_dist <- graph_from_voronoi(coord)
     coord_dist <- graph_path_length(coord_dist)
     coord_dist <- lapply(seq(1, nrow(coord)),
@@ -606,7 +609,7 @@ niche_composition <- function(coord,
     niches <- switch(method,
         "knn" = knn_neighborhood(coord, k),
         "radius" = radius_neighborhood(coord, radius),
-        "depth" = depth_neighborhood(coord, depth),
+        "graph" = graph_neighborhood(coord, depth),
         "territory" = territory_neighborhood(coord))
     niches <- lapply(niches, function(n, assay) {
             composition <- get_territories(assay) %>%
@@ -643,7 +646,7 @@ divide_and_conquer <- function(cost_mat, batch_size, verbose) {
     # checking case
     # case 1 : large data sets both need batching
     #-------------------------------------------------------------------------#
-    if (ncol(cost_mat) >= batch_size && nrow(cost_mat) >= batch_size) {
+    if (ncol(cost_mat) > batch_size && nrow(cost_mat) > batch_size) {
         message_switch("div_hungarian", verbose)
         query_batch <- chunk(sample(seq(1, nrow(cost_mat)), nrow(cost_mat)),
                 batch_size)
@@ -659,14 +662,14 @@ divide_and_conquer <- function(cost_mat, batch_size, verbose) {
             coms <- "oversample"
         }
         
-    } else if (nrow(cost_mat) >= batch_size && nrow(cost_mat) >= ncol(cost_mat)) {
+    } else if (nrow(cost_mat) > batch_size && nrow(cost_mat) > ncol(cost_mat)) {
         message_switch("div_hungarian", verbose)
         query_batch <- chunk(sample(seq(1, nrow(cost_mat)), nrow(cost_mat)),
                 batch_size)
         seed_batch <- rep(list(seq_len(ncol(cost_mat))),
             times = length(query_batch))
         coms <- "subsample"
-    } else if (ncol(cost_mat) >= batch_size && ncol(cost_mat) > nrow(cost_mat)) {
+    } else if (ncol(cost_mat) > batch_size && ncol(cost_mat) > nrow(cost_mat)) {
         message_switch("div_hungarian", verbose)
         seed_batch <- ceiling(ncol(cost_mat) / batch_size)
         seed_batch <- lapply(seq(1, seed_batch),
@@ -804,13 +807,15 @@ align_index <- function(matched_index,
 
 integrate_map <- function(aligned_graph,
     query,
+    seed,
+    merge = FALSE,
     verbose = TRUE) {
     prob <- list(aligned_graph$prob)
     names(prob) <- "mapping_scores"
     aligned_graph <- aligned_graph$aligned
     local_counts <- get_counts(query, type = "raw")
     local_counts <- local_counts[,
-                colnames(local_counts) %in% aligned_graph$barcodes]
+        colnames(local_counts) %in% aligned_graph$barcodes]
     query <- build_vesalius_assay(
         coordinates = aligned_graph[, c("barcodes", "x", "y")],
         counts = local_counts,

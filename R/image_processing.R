@@ -832,7 +832,7 @@ louvain_slic_segmentation <- function(vesalius_assay,
       dimensions)[, dimensions]
     loc <- match(coord$barcodes, rownames(embeddings))
     # max spatial distance 
-    sc_spat <- max(c(max(coord$x), max(coord$x))  * scaling)
+    sc_spat <- max(c(max(coord$x), max(coord$y))  * scaling)
     # max color distance between two pixels??
     sc_col <-  apply(embeddings, 2, sd) %>% max()
     #-------------------------------------------------------------------------#
@@ -900,7 +900,7 @@ leiden_slic_segmentation <- function(vesalius_assay,
       dimensions)[, dimensions]
     loc <- match(coord$barcodes, rownames(embeddings))
     # max spatial distance 
-    sc_spat <- max(c(max(coord$x), max(coord$x))  * scaling)
+    sc_spat <- max(c(max(coord$x), max(coord$y))  * scaling)
     # max color distance between two pixels??
     sc_col <-  apply(embeddings, 2, sd) %>% max()
     #-------------------------------------------------------------------------#
@@ -974,7 +974,7 @@ slic_segmentation <- function(vesalius_assay,
       embedding,
       dimensions)[, dimensions]
     # max spatial distance 
-    sc_spat <- max(c(max(coord$x), max(coord$x))  * scaling)
+    sc_spat <- max(c(max(coord$x), max(coord$y))  * scaling)
     # max color distance between two pixels??
     sc_col <-  apply(embeddings, 2, sd) %>% max()
     #-------------------------------------------------------------------------#
@@ -1077,7 +1077,7 @@ som_segmentation <- function(vesalius_assay,
       embedding,
       dimensions)[, dimensions]
     # max spatial distance 
-    sc_spat <- max(c(max(coord$x), max(coord$x))  * scaling)
+    sc_spat <- max(c(max(coord$x), max(coord$y))  * scaling)
     # max color distance between two pixels??
     sc_col <-  apply(embeddings, 2, sd) %>% max()
     #-------------------------------------------------------------------------#

@@ -1,8 +1,11 @@
+// [[Rcpp::plugins(cpp11)]]
 #include <Rcpp.h>
 #include <iostream>
 #include <vector>
 #include <cmath>
 #include <unordered_set>
+#include <string>
+
 
 using namespace Rcpp;
 
@@ -24,11 +27,12 @@ float fast_cor(const NumericVector& cell_1, const NumericVector& cell_2){
     return corr;
 }
 
+
 float fast_jaccard(const CharacterVector& niche_1, const CharacterVector& niche_2){
-    std::unordered_set<std::string> niche_set1(niche_1.begin(), niche_1.end());
-    std::unordered_set<std::string> niche_set2(niche_2.begin(), niche_2.end());
-    std::unordered_set<std::string> intersection;
-    for (const std::string& element : niche_set1) {
+    std::unordered_set<String> niche_set1(niche_1.begin(), niche_1.end());
+    std::unordered_set<String> niche_set2(niche_2.begin(), niche_2.end());
+    std::unordered_set<String> intersection;
+    for (const String& element : niche_set1) {
         if (niche_set2.find(element) != niche_set2.end()) {
             intersection.insert(element);
         }
