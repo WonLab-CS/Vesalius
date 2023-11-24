@@ -10,6 +10,7 @@ get_signal(
   signal,
   dimensions = seq(1:30),
   use_norm = "raw",
+  scale = TRUE,
   verbose = TRUE
 )
 }
@@ -25,6 +26,8 @@ embeddings should be selected}
 
 \item{use_norm}{charcater string which counts should be use when
 extracting signal}
+
+\item{scale}{logical - should signal be scaled}
 
 \item{verbose}{logical - should progress messages be outputed.}
 }

@@ -25,6 +25,7 @@
 #' - What should  be used as cell signal to generate the cost matrix.
 #' Seed details 
 #' @param use_norm character - which count data to use
+#' @param scale logical - should signal be scaled 
 #' @param threshold score threshold below which indicices should be removed.
 #' Scores will always be between 0 and 1
 #' @param use_cost character string defining how should total cost be computer
@@ -104,6 +105,7 @@ map_assays <- function(seed_assay,
     batch_size = 1000,
     signal = "variable_features",
     use_norm = "raw",
+    scale = FALSE,
     threshold = 0.3,
     use_cost = c("feature","niche"),
     custom_cost = NULL,
@@ -124,6 +126,7 @@ map_assays <- function(seed_assay,
         signal = signal,
         dimensions = dimensions,
         use_norm = use_norm,
+        scale = scale,
         verbose = verbose)
     #-------------------------------------------------------------------------#
     # Next we map points in the query assay onto the seed assay
@@ -165,6 +168,7 @@ map_assays <- function(seed_assay,
 #' embeddings should be selected
 #' @param use_norm charcater string which counts should be use when
 #' extracting signal
+#' @param scale logical - should signal be scaled 
 #' @param verbose logical - should progress messages be outputed.
 #' @return list contain seed signal, query signal and features used
 get_signal <- function(seed_assay,
@@ -172,6 +176,7 @@ get_signal <- function(seed_assay,
     signal,
     dimensions = seq(1:30),
     use_norm = "raw",
+    scale = FALSE,
     verbose = TRUE) {
     message_switch("signal", verbose = verbose)
     #-------------------------------------------------------------------------#
@@ -193,9 +198,11 @@ get_signal <- function(seed_assay,
         }
         seed_signal <- get_counts(seed_assay, type = use_norm)[features, ]
         query_signal <- get_counts(query_assay, type = use_norm)[features, ]
-        seed_signal <- t(scale(t(as.matrix(seed_signal))))
-        query_signal <- t(scale(t(as.matrix(query_signal))))
+        if (scale) {
+            seed_signal <- t(scale(t(as.matrix(seed_signal))))
+            query_signal <- t(scale(t(as.matrix(query_signal))))
         }
+    }
     return(list("seed" = seed_signal,
         "query" = query_signal,
         "features" = features))
@@ -793,6 +800,7 @@ score_matches <- function(matched_indices,
 align_index <- function(matched_index,
     seed,
     query,
+    threshold = 0.3,
     verbose = TRUE) {
     query <- query[match(matched_index$from, query$barcodes), ]
     seed <- seed[match(matched_index$to, seed$barcodes), ]

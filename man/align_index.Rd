@@ -4,7 +4,7 @@
 \alias{align_index}
 \title{assign coordinates to matched indices}
 \usage{
-align_index(matched_index, seed, query, verbose = TRUE)
+align_index(matched_index, seed, query, threshold = 0.3, verbose = TRUE)
 }
 \arguments{
 \item{matched_index}{data.frame containing matching pairs of 

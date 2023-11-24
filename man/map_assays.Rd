@@ -15,6 +15,7 @@ map_assays(
   batch_size = 1000,
   signal = "variable_features",
   use_norm = "raw",
+  scale = FALSE,
   threshold = 0.3,
   use_cost = c("feature", "niche"),
   custom_cost = NULL,
@@ -49,6 +50,8 @@ problem solving}
 Seed details}
 
 \item{use_norm}{character - which count data to use}
+
+\item{scale}{logical - should signal be scaled}
 
 \item{threshold}{score threshold below which indicices should be removed.
 Scores will always be between 0 and 1}
