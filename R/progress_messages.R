@@ -109,6 +109,8 @@ message_switch <- function(type, verbose = TRUE, ...) {
             " Extracting assay signal\n")),
         "hungarian" = cat(paste(t,
             " Solving Assignment Problem using exact matches\n")),
+        "custom_cost" = cat(paste(t,
+            " Checking custom cost matrix",args$cost,"\n")),
         "div_hungarian" = cat(paste(t,
             " Solving Assignment Problem with Divide & Conquer\n")),
         "feature_cost" = cat(paste(t,

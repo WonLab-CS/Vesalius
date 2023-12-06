@@ -10,7 +10,7 @@ get_signal(
   signal,
   dimensions = seq(1:30),
   use_norm = "raw",
-  scale = TRUE,
+  scale = FALSE,
   verbose = TRUE
 )
 }

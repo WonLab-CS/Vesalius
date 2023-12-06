@@ -11,22 +11,18 @@
 #' @param coordinates coordinate file
 #' @param image connection to image or image array
 #' @param assay string with assay name
-#' @param layer int [1, Inf[ - depth layer when more than on assay is
-#' present
 #' @param verbose logical if progress message should be outputed.
 #' @return list containing checked counts, coordinates and assay
 check_inputs <- function(counts,
     coordinates,
     image,
     assay,
-    layer,
     verbose) {
     #--------------------------------------------------------------------------#
     # we can check the validity of the coordinates
     #--------------------------------------------------------------------------#
     coordinates <- check_coordinates(coordinates,
         assay,
-        layer,
         verbose)
     #--------------------------------------------------------------------------#
     # next let's check counts if they are present
@@ -139,7 +135,6 @@ check_counts <- function(counts, assay, verbose) {
 #' adjust coordinate value to remove white edge space
 #' @param coordinates coordinate data 
 #' @param assay string - assay name
-#' @param layer int [1, Inf[ - depth layer 
 #' @param verbose logical if progress message should be printed
 #' @details adjusts coordinates by either snapping coordinates to origin 
 #' or min max normalisation of coordinates. Might add polar for future tests.
@@ -147,7 +142,6 @@ check_counts <- function(counts, assay, verbose) {
 #' @importFrom methods is as
 check_coordinates <- function(coordinates,
     assay,
-    layer,
     verbose) {
     message_switch("check_coord", verbose, assay = assay)
     if (is(coordinates, "matrix")) {
@@ -165,10 +159,8 @@ check_coordinates <- function(coordinates,
     if (all(c("barcodes", "xcoord", "ycoord") %in% colnames(coordinates))) {
         coordinates <- coordinates[, c("barcodes", "xcoord", "ycoord")]
         colnames(coordinates) <- c("barcodes",  "x", "y")
-        coordinates$z <- layer
     } else if (all(c("barcodes", "x", "y") %in% colnames(coordinates))) {
         coordinates <- coordinates[, c("barcodes", "x", "y")]
-        coordinates$z <- layer
     } else {
         stop("Unknown column names")
     }
@@ -181,12 +173,13 @@ check_coordinates <- function(coordinates,
     #--------------------------------------------------------------------------#
     # snapping coordinates to origin - might need to change this 
     # when using image - still the original coordinates though
+    # By default we add z coordinates that serves as a layer 
     #--------------------------------------------------------------------------#
     coordinates$x_orig <- coordinates$x
     coordinates$y_orig <- coordinates$y
     coordinates$x <- (coordinates$x - min(coordinates$x)) + 1
     coordinates$y <- (coordinates$y - min(coordinates$y)) + 1
-    
+    coordinates$z <- 1
     return(coordinates)
 }
 
@@ -794,7 +787,8 @@ check_cost_validity <- function(cost,
     seed_signal,
     query_assay,
     query_signal,
-    use_cost) {
+    use_cost,
+    verbose = TRUE) {
     seed <- get_tiles(seed_assay) %>% filter(origin == 1)
     query <- get_tiles(query_assay) %>% filter(origin == 1)
     #-------------------------------------------------------------------------#
@@ -814,6 +808,7 @@ check_cost_validity <- function(cost,
         # assign("use_cost", use_cost, env = parent.frame())
         return(NULL)
     }
+    
     #-------------------------------------------------------------------------#
     # First we check if the cost matrices are consitent
     #-------------------------------------------------------------------------#
@@ -837,10 +832,12 @@ check_cost_validity <- function(cost,
             return(cost)
         }, seed_barcodes, query_barcodes)
     names(cost) <- cost_names
+   
     #-------------------------------------------------------------------------#
     # Next we check if these barcodes overlap with the seed and query data
     #-------------------------------------------------------------------------#
     for (i in seq_along(cost)) {
+        message_switch("custom_cost", verbose, cost = cost_names[i])
         potential_dim <- c(nrow(query), nrow(seed))
         if (all(potential_dim != dim(cost[[i]]))) {
             warning(paste0("Dimensions differ between matrices \n",
@@ -854,8 +851,10 @@ check_cost_validity <- function(cost,
         if (length(row_over) == 0 || length(col_over) == 0) {
             stop("No common cells between custom cost and cost matrix")
         }
-        cost[[i]] <- cost[[i]][match(row_over, rownames(cost[[i]])),
+        tmp <- cost[[i]][match(row_over, rownames(cost[[i]])),
             match(col_over, colnames(cost[[i]]))]
+        tmp <- tmp[order(rownames(tmp)), order(colnames(tmp))]
+        cost[[i]] <- tmp
         
     }
     #-------------------------------------------------------------------------#

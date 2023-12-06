@@ -212,6 +212,10 @@ setMethod("show",
 #' (see details).
 #' @param verbose logical indicating if progress message should be
 #' outputed or not.
+#' @param scale character | numeric - if "auto", vesalius will compute
+#' 99 percentile of inter barcodes distance else provide a numeric value
+#' describing distance between barcodes. 
+#' @param unit character - units of scale
 #' @details
 #' The vesalius_assay constructor allows you to create
 #' partial or complete vesalius_assay objects.
@@ -254,7 +258,6 @@ build_vesalius_assay <- function(coordinates,
     assay = "spatial_omics",
     scale = "auto",
     unit = "um",
-    layer = 1,
     verbose = TRUE) {
     simple_bar(verbose)
     #--------------------------------------------------------------------------#
@@ -267,7 +270,6 @@ build_vesalius_assay <- function(coordinates,
         coordinates,
         image,
         assay,
-        layer,
         verbose)
     #--------------------------------------------------------------------------#
     # get scale from coordinates

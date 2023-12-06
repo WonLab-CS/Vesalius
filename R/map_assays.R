@@ -477,6 +477,8 @@ feature_dist <- function(seed, query, batch_size) {
     total_cost <- do.call("cbind", total_cost)
     colnames(total_cost) <- colnames(seed)
     rownames(total_cost) <- colnames(query)
+    total_cost <- total_cost[order(rownames(total_cost)),
+        order(colnames(total_cost))]
     return(list(total_cost))
 }
 
@@ -828,12 +830,21 @@ integrate_map <- function(aligned_graph,
         coordinates = aligned_graph[, c("barcodes", "x", "y")],
         counts = local_counts,
         assay = "integrated",
-        layer = max(query@meta$orig_coord$z) + 1,
         verbose = FALSE)
     query@meta <- c(query@meta, prob)
-    return(query)
+    if (!merge) {
+        return(query)
+    } else {
+        return(query)
+    }
+    
 }
 
+merge_coordinates <- function(seed, query) {
+    seed_coord <- get_coordinates(seed)
+    query_coord <- get_coordinates(query)
+
+}
 
 
 
