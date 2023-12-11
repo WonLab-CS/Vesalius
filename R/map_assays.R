@@ -11,7 +11,7 @@
 #' @param seed_assay vesalius_assay object - data to be mapped to
 #' @param query_assay vesalius_assay objecy - data to map
 #' @param neighborhood character - how should the neighborhood be selected?
-#' "knn", "radius", "depth"(See details)
+#' "knn", "radius", "graph"(See details)
 #' @param k int ]2, n_points] number of neareset neighbors to be considered for
 #' neighborhodd computation.
 #' @param radius numeric ]0,1[ proportion of max distance between points 

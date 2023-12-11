@@ -635,7 +635,7 @@ kmeans_segmentation <- function(vesalius_assay,
   #--------------------------------------------------------------------------#
   km <- suppressWarnings(kmeans(embeddings,
     col_resolution,
-    iter.max = 100,
+    iter.max = 10000,
     nstart = 10))
   clusters <- km$cluster
   kcenters <- km$centers
@@ -1012,7 +1012,7 @@ slic_segmentation <- function(vesalius_assay,
     #-------------------------------------------------------------------------#
     km <- suppressWarnings(kmeans(embeddings,
         embeddings[index, ],
-        iter.max = 100))
+        iter.max = max_iter))
     centroids <- map(seq(1, l = ncol(embeddings) - 2),
         ~ km$centers[km$cluster, .]) %>%
         do.call("cbind", .)

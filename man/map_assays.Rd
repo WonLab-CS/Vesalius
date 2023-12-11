@@ -29,7 +29,7 @@ map_assays(
 \item{query_assay}{vesalius_assay objecy - data to map}
 
 \item{neighborhood}{character - how should the neighborhood be selected?
-"knn", "radius", "depth"(See details)}
+"knn", "radius", "graph"(See details)}
 
 \item{k}{int ]2, n_points] number of neareset neighbors to be considered for
 neighborhodd computation.}
