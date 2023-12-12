@@ -446,6 +446,7 @@ feature_dist <- function(seed, query, batch_size) {
     for (i in seq_along(seed_batch)) {
         #---------------------------------------------------------------------#
         # Creating ref to seed matrix
+        # why am I not using as.matrix here?
         #---------------------------------------------------------------------#
         local_seed <- matrix(seed[,seed_batch[[i]]],
             ncol = length(seed_batch[[i]]))
@@ -455,10 +456,20 @@ feature_dist <- function(seed, query, batch_size) {
         #---------------------------------------------------------------------#
         local_cost <- future.apply::future_lapply(query_batch,
             function(query_batch, seed, query) {
+                #-------------------------------------------------------------#
+                # Same as above - not sure why I am using this instead of
+                # as.matrix 
+                #-------------------------------------------------------------#
                 local_query <- matrix(query[, query_batch],
                     ncol = length(query_batch))
                 colnames(local_query) <- colnames(query)[query_batch]
                 cost <- feature_cost(seed, local_query)
+                #-------------------------------------------------------------#
+                # this can return Nan when SD is 0 - happens when all counts 
+                # are 0. Can happen with the overlap between variable features
+                # Will replace with 0 instead 
+                #-------------------------------------------------------------#
+                cost[which(is.na(cost), arr.ind = TRUE)] <- 0
                 colnames(cost) <- colnames(seed)
                 rownames(cost) <- colnames(query)[query_batch]
                 return(cost)
