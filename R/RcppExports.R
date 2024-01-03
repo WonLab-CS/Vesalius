@@ -9,3 +9,7 @@ compare_niche_fast <- function(seed, query) {
     .Call('_vesalius_compare_niche_fast', PACKAGE = 'vesalius', seed, query)
 }
 
+rescale_to_seed <- function(seed_idx, query_idx, seed, query) {
+    .Call('_vesalius_rescale_to_seed', PACKAGE = 'vesalius', seed_idx, query_idx, seed, query)
+}
+
