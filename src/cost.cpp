@@ -24,25 +24,50 @@ float fast_cor(const NumericVector& cell_1, const NumericVector& cell_2){
     return corr;
 }
 
-double fast_jaccard(const CharacterVector& niche_1, const CharacterVector& niche_2){
-    // Create sets from the input vectors
-    std::unordered_set<std::string> niche_set1(niche_1.begin(), niche_1.end());
-    std::unordered_set<std::string> niche_set2(niche_2.begin(), niche_2.end());
 
-    // Calculate the size of the intersection
-    std::unordered_set<std::string> intersection;
-    for (const std::string& element : niche_set1) {
-        if (niche_set2.find(element) != niche_set2.end()) {
-            intersection.insert(element);
-        }
-    }
-    size_t union_size = niche_set1.size() + niche_2.size() - intersection.size();
-    if (union_size == 0) {
-        return 0.0;
-    } else {
-        return static_cast<double>(intersection.size()) / union_size;
-    }
+
+Rcpp::CharacterVector intersection(CharacterVector v1,
+    CharacterVector v2){
+    Rcpp::CharacterVector v3;
+    std::sort(v1.begin(), v1.end());
+    std::sort(v2.begin(), v2.end());
+    std::set_intersection(v1.begin(),v1.end(),
+                          v2.begin(),v2.end(),
+                          std::back_inserter(v3));
+    return v3;
 }
+
+
+float jaccard_index(const CharacterVector& niche_1, const CharacterVector& niche_2){
+    double size_niche_1 = niche_1.size();
+    double size_niche_2 = niche_2.size();
+    Rcpp::CharacterVector intersect = intersection(niche_1, niche_2);
+    double size_in = intersect.size();
+    float jaccard_index = static_cast<float>(size_in
+                        / (size_niche_1 + size_niche_2 - size_in));
+    return jaccard_index;
+}
+
+
+// double fast_jaccard(const CharacterVector& niche_1, const CharacterVector& niche_2){
+//     // Create sets from the input vectors
+//     std::unordered_set<std::string> niche_set1(niche_1.begin(), niche_1.end());
+//     std::unordered_set<std::string> niche_set2(niche_2.begin(), niche_2.end());
+
+//     // Calculate the size of the intersection
+//     std::unordered_set<std::string> intersection;
+//     for (const std::string& element : niche_set1) {
+//         if (niche_set2.find(element) != niche_set2.end()) {
+//             intersection.insert(element);
+//         }
+//     }
+//     size_t union_size = niche_set1.size() + niche_2.size() - intersection.size();
+//     if (union_size == 0) {
+//         return 0.0;
+//     } else {
+//         return static_cast<double>(intersection.size()) / union_size;
+//     }
+// }
 
 // [[Rcpp::export]]
 NumericMatrix feature_cost(const NumericMatrix& seed,
@@ -71,7 +96,7 @@ NumericMatrix compare_niche_fast(const List& seed,
         for (int j = 0; j < cell_query; j++){
             CharacterVector s = seed[i];
             CharacterVector q = query[j];
-            composition(j,i) = fast_jaccard(s,q);
+            composition(j,i) = jaccard_index(s,q);
         }
     }
     return composition;
