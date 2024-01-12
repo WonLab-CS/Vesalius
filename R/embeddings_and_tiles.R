@@ -947,7 +947,7 @@ embed_umap <- function(counts,
   #----------------------------------------------------------------------------#
   # Normalise
   #----------------------------------------------------------------------------#
-  counts <- Seurat::FetchData(counts, c("UMAP_1", "UMAP_2", "UMAP_3"))
+  counts <- Seurat::FetchData(counts, c("umap_1", "umap_2", "umap_3"))
   counts <- apply(counts, 2, norm_pixel, "minmax")
   counts <- list(as.matrix(counts))
   names(counts) <- "UMAP"
