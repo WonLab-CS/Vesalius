@@ -1013,7 +1013,7 @@ slic_segmentation <- function(vesalius_assay,
     km <- suppressWarnings(kmeans(embeddings,
         embeddings[index, ],
         iter.max = max_iter))
-    centroids <- puur::map(seq(1, l = ncol(embeddings) - 2),
+    centroids <- purrr::map(seq(1, l = ncol(embeddings) - 2),
         ~ km$centers[km$cluster, .]) %>%
         do.call("cbind", .)
     centroids <- centroids / ratio

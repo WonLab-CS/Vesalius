@@ -19,6 +19,7 @@ map_assays(
   threshold = 0.3,
   use_cost = c("feature", "niche"),
   custom_cost = NULL,
+  return_cost = FALSE,
   merge = FALSE,
   verbose = TRUE
 )

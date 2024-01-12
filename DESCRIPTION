@@ -25,9 +25,11 @@ Collate: image_processing.R
     sanity_checks.R
     object_modification.R
     map_assays.R
+    map_metrics.R
     interoperability.R
     RcppExports.R
     vesalius.R
+    intergration.R
 Depends: R (>= 4.0.0)
 LinkingTo: Rcpp
 Imports:
@@ -61,7 +63,8 @@ Imports:
     RcppHungarian,
     ggnewscale,
     kohonen,
-    Rcpp
+    Rcpp,
+    TreeDist
 Suggests:
     knitr,
     RUnit,

@@ -3,7 +3,7 @@
 #include <iostream>
 #include <vector>
 #include <cmath>
-#include <unordered_set>
+#include <algorithm>
 #include <string>
 
 
@@ -28,33 +28,51 @@ float fast_cor(const NumericVector& cell_1, const NumericVector& cell_2){
 }
 
 
-float fast_jaccard(const CharacterVector& niche_1, const CharacterVector& niche_2){
-    std::unordered_set<String> niche_set1(niche_1.begin(), niche_1.end());
-    std::unordered_set<String> niche_set2(niche_2.begin(), niche_2.end());
-    std::unordered_set<String> intersection;
-    for (const String& element : niche_set1) {
-        if (niche_set2.find(element) != niche_set2.end()) {
-            intersection.insert(element);
-        }
-    }
-    size_t union_size = niche_set1.size() + niche_2.size() - intersection.size();
-    if (union_size == 0) {
-        return 0.0;
-    } else {
-        return static_cast<float>(intersection.size()) / union_size;
-    }
+Rcpp::CharacterVector intersection(CharacterVector v1,
+    CharacterVector v2){
+    Rcpp::CharacterVector v3;
+    std::sort(v1.begin(), v1.end());
+    std::sort(v2.begin(), v2.end());
+    std::set_intersection(v1.begin(),v1.end(),
+                          v2.begin(),v2.end(),
+                          std::back_inserter(v3));
+    return v3;
 }
+
+
+float jaccard_index(const CharacterVector& niche_1, const CharacterVector& niche_2){
+    double size_niche_1 = niche_1.size();
+    double size_niche_2 = niche_2.size();
+    Rcpp::CharacterVector intersect = intersection(niche_1, niche_2);
+    double size_in = intersect.size();
+    float jaccard_index = static_cast<float>(size_in
+                        / (size_niche_1 + size_niche_2 - size_in));
+    return jaccard_index;
+}
+
+// float fast_jaccard(){
+//     std::unordered_set<String> niche_set1(niche_1.begin(), niche_1.end());
+//     std::unordered_set<String> niche_set2(niche_2.begin(), niche_2.end());
+//     std::unordered_set<String> intersection;
+    
+//     size_t union_size = niche_set1.size() + niche_2.size() - intersection.size();
+//     if (union_size == 0) {
+//         return 0.0;
+//     } else {
+//         return static_cast<float>(intersection.size()) / union_size;
+//     }
+// }
 
 // [[Rcpp::export]]
 Rcpp::NumericMatrix feature_cost(const NumericMatrix& seed,
     const NumericMatrix& query) {
     int cell_seed = seed.ncol();
     int cell_query = query.ncol();
-    NumericMatrix score(cell_query, cell_seed);
+    Rcpp::NumericMatrix score(cell_query, cell_seed);
     for (int i = 0 ; i < cell_seed; i++){
         for (int j = 0; j < cell_query; j++){
-            NumericVector s = seed(_,i);
-            NumericVector q = query(_,j);
+            Rcpp::NumericVector s = seed(_,i);
+            Rcpp::NumericVector q = query(_,j);
             score(j,i) = fast_cor(s,q);
         }
     }
@@ -72,7 +90,7 @@ Rcpp::NumericMatrix compare_niche_fast(const List& seed,
         for (int j = 0; j < cell_query; j++){
             CharacterVector s = seed[i];
             CharacterVector q = query[j];
-            composition(j,i) = fast_jaccard(s,q);
+            composition(j,i) = jaccard_index(s,q);
         }
     }
     return composition;
