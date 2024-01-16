@@ -110,6 +110,7 @@ map_assays <- function(seed_assay,
     use_cost = c("feature","niche"),
     custom_cost = NULL,
     return_cost = FALSE,
+    cell_label = NULL,
     merge = FALSE,
     verbose = TRUE) {
     simple_bar(verbose)
@@ -145,6 +146,7 @@ map_assays <- function(seed_assay,
         batch_size = batch_size,
         use_cost = use_cost,
         threshold = threshold,
+        cell_label = cell_label,
         verbose = verbose)
     #-------------------------------------------------------------------------#
     # This is where we actually create a return object that can be used
@@ -241,6 +243,7 @@ point_mapping <- function(query_signal,
     batch_size = 1000,
     use_cost = c("feature", "niche"),
     threshold = 0.5,
+    cell_label = NULL,
     verbose = TRUE) {
     assay <- get_assay_names(query_assay)
     check_cost_validity(cost,
@@ -309,12 +312,14 @@ point_mapping <- function(query_signal,
         seed_niche <- niche_composition(seed,
             seed_assay,
             method = neighborhood,
+            cell_label = cell_label,
             k = k,
             depth = depth,
             radius = radius)
         query_niche <- niche_composition(query,
             query_assay,
             method = neighborhood,
+            cell_label = cell_label,
             k = k,
             depth = depth,
             radius = radius)
