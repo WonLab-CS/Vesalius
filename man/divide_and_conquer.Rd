@@ -2,7 +2,8 @@
 % Please edit documentation in R/map_assays.R
 \name{divide_and_conquer}
 \alias{divide_and_conquer}
-\title{splitting cost matrix into batches for batch processing}
+\title{Wrapper for fast niche composition 
+splitting cost matrix into batches for batch processing}
 \usage{
 divide_and_conquer(cost_mat, batch_size, verbose)
 }
@@ -17,5 +18,6 @@ divide_and_conquer(cost_mat, batch_size, verbose)
 list containing cost matrix batches
 }
 \description{
+Wrapper for fast niche composition 
 splitting cost matrix into batches for batch processing
 }

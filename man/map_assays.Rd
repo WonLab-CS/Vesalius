@@ -20,6 +20,7 @@ map_assays(
   use_cost = c("feature", "niche"),
   custom_cost = NULL,
   return_cost = FALSE,
+  cell_label = NULL,
   merge = FALSE,
   verbose = TRUE
 )

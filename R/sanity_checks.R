@@ -896,7 +896,7 @@ check_cell_labels <- function(vesalius_assay, cell_label = NULL) {
     if (is.null(cell_label)) {
         cells <- check_territory_trial(vesalius_assay, trial = "Cells")
     } else {
-        cells <- check_territory_trial(vesalius_assay, trial = "cell_label")
+        cells <- check_territory_trial(vesalius_assay, trial = cell_label)
     }
     return(cells[, c("barcodes", "trial")])
 }

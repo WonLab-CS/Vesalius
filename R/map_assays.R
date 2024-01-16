@@ -257,9 +257,9 @@ point_mapping <- function(query_signal,
     #--------------------------------------------------------------------------#
     if (any(grepl("feature", use_cost))){
         message_switch("feature_cost", verbose, assay = assay)
-        cost <- c(cost, feature_dist(seed_signal,
+        cost <- c(cost, signal_similarity(seed_signal,
             query_signal,
-            batch_size))
+            method = "pearson"))
         names(cost)[length(cost)] <-  "feature"
 
     }
@@ -281,9 +281,9 @@ point_mapping <- function(query_signal,
             depth,
             radius)
         message_switch("neighbor_cost", verbose, assay = assay)
-        cost <- c(cost, feature_dist(seed_signal_niche,
+        cost <- c(cost, signal_similarity(seed_signal_niche,
             query_signal_niche,
-            batch_size))
+            method = "pearson"))
         names(cost)[length(cost)] <-  "niche"
     }
     #--------------------------------------------------------------------------#
@@ -299,9 +299,9 @@ point_mapping <- function(query_signal,
         query_signal_niche <- get_neighborhood(query_assay,
             query_signal,
             "territory")
-        cost <- c(cost, feature_dist(seed_signal_niche,
+        cost <- c(cost, signal_similarity(seed_signal_niche,
             query_signal_niche,
-            batch_size))
+            method = "pearson"))
         names(cost)[length(cost)] <-  "territory"
     }
     #--------------------------------------------------------------------------#
@@ -324,7 +324,7 @@ point_mapping <- function(query_signal,
             depth = depth,
             radius = radius)
 
-        cost <- c(cost, list(compare_niches(seed_niche, query_niche)))
+        cost <- c(cost, list(signal_similarity(seed_niche, query_niche, method = "jaccard")))
         names(cost)[length(cost)] <-  "composition"
     }
     #--------------------------------------------------------------------------#
@@ -425,10 +425,9 @@ filter_cost <- function(cost, threshold = 0.3, use_cost) {
 }
 
 
-#' compute the distance between seed and query signals
+#' compute the similarity between seed and query signals
 #' @param seed seed signal
 #' @param query query signal
-#' @param batch_size int describing size of each batch parse to the loops
 #' @details Chunking cost and signal into smaller chunks to run the 
 #' correlation score in paralell. There is room for improvement here.
 #' First we could dispatch the longer list to future_lapply
@@ -437,13 +436,17 @@ filter_cost <- function(cost, threshold = 0.3, use_cost) {
 #' Also the functions calls feature_cost which is a R wrapper for a 
 #' c++ function (cost.cpp).
 #' @return matrix with query as rows and seed as colmuns
-feature_dist <- function(seed, query, batch_size) {
+#' @importFrom future nbrOfWorkers
+#' @importFrom future.apply future_lapply
+signal_similarity <- function(seed, query, method = "pearson") {
+    batch_size_seed <- ceiling(ncol(seed) / future::nbrOfWorkers())
+    batch_size_query <- ceiling(ncol(query) / future::nbrOfWorkers())
     #-------------------------------------------------------------------------#
     # First we chunk seed and query 
     # running a parallel lapply internally
     #-------------------------------------------------------------------------#
-    seed_batch <- chunk(seq(1, ncol(seed)), batch_size)
-    query_batch <- chunk(seq(1, ncol(query)), batch_size)
+    seed_batch <- chunk(seq(1, ncol(seed)), batch_size_seed)
+    query_batch <- chunk(seq(1, ncol(query)), batch_size_query)
     total_cost <- vector("list", length(seed_batch))
     #-------------------------------------------------------------------------#
     # Loop over seed batch - idealy we would use the loop over the 
@@ -451,35 +454,43 @@ feature_dist <- function(seed, query, batch_size) {
     #-------------------------------------------------------------------------#
     for (i in seq_along(seed_batch)) {
         #---------------------------------------------------------------------#
-        # Creating ref to seed matrix
-        # why am I not using as.matrix here?
+        # Splitting into sub lists
         #---------------------------------------------------------------------#
-        local_seed <- matrix(seed[,seed_batch[[i]]],
-            ncol = length(seed_batch[[i]]))
-        colnames(local_seed) <- colnames(seed)[seed_batch[[i]]]
+        local_seed <- lapply(seed_batch[[i]], function(i, seed) {
+            return(seed[, i])
+        }, seed = seed)
+        # local_seed <- matrix(seed[,seed_batch[[i]]],
+        #     ncol = length(seed_batch[[i]]))
+        names(local_seed) <- colnames(seed)[seed_batch[[i]]]
         #---------------------------------------------------------------------#
         # computing score in batches
         #---------------------------------------------------------------------#
-        local_cost <- future.apply::future_lapply(query_batch,
-            function(query_batch, seed, query) {
+        local_cost <- future_lapply(query_batch,
+            function(query_batch, local_seed, query) {
                 #-------------------------------------------------------------#
                 # Same as above - not sure why I am using this instead of
                 # as.matrix 
                 #-------------------------------------------------------------#
-                local_query <- matrix(query[, query_batch],
-                    ncol = length(query_batch))
-                colnames(local_query) <- colnames(query)[query_batch]
-                cost <- feature_cost(seed, local_query)
+                local_query <- lapply(query_batch, function(i, query) {
+                    return(query[, i])
+                }, query = query)
+                # local_seed <- matrix(seed[,seed_batch[[i]]],
+                #     ncol = length(seed_batch[[i]]))
+                names(local_query) <- colnames(query)[query_batch]
+                cost <- switch(EXPR = method,
+                    "jaccard" = jaccard_cost(local_seed, local_query),
+                    "pearson" = pearson_cost(local_seed, local_query))
+                #cost <- feature_cost(seed, local_query)
                 #-------------------------------------------------------------#
                 # this can return Nan when SD is 0 - happens when all counts 
                 # are 0. Can happen with the overlap between variable features
                 # Will replace with 0 instead 
                 #-------------------------------------------------------------#
                 cost[which(is.na(cost), arr.ind = TRUE)] <- 0
-                colnames(cost) <- colnames(seed)
-                rownames(cost) <- colnames(query)[query_batch]
+                colnames(cost) <- names(local_seed)
+                rownames(cost) <- names(local_query)
                 return(cost)
-            }, seed = local_seed,
+            }, local_seed = local_seed,
             query = query,
             future.seed = TRUE)
         #---------------------------------------------------------------------#
@@ -641,24 +652,35 @@ niche_composition <- function(coord,
     cell_labels <- check_cell_labels(vesalius_assay, cell_label)
     niches <- lapply(niches, function(n, cell_labs) {
             composition <- cell_labs$trial[cell_labs$barcodes %in% n]
-            ord <- names(sort(table(composition), decreasing = TRUE))
-            composition <- unlist(lapply(ord,function(o,co){co[co == o]},composition))
+            composition <- make.unique(composition, sep = "_")
+            # ord <- names(sort(table(composition), decreasing = TRUE))
+            # composition <- unlist(lapply(ord,function(o,co){co[co == o]},composition))
             return(composition)
     }, cell_labs = cell_labels)
     return(niches)
 }
 
 #' Wrapper for fast niche composition 
-#' @param seed list - cell type list in seed
-#' @param query list - cell type list in query
-#' @return matrix - jaccard index between nich composition in 
-#' seed and query
-compare_niches <- function(seed, query) {
-    rbo <- compare_niche_fast(seed, query)
-    colnames(rbo) <- names(seed)
-    rownames(rbo) <- names(query)
-    return(rbo)
-}
+# #' @param seed list - cell type list in seed
+# #' @param query list - cell type list in query
+# #' @return matrix - jaccard index between nich composition in 
+# #' seed and query
+# compare_niches <- function(seed, query) {
+#     batch_size_seed <- ceiling(length(seed) / future::nbrOfWorkers())
+#     batch_size_query <- ceiling(length(query) / future::nbrOfWorkers())
+#     #-------------------------------------------------------------------------#
+#     # First we chunk seed and query 
+#     # running a parallel lapply internally
+#     #-------------------------------------------------------------------------#
+#     seed_batch <- chunk(seq(1, ncol(seed)), batch_size_seed)
+#     query_batch <- chunk(seq(1, ncol(query)), batch_size_query)
+#     total_cost <- vector("list", length(seed_batch))
+
+#     rbo <- compare_niche_fast(seed, query)
+#     colnames(rbo) <- names(seed)
+#     rownames(rbo) <- names(query)
+#     return(rbo)
+# }
 
 #' splitting cost matrix into batches for batch processing
 #' @param cost_mat matrix 

@@ -83,8 +83,6 @@ double RBO(CharacterVector& niche_1, CharacterVector& niche_2 , double p){
         double size = tmp.size();
         overlap[i] = size;
     }
-    Rcout << "overlap = " << overlap <<"\n";
-
     // comp RBO
     
     if(!even){
@@ -97,9 +95,7 @@ double RBO(CharacterVector& niche_1, CharacterVector& niche_2 , double p){
         for(int i = s; i < overlap.size();i++){
             odd_sum_diff += (overlap[(s -1)] * ((i + 1 ) - s) / (s * (i + 1)) * pow(p,(i+1)));
         }
-        Rcout << "odd sum diff = " << odd_sum_diff <<"\n";
-        Rcout << "Last chunk = " << ((overlap.at((l - 1)) - overlap.at((s - 1))) / l + (overlap.at((s - 1)) / s)) <<"\n";
-        Rcout << "P^l = " << pow(p,l) << "\n";
+
         rbo = ((1-p)/p) * 
             ((odd_sum_long) + 
             (odd_sum_diff)) +
@@ -145,15 +141,15 @@ float jaccard_index(const CharacterVector& niche_1, const CharacterVector& niche
 
 
 // [[Rcpp::export]]
-Rcpp::NumericMatrix feature_cost(const NumericMatrix& seed,
-    const NumericMatrix& query) {
-    int cell_seed = seed.ncol();
-    int cell_query = query.ncol();
+Rcpp::NumericMatrix pearson_cost(const List& seed,
+    const List& query) {
+    int cell_seed = seed.size();
+    int cell_query = query.size();
     Rcpp::NumericMatrix score(cell_query, cell_seed);
     for (int i = 0 ; i < cell_seed; i++){
         for (int j = 0; j < cell_query; j++){
-            Rcpp::NumericVector s = seed(_,i);
-            Rcpp::NumericVector q = query(_,j);
+            Rcpp::NumericVector s = seed[i];
+            Rcpp::NumericVector q = query[j];
             score(j,i) = fast_cor(s,q);
         }
     }
@@ -162,7 +158,7 @@ Rcpp::NumericMatrix feature_cost(const NumericMatrix& seed,
 
 
 // [[Rcpp::export]]
-Rcpp::NumericMatrix compare_niche_fast(const List& seed,
+Rcpp::NumericMatrix jaccard_cost(const List& seed,
     const List& query) {
     int cell_seed = seed.size();
     int cell_query = query.size();
@@ -171,7 +167,7 @@ Rcpp::NumericMatrix compare_niche_fast(const List& seed,
         for (int j = 0; j < cell_query; j++){
             Rcpp::CharacterVector s = seed[i];
             Rcpp::CharacterVector q = query[j];
-            composition(j,i) = RBO(s, q, 0.9);
+            composition(j,i) = jaccard_index(s, q);
         }
     }
     return composition;

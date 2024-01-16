@@ -809,7 +809,6 @@ populate_graph <- function(chunk) {
 
 
 #' @importFrom imager imappend imsplit spectrum
-#' @importFrom purrr map_dbl map
 louvain_slic_segmentation <- function(vesalius_assay,
     dimensions,
     col_resolution,
@@ -877,7 +876,6 @@ louvain_slic_segmentation <- function(vesalius_assay,
 
 
 #' @importFrom imager imappend imsplit spectrum
-#' @importFrom purrr map_dbl map
 leiden_slic_segmentation <- function(vesalius_assay,
     dimensions,
     col_resolution,

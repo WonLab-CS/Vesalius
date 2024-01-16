@@ -210,11 +210,11 @@ add_cells <- function(vesalius_assay, cells, add_name = NULL, verbose = TRUE){
     # for now we force the column name 
     if (!is.null(add_name)){
         new_trial <- create_trial_tag(
-            names(get_embeddings(vesalius_assay, active = FALSE)), add_name) %>%
+            names(get_territories(vesalius_assay)), add_name) %>%
             tail(1)
     } else {
         new_trial <- create_trial_tag(
-            names(get_embeddings(vesalius_assay, active = FALSE)), 
+            names(get_territories(vesalius_assay)), 
             "Cells") %>%
             tail(1)
     }
