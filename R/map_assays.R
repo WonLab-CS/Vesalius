@@ -624,6 +624,7 @@ neighborhood_signal <- function(neighbors, signal) {
 niche_composition <- function(coord,
     vesalius_assay,
     method,
+    cell_label = NULL,
     k = 20,
     depth = 3,
     radius = 20) {
@@ -632,15 +633,13 @@ niche_composition <- function(coord,
         "radius" = radius_neighborhood(coord, radius),
         "graph" = graph_neighborhood(coord, depth),
         "territory" = territory_neighborhood(coord))
-    niches <- lapply(niches, function(n, assay) {
-            composition <- get_territories(assay) %>%
-                filter(barcodes %in% n)
-            if (!any(grepl("Cells", colnames(composition)))) {
-                stop("No cell labels have been added! See add_cells function")
-            }
-            composition <- composition[, tail(grep("Cells", colnames(composition)),1)]
-            return(make.unique(composition))
-    }, assay = vesalius_assay)
+    cell_labels <- check_cell_labels(vesalius_assay, cell_label)
+    niches <- lapply(niches, function(n, cell_labs) {
+            composition <- cell_labs$trial[cell_labs$barcodes %in% n]
+            ord <- names(sort(table(composition), decreasing = TRUE))
+            composition <- unlist(lapply(ord,function(o,co){co[co == o]},composition))
+            return(composition)
+    }, cell_labs = cell_labels)
     return(niches)
 }
 
@@ -650,11 +649,10 @@ niche_composition <- function(coord,
 #' @return matrix - jaccard index between nich composition in 
 #' seed and query
 compare_niches <- function(seed, query) {
-    # Currently using jaccard but might change towards shannon diversity
-    jacques <- compare_niche_fast(seed, query)
-    colnames(jacques) <- names(seed)
-    rownames(jacques) <- names(query)
-    return(jacques)
+    rbo <- compare_niche_fast(seed, query)
+    colnames(rbo) <- names(seed)
+    rownames(rbo) <- names(query)
+    return(rbo)
 }
 
 #' splitting cost matrix into batches for batch processing

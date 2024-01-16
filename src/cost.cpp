@@ -3,8 +3,10 @@
 #include <iostream>
 #include <vector>
 #include <cmath>
+#include <math.h>
 #include <algorithm>
 #include <string>
+#include <unordered_map>
 
 
 using namespace Rcpp;
@@ -26,6 +28,95 @@ float fast_cor(const NumericVector& cell_1, const NumericVector& cell_2){
                       * (n * sq_sum_cell_2 - sum_cell_2 * sum_cell_2)));
     return corr;
 }
+
+
+
+double RBO(CharacterVector& niche_1, CharacterVector& niche_2 , double p){
+    Rcpp::CharacterVector short_list;
+    Rcpp::CharacterVector long_list;
+    int s;
+    int l;
+    double rbo = 0;
+    bool even;
+    // setting list length
+    int lenN1 = niche_1.size();
+    int lenN2 = niche_2.size();
+    if(lenN1 == lenN2){
+        even = true ;
+        short_list = niche_1;
+        long_list = niche_2;
+    } else if (lenN1 < lenN2){
+        even = false;
+        short_list = niche_1;
+        long_list = niche_2;
+    } else {
+        even = false;
+        short_list = niche_2;
+        long_list = niche_1;
+    }
+    
+    s = short_list.size();
+    l = long_list.size();
+    // overlap
+    // initalize overlap vector
+    Rcpp::NumericVector overlap(l);
+    for(int i = 0; i < l;i++){
+        Rcpp::CharacterVector g1(i + 1);
+        Rcpp::CharacterVector g2(i + 1);
+        Rcpp::CharacterVector tmp;
+        for(int j=0; j < g1.size() ;j++){
+            g1[j] = long_list[j];
+            int at = std::min((s -1),j);
+            if ( (s - 1) < j) {
+                g2[j] = "";
+            } else {
+                g2[j] = short_list[at];
+            }
+            
+        }
+        std::sort(g1.begin(), g1.end());
+        std::sort(g2.begin(), g2.end());
+        std::set_intersection(
+            g1.begin(),g1.end(),
+            g2.begin(),g2.end(),
+            std::back_inserter(tmp));
+        double size = tmp.size();
+        overlap[i] = size;
+    }
+    Rcout << "overlap = " << overlap <<"\n";
+
+    // comp RBO
+    
+    if(!even){
+        double odd_sum_long = 0;
+        double odd_sum_diff = 0;
+        for(int i = 0 ; i < overlap.size();i++){
+            odd_sum_long += overlap[i] / (i + 1) * pow(p,(i + 1));
+        }
+
+        for(int i = s; i < overlap.size();i++){
+            odd_sum_diff += (overlap[(s -1)] * ((i + 1 ) - s) / (s * (i + 1)) * pow(p,(i+1)));
+        }
+        Rcout << "odd sum diff = " << odd_sum_diff <<"\n";
+        Rcout << "Last chunk = " << ((overlap.at((l - 1)) - overlap.at((s - 1))) / l + (overlap.at((s - 1)) / s)) <<"\n";
+        Rcout << "P^l = " << pow(p,l) << "\n";
+        rbo = ((1-p)/p) * 
+            ((odd_sum_long) + 
+            (odd_sum_diff)) +
+            ((overlap.at((l - 1)) - overlap.at((s - 1))) / l + (overlap.at((s - 1)) / s)) *
+            pow(p,l);
+
+    } else {
+        double es =0;
+        int last = overlap.at(l - 1);
+        for(int i=0; i < overlap.size(); i++){
+            es += (overlap[i] / (i+1)) * pow(p,(i+1));
+        }
+        rbo = (last/l) * pow(p,l) + (((1-p)/p) * es);
+    }
+    return rbo;
+}
+
 
 
 Rcpp::CharacterVector intersection(CharacterVector v1,
@@ -50,18 +141,8 @@ float jaccard_index(const CharacterVector& niche_1, const CharacterVector& niche
     return jaccard_index;
 }
 
-// float fast_jaccard(){
-//     std::unordered_set<String> niche_set1(niche_1.begin(), niche_1.end());
-//     std::unordered_set<String> niche_set2(niche_2.begin(), niche_2.end());
-//     std::unordered_set<String> intersection;
-    
-//     size_t union_size = niche_set1.size() + niche_2.size() - intersection.size();
-//     if (union_size == 0) {
-//         return 0.0;
-//     } else {
-//         return static_cast<float>(intersection.size()) / union_size;
-//     }
-// }
+
+
 
 // [[Rcpp::export]]
 Rcpp::NumericMatrix feature_cost(const NumericMatrix& seed,
@@ -88,9 +169,9 @@ Rcpp::NumericMatrix compare_niche_fast(const List& seed,
     NumericMatrix composition(cell_query, cell_seed);
     for (int i = 0 ; i < cell_seed; i++){
         for (int j = 0; j < cell_query; j++){
-            CharacterVector s = seed[i];
-            CharacterVector q = query[j];
-            composition(j,i) = jaccard_index(s,q);
+            Rcpp::CharacterVector s = seed[i];
+            Rcpp::CharacterVector q = query[j];
+            composition(j,i) = RBO(s, q, 0.9);
         }
     }
     return composition;

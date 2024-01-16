@@ -204,14 +204,20 @@ add_embeddings <- function(vesalius_assay,
 
 
 #' @export
-add_cells <- function(vesalius_assay, cells, verbose = TRUE){
+add_cells <- function(vesalius_assay, cells, add_name = NULL, verbose = TRUE){
     simple_bar(verbose)
     assay <- get_assay_names(vesalius_assay)
     # for now we force the column name 
-    new_trial <- create_trial_tag(
-        colnames(get_territories(vesalius_assay)),
-        "Cells") %>%
-        tail(1)
+    if (!is.null(add_name)){
+        new_trial <- create_trial_tag(
+            names(get_embeddings(vesalius_assay, active = FALSE)), add_name) %>%
+            tail(1)
+    } else {
+        new_trial <- create_trial_tag(
+            names(get_embeddings(vesalius_assay, active = FALSE)), 
+            "Cells") %>%
+            tail(1)
+    }
     message_switch("new_cells",
         verbose = verbose,
         new_trial = new_trial,

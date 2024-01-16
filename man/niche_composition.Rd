@@ -9,6 +9,7 @@ niche_composition(
   coord,
   vesalius_assay,
   method,
+  cell_label = NULL,
   k = 20,
   depth = 3,
   radius = 20
