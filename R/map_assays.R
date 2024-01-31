@@ -6,7 +6,6 @@
 ############################### MAPPING ASSAYS ################################
 #-----------------------------------------------------------------------------#
 
-
 #' Aling and integrate spatial assay from the same modality using super pixels
 #' @param seed_assay vesalius_assay object - data to be mapped to
 #' @param query_assay vesalius_assay objecy - data to map
@@ -97,21 +96,24 @@
 #' @export
 map_assays <- function(seed_assay,
     query_assay,
+    signal = "variable_features",
+    use_cost = c("feature","niche"),
     neighborhood = "knn",
     k = 20,
     radius = 0.05,
     depth = 1,
     dimensions = seq(1, 30),
-    batch_size = 1000,
-    signal = "variable_features",
+    batch_size = 10000,
+    epochs = 1,
+    allow_duplicates = TRUE,
     use_norm = "raw",
     scale = FALSE,
     threshold = 0.3,
-    use_cost = c("feature","niche"),
     custom_cost = NULL,
     return_cost = FALSE,
-    cell_label = NULL,
-    merge = FALSE,
+    seed_cell_labels = NULL,
+    query_cell_labels = NULL,
+    merge = TRUE,
     verbose = TRUE) {
     simple_bar(verbose)
     #-------------------------------------------------------------------------#
@@ -123,7 +125,7 @@ map_assays <- function(seed_assay,
     # First let's get singal
     # to minimise the memory print - only one seed signal and list for query
     #-------------------------------------------------------------------------#
-    signal <- get_signal(seed_assay = seed_assay,
+    signal_out <- get_signal(seed_assay = seed_assay,
         query_assay = query_assay,
         signal = signal,
         dimensions = dimensions,
@@ -134,19 +136,21 @@ map_assays <- function(seed_assay,
     # Next we map points in the query assay onto the seed assay
     #-------------------------------------------------------------------------#
     mapped <- point_mapping(
-        query_signal = signal$query,
+        query_signal = signal_out$query,
         query_assay = query_assay,
         cost = custom_cost,
-        seed_signal = signal$seed,
+        seed_signal = signal_out$seed,
         seed_assay = seed_assay,
         neighborhood = neighborhood,
         k = k,
         radius = radius,
         depth = depth,
         batch_size = batch_size,
+        allow_duplicates = allow_duplicates,
         use_cost = use_cost,
         threshold = threshold,
-        cell_label = cell_label,
+        seed_cell_labels = seed_cell_labels,
+        query_cell_labels = query_cell_labels,
         verbose = verbose)
     #-------------------------------------------------------------------------#
     # This is where we actually create a return object that can be used
@@ -154,9 +158,15 @@ map_assays <- function(seed_assay,
     # this functions needs to be updated
     #-------------------------------------------------------------------------#
     integrated <- integrate_map(
-        aligned_graph = mapped,
+        mapped = mapped,
         query = query_assay,
         seed = seed_assay,
+        signal = signal,
+        return_cost = return_cost,
+        threshold = threshold,
+        allow_duplicates = allow_duplicates,
+        seed_cell_labels = seed_cell_labels,
+        query_cell_labels = query_cell_labels,
         merge = merge,
         verbose = verbose)
     
@@ -212,6 +222,7 @@ get_signal <- function(seed_assay,
 
 }
 
+
 #' mapping points between data sets
 #' @param query_signal processed query signal from query assay
 #' @param query vesalius_assay object
@@ -240,10 +251,13 @@ point_mapping <- function(query_signal,
     k = 20,
     radius = 0.05,
     depth = 1,
-    batch_size = 1000,
+    batch_size = 10000,
+    epochs = 1,
+    allow_duplicates = TRUE,
     use_cost = c("feature", "niche"),
     threshold = 0.5,
-    cell_label = NULL,
+    seed_cell_labels = NULL,
+    query_cell_labels = NULL,
     verbose = TRUE) {
     assay <- get_assay_names(query_assay)
     check_cost_validity(cost,
@@ -268,13 +282,13 @@ point_mapping <- function(query_signal,
     #--------------------------------------------------------------------------#
     if (any(grepl("niche", use_cost))) {
         message_switch("get_neigh", verbose, assay = assay)
-        seed_signal_niche <- get_neighborhood(seed,
+        seed_signal_niche <- get_neighborhood_signal(seed,
             seed_signal,
             neighborhood,
             k,
             depth,
             radius)
-        query_signal_niche <- get_neighborhood(query,
+        query_signal_niche <- get_neighborhood_signal(query,
             query_signal,
             neighborhood,
             k,
@@ -293,10 +307,10 @@ point_mapping <- function(query_signal,
     #--------------------------------------------------------------------------#
     if (any(grepl("territory", use_cost))) {
         message_switch("territory_cost", verbose, assay = assay)
-        seed_signal_niche <- get_neighborhood(seed_assay,
+        seed_signal_niche <- get_neighborhood_signal(seed_assay,
             seed_signal,
             "territory")
-        query_signal_niche <- get_neighborhood(query_assay,
+        query_signal_niche <- get_neighborhood_signal(query_assay,
             query_signal,
             "territory")
         cost <- c(cost, signal_similarity(seed_signal_niche,
@@ -312,40 +326,51 @@ point_mapping <- function(query_signal,
         seed_niche <- niche_composition(seed,
             seed_assay,
             method = neighborhood,
-            cell_label = cell_label,
+            cell_label = seed_cell_labels,
             k = k,
             depth = depth,
             radius = radius)
         query_niche <- niche_composition(query,
             query_assay,
             method = neighborhood,
-            cell_label = cell_label,
+            cell_label = query_cell_labels,
             k = k,
             depth = depth,
             radius = radius)
 
-        cost <- c(cost, list(signal_similarity(seed_niche, query_niche, method = "jaccard")))
+        cost <- c(cost, signal_similarity(seed_niche, query_niche, method = "jaccard"))
         names(cost)[length(cost)] <-  "composition"
+    }
+
+    if (any(grepl("cell_type", use_cost))) {
+        message_switch("cell_cost", verbose, assay = assay)
+        seed_labels <- check_cell_labels(seed_assay, seed_cell_labels)
+        query_labels <- check_cell_labels(query_assay, query_cell_labels)
+        cost <- c(cost, cell_type_match(seed_labels, query_labels))
+        names(cost)[length(cost)] <- "cell_type"
     }
     #--------------------------------------------------------------------------#
     # filtering and pairwise addition of cost matrices and
     #--------------------------------------------------------------------------#
-    cost <- filter_cost(cost, threshold, use_cost)
     cost <- c(cost, concat_cost(cost, use_cost))
     names(cost)[length(cost)] <- "total_cost"
     #--------------------------------------------------------------------------#
     # devide cost matrix
     #--------------------------------------------------------------------------#
-    map_cost <- divide_and_conquer(cost$total_cost, batch_size, verbose)
-    matched_indices <- match_index(seq(1, length(map_cost)), map_cost)
+    # map_cost <- divide_and_conquer(cost$total_cost, batch_size, verbose)
+    # matched_indices <- match_index(seq(1, length(map_cost)), map_cost)
+    matched_indices <- optimize_matching(cost$total_cost,
+        batch_size,
+        epochs,
+        allow_duplicates)
     scores <- score_matches(matched_indices,
         cost,
         use_cost = use_cost)
-    aligned <- align_index(matched_indices,
-        seed,
-        query,
-        verbose)
-    return(list("aligned" = aligned, "prob" = scores, "cost" = cost))
+    # aligned <- align_index(matched_indices,
+    #     seed,
+    #     query,
+    #     verbose)
+    return(list("matched" = matched_indices, "prob" = scores, "cost" = cost))
 }
 
 #' concat cost - pairwise sum of score complement
@@ -371,60 +396,6 @@ concat_cost <- function(cost, use_cost) {
 
 }
 
-#' remove scores that are below a certain threshold 
-#' @param cost list - score list to be filtered 
-#' @param threshold numeric - score threshold [0,1]
-#' @param use_cost - character - which score matrices to filter
-#' @return filtered cost list 
-filter_cost <- function(cost, threshold = 0.3, use_cost) {
-    if (length(use_cost) == 0) {
-        stop("Please specify at least one score matrix to use")
-    }
-    
-    if (length(cost[use_cost]) == 0) {
-        stop(paste(paste(use_cost, collapse = " "), ": not available in score matrix list"))
-    } else {
-        #---------------------------------------------------------------------#
-        # First check which barcodes have at least one barcodes above 
-        # threshold - checking seed and query
-        # using a for loop for cleaner replacement 
-        #---------------------------------------------------------------------#
-        for (i in seq_along(use_cost)) {
-            tmp <- cost[[use_cost[i]]]
-            above <- apply(tmp, 2, function(i, threshold) {
-                return(sum(i >= threshold))
-            }, threshold = threshold)
-            tmp <- tmp[, above > 0]
-            # then check query cost
-            above <- apply(tmp, 1, function(i, threshold) {
-                return(sum(i >= threshold))
-            }, threshold = threshold)
-            tmp <- tmp[above > 0, ]
-            cost[[use_cost[i]]] <- tmp
-           
-        }
-        #---------------------------------------------------------------------#
-        # check which barcodes I should keep across all cost that will be
-        # used
-        #---------------------------------------------------------------------#
-        seed_barcodes <- Reduce(intersect, lapply(cost[use_cost], colnames))
-        query_barcodes <- Reduce(intersect, lapply(cost[use_cost], rownames))
-        if (length(seed_barcodes) == 0 || length(query_barcodes) == 0) {
-            stop("Filtering threhsold to High! No indices retained!")
-        }
-        for (i in seq_along(use_cost)){
-            tmp <- cost[[use_cost[i]]]
-            tmp <- tmp[rownames(tmp) %in% query_barcodes,
-                colnames(tmp)  %in% seed_barcodes]
-            cost[[use_cost[i]]] <- tmp
-        }
-    }
-    
-    return(cost)
-
-}
-
-
 #' compute the similarity between seed and query signals
 #' @param seed seed signal
 #' @param query query signal
@@ -439,14 +410,16 @@ filter_cost <- function(cost, threshold = 0.3, use_cost) {
 #' @importFrom future nbrOfWorkers
 #' @importFrom future.apply future_lapply
 signal_similarity <- function(seed, query, method = "pearson") {
-    batch_size_seed <- ceiling(ncol(seed) / future::nbrOfWorkers())
-    batch_size_query <- ceiling(ncol(query) / future::nbrOfWorkers())
+    seed <- listify(seed)
+    query <- listify(query)
+    batch_size_seed <- ceiling(length(seed) / future::nbrOfWorkers())
+    batch_size_query <- ceiling(length(query) / future::nbrOfWorkers())
     #-------------------------------------------------------------------------#
     # First we chunk seed and query 
     # running a parallel lapply internally
     #-------------------------------------------------------------------------#
-    seed_batch <- chunk(seq(1, ncol(seed)), batch_size_seed)
-    query_batch <- chunk(seq(1, ncol(query)), batch_size_query)
+    seed_batch <- chunk(seq(1, length(seed)), batch_size_seed)
+    query_batch <- chunk(seq(1, length(query)), batch_size_query)
     total_cost <- vector("list", length(seed_batch))
     #-------------------------------------------------------------------------#
     # Loop over seed batch - idealy we would use the loop over the 
@@ -456,31 +429,16 @@ signal_similarity <- function(seed, query, method = "pearson") {
         #---------------------------------------------------------------------#
         # Splitting into sub lists
         #---------------------------------------------------------------------#
-        local_seed <- lapply(seed_batch[[i]], function(i, seed) {
-            return(seed[, i])
-        }, seed = seed)
-        # local_seed <- matrix(seed[,seed_batch[[i]]],
-        #     ncol = length(seed_batch[[i]]))
-        names(local_seed) <- colnames(seed)[seed_batch[[i]]]
+        local_seed <- seed[seed_batch[[i]]]
         #---------------------------------------------------------------------#
         # computing score in batches
         #---------------------------------------------------------------------#
         local_cost <- future_lapply(query_batch,
             function(query_batch, local_seed, query) {
-                #-------------------------------------------------------------#
-                # Same as above - not sure why I am using this instead of
-                # as.matrix 
-                #-------------------------------------------------------------#
-                local_query <- lapply(query_batch, function(i, query) {
-                    return(query[, i])
-                }, query = query)
-                # local_seed <- matrix(seed[,seed_batch[[i]]],
-                #     ncol = length(seed_batch[[i]]))
-                names(local_query) <- colnames(query)[query_batch]
+                local_query <- query[query_batch]
                 cost <- switch(EXPR = method,
                     "jaccard" = jaccard_cost(local_seed, local_query),
                     "pearson" = pearson_cost(local_seed, local_query))
-                #cost <- feature_cost(seed, local_query)
                 #-------------------------------------------------------------#
                 # this can return Nan when SD is 0 - happens when all counts 
                 # are 0. Can happen with the overlap between variable features
@@ -503,8 +461,8 @@ signal_similarity <- function(seed, query, method = "pearson") {
     # Rebuild total matrix
     #-------------------------------------------------------------------------#
     total_cost <- do.call("cbind", total_cost)
-    colnames(total_cost) <- colnames(seed)
-    rownames(total_cost) <- colnames(query)
+    colnames(total_cost) <- names(seed)
+    rownames(total_cost) <- names(query)
     total_cost <- total_cost[order(rownames(total_cost)),
         order(colnames(total_cost))]
     return(list(total_cost))
@@ -523,7 +481,7 @@ signal_similarity <- function(seed, query, method = "pearson") {
 #' @param radius - numeric - radius around center cell 
 #' @return matrix of average signals for each spatial index and its 
 #' neighborhood.
-get_neighborhood <- function(coord,
+get_neighborhood_signal <- function(coord,
     signal,
     method,
     k = 20,
@@ -599,10 +557,11 @@ territory_neighborhood <- function(coord) {
     # for now only last trial 
     coord <- check_territory_trial(coord, "last")
     coord_dist <- lapply(seq(1, nrow(coord)),function(i, coord) {
-        bars <- coord$barcodes[coord$trial == coord$trial[i]]
-        return(bars)
-    }, coord = coord)
+    bars <- coord$barcodes[coord$trial == coord$trial[i]]
+            return(bars)
+        }, coord = coord)
     names(coord_dist) <- coord$barcodes
+    
     return(coord_dist)
 }
 
@@ -660,6 +619,24 @@ niche_composition <- function(coord,
     return(niches)
 }
 
+cell_type_match <- function(seed_labels, query_labels) {
+    cell_labels <- future_lapply(seq(1, nrow(query_labels)),
+        match_cells,
+        query_labels = query_labels,
+        seed_labels = seed_labels,
+        future.seed = TRUE)
+    cell_labels <- do.call("rbind", cell_labels)
+    colnames(cell_labels) <- seed_labels$barcodes
+    rownames(cell_labels) <- query_labels$barcodes
+    cell_labels <- cell_labels[order(query_labels$barcodes),
+        order(seed_labels$barcodes)]
+    return(list(cell_labels))
+}
+
+match_cells <- function(idx, query_labels, seed_labels) {
+    return(as.numeric(query_labels[idx, "trial"] == seed_labels$trial))
+}
+
 #' Wrapper for fast niche composition 
 # #' @param seed list - cell type list in seed
 # #' @param query list - cell type list in query
@@ -682,112 +659,212 @@ niche_composition <- function(coord,
 #     return(rbo)
 # }
 
-#' splitting cost matrix into batches for batch processing
-#' @param cost_mat matrix 
-#' @param batch_size integer - size of each batch
-#' @param verbose logical out message to console
-#' @return list containing cost matrix batches 
-divide_and_conquer <- function(cost_mat, batch_size, verbose) {
-    #-------------------------------------------------------------------------#
-    # checking case
-    # case 1 : large data sets both need batching
-    #-------------------------------------------------------------------------#
-    if (ncol(cost_mat) > batch_size && nrow(cost_mat) > batch_size) {
-        message_switch("div_hungarian", verbose)
-        query_batch <- chunk(sample(seq(1, nrow(cost_mat)), nrow(cost_mat)),
-                batch_size)
-        if (ncol(cost_mat) >= nrow(cost_mat)) {
-            seed_batch <- chunk(sample(seq(1, ncol(cost_mat)), ncol(cost_mat)),
-                batch_size,
-                l = length(query_batch))
-            coms <- "dispatch"
-        } else {
-            seed_batch <- lapply(query_batch, function(query, max_idx) {
-                    return(sample(seq(1, max_idx), length(query)))
-                }, max_idx = ncol(cost_mat))
-            coms <- "oversample"
-        }
+# #' splitting cost matrix into batches for batch processing
+# #' @param cost_mat matrix 
+# #' @param batch_size integer - size of each batch
+# #' @param verbose logical out message to console
+# #' @return list containing cost matrix batches 
+# divide_and_conquer <- function(cost_mat, batch_size, verbose) {
+#     #-------------------------------------------------------------------------#
+#     # checking case
+#     # case 1 : large data sets both need batching
+#     #-------------------------------------------------------------------------#
+#     if (ncol(cost_mat) > batch_size && nrow(cost_mat) > batch_size) {
+#         message_switch("div_hungarian", verbose)
+#         query_batch <- chunk(sample(seq(1, nrow(cost_mat)), nrow(cost_mat)),
+#                 batch_size)
+#         if (ncol(cost_mat) >= nrow(cost_mat)) {
+#             seed_batch <- chunk(sample(seq(1, ncol(cost_mat)), ncol(cost_mat)),
+#                 batch_size,
+#                 l = length(query_batch))
+#             coms <- "dispatch"
+#         } else {
+#             seed_batch <- lapply(query_batch, function(query, max_idx) {
+#                     return(sample(seq(1, max_idx), length(query)))
+#                 }, max_idx = ncol(cost_mat))
+#             coms <- "oversample"
+#         }
         
-    } else if (nrow(cost_mat) > batch_size && nrow(cost_mat) > ncol(cost_mat)) {
-        message_switch("div_hungarian", verbose)
-        query_batch <- chunk(sample(seq(1, nrow(cost_mat)), nrow(cost_mat)),
-                batch_size)
-        seed_batch <- rep(list(seq_len(ncol(cost_mat))),
-            times = length(query_batch))
-        coms <- "subsample"
-    } else if (ncol(cost_mat) > batch_size && ncol(cost_mat) > nrow(cost_mat)) {
-        message_switch("div_hungarian", verbose)
-        seed_batch <- ceiling(ncol(cost_mat) / batch_size)
-        seed_batch <- lapply(seq(1, seed_batch),
-            function(subs, query_len, max_idx) {
-                    return(sample(seq(1, max_idx), query_len))
-            },query_len = nrow(cost_mat), max_idx = ncol(cost_mat))
-        query_batch <- rep(list(seq_len(nrow(cost_mat))),
-            times = length(seed_batch))
-        coms <- "reduce"
-    } else if (nrow(cost_mat) > ncol(cost_mat)){
-        message_switch("hungarian", verbose)
-        query_batch <- list(seq_len(nrow(cost_mat)))
-        seed_batch <- list(sample(seq_len(ncol(cost_mat)),
-            nrow(cost_mat), replace = TRUE))
-        coms <- "oversample"
-    } else {
-        message_switch("hungarian", verbose)
-        query_batch <- list(seq_len(nrow(cost_mat)))
-        seed_batch <- list(seq_len(ncol(cost_mat)))
-        coms <- "exact"
+#     } else if (nrow(cost_mat) > batch_size && nrow(cost_mat) > ncol(cost_mat)) {
+#         message_switch("div_hungarian", verbose)
+#         query_batch <- chunk(sample(seq(1, nrow(cost_mat)), nrow(cost_mat)),
+#                 batch_size)
+#         seed_batch <- rep(list(seq_len(ncol(cost_mat))),
+#             times = length(query_batch))
+#         coms <- "subsample"
+#     } else if (ncol(cost_mat) > batch_size && ncol(cost_mat) > nrow(cost_mat)) {
+#         message_switch("div_hungarian", verbose)
+#         seed_batch <- ceiling(ncol(cost_mat) / batch_size)
+#         seed_batch <- lapply(seq(1, seed_batch),
+#             function(subs, query_len, max_idx) {
+#                     return(sample(seq(1, max_idx), query_len))
+#             },query_len = nrow(cost_mat), max_idx = ncol(cost_mat))
+#         query_batch <- rep(list(seq_len(nrow(cost_mat))),
+#             times = length(seed_batch))
+#         coms <- "reduce"
+#     } else if (nrow(cost_mat) > ncol(cost_mat)){
+#         message_switch("hungarian", verbose)
+#         query_batch <- list(seq_len(nrow(cost_mat)))
+#         seed_batch <- list(sample(seq_len(ncol(cost_mat)),
+#             nrow(cost_mat), replace = TRUE))
+#         coms <- "oversample"
+#     } else {
+#         message_switch("hungarian", verbose)
+#         query_batch <- list(seq_len(nrow(cost_mat)))
+#         seed_batch <- list(seq_len(ncol(cost_mat)))
+#         coms <- "exact"
+#     }
+#     cost_list <- mapply(function(q, s, cost) {
+#                 return(cost[q, s])
+#             },
+#             query_batch,
+#             seed_batch,
+#             MoreArgs = list(cost_mat),
+#             SIMPLIFY = FALSE)   
+#     comment(cost_list) <- coms
+#     return(cost_list)
+# }
+
+
+
+optimize_matching <- function(cost_matrix,
+    batch_size = 10000,
+    epochs = 1,
+    allow_duplicates = TRUE,
+    verbose = TRUE) {
+
+    matched <- initialize_matches(cost_matrix)
+    current_epoch <- 1
+    while (epochs >= current_epoch) {
+        message_switch("mapping", verbose , epoch = current_epoch)
+        batch <- dispatch_batch(cost_matrix, matched, batch_size)
+        mapped <- lapply(batch, map_index)
+        matched <- update_matches(matched, mapped, current_epoch)
+        current_epoch <- current_epoch + 1
     }
-    cost_list <- mapply(function(q, s, cost) {
-                return(cost[q, s])
-            },
-            query_batch,
-            seed_batch,
-            MoreArgs = list(cost_mat),
-            SIMPLIFY = FALSE)   
-    comment(cost_list) <- coms
-    return(cost_list)
+    return(matched)
+
 }
 
 
-#' Finding optimal mapping between query and seed using a mini batch 
-#' approach
-#' @param idx integer - index of batch 
-#' @param cost_matrix list of matrices with cost between query (rows) and 
-#' seed (columns)
-#' @details Uses a Hungarian solver to minimize overall cost of 
-#' pair assignement.
-#' @return data.frame with point in query (from) mapped to 
-#' which point in seed (to) as well as cost of mapping for that pair
-#' @importFrom TreeDist LAPJV
-match_index <- function(idx, cost_matrix) {
-    coms <- comment(cost_matrix)
-    mapping <- lapply(idx, function(idx,
-        cost_matrix, n_cost) {
-        cost_matrix <- cost_matrix[[idx]]
-        #map <- RcppHungarian::HungarianSolver(cost_matrix)
-        #mapping <- as.data.frame(map$pairs)
-        #colnames(mapping) <- c("from", "to")
-        map <- TreeDist::LAPJV(cost_matrix)
-        mapping <- data.frame("from" = seq(1, nrow(cost_matrix)),
-            "to" = map$matching)
+initialize_matches <- function(cost_matrix) {
+    n_row <- max(c(ncol(cost_matrix),nrow(cost_matrix)))
+    matches <- data.frame("from" = rep(NA, n_row),
+        "to" = rep(NA, n_row),
+        "epoch" = rep(1, n_row),
+        "cost" = rep(max(cost_matrix), n_row))
+    return(matches)
+}
+
+dispatch_batch <- function(cost_matrix, matched, batch_size = 10000) {
+    seed_barcodes <- colnames(cost_matrix)
+    query_barcodes <- rownames(cost_matrix)
+    
+    batch_seed <- min(c(batch_size, length(seed_barcodes)))
+    batch_query <- min(c(batch_size, length(query_barcodes)))
+    
+    batch <- list()
+    i <- 1
+    seed_sample <- c()
+    query_sample <- c()
+    while (length(seed_sample)!= length(seed_barcodes) && 
+        length(query_sample)!= length(query_barcodes)) {
+        padding <- ifelse((batch_seed - batch_query) >= 0 ,0, batch_query - batch_seed)
+        seed <- c(sample(seed_barcodes,
+            size = batch_seed, replace = FALSE),
+            sample(seed_barcodes,
+            size = padding, replace = FALSE))
+        seed_sample <- unique(c(seed_sample,seed))
+        padding <- ifelse((batch_query - batch_seed) >= 0 ,0, batch_seed - batch_query)
+        query <- c(sample(query_barcodes,
+            size = batch_query, replace = FALSE),
+            sample(query_barcodes,
+            size = padding, replace = FALSE))
+        query_sample <- unique(c(query_sample,query))
+        batch[[i]] <- list("cost" = cost_matrix[query, seed],
+            "match" = data.frame("from" = query, "to" = seed))
+        i <- i + 1 
+    }
+    return(batch)
+}
+
+map_index <- function(batch) {
+    mapped <- TreeDist::LAPJV(batch$cost)$matching
+    match <- batch$match
+    match$to <- match$to[mapped]
+    #match <- match[!is.na(match$to), ]
+    
+    cost <- mapply(function(i, j, cost) {
+               return(cost[i, j])
+        },
+        match$from,
+        match$to,
+        MoreArgs = list(batch$cost))
+    match$cost <- cost
+    return(match)
+}
+
+update_matches <- function(matched, mapped, epoch) {
+    from <- unique(unlist(lapply(mapped, "[[", "from")))
+    to <- unique(unlist(lapply(mapped, "[[", "to")))
+    if (length(from) > length(to)){
+        init <- from
+        init_col <- "from"
+        map_col <- "to"
+    } else {
+        init <- to
+        init_col <- "to"
+        map_col <- "from"
+    }
+    matched[, init_col] <- init
+    for (i in seq_along(mapped)) {
+        loc <- match(mapped[[i]][, init_col] , matched[, init_col])
+        matched[loc, map_col] <- mapped[[i]][, map_col]
+        cost <- mapped[[i]][, "cost"] < matched[loc, "cost"]
+        matched[loc[cost], "cost"] <- mapped[[i]]$cost[cost]
+        matched[loc[cost], "epoch"] <- epoch
+    }
+    return(matched)
+}
+
+
+# #' Finding optimal mapping between query and seed using a mini batch 
+# #' approach
+# #' @param idx integer - index of batch 
+# #' @param cost_matrix list of matrices with cost between query (rows) and 
+# #' seed (columns)
+# #' @details Uses a Hungarian solver to minimize overall cost of 
+# #' pair assignement.
+# #' @return data.frame with point in query (from) mapped to 
+# #' which point in seed (to) as well as cost of mapping for that pair
+# #' @importFrom TreeDist LAPJV
+# match_index <- function(idx, cost_matrix) {
+#     coms <- comment(cost_matrix)
+#     mapping <- lapply(idx, function(idx,
+#         cost_matrix, n_cost) {
+#         cost_matrix <- cost_matrix[[idx]]
         
-        scores <- mapply(function(i, j, cost) {
-                return(cost[i, j])
-            },
-            mapping$from,
-            mapping$to,
-            MoreArgs = list(cost_matrix))
+#         map <- TreeDist::LAPJV(cost_matrix)
+#         mapping <- data.frame("from" = seq(1, nrow(cost_matrix)),
+#             "to" = map$matching)
+        
+#         scores <- mapply(function(i, j, cost) {
+#                 return(cost[i, j])
+#             },
+#             mapping$from,
+#             mapping$to,
+#             MoreArgs = list(cost_matrix))
 
-        mapping$cost <- scores
-        mapping$to <- colnames(cost_matrix)[mapping$to]
-        mapping$from <- rownames(cost_matrix)[mapping$from]
-        return(mapping)
-    },
-    cost_matrix = cost_matrix)#,
-    #future.seed = TRUE)
-    mapping <- concat_matches(mapping, coms)
-    return(mapping)
-}
+#         mapping$cost <- scores
+#         mapping$to <- colnames(cost_matrix)[mapping$to]
+#         mapping$from <- rownames(cost_matrix)[mapping$from]
+#         return(mapping)
+#     },
+#     cost_matrix = cost_matrix)#,
+#     #future.seed = TRUE)
+#     mapping <- concat_matches(mapping, coms)
+#     return(mapping)
+# }
 
 
 
@@ -830,29 +907,6 @@ score_matches <- function(matched_indices,
         colnames(matched_indices) <- gsub("inter_score", use_cost[i], colnames(matched_indices))
     }
     return(matched_indices)
-}
-
-#' assign coordinates to matched indices
-#' @param matched_index data.frame containing matching pairs of 
-#' coordinates
-#' @param seed data.frame containing seed coordinates 
-#' @param query data.frame containing quert cooridates
-#' @param verbose logical - should progress message be outputed to the 
-#' console
-#' @return adjusted query coordinate data.frame where each point
-#' receives the coordinates of its best matche in the seed. 
-align_index <- function(matched_index,
-    seed,
-    query,
-    threshold = 0.3,
-    verbose = TRUE) {
-    query <- query[match(matched_index$from, query$barcodes), ]
-    seed <- seed[match(matched_index$to, seed$barcodes), ]
-    query$x <- seed$x
-    query$y <- seed$y
-    query$x <- jitter(query$x, factor = 0.1)
-    query$y <- jitter(query$y, factor = 0.1)
-    return(query)
 }
 
 

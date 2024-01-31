@@ -150,12 +150,14 @@ generate_embeddings <- function(vesalius_assay,
     vesalius_assay <- add_active_count_tag(vesalius_assay,
       norm = ifelse(use_count == "raw", normalisation, use_count))
     
+    
     if (is.null(features)) {
       features <- check_features(counts$SO)
       feature_seclection <- "variable_features"
     } else {
       feature_seclection <- "custom_features"
     }
+   
     #--------------------------------------------------------------------------#
     # Embeddings - get embedding method and convert latent space
     # to color space.
@@ -659,7 +661,7 @@ process_counts <- function(counts,
     # rememmber that if we do decide to change things
     # we have to change things in the embbeddings as well
     #--------------------------------------------------------------------------#
-    counts <- Seurat::CreateAssayObject(counts = counts)
+    #counts <- Seurat::CreateAssayObject(counts = counts)
     counts <- suppressWarnings(Seurat::CreateSeuratObject(counts))
     counts <- switch(method,
                     "log_norm" = log_norm(counts, nfeatures),
@@ -692,8 +694,8 @@ raw_norm <- function(counts, use_count = "raw") {
     # We have to be a bit hacky with the Seurat object
     #--------------------------------------------------------------------------#
     norm_counts <- list(Seurat::GetAssayData(counts, layer = "counts"))
-    counts@assays$RNA@scale.data <- as.matrix(Seurat::GetAssayData(counts,
-      layer = "counts"))
+    #counts@assays$RNA@layers$scale.data <- as.matrix(Seurat::GetAssayData(counts,
+     # layer = "counts"))
     names(norm_counts) <- use_count
     return(list("SO" = counts, "norm" = norm_counts))
 }

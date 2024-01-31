@@ -29,7 +29,7 @@ Collate: image_processing.R
     interoperability.R
     RcppExports.R
     vesalius.R
-    intergration.R
+    integration.R
 Depends: R (>= 4.0.0)
 LinkingTo: Rcpp
 Imports:

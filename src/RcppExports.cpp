@@ -34,25 +34,10 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// rescale_to_seed
-Rcpp::NumericMatrix rescale_to_seed(const NumericVector& seed_idx, const NumericVector& query_idx, const NumericMatrix& seed, NumericMatrix query);
-RcppExport SEXP _vesalius_rescale_to_seed(SEXP seed_idxSEXP, SEXP query_idxSEXP, SEXP seedSEXP, SEXP querySEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const NumericVector& >::type seed_idx(seed_idxSEXP);
-    Rcpp::traits::input_parameter< const NumericVector& >::type query_idx(query_idxSEXP);
-    Rcpp::traits::input_parameter< const NumericMatrix& >::type seed(seedSEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type query(querySEXP);
-    rcpp_result_gen = Rcpp::wrap(rescale_to_seed(seed_idx, query_idx, seed, query));
-    return rcpp_result_gen;
-END_RCPP
-}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_vesalius_pearson_cost", (DL_FUNC) &_vesalius_pearson_cost, 2},
     {"_vesalius_jaccard_cost", (DL_FUNC) &_vesalius_jaccard_cost, 2},
-    {"_vesalius_rescale_to_seed", (DL_FUNC) &_vesalius_rescale_to_seed, 4},
     {NULL, NULL, 0}
 };
 

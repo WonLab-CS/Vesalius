@@ -14,10 +14,13 @@ point_mapping(
   k = 20,
   radius = 0.05,
   depth = 1,
-  batch_size = 1000,
+  batch_size = 10000,
+  epochs = 1,
+  allow_duplicates = TRUE,
   use_cost = c("feature", "niche"),
   threshold = 0.5,
-  cell_label = NULL,
+  seed_cell_labels = NULL,
+  query_cell_labels = NULL,
   verbose = TRUE
 )
 }

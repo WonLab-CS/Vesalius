@@ -107,12 +107,10 @@ message_switch <- function(type, verbose = TRUE, ...) {
             " Adding embeddings to", args$assay, "\n")),
         "signal" = cat(paste(t,
             " Extracting assay signal\n")),
-        "hungarian" = cat(paste(t,
-            " Solving Assignment Problem using exact matches\n")),
         "custom_cost" = cat(paste(t,
             " Checking custom cost matrix",args$cost,"\n")),
-        "div_hungarian" = cat(paste(t,
-            " Solving Assignment Problem with Divide & Conquer\n")),
+        "mapping" = cat(paste(t,
+            " Mapping query to seed - Epoch = ",args$epoch,"\n")),
         "feature_cost" = cat(paste(t,
             " Computing feature cost in", args$assay, "\n")),
         "neighbor_cost" = cat(paste(t,
@@ -122,7 +120,13 @@ message_switch <- function(type, verbose = TRUE, ...) {
         "territory_cost" = cat(paste(t,
             " Computing Territory cost in", args$assay, "\n")),
         "get_neigh" = cat(paste(t,
-            " Getting Neighborhoods in", args$assay, "\n"))
+            " Getting Neighborhoods in", args$assay, "\n")),
+        "cell_cost" = cat(paste(t,
+            " Computing Territory cost in", args$assay, "\n")),
+        "integrate" = cat(paste(t,
+            " Intergrating Counts \n")),
+        "post_map_filter" = cat(paste(t,
+            " Filtering Mapped Indices \n"))
         )
     } else {
         return(NULL)

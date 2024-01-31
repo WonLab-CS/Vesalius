@@ -208,12 +208,26 @@ check_embeddings <- function(embeddings) {
 #' check if image is present
 #' @param vesalius_assay vesalius assay object
 #' @return microscopy image
-check_image <- function(vesalius_assay) {
+check_image <- function(vesalius_assay, image_name = NULL, as_is = FALSE) {
     image <- vesalius@image
     if (length(image) == 0) {
-        stop("No image have been added to the vesalius_assay")
+        warnings("No image have been added to the vesalius_assay - Return NULL")
+        return(NULL)
     }
-    image <- image[[1L]][, , , 1:3]
+    if (!is.null(image_name)){
+        loc <- grep(image_name, names(image))
+        if (length(loc) == 0){
+            stop("No Image under the selected name")
+        }
+    } else {
+        loc <- 1L
+    }
+    if (as_is){
+        image <- image[[loc]]
+    } else {
+        image <- image[[1L]][, , , 1:3]
+    }
+    
     return(image)
 }
 
@@ -222,10 +236,10 @@ check_image <- function(vesalius_assay) {
 #' @param use_counts string - which count matrix to use
 #' @return norm method string or error
 check_norm_methods <- function(norm, use_counts = NULL) {
-    if (any(!norm %in% c("log_norm", "SCTransform", "TFIDF", "raw"))) {
+    if (any(!norm %in% c("log_norm", "SCTransform", "TFIDF", "raw","none"))) {
         stop("Normalisation method provided does not match available options \n
             Select from: \n
-            log_norm, SCTransform, TFIDF, or raw")
+            log_norm, SCTransform, TFIDF, raw or none")
     }
     #-------------------------------------------------------------------------#
     # here we are assuming that if the user parses anything else but raw 
@@ -233,7 +247,7 @@ check_norm_methods <- function(norm, use_counts = NULL) {
     # the embeddings. we can skip the normalisation method by setting the norm
     # method to raw. 
     #--------------------------------------------------------------------------#
-    if (!is.null(use_counts) && use_counts != "raw") {
+    if (!is.null(use_counts) && (use_counts != "raw" || use_counts != "none")) {
         norm <- "raw"
     }
     return(norm)
@@ -769,6 +783,47 @@ check_signal <- function(assay, signal, type) {
     }
 }
 
+
+check_feature_integration <- function(signal, intergrated) {
+    if (signal == "variable_features") {
+        features <- Seurat::VariableFeatures(intergrated)
+    } else if (signal == "all_features") {
+        seed <- rownames(intergrated@assays$RNA@layers$counts.1)
+        query <- rownames(intergrated@assays$RNA@layers$counts.2)
+        features <- intersect(seed, query)
+    } else if (
+        any(signal %in% rownames(intergrated@assays$RNA@layers$counts.1)) |
+        any(signal %in% rownames(intergrated@assays$RNA@layers$counts.2))) {
+        seed <- rownames(intergrated@assays$RNA@layers$counts.1[signal, ])
+        query <- rownames(intergrated@assays$RNA@layers$counts.2[signal, ])
+        features <- intersect(seed, query)
+    } else {
+        stop("Unknown signal type! Select from:
+        variable_features or all_features
+        Alternitively: vector of feature names you are interested in.")
+    }
+    return(features)
+}
+
+#' check features
+#' @param counts a seurat object
+#' @details If the user use custom counts, we want to check
+#' if variable features have been computed or not. Dim reduction
+#' requires a list if features toi be provided or variable features
+#' to be computed.
+#' @return a list of features
+#' @importFrom Seurat VariableFeatures
+check_features <- function(counts) {
+    if (length(Seurat::VariableFeatures(counts)) == 0) {
+        features <- rownames(GetAssayData(counts, slot = "counts"))
+    } else {
+        features <- Seurat::VariableFeatures(counts)
+    }
+    return(features)
+}
+
+
+
 check_cost_matrix_validity <- function(custom_cost) {
     #-------------------------------------------------------------------------#
     # making sure that we have a proper list 
@@ -899,4 +954,20 @@ check_cell_labels <- function(vesalius_assay, cell_label = NULL) {
         cells <- check_territory_trial(vesalius_assay, trial = cell_label)
     }
     return(cells[, c("barcodes", "trial")])
+}
+
+
+check_map_selection <- function(vesalius_assay, by) {
+    maps <- vesalius_assay@meta$mapping_scores
+    locs <- grep(paste0(by, collapse = "|"), colnames(maps), value =TRUE)
+    if (length(locs) < length(by)){
+        not_in <- paste(grep(paste0(by, collapse = "|"), colnames(maps),
+            value =TRUE, 
+            invert = TRUE),collapse = " ")
+        warning(paste0(not_in, "is (are) not available in mapping scores"))
+    }
+    if (length(locs) == 0) {
+        stop("None of the requested mapping score are present in assay!")
+    }
+    return(locs)
 }

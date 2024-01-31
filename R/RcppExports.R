@@ -9,7 +9,3 @@ jaccard_cost <- function(seed, query) {
     .Call('_vesalius_jaccard_cost', PACKAGE = 'vesalius', seed, query)
 }
 
-rescale_to_seed <- function(seed_idx, query_idx, seed, query) {
-    .Call('_vesalius_rescale_to_seed', PACKAGE = 'vesalius', seed_idx, query_idx, seed, query)
-}
-

@@ -38,6 +38,20 @@ detect_edges <- function(img) {
 }
 
 
+listify <- function(mat) {
+    if (is(mat, "list")) {
+        return(mat)
+    }
+    cells <- colnames(mat)
+    genes <- rownames(mat)
+    listified <- lapply(seq_along(cells), function(i, mat, genes){
+        tmp <- mat[,i]
+        names(tmp) <- genes
+        return(tmp)
+    }, mat = mat, genes = genes)
+    names(listified) <- cells
+    return(listified)
+}
 
 
 

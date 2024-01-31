@@ -102,8 +102,8 @@ identify_markers <- function(vesalius_assay,
     # First lets get the norm method out and the associated counts
     # qand check if DEG method is present 
     #--------------------------------------------------------------------------#
-    counts <- check_norm(vesalius_assay, norm_method, method, verbose)
     method <- check_deg_method(method)
+    counts <- check_norm(vesalius_assay, norm_method, method, verbose)
     #--------------------------------------------------------------------------#
     # Next let's get the territory data
     #--------------------------------------------------------------------------#
@@ -234,6 +234,9 @@ vesalius_deg <- function(seed,
 #' @importFrom stats p.adjust
 vesalius_deg_wilcox <- function(seed, seed_id, query, query_id, params) {
   buffer <- get_deg_metrics(seed, query, params)
+  if (is.null(buffer)){
+    return(NULL)
+  }
   pvals <- sapply(seq_len(nrow(buffer$seed)), function(idx, seed, query) {
     return(suppressWarnings(wilcox.test(seed[idx, ], query[idx, ])$p.value))
   }, seed = buffer$seed, query = buffer$query)
@@ -264,6 +267,9 @@ vesalius_deg_wilcox <- function(seed, seed_id, query, query_id, params) {
 #' @importFrom stats p.adjust
 vesalius_deg_ttest <- function(seed, seed_id, query, query_id, params) {
   buffer <- get_deg_metrics(seed, query, params)
+  if (is.null(buffer)){
+    return(NULL)
+  }
   pvals <- sapply(seq_len(nrow(buffer$seed)), function(idx, seed, query) {
     return(suppressWarnings(t.test(seed[idx, ], query[idx, ])$p.value))
   }, seed = buffer$seed, query = buffer$query)
@@ -294,15 +300,17 @@ vesalius_deg_ttest <- function(seed, seed_id, query, query_id, params) {
 #' @importFrom stats p.adjust
 vesalius_deg_chisq <- function(seed, seed_id, query, query_id, params) {
   buffer <- get_deg_metrics(seed, query, params)
-  buffer <- check_binary_nature(buffer)
-  pvals <- sapply(seq_len(nrow(buffer$seed)), function(idx, seed, query) {
-    dat <- cbind(table(seed[idx, ]), table(query[, idx]))
-    return(suppressWarnings(chisq.test(dat)$p.value))
-  }, seed = buffer$seed, query = buffer$query)
-  effect_size <- sapply(pvals, compute_effect_size,
+  if (is.null(buffer)){
+    return(NULL)
+  }
+  #buffer <- check_binary_nature(buffer)
+  seed <- apply(buffer$seed, 1, sum)
+  query <- apply(buffer$query,1, sum)
+  pvals <- suppressWarnings(chisq.test(x = seed, y = query))$p.value
+  effect_size <- compute_effect_size(pvals,
     seed = ncol(buffer$seed),
     query = ncol(buffer$query))
-  deg <- data.frame("genes" = buffer$genes,
+  deg <- data.frame("cells" = paste(buffer$genes,collapse = " "),
     "p_value" = pvals,
     "p_value_adj" = p.adjust(pvals),
     "seed_pct" = buffer$seed_pct,
@@ -326,16 +334,17 @@ vesalius_deg_chisq <- function(seed, seed_id, query, query_id, params) {
 #' @importFrom stats p.adjust
 vesalius_deg_fisher <- function(seed, seed_id, query, query_id, params) {
   buffer <- get_deg_metrics(seed, query, params)
-  buffer <- check_binary_nature(buffer)
-  pvals <- sapply(seq_len(nrow(buffer$seed)), function(idx, seed, query) {
-    dat <- cbind(table(seed[idx, ]), table(query[idx, ]))
-    return(suppressWarnings(fisher.test(dat,
-      simulate.p.value = TRUE)$p.value))
-  }, seed = buffer$seed, query = buffer$query)
-  effect_size <- sapply(pvals, compute_effect_size,
+  if (is.null(buffer)){
+    return(NULL)
+  }
+  #buffer <- check_binary_nature(buffer)
+  seed <- apply(buffer$seed, 1, sum)
+  query <- apply(buffer$query,1, sum)
+  pvals <- suppressWarnings(fisher.test(x = seed, y = query))$p.value
+  effect_size <- compute_effect_size(pvals,
     seed = ncol(buffer$seed),
     query = ncol(buffer$query))
-  deg <- data.frame("genes" = buffer$genes,
+  deg <- data.frame("cells" = paste(buffer$genes,collapse = " "),
     "p_value" = pvals,
     "p_value_adj" = p.adjust(pvals),
     "seed_pct" = buffer$seed_pct,
@@ -358,6 +367,9 @@ vesalius_deg_fisher <- function(seed, seed_id, query, query_id, params) {
 #' @importFrom dplyr filter
 vesalius_deg_deseq2 <- function(seed, seed_id, query, query_id, params) {
   buffer <- get_deg_metrics(seed, query, params)
+  if (is.null(buffer)){
+    return(NULL)
+  }
   seed <- buffer$seed
   query <- buffer$query
   #--------------------------------------------------------------------------#
@@ -416,6 +428,9 @@ vesalius_deg_edger <- function(seed,
   params,
   type) {
   buffer <- get_deg_metrics(seed, query, params)
+  if (is.null(buffer)){
+    return(NULL)
+  }
   seed <- buffer$seed
   query <- buffer$query
   #--------------------------------------------------------------------------#
@@ -476,6 +491,9 @@ vesalius_deg_logit <- function(seed, seed_id, query, query_id, params) {
   # It does not work completly for ATAC data. 
   #--------------------------------------------------------------------------#
   buffer <- get_deg_metrics(seed, query, params)
+  if (is.null(buffer)){
+    return(NULL)
+  }
   merged <- format_counts_for_logit(buffer$seed, buffer$query)
   pvals <- sapply(seq_len(nrow(merged[[1L]])), function(idx, merged) {
     model_data <- cbind("gene" = merged$merged[idx, ], merged$seed_query_info)
@@ -517,31 +535,34 @@ vesalius_deg_logit <- function(seed, seed_id, query, query_id, params) {
 #' by running a power analysis with 2 uneven groups 
 #' importFrom pwr pwr.2p2n.test
 get_deg_metrics <- function(seed, query, params) {
-  #--------------------------------------------------------------------------#
-  # this asumes that we receive normalised counts
-  # NEED to check and update for TFID and SCTRANSFORM
-  #--------------------------------------------------------------------------#
-  seed_pct <- rowSums(seed > 0) / ncol(seed)
-  query_pct <- rowSums(query > 0) / ncol(query)
-  fc <- rowMeans(seed) - rowMeans(query)
+    #--------------------------------------------------------------------------#
+    # this asumes that we receive normalised counts
+    # NEED to check and update for TFID and SCTRANSFORM
+    #--------------------------------------------------------------------------#
+    seed_pct <- rowSums(seed > 0) / ncol(seed)
+    query_pct <- rowSums(query > 0) / ncol(query)
+    fc <- rowMeans(seed) - rowMeans(query)
   
-  #--------------------------------------------------------------------------#
-  # Dropping genes that don't fit the logFC and pct criteria
-  # this can be handle by edgeR as well but let's stay consistent here
-  # and keep this approach.
-  # Maybe it would be a good idea to look into what is the best method
-  # to select genes for DEG - with spatial componnent
-  #--------------------------------------------------------------------------#
-  keep <- (seed_pct >= params$min_pct |
-    query_pct >= params$min_pct) &
-    abs(fc) >= params$log_fc
-    return(list("genes" = rownames(seed)[keep],
-      "seed" = seed[keep, ],
-      "query" = query[keep, ],
-      "seed_pct" = seed_pct[keep],
-      "query_pct" = query_pct[keep],
-      "fc" = fc[keep]))
-
+    #--------------------------------------------------------------------------#
+    # Dropping genes that don't fit the logFC and pct criteria
+    # this can be handle by edgeR as well but let's stay consistent here
+    # and keep this approach.
+    # Maybe it would be a good idea to look into what is the best method
+    # to select genes for DEG - with spatial componnent
+    #--------------------------------------------------------------------------#
+    keep <- which(((seed_pct >= params$min_pct |
+        query_pct >= params$min_pct) &
+        abs(fc) >= params$log_fc))
+    if(length(keep) == 0) {
+        return(NULL)
+    } else {
+        return(list("genes" = rownames(seed)[keep],
+        "seed" = matrix(seed[keep, ],nrow = length(keep)),
+        "query" = matrix(query[keep, ], nrow = length(keep)),
+        "seed_pct" = seed_pct[keep],
+        "query_pct" = query_pct[keep],
+        "fc" = fc[keep]))
+    }
 }
 
 #' compute_effect_size
@@ -550,7 +571,7 @@ get_deg_metrics <- function(seed, query, params) {
 #' @param query number of cells in query
 #' @details If pval is 0 we convert that to a very small number
 #' pwr does not take 0 as input values.
-#' DESeq might reutn NA pvals - just skip the effect size and 
+#' DESeq might return NA pvals - just skip the effect size and 
 #' return NA
 #' @return efect size estimate for an unbalenced 
 #' power analysis.

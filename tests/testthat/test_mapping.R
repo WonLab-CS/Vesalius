@@ -11,6 +11,9 @@ vesalius <- generate_embeddings(vesalius,
 vesalius <- smooth_image(vesalius, embedding = "PCA", sigma = 5, iter = 10)
 vesalius <- segment_image(vesalius, col_resolution = 2)
 vesalius <- isolate_territories(vesalius)
+cells <- sample(LETTERS[1:6], size = nrow(coordinates), replace = TRUE)
+names(cells) <- coordinates$barcodes
+vesalius <- add_cells(vesalius, cells, add_name = "Cells")
 
 jitter_ves <- generate_embeddings(jitter_ves,
     filter_threshold = 1,
@@ -19,7 +22,9 @@ jitter_ves <- smooth_image(jitter_ves, embedding = "PCA", sigma = 5, iter = 10)
 jitter_ves <- equalize_image(jitter_ves, sleft = 5, sright = 5)
 jitter_ves <- segment_image(jitter_ves, col_resolution = 2)
 jitter_ves <- isolate_territories(jitter_ves)
-
+cells <- sample(LETTERS[1:6], size = nrow(jitter_coord), replace = TRUE)
+names(cells) <- jitter_coord$barcodes
+jitter_ves <- add_cells(jitter_ves, cells, add_name = "Cells")
 
 noise_coord <- data.frame("barcodes" = paste0("bar_", 1:1200),
     "x" = runif(1200, min = 1, max =  1000),
@@ -215,16 +220,7 @@ test_that("territory score", {
 
 
 test_that("niche composition", {
-    ves_cells <- sample(LETTERS[1:10],
-        size = nrow(vesalius@territories),
-        replace = TRUE)
-    names(ves_cells) <- vesalius@territories$barcodes
-    jitter_cells <- sample(LETTERS[3:15],
-        size = nrow(jitter_ves@territories),
-        replace = TRUE)
-    names(jitter_cells) <- jitter_ves@territories$barcodes
-    vesalius <- add_cells(vesalius, cells = ves_cells)
-    jitter_ves <- add_cells(jitter_ves, cells = jitter_cells)
+
     expect_s4_class(map_assays(vesalius,
         jitter_ves,
         batch_size = 1000,
@@ -233,12 +229,23 @@ test_that("niche composition", {
         "vesalius_assay")
 })
 
-test_that("multi_cost_types", {
+
+test_that("cell type labels", {
+
     expect_s4_class(map_assays(vesalius,
         jitter_ves,
         batch_size = 1000,
         threshold = 0.1,
-        use_cost = c("feature", "niche", "territory")),
+        use_cost = "cell_type"),
+        "vesalius_assay")
+})
+
+test_that("multi_cost_types", {
+    expect_s4_class(map_assays(vesalius,
+        jitter_ves,
+        batch_size = 5000,
+        threshold = 0.1,
+        use_cost = c("feature", "niche", "territory","cell_type")),
         "vesalius_assay")
 
     custom_matrix <- matrix(0.5, ncol = ncol(counts),

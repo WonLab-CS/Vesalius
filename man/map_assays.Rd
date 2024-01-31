@@ -7,21 +7,24 @@
 map_assays(
   seed_assay,
   query_assay,
+  signal = "variable_features",
+  use_cost = c("feature", "niche"),
   neighborhood = "knn",
   k = 20,
   radius = 0.05,
   depth = 1,
   dimensions = seq(1, 30),
-  batch_size = 1000,
-  signal = "variable_features",
+  batch_size = 10000,
+  epochs = 1,
+  allow_duplicates = TRUE,
   use_norm = "raw",
   scale = FALSE,
   threshold = 0.3,
-  use_cost = c("feature", "niche"),
   custom_cost = NULL,
   return_cost = FALSE,
-  cell_label = NULL,
-  merge = FALSE,
+  seed_cell_labels = NULL,
+  query_cell_labels = NULL,
+  merge = TRUE,
   verbose = TRUE
 )
 }
@@ -29,6 +32,14 @@ map_assays(
 \item{seed_assay}{vesalius_assay object - data to be mapped to}
 
 \item{query_assay}{vesalius_assay objecy - data to map}
+
+\item{signal}{character (variable_features, all_features, embeddings, custom)
+- What should  be used as cell signal to generate the cost matrix.
+Seed details}
+
+\item{use_cost}{character string defining how should total cost be computer
+Available: feature, niche, territory, composition (See details for combinations
+and custom matrices)}
 
 \item{neighborhood}{character - how should the neighborhood be selected?
 "knn", "radius", "graph"(See details)}
@@ -47,20 +58,12 @@ to consider for the neighborhood}
 \item{batch_size}{number of points per batch in query during assignment
 problem solving}
 
-\item{signal}{character (variable_features, all_features, embeddings, custom)
-- What should  be used as cell signal to generate the cost matrix.
-Seed details}
-
 \item{use_norm}{character - which count data to use}
 
 \item{scale}{logical - should signal be scaled}
 
 \item{threshold}{score threshold below which indicices should be removed.
 Scores will always be between 0 and 1}
-
-\item{use_cost}{character string defining how should total cost be computer
-Available: feature, niche, territory, composition (See details for combinations
-and custom matrices)}
 
 \item{custom_cost}{matrix - matrix of size n (query cells) by p (seed cells)
 containing custom cost matrix. Used instead of vesalius cost matrix}
