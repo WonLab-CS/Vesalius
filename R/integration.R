@@ -145,9 +145,10 @@ filter_maps <- function(mapped, threshold, allow_duplicates, verbose) {
     #-------------------------------------------------------------------------#
     # First we remove points that have a score below threshold
     #-------------------------------------------------------------------------#
+    cols <- seq((grep("cost", colnames(map_score)) + 1), ncol(map_score))
+    tmp <- matrix(map_score[,cols], ncol = length(cols))
     locs <- apply(
-        X = map_score[,seq((grep("cost", colnames(map_score)) + 1),
-            ncol(map_score))],
+        X = tmp,
         MARGIN = 1,
         FUN = function(r, t) {sum(r < t)}, t = threshold)
     map_score <- map_score[locs == 0, ]

@@ -216,25 +216,25 @@ get_composition <- function(seed_assay,
 
 
 
-#' remove scores that are below a certain threshold 
-#' @param cost list - score list to be filtered 
-#' @param threshold numeric - score threshold [0,1]
-#' @param use_cost - character - which score matrices to filter
-#' @return filtered cost list 
-#' @export
-filter_maps <- function(vesalius_assay, by = NULL, threshold = 0.3) {
-    if (is.null(by)) {
-        warning("No mapping score requested - returning assay as is")
-        return(vesalius_assay)
-    }
-    maps <- check_map_selection(vesalius_assay, by = by)
-    map_score <- vesalius_assay@meta$mapping_scores
-    for (i in seq_along(maps)) {
-        map_score <- map_score[map_score[, maps[i]] >= threshold, ]
-    }
-    # vesalius_assay <- filter_assay(vesalius_assay,
-    #     cells = map_score$from)
-    # vesalius_assay@meta$mapping_scores <- map_score
-    return(map_score)
-}
+# #' remove scores that are below a certain threshold 
+# #' @param cost list - score list to be filtered 
+# #' @param threshold numeric - score threshold [0,1]
+# #' @param use_cost - character - which score matrices to filter
+# #' @return filtered cost list 
+# #' @export
+# filter_maps <- function(vesalius_assay, by = NULL, threshold = 0.3) {
+#     if (is.null(by)) {
+#         warning("No mapping score requested - returning assay as is")
+#         return(vesalius_assay)
+#     }
+#     maps <- check_map_selection(vesalius_assay, by = by)
+#     map_score <- vesalius_assay@meta$mapping_scores
+#     for (i in seq_along(maps)) {
+#         map_score <- map_score[map_score[, maps[i]] >= threshold, ]
+#     }
+#     # vesalius_assay <- filter_assay(vesalius_assay,
+#     #     cells = map_score$from)
+#     # vesalius_assay@meta$mapping_scores <- map_score
+#     return(map_score)
+# }
 
