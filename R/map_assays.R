@@ -169,7 +169,16 @@ map_assays <- function(seed_assay,
         query_cell_labels = query_cell_labels,
         merge = merge,
         verbose = verbose)
-    
+    integrated <- generate_tiles(integrated,
+        tensor_resolution = 1,
+        filter_grid = 1,
+        filter_threshold = 1,
+        verbose = FALSE)
+    commit <- create_commit_log(arg_match = as.list(match.call()),
+      default = formals(map_assays))
+    integrated <- commit_log(integrated,
+      commit,
+      "mapped")
     simple_bar(verbose)
     return(integrated)
 }
@@ -370,7 +379,7 @@ point_mapping <- function(query_signal,
     #     seed,
     #     query,
     #     verbose)
-    return(list("matched" = matched_indices, "prob" = scores, "cost" = cost))
+    return(list("prob" = scores, "cost" = cost))
 }
 
 #' concat cost - pairwise sum of score complement
@@ -767,8 +776,8 @@ dispatch_batch <- function(cost_matrix, matched, batch_size = 10000) {
     i <- 1
     seed_sample <- c()
     query_sample <- c()
-    while (length(seed_sample)!= length(seed_barcodes) && 
-        length(query_sample)!= length(query_barcodes)) {
+    while (length(seed_sample) != length(seed_barcodes) || 
+        length(query_sample) != length(query_barcodes)) {
         padding <- ifelse((batch_seed - batch_query) >= 0 ,0, batch_query - batch_seed)
         seed <- c(sample(seed_barcodes,
             size = batch_seed, replace = FALSE),
@@ -785,6 +794,7 @@ dispatch_batch <- function(cost_matrix, matched, batch_size = 10000) {
             "match" = data.frame("from" = query, "to" = seed))
         i <- i + 1 
     }
+    
     return(batch)
 }
 
@@ -807,7 +817,7 @@ map_index <- function(batch) {
 update_matches <- function(matched, mapped, epoch) {
     from <- unique(unlist(lapply(mapped, "[[", "from")))
     to <- unique(unlist(lapply(mapped, "[[", "to")))
-    if (length(from) > length(to)){
+    if (length(from) >= length(to)){
         init <- from
         init_col <- "from"
         map_col <- "to"

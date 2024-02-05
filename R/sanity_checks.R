@@ -209,7 +209,7 @@ check_embeddings <- function(embeddings) {
 #' @param vesalius_assay vesalius assay object
 #' @return microscopy image
 check_image <- function(vesalius_assay, image_name = NULL, as_is = FALSE) {
-    image <- vesalius@image
+    image <- vesalius_assay@image
     if (length(image) == 0) {
         warnings("No image have been added to the vesalius_assay - Return NULL")
         return(NULL)
@@ -236,7 +236,7 @@ check_image <- function(vesalius_assay, image_name = NULL, as_is = FALSE) {
 #' @param use_counts string - which count matrix to use
 #' @return norm method string or error
 check_norm_methods <- function(norm, use_counts = NULL) {
-    if (any(!norm %in% c("log_norm", "SCTransform", "TFIDF", "raw","none"))) {
+    if (any(!norm %in% c("log_norm", "SCTransform", "TFIDF","none"))) {
         stop("Normalisation method provided does not match available options \n
             Select from: \n
             log_norm, SCTransform, TFIDF, raw or none")
@@ -247,8 +247,8 @@ check_norm_methods <- function(norm, use_counts = NULL) {
     # the embeddings. we can skip the normalisation method by setting the norm
     # method to raw. 
     #--------------------------------------------------------------------------#
-    if (!is.null(use_counts) && (use_counts != "raw" || use_counts != "none")) {
-        norm <- "raw"
+    if ((use_counts != "raw") || (norm == "none")) {
+        norm <- "none"
     }
     return(norm)
 }
@@ -871,7 +871,7 @@ check_cost_validity <- function(cost,
         warning("No names assigned to cost list!
         Creating Names and appending to use_cost list",
         immediate. = TRUE)
-        cost_names <- paste0("cost_", seq(1, length(cost)))
+        cost_names <- paste0("score_", seq(1, length(cost)))
         use_cost <- c(cost_names, use_cost)
     } else {
         cost_names <- names(cost)

@@ -13,7 +13,7 @@
 #' reduction method should be used. One of the following:
 #' "PCA", "PCA_L", "UMAP", "LSI", "LSI_UMAP".
 #' @param normalisation string describing which normalisation 
-#' method to use. One of the following "log_norm", "SCT", "TFIDF", "raw".
+#' method to use. One of the following "log_norm", "SCT", "TFIDF", "none".
 #' @param use_count string describing which counts should be used for the 
 #' generating emebddings. Default = "raw". See details.
 #' @param dimensions numeric describing the number of Principle Components or
@@ -79,8 +79,8 @@
 
 generate_embeddings <- function(vesalius_assay,
   dim_reduction = "PCA",
-  normalisation = "log_norm",
-  use_count = "raw",
+  normalization = "log_norm",
+  use_counts = "raw",
   dimensions = 30,
   tensor_resolution = 1,
   filter_grid = 1,
@@ -99,7 +99,7 @@ generate_embeddings <- function(vesalius_assay,
     # will always return list even if you parse a single assay
     #--------------------------------------------------------------------------#
     assay <- get_assay_names(vesalius_assay)
-    normalisation <- check_norm_methods(normalisation, use_count)
+    normalization <- check_norm_methods(normalization, use_counts)
     dim_reduction <- check_embed_methods(dim_reduction)
     status <- search_log(vesalius_assay,
       "generate_tiles",
@@ -122,9 +122,9 @@ generate_embeddings <- function(vesalius_assay,
         filter_grid = filter_grid,
         filter_threshold = filter_threshold,
         verbose = verbose)
-      counts <- get_counts(vesalius_assay, type = use_count)
+      counts <- get_counts(vesalius_assay, type = use_counts)
     } else {
-      counts <- get_counts(vesalius_assay, type = use_count)
+      counts <- get_counts(vesalius_assay, type = use_counts)
     }
     #--------------------------------------------------------------------------#
     # Now we can start creating colour embeddings
@@ -138,8 +138,8 @@ generate_embeddings <- function(vesalius_assay,
     #--------------------------------------------------------------------------#
     counts <- process_counts(counts,
       assay = assay,
-      method = normalisation,
-      use_count = use_count,
+      method = normalization,
+      use_count = use_counts,
       nfeatures = nfeatures,
       min_cutoff = min_cutoff,
       verbose = verbose)
@@ -148,7 +148,7 @@ generate_embeddings <- function(vesalius_assay,
       slot = "counts",
       append = TRUE)
     vesalius_assay <- add_active_count_tag(vesalius_assay,
-      norm = ifelse(use_count == "raw", normalisation, use_count))
+      norm = ifelse(use_counts == "raw", normalization, use_counts))
     
     
     if (is.null(features)) {
@@ -667,7 +667,7 @@ process_counts <- function(counts,
                     "log_norm" = log_norm(counts, nfeatures),
                     "SCTransform" = int_sctransform(counts, nfeatures),
                     "TFIDF" = tfidf_norm(counts, min_cutoff = min_cutoff),
-                    "raw" = raw_norm(counts, use_count))
+                    "none" = no_norm(counts, use_count))
     return(counts)
 }
 
@@ -684,7 +684,7 @@ process_counts <- function(counts,
 #' @return list with seurat object used later and raw counts to be stored in
 #' the vesalius objects 
 #' @importFrom Seurat GetAssayData
-raw_norm <- function(counts, use_count = "raw") {
+no_norm <- function(counts, use_count = "raw") {
     #--------------------------------------------------------------------------#
     # Essentially we want people to be able to parse their matrix
     # If they want to use a different type of norm method that is not present
@@ -693,11 +693,13 @@ raw_norm <- function(counts, use_count = "raw") {
     # We are using this just for formating at the moment
     # We have to be a bit hacky with the Seurat object
     #--------------------------------------------------------------------------#
-    norm_counts <- list(Seurat::GetAssayData(counts, layer = "counts"))
-    #counts@assays$RNA@layers$scale.data <- as.matrix(Seurat::GetAssayData(counts,
-     # layer = "counts"))
-    names(norm_counts) <- use_count
-    return(list("SO" = counts, "norm" = norm_counts))
+    #norm_counts <- list(Seurat::GetAssayData(counts, layer = "counts"))
+    counts@assays$RNA@layers$data <- as.matrix(Seurat::GetAssayData(counts,
+        layer = "counts"))
+    counts@assays$RNA@layers$scale.data <- as.matrix(Seurat::GetAssayData(counts,
+        layer = "counts"))
+    #names(norm_counts) <- use_count
+    return(list("SO" = counts, "norm" = NULL))
 }
 #' log norm
 #' 
