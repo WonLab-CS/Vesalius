@@ -146,6 +146,7 @@ map_assays <- function(seed_assay,
         radius = radius,
         depth = depth,
         batch_size = batch_size,
+        epochs = epochs,
         allow_duplicates = allow_duplicates,
         use_cost = use_cost,
         threshold = threshold,
@@ -169,18 +170,25 @@ map_assays <- function(seed_assay,
         query_cell_labels = query_cell_labels,
         merge = merge,
         verbose = verbose)
-    integrated <- generate_tiles(integrated,
-        tensor_resolution = 1,
-        filter_grid = 1,
-        filter_threshold = 1,
-        verbose = FALSE)
     commit <- create_commit_log(arg_match = as.list(match.call()),
       default = formals(map_assays))
-    integrated <- commit_log(integrated,
-      commit,
-      "mapped")
+    if (merge) {
+        integrated <- generate_tiles(integrated,
+            tensor_resolution = 1,
+            filter_grid = 1,
+            filter_threshold = 1,
+            verbose = FALSE)
+        integrated <- commit_log(integrated, commit, "mapped")
+    } else {
+        integrated <- lapply(integrated, generate_tiles,
+            tensor_resolution = 1,
+            filter_threshold = 1,
+            filter_grid = 1,
+            verbose = FALSE)
+        integrated <- lapply(integrated, commit_log, commit, "mapped")
+    }
     simple_bar(verbose)
-    return(integrated)
+    return(integrated) 
 }
 #' get cell signal from vesalius assays
 #' @param seed_assay  vesalius_assay object
@@ -744,7 +752,7 @@ optimize_matching <- function(cost_matrix,
 
     matched <- initialize_matches(cost_matrix)
     current_epoch <- 1
-    while (epochs >= current_epoch) {
+    while (current_epoch <= epochs) {
         message_switch("mapping", verbose , epoch = current_epoch)
         batch <- dispatch_batch(cost_matrix, matched, batch_size)
         mapped <- lapply(batch, map_index)

@@ -2,9 +2,17 @@
 % Please edit documentation in R/vesalius.R
 \docType{package}
 \name{vesalius_package}
+\alias{vesalius}
 \alias{vesalius_package}
 \alias{vesalius-package}
 \title{vesalius}
 \description{
 Vesalius: Spatial Omics analysis using images processing
+}
+\seealso{
+Useful links:
+\itemize{
+  \item \url{https://patrickcnmartin.github.io/Vesalius/,https://github.com/patrickCNMartin/Vesalius}
+}
+
 }

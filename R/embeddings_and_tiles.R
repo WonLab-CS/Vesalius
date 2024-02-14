@@ -270,7 +270,7 @@ generate_tiles <- function(vesalius_assay,
   #----------------------------------------------------------------------#
   # Filter outlier beads
   #----------------------------------------------------------------------#
-  if (filter_grid != 0 && filter_grid != 1) {
+  if (filter_grid > 0 && filter_grid < 1) {
     message_switch("distance_beads", verbose)
     coordinates <- filter_grid(coordinates = coordinates,
       filter_grid = filter_grid)
@@ -684,6 +684,7 @@ process_counts <- function(counts,
 #' @return list with seurat object used later and raw counts to be stored in
 #' the vesalius objects 
 #' @importFrom Seurat GetAssayData
+#' @importFrom SeuratObject Features 
 no_norm <- function(counts, use_count = "raw") {
     #--------------------------------------------------------------------------#
     # Essentially we want people to be able to parse their matrix
@@ -693,12 +694,16 @@ no_norm <- function(counts, use_count = "raw") {
     # We are using this just for formating at the moment
     # We have to be a bit hacky with the Seurat object
     #--------------------------------------------------------------------------#
-    #norm_counts <- list(Seurat::GetAssayData(counts, layer = "counts"))
+    counts <- Seurat::NormalizeData(object = counts, verbose = FALSE)
+    counts <- Seurat::ScaleData(counts, verbose = FALSE)
+    counts <- suppressWarnings(Seurat::FindVariableFeatures(counts,
+    nfeatures = length(Features(counts)),
+    verbose = FALSE))
     counts@assays$RNA@layers$data <- as.matrix(Seurat::GetAssayData(counts,
         layer = "counts"))
     counts@assays$RNA@layers$scale.data <- as.matrix(Seurat::GetAssayData(counts,
         layer = "counts"))
-    #names(norm_counts) <- use_count
+    
     return(list("SO" = counts, "norm" = NULL))
 }
 #' log norm
@@ -1063,9 +1068,6 @@ embed_lsi_umap <- function(counts,
 #' @param dimensions number dimension to retain from NMF
 #' @param verbose logical if progress messages should be outputed
 #' @return normalised NMF embedding matrix 
-#' @importFrom NMF nmf
-#' @importFrom NMF coefficients
-#' @importFrom NMF basis
 embed_nmf <- function(counts, dimensions, verbose = TRUE) {
   #--------------------------------------------------------------------------#
   # adding this since I don't want to have this package as a dependancy 

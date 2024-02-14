@@ -122,7 +122,7 @@ message_switch <- function(type, verbose = TRUE, ...) {
         "get_neigh" = cat(paste(t,
             " Getting Neighborhoods in", args$assay, "\n")),
         "cell_cost" = cat(paste(t,
-            " Computing Territory cost in", args$assay, "\n")),
+            " Computing Cell Type cost in", args$assay, "\n")),
         "integrate" = cat(paste(t,
             " Intergrating Counts \n")),
         "post_map_filter" = cat(paste(t,

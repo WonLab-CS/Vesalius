@@ -26,17 +26,17 @@ cells <- sample(LETTERS[1:6], size = nrow(jitter_coord), replace = TRUE)
 names(cells) <- jitter_coord$barcodes
 jitter_ves <- add_cells(jitter_ves, cells, add_name = "Cells")
 
-noise_coord <- data.frame("barcodes" = paste0("bar_", 1:1200),
-    "x" = runif(1200, min = 1, max =  1000),
-    "y" = runif(1200, min = 1, max =  1000))
-noise_counts <- round(runif(1200 * nrow(counts), min = 0, max = 100))
-dim(noise_counts) <- c(nrow(counts), 1200)
-colnames(noise_counts) <- noise_coord$barcodes
-rownames(noise_counts) <- rownames(counts)
-noise_ves <- build_vesalius_assay(noise_coord, noise_counts)
-noise_ves <- generate_embeddings(noise_ves)
+# noise_coord <- data.frame("barcodes" = paste0("bar_", 1:1200),
+#     "x" = runif(1200, min = 1, max =  1000),
+#     "y" = runif(1200, min = 1, max =  1000))
+# noise_counts <- round(runif(1200 * nrow(counts), min = 0, max = 100))
+# dim(noise_counts) <- c(nrow(counts), 1200)
+# colnames(noise_counts) <- noise_coord$barcodes
+# rownames(noise_counts) <- rownames(counts)
+# noise_ves <- build_vesalius_assay(noise_coord, noise_counts)
+# noise_ves <- generate_embeddings(noise_ves)
 
-gene_vec <- sample(rownames(counts), 200)
+# gene_vec <- sample(rownames(counts), 200)
 
 
 test_that("input sanity checks", {
@@ -166,6 +166,89 @@ test_that("batching case", {
         "vesalius_assay")
 })
 
+
+
+test_that("batching case with multi epoch", {
+    expect_s4_class(map_assays(vesalius,
+        jitter_ves,
+        epochs = 3,
+        threshold = 0,
+        batch_size = 1000,
+        merge = F,
+        signal = "variable_features"),
+        "vesalius_assay")
+    expect_s4_class(map_assays(vesalius,
+        jitter_ves,
+        epochs = 3,
+        batch_size = 600,
+        signal = "variable_features"),
+        "vesalius_assay")
+    expect_s4_class(map_assays(vesalius,
+        jitter_ves,
+        epochs = 3,
+        batch_size = 1001,
+        signal = "variable_features"),
+        "vesalius_assay")
+    expect_s4_class(map_assays(vesalius,
+        jitter_ves,
+        epochs = 3,
+        batch_size = 1051,
+        signal = "variable_features"),
+        "vesalius_assay")
+    expect_s4_class(map_assays(vesalius,
+        jitter_ves,
+        epochs = 3,
+        batch_size = 1053,
+        signal = "variable_features"),
+        "vesalius_assay")
+    expect_s4_class(map_assays(jitter_ves,
+        vesalius,
+        epochs = 3,
+        batch_size = 1000,
+        signal = "variable_features"),
+        "vesalius_assay")
+    expect_s4_class(map_assays(vesalius,
+        jitter_ves,
+        batch_size = 100,
+        signal = "variable_features"),
+        "vesalius_assay")
+    expect_s4_class(map_assays(jitter_ves,
+        vesalius,
+        epochs = 3,
+        batch_size = 500,
+        signal = "variable_features"),
+        "vesalius_assay")
+    expect_s4_class(map_assays(vesalius,
+        jitter_ves,
+        epochs = 3,
+        batch_size = 1030,
+        signal = "variable_features"),
+        "vesalius_assay")
+    expect_s4_class(map_assays(jitter_ves,
+        vesalius,
+        epochs = 3,
+        batch_size = 1030,
+        signal = "variable_features"),
+        "vesalius_assay")
+    expect_s4_class(map_assays(vesalius,
+        jitter_ves,
+        epochs = 3,
+        batch_size = 5001,
+        signal = "variable_features"),
+        "vesalius_assay")
+    expect_s4_class(map_assays(jitter_ves,
+        vesalius,
+        epochs = 3,
+        batch_size = 2000,
+        signal = "variable_features"),
+        "vesalius_assay")
+    expect_s4_class(map_assays(jitter_ves,
+        vesalius,
+        epochs = 50,
+        batch_size = 300,
+        signal = "variable_features"),
+        "vesalius_assay")
+})
 
 test_that("filtering", {
    expect_s4_class(map_assays(vesalius,

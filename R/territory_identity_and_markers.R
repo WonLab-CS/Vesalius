@@ -556,9 +556,15 @@ get_deg_metrics <- function(seed, query, params) {
     if(length(keep) == 0) {
         return(NULL)
     } else {
+        seed_format <- matrix(seed[keep, ],nrow = length(keep))
+        colnames(seed_format) <- colnames(seed)
+        rownames(seed_format) <- rownames(seed)[keep]
+        query_format <- matrix(query[keep, ],nrow = length(keep))
+        colnames(query_format) <- colnames(query)
+        rownames(query_format) <- rownames(query)[keep]
         return(list("genes" = rownames(seed)[keep],
-        "seed" = matrix(seed[keep, ],nrow = length(keep)),
-        "query" = matrix(query[keep, ], nrow = length(keep)),
+        "seed" = seed_format,
+        "query" = query_format,
         "seed_pct" = seed_pct[keep],
         "query_pct" = query_pct[keep],
         "fc" = fc[keep]))

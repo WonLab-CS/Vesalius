@@ -865,17 +865,34 @@ check_cost_validity <- function(cost,
     }
     
     #-------------------------------------------------------------------------#
-    # First we check if the cost matrices are consitent
+    # First we check if the cost matrices have names 
     #-------------------------------------------------------------------------#
     if (is.null(names(cost))) {
         warning("No names assigned to cost list!
         Creating Names and appending to use_cost list",
         immediate. = TRUE)
         cost_names <- paste0("score_", seq(1, length(cost)))
+        #cost_names <- c(cost_names
         use_cost <- c(cost_names, use_cost)
     } else {
         cost_names <- names(cost)
+        
     }
+    #-------------------------------------------------------------------------#
+    # then we check if the use cost request is consistent 
+    #-------------------------------------------------------------------------#
+    if (any(!use_cost %in%
+        c(cost_names,
+        "feature",
+        "niche",
+        "composition",
+        "cell_type",
+        "territory"))){
+        stop("Requested cost matrix is not present in cost matrix list!")
+    }
+    #-------------------------------------------------------------------------#
+    # check matrix consistency
+    #-------------------------------------------------------------------------#
     seed_barcodes <- unique(unlist(lapply(cost, colnames)))
     query_barcodes <- unique(unlist(lapply(cost, rownames)))
     cost <- lapply(cost, function(cost, seed_barcodes, query_barcodes){

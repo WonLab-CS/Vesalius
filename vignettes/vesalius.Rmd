@@ -124,7 +124,7 @@ We can use this object top embed our latent space into grey scale images.
 ```{r build_embeddings, eval = TRUE, echo = TRUE}
 vesalius <- generate_embeddings(vesalius,
   dim_reduction = "PCA",
-  normalisation = "log_norm",
+  normalization = "log_norm",
   nfeatures = 100, # Setting number of features low for low run time
   verbose = FALSE)
 

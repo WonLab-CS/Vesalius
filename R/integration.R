@@ -28,11 +28,11 @@ integrate_map <- function(mapped,
     # we also filter any cells that need to be removed
     #-------------------------------------------------------------------------#
     seed_counts <- get_counts(seed, type = "raw")
-    seed_counts <- seed_counts[, colnames(seed_counts) %in% mapped$prob$to]
-    colnames(seed_counts) <- make.unique(colnames(seed_counts), sep = "_")
+    seed_counts <- seed_counts[, match(mapped$prob$to, colnames(seed_counts))] 
+    colnames(seed_counts) <- make.unique(mapped$prob$to, sep = "_")
     query_counts <- get_counts(query, type = "raw")
-    query_counts <- query_counts[, colnames(query_counts) %in% mapped$prob$from]
-    colnames(query_counts) <- make.unique(colnames(query_counts), sep = "_")
+    query_counts <- query_counts[, match(mapped$prob$from, colnames(query_counts))]
+    colnames(query_counts) <- make.unique(mapped$prob$from, sep = "_")
     integrated <- integrate_counts(seed_counts, query_counts, signal, verbose)
     counts <- integrated$counts
     embeds <- integrated$embeds
@@ -44,10 +44,11 @@ integrate_map <- function(mapped,
     seed_coord <- get_coordinates(seed,
         original = TRUE)[, c("barcodes","x_orig","y_orig","z")]
     colnames(seed_coord) <- c("barcodes", "x","y","z")
-    seed_coord <- seed_coord[seed_coord$barcodes %in% mapped$prob$to, ]
+    seed_coord <- seed_coord[match(mapped$prob$to, seed_coord$barcodes), ]
+    seed_coord <- adjust_duplicated_coord(seed_coord)
     query_coord <- align_index(mapped$prob, seed_coord)
     query_coord$z <- max(seed_coord$z) + 1
-    query_coord <- query_coord[query_coord$barcodes %in% mapped$prob$from, ]
+    #query_coord <- query_coord[match(mapped$prob$from, query_coord$barcodes), ]
     
     #-------------------------------------------------------------------------#
     # check for images
@@ -64,17 +65,21 @@ integrate_map <- function(mapped,
     # check for cell type annotations
     #-------------------------------------------------------------------------#
     seed_cells <- check_cell_labels(seed, seed_cell_labels)
-    locs <- match(seed_coord$barcodes, seed_cells$barcodes)
+    locs <- match(mapped$prob$to, seed_cells$barcodes)
     seed_cells <- cbind(
         seed_coord,
         seed_cells$trial[locs[!is.na(locs)]])
     colnames(seed_cells) <- c("barcodes", "x", "y", "z", "Cells")
+    seed_cells$barcodes <- make.unique(mapped$prob$to, sep = "_")
+    
     query_cells <- check_cell_labels(query, query_cell_labels)
-    locs <- match(query_coord$barcodes, query_cells$barcodes)
+    locs <- match(mapped$prob$from, query_cells$barcodes)
     query_cells <- cbind(
         query_coord,
         query_cells$trial[locs[!is.na(locs)]])
+    
     colnames(query_cells) <- c("barcodes", "x", "y", "z", "Cells")
+    query_cells$barcodes <- make.unique(mapped$prob$from, sep = "_")
     #-------------------------------------------------------------------------#
     # rebuild object
     #-------------------------------------------------------------------------#
@@ -106,6 +111,7 @@ integrate_map <- function(mapped,
             verbose = FALSE)
         counts_2 <- counts[c("raw_2","log_norm_2","integrated")]
         names(counts_2) <- c("raw","log_norm","integrated")
+        comment(counts_2) <- "integrated"
         counts_2$integrated <- counts_2$counts[,query_coord$barcodes]
         vesalius_assay_2@counts <- counts_2
         vesalius_assay_2@territories <- query_cells
@@ -116,11 +122,12 @@ integrate_map <- function(mapped,
         vesalius_assay_1 <- new("vesalius_assay")
         vesalius_assay_1@assay <- "reference"
         vesalius_assay_1@tiles <- check_coordinates(
-            query_coord,
+            seed_coord,
             "reference",
             verbose = FALSE)
         counts_1 <- counts[c("raw_1","log_norm_1","integrated")]
         names(counts_1) <- c("raw","log_norm","integrated")
+        comment(counts_1) <- "integrated"
         counts_1$integrated <- counts_1$counts[,seed_coord$barcodes]
         vesalius_assay_1@counts <- counts_1
         vesalius_assay_1@territories <- seed_cells
@@ -146,7 +153,12 @@ filter_maps <- function(mapped, threshold, allow_duplicates, verbose) {
     # First we remove points that have a score below threshold
     #-------------------------------------------------------------------------#
     cols <- seq((grep("cost", colnames(map_score)) + 1), ncol(map_score))
-    tmp <- matrix(map_score[,cols], ncol = length(cols))
+    if ( length(cols) == 1) {
+        tmp <- matrix(map_score[,cols], ncol = length(cols))
+    } else {
+        tmp <- map_score[,cols]
+    }
+    
     locs <- apply(
         X = tmp,
         MARGIN = 1,
@@ -176,6 +188,8 @@ filter_maps <- function(mapped, threshold, allow_duplicates, verbose) {
     return(mapped)
 }
 
+#' @importFrom Seurat CreateSeuratObject NormalizeData FindVariableFeatures
+#' @importFrom Seurat ScaleData RunPCA IntegrateLayers
 integrate_counts <- function(seed,
     query,
     signal,
@@ -190,7 +204,7 @@ integrate_counts <- function(seed,
     integrated <- merge(seed, query)
     integrated <- integrated %>% 
         Seurat::NormalizeData(verbose = FALSE) %>%
-        Seurat::FindVariableFeatures(verbose = FALSE, n_features = 2000) %>%
+        Seurat::FindVariableFeatures(verbose = FALSE, nfeatures = 2000) %>%
         Seurat::ScaleData(verbose = FALSE) %>%
         Seurat::RunPCA(verbose = FALSE)
     features <- check_feature_integration(signal, integrated)
@@ -255,20 +269,27 @@ rename_counts <- function(counts,
 align_index <- function(matched_index,
     seed) {
     seed <- seed[match(matched_index$to, seed$barcodes), ]
-    matched_index$x <- seed$x
-    matched_index$y <- seed$y
-    matched_index$x <- jitter(matched_index$x, factor = 0.1)
-    matched_index$y <- jitter(matched_index$y, factor = 0.1)
+    matched_index$x <- jitter(seed$x, amount = 1)
+    matched_index$y <- jitter(seed$y, amount = 1)
     matched_index <- matched_index[, c("from", "x", "y")]
     colnames(matched_index) <-  c("barcodes", "x", "y")
+    matched_index$barcodes <- make.unique(matched_index$barcodes, sep = "_")
     return(matched_index)
+}
+
+adjust_duplicated_coord <- function(coord) {
+    dups <- duplicated(coord$barcodes)
+    coord$x[dups] <- jitter(coord$x[dups], amount = 1)
+    coord$y[dups] <- jitter(coord$y[dups], amount = 1)
+    coord$barcodes <- make.unique(coord$barcodes, sep = "_")
+    return(coord)
 }
 
 #' @importFrom Matrix Matrix
 back_infer <- function(counts, embeds) {
     integrate <- t(as.matrix(cbind(counts[["log_norm_1"]], counts[["log_norm_2"]])))
-    integrate <- integrate[colnames(counts[["scaled"]]),
-        rownames(counts[["scaled"]])]
+    integrate <- integrate[match(rownames(integrate), rownames(embeds@cell.embeddings)),
+        match(rownames(embeds@feature.loadings),colnames(integrate))]
     mu <- colMeans(integrate)
     back <- embeds@cell.embeddings %*% t(embeds@feature.loadings)
     back <- t(scale(back, center = -mu, scale = FALSE))
