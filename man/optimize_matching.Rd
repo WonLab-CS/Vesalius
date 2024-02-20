@@ -4,13 +4,7 @@
 \alias{optimize_matching}
 \title{Wrapper for fast niche composition}
 \usage{
-optimize_matching(
-  cost_matrix,
-  batch_size = 10000,
-  epochs = 1,
-  allow_duplicates = TRUE,
-  verbose = TRUE
-)
+optimize_matching(cost_matrix, batch_size = 10000, epochs = 1, verbose = TRUE)
 }
 \description{
 Wrapper for fast niche composition

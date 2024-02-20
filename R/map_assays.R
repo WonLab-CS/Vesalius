@@ -374,19 +374,14 @@ point_mapping <- function(query_signal,
     #--------------------------------------------------------------------------#
     # devide cost matrix
     #--------------------------------------------------------------------------#
-    # map_cost <- divide_and_conquer(cost$total_cost, batch_size, verbose)
-    # matched_indices <- match_index(seq(1, length(map_cost)), map_cost)
+    #
     matched_indices <- optimize_matching(cost$total_cost,
         batch_size,
-        epochs,
-        allow_duplicates)
+        epochs)
     scores <- score_matches(matched_indices,
         cost,
         use_cost = use_cost)
-    # aligned <- align_index(matched_indices,
-    #     seed,
-    #     query,
-    #     verbose)
+   
     return(list("prob" = scores, "cost" = cost))
 }
 
@@ -747,7 +742,6 @@ match_cells <- function(idx, query_labels, seed_labels) {
 optimize_matching <- function(cost_matrix,
     batch_size = 10000,
     epochs = 1,
-    allow_duplicates = TRUE,
     verbose = TRUE) {
 
     matched <- initialize_matches(cost_matrix)
@@ -765,11 +759,23 @@ optimize_matching <- function(cost_matrix,
 
 
 initialize_matches <- function(cost_matrix) {
-    n_row <- max(c(ncol(cost_matrix),nrow(cost_matrix)))
-    matches <- data.frame("from" = rep(NA, n_row),
-        "to" = rep(NA, n_row),
-        "epoch" = rep(1, n_row),
-        "cost" = rep(max(cost_matrix), n_row))
+    if (ncol(cost_matrix) > nrow(cost_matrix)) {
+        n_row <- ncol(cost_matrix)
+        matches <- data.frame("from" = rep(NA, n_row),
+            "to" = sort(colnames(cost_matrix)),
+            "epoch" = rep(1, n_row),
+            "cost" = rep((max(cost_matrix) + 1), n_row),
+            "init" = rep("to", n_row))
+    } else {
+        n_row <- nrow(cost_matrix)
+        matches <- data.frame("from" = sort(rownames(cost_matrix)),
+            "to" = rep(NA, n_row),
+            "epoch" = rep(1, n_row),
+            "cost" = rep((max(cost_matrix) +1), n_row),
+            "init" = rep("from", n_row))
+    }
+
+    
     return(matches)
 }
 
@@ -784,7 +790,7 @@ dispatch_batch <- function(cost_matrix, matched, batch_size = 10000) {
     i <- 1
     seed_sample <- c()
     query_sample <- c()
-    while (length(seed_sample) != length(seed_barcodes) || 
+    while (length(seed_sample) != length(seed_barcodes) && 
         length(query_sample) != length(query_barcodes)) {
         padding <- ifelse((batch_seed - batch_query) >= 0 ,0, batch_query - batch_seed)
         seed <- c(sample(seed_barcodes,
@@ -810,8 +816,6 @@ map_index <- function(batch) {
     mapped <- TreeDist::LAPJV(batch$cost)$matching
     match <- batch$match
     match$to <- match$to[mapped]
-    #match <- match[!is.na(match$to), ]
-    
     cost <- mapply(function(i, j, cost) {
                return(cost[i, j])
         },
@@ -823,25 +827,23 @@ map_index <- function(batch) {
 }
 
 update_matches <- function(matched, mapped, epoch) {
-    from <- unique(unlist(lapply(mapped, "[[", "from")))
-    to <- unique(unlist(lapply(mapped, "[[", "to")))
-    if (length(from) >= length(to)){
-        init <- from
+    if (all(matched$init == "from")) {
         init_col <- "from"
         map_col <- "to"
     } else {
-        init <- to
         init_col <- "to"
         map_col <- "from"
     }
-    matched[, init_col] <- init
     for (i in seq_along(mapped)) {
-        loc <- match(mapped[[i]][, init_col] , matched[, init_col])
-        matched[loc, map_col] <- mapped[[i]][, map_col]
+        loc <- match(mapped[[i]][, init_col], matched[, init_col])
+        if(any(is.na(loc)))browser()
+        loc <- loc[!is.na(loc)]
         cost <- mapped[[i]][, "cost"] < matched[loc, "cost"]
+        matched[loc[cost], map_col] <- mapped[[i]][cost, map_col]
         matched[loc[cost], "cost"] <- mapped[[i]]$cost[cost]
         matched[loc[cost], "epoch"] <- epoch
     }
+    
     return(matched)
 }
 
