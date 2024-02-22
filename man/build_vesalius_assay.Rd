@@ -11,7 +11,6 @@ build_vesalius_assay(
   assay = "spatial_omics",
   scale = "auto",
   unit = "um",
-  layer = 1,
   verbose = TRUE
 )
 }
@@ -27,6 +26,12 @@ Default is NULL. See details.}
 
 \item{assay}{character vector containing names of the assays
 (see details).}
+
+\item{scale}{character | numeric - if "auto", vesalius will compute
+99 percentile of inter barcodes distance else provide a numeric value
+describing distance between barcodes.}
+
+\item{unit}{character - units of scale}
 
 \item{verbose}{logical indicating if progress message should be
 outputed or not.}

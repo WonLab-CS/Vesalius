@@ -635,7 +635,7 @@ kmeans_segmentation <- function(vesalius_assay,
   #--------------------------------------------------------------------------#
   km <- suppressWarnings(kmeans(embeddings,
     col_resolution,
-    iter.max = 100,
+    iter.max = 10000,
     nstart = 10))
   clusters <- km$cluster
   kcenters <- km$centers
@@ -809,7 +809,6 @@ populate_graph <- function(chunk) {
 
 
 #' @importFrom imager imappend imsplit spectrum
-#' @importFrom purrr map_dbl map
 louvain_slic_segmentation <- function(vesalius_assay,
     dimensions,
     col_resolution,
@@ -832,7 +831,7 @@ louvain_slic_segmentation <- function(vesalius_assay,
       dimensions)[, dimensions]
     loc <- match(coord$barcodes, rownames(embeddings))
     # max spatial distance 
-    sc_spat <- max(c(max(coord$x), max(coord$x))  * scaling)
+    sc_spat <- max(c(max(coord$x), max(coord$y))  * scaling)
     # max color distance between two pixels??
     sc_col <-  apply(embeddings, 2, sd) %>% max()
     #-------------------------------------------------------------------------#
@@ -877,7 +876,6 @@ louvain_slic_segmentation <- function(vesalius_assay,
 
 
 #' @importFrom imager imappend imsplit spectrum
-#' @importFrom purrr map_dbl map
 leiden_slic_segmentation <- function(vesalius_assay,
     dimensions,
     col_resolution,
@@ -900,7 +898,7 @@ leiden_slic_segmentation <- function(vesalius_assay,
       dimensions)[, dimensions]
     loc <- match(coord$barcodes, rownames(embeddings))
     # max spatial distance 
-    sc_spat <- max(c(max(coord$x), max(coord$x))  * scaling)
+    sc_spat <- max(c(max(coord$x), max(coord$y))  * scaling)
     # max color distance between two pixels??
     sc_col <-  apply(embeddings, 2, sd) %>% max()
     #-------------------------------------------------------------------------#
@@ -974,7 +972,7 @@ slic_segmentation <- function(vesalius_assay,
       embedding,
       dimensions)[, dimensions]
     # max spatial distance 
-    sc_spat <- max(c(max(coord$x), max(coord$x))  * scaling)
+    sc_spat <- max(c(max(coord$x), max(coord$y))  * scaling)
     # max color distance between two pixels??
     sc_col <-  apply(embeddings, 2, sd) %>% max()
     #-------------------------------------------------------------------------#
@@ -1012,8 +1010,8 @@ slic_segmentation <- function(vesalius_assay,
     #-------------------------------------------------------------------------#
     km <- suppressWarnings(kmeans(embeddings,
         embeddings[index, ],
-        iter.max = 100))
-    centroids <- map(seq(1, l = ncol(embeddings) - 2),
+        iter.max = max_iter))
+    centroids <- purrr::map(seq(1, l = ncol(embeddings) - 2),
         ~ km$centers[km$cluster, .]) %>%
         do.call("cbind", .)
     centroids <- centroids / ratio
@@ -1077,7 +1075,7 @@ som_segmentation <- function(vesalius_assay,
       embedding,
       dimensions)[, dimensions]
     # max spatial distance 
-    sc_spat <- max(c(max(coord$x), max(coord$x))  * scaling)
+    sc_spat <- max(c(max(coord$x), max(coord$y))  * scaling)
     # max color distance between two pixels??
     sc_col <-  apply(embeddings, 2, sd) %>% max()
     #-------------------------------------------------------------------------#

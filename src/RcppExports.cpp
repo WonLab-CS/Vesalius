@@ -10,34 +10,34 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
-// feature_cost
-NumericMatrix feature_cost(const NumericMatrix& seed, const NumericMatrix& query);
-RcppExport SEXP _vesalius_feature_cost(SEXP seedSEXP, SEXP querySEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const NumericMatrix& >::type seed(seedSEXP);
-    Rcpp::traits::input_parameter< const NumericMatrix& >::type query(querySEXP);
-    rcpp_result_gen = Rcpp::wrap(feature_cost(seed, query));
-    return rcpp_result_gen;
-END_RCPP
-}
-// compare_niche_fast
-NumericMatrix compare_niche_fast(const List& seed, const List& query);
-RcppExport SEXP _vesalius_compare_niche_fast(SEXP seedSEXP, SEXP querySEXP) {
+// pearson_cost
+Rcpp::NumericMatrix pearson_cost(const List& seed, const List& query);
+RcppExport SEXP _vesalius_pearson_cost(SEXP seedSEXP, SEXP querySEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const List& >::type seed(seedSEXP);
     Rcpp::traits::input_parameter< const List& >::type query(querySEXP);
-    rcpp_result_gen = Rcpp::wrap(compare_niche_fast(seed, query));
+    rcpp_result_gen = Rcpp::wrap(pearson_cost(seed, query));
+    return rcpp_result_gen;
+END_RCPP
+}
+// jaccard_cost
+Rcpp::NumericMatrix jaccard_cost(const List& seed, const List& query);
+RcppExport SEXP _vesalius_jaccard_cost(SEXP seedSEXP, SEXP querySEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const List& >::type seed(seedSEXP);
+    Rcpp::traits::input_parameter< const List& >::type query(querySEXP);
+    rcpp_result_gen = Rcpp::wrap(jaccard_cost(seed, query));
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_vesalius_feature_cost", (DL_FUNC) &_vesalius_feature_cost, 2},
-    {"_vesalius_compare_niche_fast", (DL_FUNC) &_vesalius_compare_niche_fast, 2},
+    {"_vesalius_pearson_cost", (DL_FUNC) &_vesalius_pearson_cost, 2},
+    {"_vesalius_jaccard_cost", (DL_FUNC) &_vesalius_jaccard_cost, 2},
     {NULL, NULL, 0}
 };
 

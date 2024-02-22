@@ -24,6 +24,6 @@ compute_effect_size
 \details{
 If pval is 0 we convert that to a very small number
 pwr does not take 0 as input values.
-DESeq might reutn NA pvals - just skip the effect size and 
+DESeq might return NA pvals - just skip the effect size and 
 return NA
 }

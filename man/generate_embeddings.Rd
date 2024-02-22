@@ -7,8 +7,8 @@
 generate_embeddings(
   vesalius_assay,
   dim_reduction = "PCA",
-  normalisation = "log_norm",
-  use_count = "raw",
+  normalization = "log_norm",
+  use_counts = "raw",
   dimensions = 30,
   tensor_resolution = 1,
   filter_grid = 1,
@@ -26,12 +26,6 @@ generate_embeddings(
 \item{dim_reduction}{string describing which dimensionality
 reduction method should be used. One of the following:
 "PCA", "PCA_L", "UMAP", "LSI", "LSI_UMAP".}
-
-\item{normalisation}{string describing which normalisation 
-method to use. One of the following "log_norm", "SCT", "TFIDF", "raw".}
-
-\item{use_count}{string describing which counts should be used for the 
-generating emebddings. Default = "raw". See details.}
 
 \item{dimensions}{numeric describing the number of Principle Components or
 Latent space dimension to use. Default dimensions = 30}
@@ -59,6 +53,12 @@ indicating if the first LSI component should be removed from further analysis
 as it usually captures sequencing depth (technical variation)}
 
 \item{verbose}{logical output progress message or not. Default = TRUE}
+
+\item{normalisation}{string describing which normalisation 
+method to use. One of the following "log_norm", "SCT", "TFIDF", "none".}
+
+\item{use_count}{string describing which counts should be used for the 
+generating emebddings. Default = "raw". See details.}
 }
 \value{
 vesalius_assay

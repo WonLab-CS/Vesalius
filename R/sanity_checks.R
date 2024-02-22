@@ -11,22 +11,18 @@
 #' @param coordinates coordinate file
 #' @param image connection to image or image array
 #' @param assay string with assay name
-#' @param layer int [1, Inf[ - depth layer when more than on assay is
-#' present
 #' @param verbose logical if progress message should be outputed.
 #' @return list containing checked counts, coordinates and assay
 check_inputs <- function(counts,
     coordinates,
     image,
     assay,
-    layer,
     verbose) {
     #--------------------------------------------------------------------------#
     # we can check the validity of the coordinates
     #--------------------------------------------------------------------------#
     coordinates <- check_coordinates(coordinates,
         assay,
-        layer,
         verbose)
     #--------------------------------------------------------------------------#
     # next let's check counts if they are present
@@ -139,7 +135,6 @@ check_counts <- function(counts, assay, verbose) {
 #' adjust coordinate value to remove white edge space
 #' @param coordinates coordinate data 
 #' @param assay string - assay name
-#' @param layer int [1, Inf[ - depth layer 
 #' @param verbose logical if progress message should be printed
 #' @details adjusts coordinates by either snapping coordinates to origin 
 #' or min max normalisation of coordinates. Might add polar for future tests.
@@ -147,7 +142,6 @@ check_counts <- function(counts, assay, verbose) {
 #' @importFrom methods is as
 check_coordinates <- function(coordinates,
     assay,
-    layer,
     verbose) {
     message_switch("check_coord", verbose, assay = assay)
     if (is(coordinates, "matrix")) {
@@ -165,10 +159,8 @@ check_coordinates <- function(coordinates,
     if (all(c("barcodes", "xcoord", "ycoord") %in% colnames(coordinates))) {
         coordinates <- coordinates[, c("barcodes", "xcoord", "ycoord")]
         colnames(coordinates) <- c("barcodes",  "x", "y")
-        coordinates$z <- layer
     } else if (all(c("barcodes", "x", "y") %in% colnames(coordinates))) {
         coordinates <- coordinates[, c("barcodes", "x", "y")]
-        coordinates$z <- layer
     } else {
         stop("Unknown column names")
     }
@@ -181,12 +173,13 @@ check_coordinates <- function(coordinates,
     #--------------------------------------------------------------------------#
     # snapping coordinates to origin - might need to change this 
     # when using image - still the original coordinates though
+    # By default we add z coordinates that serves as a layer 
     #--------------------------------------------------------------------------#
     coordinates$x_orig <- coordinates$x
     coordinates$y_orig <- coordinates$y
     coordinates$x <- (coordinates$x - min(coordinates$x)) + 1
     coordinates$y <- (coordinates$y - min(coordinates$y)) + 1
-    
+    coordinates$z <- 1
     return(coordinates)
 }
 
@@ -215,12 +208,26 @@ check_embeddings <- function(embeddings) {
 #' check if image is present
 #' @param vesalius_assay vesalius assay object
 #' @return microscopy image
-check_image <- function(vesalius_assay) {
-    image <- vesalius@image
+check_image <- function(vesalius_assay, image_name = NULL, as_is = FALSE) {
+    image <- vesalius_assay@image
     if (length(image) == 0) {
-        stop("No image have been added to the vesalius_assay")
+        warnings("No image have been added to the vesalius_assay - Return NULL")
+        return(NULL)
     }
-    image <- image[[1L]][, , , 1:3]
+    if (!is.null(image_name)){
+        loc <- grep(image_name, names(image))
+        if (length(loc) == 0){
+            stop("No Image under the selected name")
+        }
+    } else {
+        loc <- 1L
+    }
+    if (as_is){
+        image <- image[[loc]]
+    } else {
+        image <- image[[1L]][, , , 1:3]
+    }
+    
     return(image)
 }
 
@@ -229,10 +236,10 @@ check_image <- function(vesalius_assay) {
 #' @param use_counts string - which count matrix to use
 #' @return norm method string or error
 check_norm_methods <- function(norm, use_counts = NULL) {
-    if (any(!norm %in% c("log_norm", "SCTransform", "TFIDF", "raw"))) {
+    if (any(!norm %in% c("log_norm", "SCTransform", "TFIDF","none"))) {
         stop("Normalisation method provided does not match available options \n
             Select from: \n
-            log_norm, SCTransform, TFIDF, or raw")
+            log_norm, SCTransform, TFIDF, raw or none")
     }
     #-------------------------------------------------------------------------#
     # here we are assuming that if the user parses anything else but raw 
@@ -240,8 +247,8 @@ check_norm_methods <- function(norm, use_counts = NULL) {
     # the embeddings. we can skip the normalisation method by setting the norm
     # method to raw. 
     #--------------------------------------------------------------------------#
-    if (!is.null(use_counts) && use_counts != "raw") {
-        norm <- "raw"
+    if ((use_counts != "raw") || (norm == "none")) {
+        norm <- "none"
     }
     return(norm)
 }
@@ -776,6 +783,47 @@ check_signal <- function(assay, signal, type) {
     }
 }
 
+
+check_feature_integration <- function(signal, intergrated) {
+    if (signal == "variable_features") {
+        features <- Seurat::VariableFeatures(intergrated)
+    } else if (signal == "all_features") {
+        seed <- rownames(intergrated@assays$RNA@layers$counts.1)
+        query <- rownames(intergrated@assays$RNA@layers$counts.2)
+        features <- intersect(seed, query)
+    } else if (
+        any(signal %in% rownames(intergrated@assays$RNA@layers$counts.1)) |
+        any(signal %in% rownames(intergrated@assays$RNA@layers$counts.2))) {
+        seed <- rownames(intergrated@assays$RNA@layers$counts.1[signal, ])
+        query <- rownames(intergrated@assays$RNA@layers$counts.2[signal, ])
+        features <- intersect(seed, query)
+    } else {
+        stop("Unknown signal type! Select from:
+        variable_features or all_features
+        Alternitively: vector of feature names you are interested in.")
+    }
+    return(features)
+}
+
+#' check features
+#' @param counts a seurat object
+#' @details If the user use custom counts, we want to check
+#' if variable features have been computed or not. Dim reduction
+#' requires a list if features toi be provided or variable features
+#' to be computed.
+#' @return a list of features
+#' @importFrom Seurat VariableFeatures
+check_features <- function(counts) {
+    if (length(Seurat::VariableFeatures(counts)) == 0) {
+        features <- rownames(GetAssayData(counts, slot = "counts"))
+    } else {
+        features <- Seurat::VariableFeatures(counts)
+    }
+    return(features)
+}
+
+
+
 check_cost_matrix_validity <- function(custom_cost) {
     #-------------------------------------------------------------------------#
     # making sure that we have a proper list 
@@ -794,7 +842,8 @@ check_cost_validity <- function(cost,
     seed_signal,
     query_assay,
     query_signal,
-    use_cost) {
+    use_cost,
+    verbose = TRUE) {
     seed <- get_tiles(seed_assay) %>% filter(origin == 1)
     query <- get_tiles(query_assay) %>% filter(origin == 1)
     #-------------------------------------------------------------------------#
@@ -814,18 +863,36 @@ check_cost_validity <- function(cost,
         # assign("use_cost", use_cost, env = parent.frame())
         return(NULL)
     }
+    
     #-------------------------------------------------------------------------#
-    # First we check if the cost matrices are consitent
+    # First we check if the cost matrices have names 
     #-------------------------------------------------------------------------#
     if (is.null(names(cost))) {
         warning("No names assigned to cost list!
         Creating Names and appending to use_cost list",
         immediate. = TRUE)
-        cost_names <- paste0("cost_", seq(1, length(cost)))
+        cost_names <- paste0("score_", seq(1, length(cost)))
+        #cost_names <- c(cost_names
         use_cost <- c(cost_names, use_cost)
     } else {
         cost_names <- names(cost)
+        
     }
+    #-------------------------------------------------------------------------#
+    # then we check if the use cost request is consistent 
+    #-------------------------------------------------------------------------#
+    if (any(!use_cost %in%
+        c(cost_names,
+        "feature",
+        "niche",
+        "composition",
+        "cell_type",
+        "territory"))){
+        stop("Requested cost matrix is not present in cost matrix list!")
+    }
+    #-------------------------------------------------------------------------#
+    # check matrix consistency
+    #-------------------------------------------------------------------------#
     seed_barcodes <- unique(unlist(lapply(cost, colnames)))
     query_barcodes <- unique(unlist(lapply(cost, rownames)))
     cost <- lapply(cost, function(cost, seed_barcodes, query_barcodes){
@@ -837,10 +904,12 @@ check_cost_validity <- function(cost,
             return(cost)
         }, seed_barcodes, query_barcodes)
     names(cost) <- cost_names
+   
     #-------------------------------------------------------------------------#
     # Next we check if these barcodes overlap with the seed and query data
     #-------------------------------------------------------------------------#
     for (i in seq_along(cost)) {
+        message_switch("custom_cost", verbose, cost = cost_names[i])
         potential_dim <- c(nrow(query), nrow(seed))
         if (all(potential_dim != dim(cost[[i]]))) {
             warning(paste0("Dimensions differ between matrices \n",
@@ -854,8 +923,10 @@ check_cost_validity <- function(cost,
         if (length(row_over) == 0 || length(col_over) == 0) {
             stop("No common cells between custom cost and cost matrix")
         }
-        cost[[i]] <- cost[[i]][match(row_over, rownames(cost[[i]])),
+        tmp <- cost[[i]][match(row_over, rownames(cost[[i]])),
             match(col_over, colnames(cost[[i]]))]
+        tmp <- tmp[order(rownames(tmp)), order(colnames(tmp))]
+        cost[[i]] <- tmp
         
     }
     #-------------------------------------------------------------------------#
@@ -890,4 +961,30 @@ check_cost_validity <- function(cost,
 check_gene_overlap <- function(signal) {
     non_zero <- Matrix::rowSums(signal) != 0
     return(rownames(signal)[non_zero])
+}
+
+
+check_cell_labels <- function(vesalius_assay, cell_label = NULL) {
+    if (is.null(cell_label)) {
+        cells <- check_territory_trial(vesalius_assay, trial = "Cells")
+    } else {
+        cells <- check_territory_trial(vesalius_assay, trial = cell_label)
+    }
+    return(cells[, c("barcodes", "trial")])
+}
+
+
+check_map_selection <- function(vesalius_assay, by) {
+    maps <- vesalius_assay@meta$mapping_scores
+    locs <- grep(paste0(by, collapse = "|"), colnames(maps), value =TRUE)
+    if (length(locs) < length(by)){
+        not_in <- paste(grep(paste0(by, collapse = "|"), colnames(maps),
+            value =TRUE, 
+            invert = TRUE),collapse = " ")
+        warning(paste0(not_in, "is (are) not available in mapping scores"))
+    }
+    if (length(locs) == 0) {
+        stop("None of the requested mapping score are present in assay!")
+    }
+    return(locs)
 }

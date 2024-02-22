@@ -4,7 +4,7 @@
 \alias{check_image}
 \title{check if image is present}
 \usage{
-check_image(vesalius_assay)
+check_image(vesalius_assay, image_name = NULL, as_is = FALSE)
 }
 \arguments{
 \item{vesalius_assay}{vesalius assay object}

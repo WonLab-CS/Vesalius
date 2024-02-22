@@ -88,14 +88,14 @@ test_that("Unknown embedding type request", {
 
 test_that("Unknown norm type request", {
     vesalius <- build_vesalius_assay(coordinates, counts)
-    expect_error(generate_embeddings(vesalius, normalisation = "funky"))
+    expect_error(generate_embeddings(vesalius, normalization = "funky"))
 })
 
 test_that("Vesalius PCA embeds", {
     vesalius <- build_vesalius_assay(coordinates, counts)
     vesalius <- generate_embeddings(vesalius,
         dim_reduction = "PCA",
-        normalisation = "log_norm")
+        normalization = "log_norm")
     # simple embedding build and tile build
     expect_s4_class(vesalius, "vesalius_assay")
     # check if active embedding is set correctly
@@ -105,7 +105,7 @@ test_that("Vesalius PCA embeds", {
     # it should work as well if run it more than once
     vesalius <- generate_embeddings(vesalius,
         dim_reduction = "PCA",
-        normalisation = "log_norm")
+        normalization = "log_norm")
     # simple embedding build and tile build
     expect_s4_class(vesalius, "vesalius_assay")
     expect_true(get_active_embedding_tag(vesalius) == "PCA.1")
@@ -117,7 +117,7 @@ test_that("Vesalius NMF embeds", {
   vesalius <- build_vesalius_assay(coordinates, counts)
   vesalius <- generate_embeddings(vesalius,
                                   dim_reduction = "NMF",
-                                  normalisation = "log_norm")
+                                  normalization = "log_norm")
   # simple embedding build and tile build
   expect_s4_class(vesalius, "vesalius_assay")
   # check if active embedding is set correctly
@@ -129,7 +129,7 @@ test_that("Vesalius NMF embeds", {
 # other methods 
 #   vesalius <- generate_embeddings(vesalius,
 #                                   dim_reduction = "NMF",
-#                                   normalisation = "log_norm")
+#                                   normalization = "log_norm")
 #   # simple embedding build and tile build
 #   expect_s4_class(vesalius, "vesalius_assay")
 #   expect_true(get_active_embedding_tag(vesalius) == "NMF.1")
@@ -142,7 +142,7 @@ test_that("Vesalius PCA_L embeds", {
     vesalius <- generate_embeddings(vesalius,
         dim_reduction = "PCA_L",
         dimensions = 3,
-        normalisation = "log_norm")
+        normalization = "log_norm")
     # simple embedding build and tile build
     expect_s4_class(vesalius, "vesalius_assay")
     # check if active embedding is set correctly
@@ -154,7 +154,7 @@ test_that("Vesalius PCA_L embeds", {
     vesalius <- generate_embeddings(vesalius,
         dim_reduction = "PCA_L",
         dimensions = 3,
-        normalisation = "log_norm")
+        normalization = "log_norm")
     # simple embedding build and tile build
     expect_s4_class(vesalius, "vesalius_assay")
     expect_true(get_active_embedding_tag(vesalius) == "PCA_L.1")
@@ -167,7 +167,7 @@ test_that("Vesalius UMAP embeds", {
     # warning on UMAP start up from seurat
     vesalius <- generate_embeddings(vesalius,
         dim_reduction = "UMAP",
-        normalisation = "log_norm")
+        normalization = "log_norm")
     # simple embedding build and tile build
 
     expect_s4_class(vesalius, "vesalius_assay")
@@ -179,7 +179,7 @@ test_that("Vesalius UMAP embeds", {
     # it should work as well if run it more than once
     vesalius <- generate_embeddings(vesalius,
         dim_reduction = "UMAP",
-        normalisation = "log_norm")
+        normalization = "log_norm")
     # simple embedding build and tile build
     expect_s4_class(vesalius, "vesalius_assay")
     expect_true(get_active_embedding_tag(vesalius) == "UMAP.1")
@@ -191,7 +191,7 @@ test_that("Vesalius LSI embeds", {
     vesalius <- build_vesalius_assay(coordinates, counts)
     vesalius <- generate_embeddings(vesalius,
         dim_reduction = "LSI",
-        normalisation = "log_norm")
+        normalization = "log_norm")
     # simple embedding build and tile build
     expect_s4_class(vesalius, "vesalius_assay")
     # check if active embedding is set correctly
@@ -202,7 +202,7 @@ test_that("Vesalius LSI embeds", {
     # it should work as well if run it more than once
     vesalius <- generate_embeddings(vesalius,
         dim_reduction = "LSI",
-        normalisation = "log_norm",
+        normalization = "log_norm",
         remove_lsi_1 = FALSE)
     # simple embedding build and tile build
     expect_s4_class(vesalius, "vesalius_assay")
@@ -215,7 +215,7 @@ test_that("Vesalius LSI UMAP embeds", {
     vesalius <- build_vesalius_assay(coordinates, counts)
     vesalius <- generate_embeddings(vesalius,
         dim_reduction = "LSI_UMAP",
-        normalisation = "log_norm")
+        normalization = "log_norm")
     # simple embedding build and tile build
     expect_s4_class(vesalius, "vesalius_assay")
     # check if active embedding is set correctly
@@ -227,7 +227,7 @@ test_that("Vesalius LSI UMAP embeds", {
     # we will also run it with removal of first embedding 
     vesalius <- generate_embeddings(vesalius,
         dim_reduction = "LSI_UMAP",
-        normalisation = "log_norm",
+        normalization = "log_norm",
         remove_lsi_1 = FALSE)
     # simple embedding build and tile build
     expect_s4_class(vesalius, "vesalius_assay")
@@ -242,7 +242,7 @@ test_that("Vesalius mixed embeds", {
     vesalius <- build_vesalius_assay(coordinates, counts)
     vesalius <- generate_embeddings(vesalius,
         dim_reduction = "PCA",
-        normalisation = "log_norm")
+        normalization = "log_norm")
     # simple embedding build and tile build
     expect_s4_class(vesalius, "vesalius_assay")
     # check if active embedding is set correctly
@@ -252,14 +252,14 @@ test_that("Vesalius mixed embeds", {
     # it should work as well if run it more than once
     vesalius <- generate_embeddings(vesalius,
         dim_reduction = "UMAP",
-        normalisation = "log_norm")
+        normalization = "log_norm")
     expect_true(get_active_embedding_tag(vesalius) == "UMAP")
     expect_true(all(names(get_embeddings(vesalius, active = FALSE)) %in%
         c("PCA", "UMAP")))
     # Running the same embedding twice with multiple embeddings present 
     vesalius <- generate_embeddings(vesalius,
         dim_reduction = "PCA",
-        normalisation = "log_norm")
+        normalization = "log_norm")
     # simple embedding build and tile build
     expect_s4_class(vesalius, "vesalius_assay")
     # check if active embedding is set correctly
@@ -274,7 +274,7 @@ test_that("Vealius log_norm", {
     vesalius <- build_vesalius_assay(coordinates, counts)
     # simple embeds
     vesalius <- generate_embeddings(vesalius,
-        normalisation = "log_norm")
+        normalization = "log_norm")
     expect_s4_class(vesalius, "vesalius_assay")
 })
 
@@ -282,23 +282,23 @@ test_that("Vealius SCTransform", {
     vesalius <- build_vesalius_assay(coordinates, counts)
     # simple embeds
     vesalius <- generate_embeddings(vesalius,
-        normalisation = "SCTransform")
+        normalization = "SCTransform")
     expect_s4_class(vesalius, "vesalius_assay")
 })
 
 test_that("Vealius TFIDF", {
     vesalius <- build_vesalius_assay(coordinates, counts)
     # signac throw warnin for zero counts
-    expect_warning(vesalius <- generate_embeddings(vesalius,
-        normalisation = "TFIDF"))
-    expect_s4_class(vesalius, "vesalius_assay")
+    expect_s4_class(generate_embeddings(vesalius,
+        normalization = "TFIDF"), "vesalius_assay")
 })
 
-test_that("Vealius raw", {
+test_that("Vealius None", {
     vesalius <- build_vesalius_assay(coordinates, counts)
     # simple embeds - this is equivalent to no norm
     vesalius <- generate_embeddings(vesalius,
-        normalisation = "raw")
+        normalization = "none",
+        use_counts = "raw")
     expect_s4_class(vesalius, "vesalius_assay")
 })
 
@@ -308,7 +308,7 @@ test_that("Vealius Custom", {
     vesalius <- generate_tiles(vesalius)
     # simple embeds
     vesalius <- generate_embeddings(vesalius,
-        use_count = "custom_counts")
+        use_counts = "custom_counts")
     expect_s4_class(vesalius, "vesalius_assay")
 })
 

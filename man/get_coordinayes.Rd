@@ -4,7 +4,7 @@
 \alias{get_coordinates}
 \title{get coordinates from vesalius_assay}
 \usage{
-get_coordinates(vesalius_assay)
+get_coordinates(vesalius_assay, original = FALSE)
 }
 \arguments{
 \item{vesalius_assay}{a vesalius_assay}

@@ -105,34 +105,12 @@ message_switch <- function(type, verbose = TRUE, ...) {
             " Raw count matrix already present. Adding", args$count_type, "tag\n")),
         "add_embeds" = cat(paste(t,
             " Adding embeddings to", args$assay, "\n")),
-        "info" = cat(paste(t,
-            " Computing Information Content using", args$method, "\n")),
-        "unpack_path" = cat(paste(t,
-            " Unpacking territory edge\n")),
-        "edge_detect" = cat(paste(t,
-            " No edge in", args$nulls, " - Skipping\n")),
-        "fft" = cat(paste(t,
-            " Computing Fourier Transform\n")),
-        "connected_pixel" = cat(paste(t,
-            " Connecting Super Pixels\n")),
         "signal" = cat(paste(t,
             " Extracting assay signal\n")),
-        "landmarks" = cat(paste(t,
-            " Finding landmarks in", args$assay, "\n")),
-        "optimal_land" = cat(paste(t,
-            " Finding Optimal Landmarks\n")),
-        "slic_graph" = cat(paste(t,
-            " Generating mesh graph in", args$data, "\n")),
-        "mesh" = cat(paste(t,
-            " Generating Mesh \n")),
-        "score_graph" = cat(paste(t,
-            " Scoring graphs\n")),
-        "matching_graphs" = cat(paste(t,
-            " Matching Graphs\n")),
-        "hungarian" = cat(paste(t,
-            " Solving Assignment Problem using exact matches\n")),
-        "div_hungarian" = cat(paste(t,
-            " Solving Assignment Problem with Divide & Conquer\n")),
+        "custom_cost" = cat(paste(t,
+            " Checking custom cost matrix",args$cost,"\n")),
+        "mapping" = cat(paste(t,
+            " Mapping query to seed - Epoch = ",args$epoch,"\n")),
         "feature_cost" = cat(paste(t,
             " Computing feature cost in", args$assay, "\n")),
         "neighbor_cost" = cat(paste(t,
@@ -143,40 +121,12 @@ message_switch <- function(type, verbose = TRUE, ...) {
             " Computing Territory cost in", args$assay, "\n")),
         "get_neigh" = cat(paste(t,
             " Getting Neighborhoods in", args$assay, "\n")),
-        "spix_nn" = cat(paste(t,
-            " Finding Spatial Mutal Nearest Neighbors\n")),
-        "cor_mat" = cat(paste(t,
-            " Computing Cross-Correlation Matrix\n")),
-        "get_traj" = cat(paste(t,
-            " Getting anchor trajectories\n")),
-        "apply_traj" = cat(paste(t,
-            " Applying anchor trajectories to cells\n")),
-        "area_comp" = cat(paste(t,
-            " Computing Territory Area from", args$patches, "patches\n"))
-        )
-    } else {
-        return(NULL)
-    }
-}
-
-
-dyn_message_switch <- function(type, verbose = TRUE, ...) {
-    args <- list(...)
-    t <- Sys.time()
-    if (verbose) {
-        switch(EXPR = type,
-        "score_graph" = cat(paste(t, " Scoring", args$assay, "graph: ",
-            args$prog, "%   \r")),
-        "integrate_graph" = cat(paste(t, " Integrating graph: ",
-            args$prog, "%   \r")),
-        "graph_matching" = cat(paste(t, " Optimising graph match: ",
-            args$prog, "%   \r")),
-        "cost_mat" = cat(paste(t, " Preparing cost matrix: ",
-            args$prog, "%   \r")),
-        "spix_nn" = cat(paste(t, " Mapped SPIX: ",
-            args$prog, "%   \r")),
-        "hung" = cat(paste(t, " Solving Assignment Problem: ",
-            args$prog, "%   \r"))
+        "cell_cost" = cat(paste(t,
+            " Computing Cell Type cost in", args$assay, "\n")),
+        "integrate" = cat(paste(t,
+            " Intergrating Counts \n")),
+        "post_map_filter" = cat(paste(t,
+            " Filtering Mapped Indices \n"))
         )
     } else {
         return(NULL)

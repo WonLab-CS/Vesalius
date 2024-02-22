@@ -272,11 +272,15 @@ get_tiles <- function(vesalius_assay) {
 #' @rdname get_coordinayes
 #' @export
 #' @importFrom methods slot
-get_coordinates <- function(vesalius_assay) {
-    tiles <- slot(vesalius_assay, "tiles")
-    if ("origin" %in% colnames(tiles)) {
-        tiles <- tiles %>% filter(origin == 1)
-    } 
+get_coordinates <- function(vesalius_assay, original = FALSE) {
+    if (original) {
+        tiles <- vesalius_assay@meta$orig_coord
+    } else {
+        tiles <- slot(vesalius_assay, "tiles")
+        if ("origin" %in% colnames(tiles)) {
+            tiles <- tiles %>% filter(origin == 1)
+        } 
+    }
     return(tiles)
 }
 
@@ -451,3 +455,63 @@ summarise_territories <- function(vesalius_assay, as_log = FALSE) {
     return(log)
 }
 
+
+
+#' @importFrom dplyr %>% filter
+#' @export
+filter_assay <- function(vesalius_assay,
+    cells = NULL,
+    territories = NULL,
+    trial = "last",
+    genes = NULL) {
+    if (!is.null(territories)) {
+        ter_keep <- check_territory_trial(vesalius_assay, trial)
+        ter_keep <- ter_keep$barcodes[ter_keep$trial %in% territories]
+    } else {
+        ter_keep <- c()
+    }
+    if (!is.null(cells)) {
+        cell_keep <- get_coordinates(vesalius_assay)
+        cell_keep <- cell_keep$barcodes[cell_keep$barcodes %in% cells]
+    } else {
+        cell_keep <- c()
+    }
+    if (!is.null(genes)) {
+        gene_keep <- rownames(get_counts(vesalius_assay))
+        gene_keep <- gene_keep[gene_keep %in% genes]
+    } else {
+        gene_keep <- c()
+    }
+    ### NOTE this is buggy!!! Will not hold to edge cases
+    ### Need to fix for long term use!!!!
+    keep_barcodes <- unique(c(ter_keep, cell_keep))
+    if (length(keep_barcodes) == 0){
+        stop("No Barcodes present under current subset conditions!")
+    } else {
+        coord <- vesalius_assay@meta$orig_coord
+        coord <- coord[coord$barcodes %in% keep_barcodes,
+            c("barcodes","x_orig","y_orig")]
+        colnames(coord) <- c("barcodes","x" ,"y")
+        counts <- get_counts(vesalius_assay, "raw")
+        counts <- counts[, colnames(counts) %in% keep_barcodes]
+    }
+    if (length(gene_keep) == 0 && !is.null(genes)) {
+        stop("Requested genes are not in count matrix")
+    } else if (length(gene_keep) > 0 && !is.null(genes)){
+        counts <- counts[rownames(counts) %in% gene_keep, ]
+        
+    }
+    if (length(vesalius_assay@image)  > 0) {
+        image <- vesalius_assay@image[[1]]
+        scale <- vesalius_assay@meta$scale$scale
+    } else {
+        image <- NULL
+        scale <- "auto"
+    }
+    vesalius_assay <- build_vesalius_assay(coord,
+        counts,
+        image = image,
+        scale = scale,
+        verbose = FALSE)
+    return(vesalius_assay)
+}

@@ -14,15 +14,21 @@ point_mapping(
   k = 20,
   radius = 0.05,
   depth = 1,
-  batch_size = 1000,
-  mapping = "div",
+  batch_size = 10000,
+  epochs = 1,
+  allow_duplicates = TRUE,
   use_cost = c("feature", "niche"),
   threshold = 0.5,
+  seed_cell_labels = NULL,
+  query_cell_labels = NULL,
   verbose = TRUE
 )
 }
 \arguments{
 \item{query_signal}{processed query signal from query assay}
+
+\item{cost}{matrix - matrix of size n (query cells) by p (seed cells)
+containing custom cost matrix.}
 
 \item{seed_signal}{processed seed signal from seed assay}
 
@@ -35,19 +41,17 @@ neighborhood}
 
 \item{batch_size}{int number of points in each query batch}
 
-\item{mapping}{exact mapping or div (divide and conquer)}
+\item{use_cost}{character string defining how should total cost be computer
+Available: feature, niche, territory, composition (See details for combinations}
+
+\item{threshold}{score threshold below which indicices should be removed.
+Scores will always be between 0 and 1}
 
 \item{verbose}{logical - out progress to console}
 
 \item{query}{vesalius_assay object}
 
-\item{custom_cost}{matrix - matrix of size n (query cells) by p (seed cells)
-containing custom cost matrix. Used instead of vesalius cost matrix}
-
 \item{seed}{vesalius_assay object}
-
-\item{overwrite}{logical - if custom_cost is not NULL, should this matrix
-be added to the vesalius matrix or should it overwrite it completely.}
 }
 \value{
 list of matched and aligned coordinates in query

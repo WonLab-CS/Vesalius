@@ -780,8 +780,7 @@ view_mapping_score <- function(vesalius_assay,
     coord$score <- as.numeric(scores)
     g <- ggplot(coord, aes(x,y, col = score)) +
         geom_point(size = cex_pt) +
-        scale_color_gradientn(colors = rev(brewer.pal(11, "Spectral")),
-            limits = c(0,1)) +
+        scale_color_gradientn(colors = rev(brewer.pal(11, "Spectral"))) +
         theme_classic() +
         theme(legend.title = element_text(size = cex),
           legend.text = element_text(size = cex),
