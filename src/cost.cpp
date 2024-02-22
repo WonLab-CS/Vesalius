@@ -173,7 +173,7 @@ Rcpp::NumericMatrix feature_cost(const NumericMatrix& seed,
         for (int j = 0; j < cell_query; j++){
             Rcpp::NumericVector s = seed(_,i);
             Rcpp::NumericVector q = query(_,j);
-=======
+
 
 
 
@@ -187,7 +187,6 @@ Rcpp::NumericMatrix pearson_cost(const List& seed,
         for (int j = 0; j < cell_query; j++){
             Rcpp::NumericVector s = seed[i];
             Rcpp::NumericVector q = query[j];
->>>>>>> develop
             score(j,i) = fast_cor(s,q);
         }
     }
