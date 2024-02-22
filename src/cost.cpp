@@ -3,15 +3,8 @@
 #include <iostream>
 #include <vector>
 #include <cmath>
-<<<<<<< HEAD
 #include <algorithm>
 #include <string>
-=======
-#include <math.h>
-#include <algorithm>
-#include <string>
-#include <unordered_map>
->>>>>>> develop
 
 
 using namespace Rcpp;
@@ -35,7 +28,7 @@ float fast_cor(const NumericVector& cell_1, const NumericVector& cell_2){
 }
 
 
-<<<<<<< HEAD
+
 Rcpp::CharacterVector intersection(CharacterVector v1,
     CharacterVector v2){
     Rcpp::CharacterVector v3;
@@ -48,7 +41,6 @@ Rcpp::CharacterVector intersection(CharacterVector v1,
 }
 
 
-=======
 
 double RBO(CharacterVector& niche_1, CharacterVector& niche_2 , double p){
     Rcpp::CharacterVector short_list;
@@ -146,7 +138,7 @@ Rcpp::CharacterVector intersection(CharacterVector v1,
 }
 
 
->>>>>>> develop
+
 float jaccard_index(const CharacterVector& niche_1, const CharacterVector& niche_2){
     double size_niche_1 = niche_1.size();
     double size_niche_2 = niche_2.size();
@@ -157,7 +149,7 @@ float jaccard_index(const CharacterVector& niche_1, const CharacterVector& niche
     return jaccard_index;
 }
 
-<<<<<<< HEAD
+
 // float fast_jaccard(){
 //     std::unordered_set<String> niche_set1(niche_1.begin(), niche_1.end());
 //     std::unordered_set<String> niche_set2(niche_2.begin(), niche_2.end());
@@ -204,26 +196,16 @@ Rcpp::NumericMatrix pearson_cost(const List& seed,
 
 
 // [[Rcpp::export]]
-<<<<<<< HEAD
 Rcpp::NumericMatrix compare_niche_fast(const List& seed,
-=======
-Rcpp::NumericMatrix jaccard_cost(const List& seed,
->>>>>>> develop
     const List& query) {
     int cell_seed = seed.size();
     int cell_query = query.size();
     NumericMatrix composition(cell_query, cell_seed);
     for (int i = 0 ; i < cell_seed; i++){
         for (int j = 0; j < cell_query; j++){
-<<<<<<< HEAD
             CharacterVector s = seed[i];
             CharacterVector q = query[j];
             composition(j,i) = jaccard_index(s,q);
-=======
-            Rcpp::CharacterVector s = seed[i];
-            Rcpp::CharacterVector q = query[j];
-            composition(j,i) = jaccard_index(s, q);
->>>>>>> develop
         }
     }
     return composition;
