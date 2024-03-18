@@ -152,7 +152,7 @@ filter_maps <- function(mapped, threshold, allow_duplicates, verbose) {
     #-------------------------------------------------------------------------#
     # First we remove points that have a score below threshold
     #-------------------------------------------------------------------------#
-    cols <- seq((grep("cost", colnames(map_score)) + 1), ncol(map_score))
+    cols <- seq((grep("init", colnames(map_score)) + 1), ncol(map_score))
     if ( length(cols) == 1) {
         tmp <- matrix(map_score[,cols], ncol = length(cols))
     } else {
@@ -164,6 +164,9 @@ filter_maps <- function(mapped, threshold, allow_duplicates, verbose) {
         MARGIN = 1,
         FUN = function(r, t) {sum(r < t)}, t = threshold)
     map_score <- map_score[locs == 0, ]
+    if (nrow(map_score) == 0){
+        stop("No cells retained under current filter threshold")
+    }
     mapped$prob <- map_score
     #-------------------------------------------------------------------------#
     # Next we check for dupliactes and gert the best ones
@@ -185,6 +188,7 @@ filter_maps <- function(mapped, threshold, allow_duplicates, verbose) {
         },row = map_score$from,
         col = map_score$to)
     mapped$cost <- cost
+    
     return(mapped)
 }
 

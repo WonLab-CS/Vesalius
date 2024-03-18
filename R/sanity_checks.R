@@ -988,3 +988,10 @@ check_map_selection <- function(vesalius_assay, by) {
     }
     return(locs)
 }
+
+
+check_for_unmatched <- function(matched) {
+    either <- is.na(matched$from) | is.na(matched$to)
+    matched <- matched[!either, ]
+    return(matched)
+}

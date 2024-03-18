@@ -649,93 +649,6 @@ match_cells <- function(idx, query_labels, seed_labels) {
     return(as.numeric(query_labels[idx, "trial"] == seed_labels$trial))
 }
 
-#' Wrapper for fast niche composition 
-# #' @param seed list - cell type list in seed
-# #' @param query list - cell type list in query
-# #' @return matrix - jaccard index between nich composition in 
-# #' seed and query
-# compare_niches <- function(seed, query) {
-#     batch_size_seed <- ceiling(length(seed) / future::nbrOfWorkers())
-#     batch_size_query <- ceiling(length(query) / future::nbrOfWorkers())
-#     #-------------------------------------------------------------------------#
-#     # First we chunk seed and query 
-#     # running a parallel lapply internally
-#     #-------------------------------------------------------------------------#
-#     seed_batch <- chunk(seq(1, ncol(seed)), batch_size_seed)
-#     query_batch <- chunk(seq(1, ncol(query)), batch_size_query)
-#     total_cost <- vector("list", length(seed_batch))
-
-#     rbo <- compare_niche_fast(seed, query)
-#     colnames(rbo) <- names(seed)
-#     rownames(rbo) <- names(query)
-#     return(rbo)
-# }
-
-# #' splitting cost matrix into batches for batch processing
-# #' @param cost_mat matrix 
-# #' @param batch_size integer - size of each batch
-# #' @param verbose logical out message to console
-# #' @return list containing cost matrix batches 
-# divide_and_conquer <- function(cost_mat, batch_size, verbose) {
-#     #-------------------------------------------------------------------------#
-#     # checking case
-#     # case 1 : large data sets both need batching
-#     #-------------------------------------------------------------------------#
-#     if (ncol(cost_mat) > batch_size && nrow(cost_mat) > batch_size) {
-#         message_switch("div_hungarian", verbose)
-#         query_batch <- chunk(sample(seq(1, nrow(cost_mat)), nrow(cost_mat)),
-#                 batch_size)
-#         if (ncol(cost_mat) >= nrow(cost_mat)) {
-#             seed_batch <- chunk(sample(seq(1, ncol(cost_mat)), ncol(cost_mat)),
-#                 batch_size,
-#                 l = length(query_batch))
-#             coms <- "dispatch"
-#         } else {
-#             seed_batch <- lapply(query_batch, function(query, max_idx) {
-#                     return(sample(seq(1, max_idx), length(query)))
-#                 }, max_idx = ncol(cost_mat))
-#             coms <- "oversample"
-#         }
-        
-#     } else if (nrow(cost_mat) > batch_size && nrow(cost_mat) > ncol(cost_mat)) {
-#         message_switch("div_hungarian", verbose)
-#         query_batch <- chunk(sample(seq(1, nrow(cost_mat)), nrow(cost_mat)),
-#                 batch_size)
-#         seed_batch <- rep(list(seq_len(ncol(cost_mat))),
-#             times = length(query_batch))
-#         coms <- "subsample"
-#     } else if (ncol(cost_mat) > batch_size && ncol(cost_mat) > nrow(cost_mat)) {
-#         message_switch("div_hungarian", verbose)
-#         seed_batch <- ceiling(ncol(cost_mat) / batch_size)
-#         seed_batch <- lapply(seq(1, seed_batch),
-#             function(subs, query_len, max_idx) {
-#                     return(sample(seq(1, max_idx), query_len))
-#             },query_len = nrow(cost_mat), max_idx = ncol(cost_mat))
-#         query_batch <- rep(list(seq_len(nrow(cost_mat))),
-#             times = length(seed_batch))
-#         coms <- "reduce"
-#     } else if (nrow(cost_mat) > ncol(cost_mat)){
-#         message_switch("hungarian", verbose)
-#         query_batch <- list(seq_len(nrow(cost_mat)))
-#         seed_batch <- list(sample(seq_len(ncol(cost_mat)),
-#             nrow(cost_mat), replace = TRUE))
-#         coms <- "oversample"
-#     } else {
-#         message_switch("hungarian", verbose)
-#         query_batch <- list(seq_len(nrow(cost_mat)))
-#         seed_batch <- list(seq_len(ncol(cost_mat)))
-#         coms <- "exact"
-#     }
-#     cost_list <- mapply(function(q, s, cost) {
-#                 return(cost[q, s])
-#             },
-#             query_batch,
-#             seed_batch,
-#             MoreArgs = list(cost_mat),
-#             SIMPLIFY = FALSE)   
-#     comment(cost_list) <- coms
-#     return(cost_list)
-# }
 
 
 
@@ -753,6 +666,7 @@ optimize_matching <- function(cost_matrix,
         matched <- update_matches(matched, mapped, current_epoch)
         current_epoch <- current_epoch + 1
     }
+    matched <- check_for_unmatched(matched)
     return(matched)
 
 }
@@ -847,44 +761,6 @@ update_matches <- function(matched, mapped, epoch) {
     return(matched)
 }
 
-
-# #' Finding optimal mapping between query and seed using a mini batch 
-# #' approach
-# #' @param idx integer - index of batch 
-# #' @param cost_matrix list of matrices with cost between query (rows) and 
-# #' seed (columns)
-# #' @details Uses a Hungarian solver to minimize overall cost of 
-# #' pair assignement.
-# #' @return data.frame with point in query (from) mapped to 
-# #' which point in seed (to) as well as cost of mapping for that pair
-# #' @importFrom TreeDist LAPJV
-# match_index <- function(idx, cost_matrix) {
-#     coms <- comment(cost_matrix)
-#     mapping <- lapply(idx, function(idx,
-#         cost_matrix, n_cost) {
-#         cost_matrix <- cost_matrix[[idx]]
-        
-#         map <- TreeDist::LAPJV(cost_matrix)
-#         mapping <- data.frame("from" = seq(1, nrow(cost_matrix)),
-#             "to" = map$matching)
-        
-#         scores <- mapply(function(i, j, cost) {
-#                 return(cost[i, j])
-#             },
-#             mapping$from,
-#             mapping$to,
-#             MoreArgs = list(cost_matrix))
-
-#         mapping$cost <- scores
-#         mapping$to <- colnames(cost_matrix)[mapping$to]
-#         mapping$from <- rownames(cost_matrix)[mapping$from]
-#         return(mapping)
-#     },
-#     cost_matrix = cost_matrix)#,
-#     #future.seed = TRUE)
-#     mapping <- concat_matches(mapping, coms)
-#     return(mapping)
-# }
 
 
 
