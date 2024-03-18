@@ -34,9 +34,9 @@ Vesalius provides an internal data set taken from real Spatial Transcriptomic
 data. This can be used as a dummy data set to get a feel for the Vesalius
 workflow.
 
-The "Quick Start" guide can be found [here](https://patrickcnmartin.github.io/Vesalius/articles/vesalius.html)
+The "Quick Start" guide can be found [here](https://github.com/WonLab-CS/Vesalius/blob/main/vignettes/vesalius.Rmd)
 
-An in depth view of the Vesalius workflow can be found [here](https://patrickcnmartin.github.io/Vesalius/articles/Vesalius_Analysis/Vesalius_analysis.html). This contains the entire analysis related to
+An in depth view of the Vesalius workflow can be found [here](https://github.com/WonLab-CS/Vesalius/blob/main/vignettes/Vesalius_Analysis/Vesalius_MSB_analysis.Rmd). This contains the entire analysis related to
 the Vesalius [Molecular Systems Biology](https://www.embopress.org/doi/full/10.15252/msb.202211080).
 
 NOTE: The in depth analysis file, contains path to files that should be changed
