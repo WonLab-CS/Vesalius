@@ -26,7 +26,7 @@ library(devtools)
 ```
 Install Vesalius via GitHub
 ```
-install_github("patrickCNMartin/Vesalius")
+install_github("WonLab-CS/Vesalius")
 ```
 
 ## How to use Vesalius?
