@@ -73,7 +73,7 @@ update_vesalius_assay <- function(vesalius_assay,
     #--------------------------------------------------------------------------#
     # First we do some checks
     #--------------------------------------------------------------------------#
-    if (append && slot != "territories") {
+    if (append && slot != "territories" && slot != "map") {
         internal <- slot(vesalius_assay, slot)
         tag <- create_trial_tag(names(internal), names(data))
         data <- c(internal, data)
@@ -83,6 +83,17 @@ update_vesalius_assay <- function(vesalius_assay,
         if (!all(dim(slot(vesalius_assay, slot)) == c(0, 0))) {
             df <-  slot(vesalius_assay, slot)
             data <- data[match(df$barcodes, data$barcodes), ]
+            d <- data.frame(df, data[, ncol(data)])
+            colnames(d)  <- c(colnames(df), colnames(data)[ncol(data)])
+            slot(vesalius_assay, slot) <- d
+        } else {
+            slot(vesalius_assay, slot) <- data
+        }
+
+    } else if (append && slot == "map") {
+        if (!all(dim(slot(vesalius_assay, slot)) == c(0, 0))) {
+            df <-  slot(vesalius_assay, slot)
+            data <- data[match(df[,unique(df$init)], data[,unique(data$init)]), ]
             d <- data.frame(df, data[, ncol(data)])
             colnames(d)  <- c(colnames(df), colnames(data)[ncol(data)])
             slot(vesalius_assay, slot) <- d
@@ -514,4 +525,23 @@ filter_assay <- function(vesalius_assay,
         scale = scale,
         verbose = FALSE)
     return(vesalius_assay)
+}
+
+
+get_cost <- function(vesalius_assay, use_cost = NULL) {
+    cost <- vesalius_assay@cost
+    if (length(cost) == 0) {
+        stop("No cost has been computed")
+    }
+    
+    if (!is.null(use_cost)) {
+        if (length(use_cost) >1 & grepl("cost", use_cost)) {
+            stop("Cannot use cost with other metrics for clustering!")
+        }
+        cost <- cost[use_cost]
+        if (length(cost) == 0){
+            stop(paste(paste(use_cost, collapse = " "), ": not available in score matrix list"))
+        }
+    }
+    return(cost)
 }

@@ -312,3 +312,23 @@ cost_to_prob <- function(cost, n_cost) {
     cost$score <- (n_cost - cost$score) / n_cost
     return(cost)
 }
+
+
+dispatch_cost_groups <- function(vesalius_assay,
+    cell_label = NULL,
+    group_identity = NULL) {
+    #-------------------------------------------------------------------------#
+    # Get trial and filter sub categories if needed
+    # this could added to the sanity checks 
+    #-------------------------------------------------------------------------#
+    if (!is.null(cell_label)) {
+        trial <- check_cell_labels(vesalius_assay, cell_label = cell_label)
+        if(!is.null(group_identity)) {
+            trial <- check_group_value(trial, group_identity)
+        }
+    } else {
+        trial <- get_coordinates(vesalius_assay)
+    } 
+    return(trial$barcodes)
+
+}

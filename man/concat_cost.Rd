@@ -4,7 +4,7 @@
 \alias{concat_cost}
 \title{concat cost - pairwise sum of score complement}
 \usage{
-concat_cost(cost, use_cost)
+concat_cost(cost, use_cost, complement = TRUE)
 }
 \arguments{
 \item{cost}{list - named list contained score matrices}

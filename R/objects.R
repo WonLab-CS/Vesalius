@@ -7,9 +7,12 @@
 # Object class used for each assay
 # here every assay has the same format
 #------------------------------------------------------------------------------#
-setClassUnion("territory", c("data.frame", NULL))
-setClassUnion("embeddings", c("list", NULL))
-setClassUnion("DEG", c("list", NULL))
+# setClassUnion("territory", c("data.frame", "NULL"))
+# setClassUnion("embeddings", c("list", "NULL"))
+# setClassUnion("DEG", c("list", "NULL"))
+# setClassUnion("image", c("list", "NULL"))
+# setClassUnion("cost", c("list", "NULL"))
+# setClassUnion("map", c("data.frame", "NULL"))
 
 
 
@@ -42,13 +45,15 @@ setClassUnion("DEG", c("list", NULL))
 setClass("vesalius_assay",
     slots = list(assay = "character",
         tiles = "data.frame",
-        embeddings = "embeddings",
+        embeddings = "list",
         active = "matrix",
-        territories = "territory",
-        DEG = "DEG",
+        territories = "data.frame",
+        DEG = "list",
         counts  = "list",
         image = "list",
         meta = "list",
+        cost = "list",
+        map = "data.frame",
         log = "list"),
     validity = function(object) {
         if (!is(object@assay, "character")) {
@@ -57,16 +62,16 @@ setClass("vesalius_assay",
         if (!is(object@tiles, "data.frame")) {
             stop("Unsupported Tile Format")
         }
-        if (!is(object@embeddings, "embeddings")) {
+        if (!is(object@embeddings, "list")) {
             stop("Unsupported Embeddings Format")
         }
         if (!is(object@active, "matrix")) {
             stop("Unsupported Active Format")
         }
-        if (!is(object@territories, "territory")) {
+        if (!is(object@territories, "data.frame")) {
             stop("Unsupported territories Format")
         }
-        if (!is(object@DEG, "DEG")) {
+        if (!is(object@DEG, "list")) {
             stop("Unsupported DEG Format")
         }
         if (!is(object@counts, "list")) {
@@ -76,7 +81,13 @@ setClass("vesalius_assay",
             stop("Unsupported image Format")
         }
         if (!is(object@meta, "list")) {
-            stop("Unsupported image Format")
+            stop("Unsupported meta Format")
+        }
+        if (!is(object@cost, "list")) {
+            stop("Unsupported cost Format")
+        }
+        if (!is(object@map, "data.frame")) {
+            stop("Unsupported map Format")
         }
         if (!is(object@log, "list")) {
             stop("Unsupported log Format")
@@ -278,7 +289,7 @@ build_vesalius_assay <- function(coordinates,
         message_switch("scale", verbose)
         scale <- calculate_scale(input$coordinates)
     }
-    meta <- list("scale" = list("scale" = scale), "unit" = list("unit" = unit))
+    meta <- list("scale" =  list("scale" = scale), "unit" = unit)
     #--------------------------------------------------------------------------#
     # add assay log
     #--------------------------------------------------------------------------#

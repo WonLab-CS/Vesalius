@@ -6,7 +6,8 @@
 ############################## COUNT INTEGRATION ##############################
 #-----------------------------------------------------------------------------#
 
-integrate_map <- function(mapped,
+#' @export
+integrate_assays <- function(mapped,
     query,
     seed,
     signal = "variable_features",
@@ -32,7 +33,7 @@ integrate_map <- function(mapped,
     colnames(seed_counts) <- make.unique(mapped$prob$to, sep = "_")
     query_counts <- get_counts(query, type = "raw")
     query_counts <- query_counts[, match(mapped$prob$from, colnames(query_counts))]
-    colnames(query_counts) <- make.unique(mapped$prob$from, sep = "_")
+    colnames(query_counts) <- make.unique(mapped$prob$from, sep = "-")
     integrated <- integrate_counts(seed_counts, query_counts, signal, verbose)
     counts <- integrated$counts
     embeds <- integrated$embeds
@@ -146,52 +147,6 @@ integrate_map <- function(mapped,
 }
 
 
-filter_maps <- function(mapped, threshold, allow_duplicates, verbose) {
-    message_switch("post_map_filter",verbose)
-    map_score <- mapped$prob
-    #-------------------------------------------------------------------------#
-    # First we remove points that have a score below threshold
-    #-------------------------------------------------------------------------#
-    cols <- seq((grep("init", colnames(map_score)) + 1), ncol(map_score))
-    if ( length(cols) == 1) {
-        tmp <- matrix(map_score[,cols], ncol = length(cols))
-    } else {
-        tmp <- map_score[,cols]
-    }
-    
-    locs <- apply(
-        X = tmp,
-        MARGIN = 1,
-        FUN = function(r, t) {sum(r < t)}, t = threshold)
-    map_score <- map_score[locs == 0, ]
-    if (nrow(map_score) == 0){
-        stop("No cells retained under current filter threshold")
-    }
-    mapped$prob <- map_score
-    #-------------------------------------------------------------------------#
-    # Next we check for dupliactes and gert the best ones
-    #-------------------------------------------------------------------------#
-    if (!allow_duplicates) {
-        map_score <- map_score[order(map_score$cost), ]
-        duplicates <- duplicated(map_score$from) | duplicated(map_score$to)
-        map_score <- map_score[!duplicates, ]
-        mapped$prob <- map_score
-    }
-    
-    #-------------------------------------------------------------------------#
-    # Remove thos points from cost matrices
-    #-------------------------------------------------------------------------#
-    cost <- mapped$cost
-    cost <- lapply(cost,
-        function(cost, row, col) {
-            return(cost[row, col])
-        },row = map_score$from,
-        col = map_score$to)
-    mapped$cost <- cost
-    
-    return(mapped)
-}
-
 #' @importFrom Seurat CreateSeuratObject NormalizeData FindVariableFeatures
 #' @importFrom Seurat ScaleData RunPCA IntegrateLayers
 integrate_counts <- function(seed,
@@ -261,37 +216,13 @@ rename_counts <- function(counts,
 
 }
 
-#' assign coordinates to matched indices
-#' @param matched_index data.frame containing matching pairs of 
-#' coordinates
-#' @param seed data.frame containing seed coordinates 
-#' @param query data.frame containing quert cooridates
-#' @param verbose logical - should progress message be outputed to the 
-#' console
-#' @return adjusted query coordinate data.frame where each point
-#' receives the coordinates of its best matche in the seed. 
-align_index <- function(matched_index,
-    seed) {
-    seed <- seed[match(matched_index$to, seed$barcodes), ]
-    matched_index$x <- jitter(seed$x, amount = 1)
-    matched_index$y <- jitter(seed$y, amount = 1)
-    matched_index <- matched_index[, c("from", "x", "y")]
-    colnames(matched_index) <-  c("barcodes", "x", "y")
-    matched_index$barcodes <- make.unique(matched_index$barcodes, sep = "_")
-    return(matched_index)
-}
-
-adjust_duplicated_coord <- function(coord) {
-    dups <- duplicated(coord$barcodes)
-    coord$x[dups] <- jitter(coord$x[dups], amount = 1)
-    coord$y[dups] <- jitter(coord$y[dups], amount = 1)
-    coord$barcodes <- make.unique(coord$barcodes, sep = "_")
-    return(coord)
-}
 
 #' @importFrom Matrix Matrix
 back_infer <- function(counts, embeds) {
-    integrate <- t(as.matrix(cbind(counts[["log_norm_1"]], counts[["log_norm_2"]])))
+    genes <- intersect(rownames(counts[["log_norm_1"]]), rownames(counts[["log_norm_2"]]))
+    log_1 <- counts[["log_norm_1"]][genes, ]
+    log_2 <- counts[["log_norm_2"]][genes, ]
+    integrate <- t(as.matrix(cbind(log_1, log_2)))
     integrate <- integrate[match(rownames(integrate), rownames(embeds@cell.embeddings)),
         match(rownames(embeds@feature.loadings),colnames(integrate))]
     mu <- colMeans(integrate)

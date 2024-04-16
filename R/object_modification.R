@@ -38,6 +38,9 @@ add_counts <- function(vesalius_assay,
     add_name = NULL,
     force = FALSE,
     verbose = TRUE) {
+    if (is.null(counts)){
+        return(vesalius_assay)
+    }
     simple_bar(verbose)
     assay <- get_assay_names(vesalius_assay)
     message_switch("add_counts", verbose, assay = assay)
@@ -142,6 +145,9 @@ add_embeddings <- function(vesalius_assay,
     embeddings,
     add_name = NULL,
     verbose = TRUE) {
+    if (is.null(embeddings)) {
+        return(vesalius_assay)
+    }
     simple_bar(verbose)
     assay <- get_assay_names(vesalius_assay)
     message_switch("add_embeds", verbose, assay = assay)
@@ -205,6 +211,9 @@ add_embeddings <- function(vesalius_assay,
 
 #' @export
 add_cells <- function(vesalius_assay, cells, add_name = NULL, verbose = TRUE){
+    if (is.null(cells)){
+        return(vesalius_assay)
+    }
     simple_bar(verbose)
     assay <- get_assay_names(vesalius_assay)
     # for now we force the column name 

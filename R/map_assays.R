@@ -120,7 +120,6 @@ map_assays <- function(seed_assay,
     # making sure we are formatted to accomodate lapplys and mapplys
     #-------------------------------------------------------------------------#
     custom_cost <- check_cost_matrix_validity(custom_cost)
-    
     #-------------------------------------------------------------------------#
     # First let's get singal
     # to minimise the memory print - only one seed signal and list for query
@@ -153,42 +152,24 @@ map_assays <- function(seed_assay,
         seed_cell_labels = seed_cell_labels,
         query_cell_labels = query_cell_labels,
         verbose = verbose)
-    #-------------------------------------------------------------------------#
-    # This is where we actually create a return object that can be used
-    # for integrate analysis 
-    # this functions needs to be updated
-    #-------------------------------------------------------------------------#
-    integrated <- integrate_map(
-        mapped = mapped,
-        query = query_assay,
-        seed = seed_assay,
-        signal = signal,
-        return_cost = return_cost,
+    mapped <- filter_maps(mapped,
         threshold = threshold,
         allow_duplicates = allow_duplicates,
-        seed_cell_labels = seed_cell_labels,
-        query_cell_labels = query_cell_labels,
-        merge = merge,
         verbose = verbose)
+    #-------------------------------------------------------------------------#
+    # Rebuild a base obejct - we will not integrate here. 
+    #-------------------------------------------------------------------------#
+    vesalius_assay <- build_mapped_assay(mapped,
+        seed_assay = seed_assay,
+        query_assay = query_assay,
+        cell_label = query_cell_labels)
     commit <- create_commit_log(arg_match = as.list(match.call()),
       default = formals(map_assays))
-    if (merge) {
-        integrated <- generate_tiles(integrated,
-            tensor_resolution = 1,
-            filter_grid = 1,
-            filter_threshold = 1,
-            verbose = FALSE)
-        integrated <- commit_log(integrated, commit, "mapped")
-    } else {
-        integrated <- lapply(integrated, generate_tiles,
-            tensor_resolution = 1,
-            filter_threshold = 1,
-            filter_grid = 1,
-            verbose = FALSE)
-        integrated <- lapply(integrated, commit_log, commit, "mapped")
-    }
+    vesalius_assay <- commit_log(vesalius_assay,
+      commit,
+      assay = get_assay_names(vesalius_assay))
     simple_bar(verbose)
-    return(integrated) 
+    return(vesalius_assay) 
 }
 #' get cell signal from vesalius assays
 #' @param seed_assay  vesalius_assay object
@@ -389,7 +370,7 @@ point_mapping <- function(query_signal,
 #' @param cost list - named list contained score matrices
 #' @param use_cost character - which cost matrices to use 
 #' @return list with cost matrix 
-concat_cost <- function(cost, use_cost) { 
+concat_cost <- function(cost, use_cost, complement = TRUE) { 
     if (length(use_cost) == 0) {
         stop("Please specify at least one score matrix to use")
     }
@@ -397,13 +378,26 @@ concat_cost <- function(cost, use_cost) {
     if (length(cost) == 0) {
         stop(paste(paste(use_cost, collapse = " "), ": not available in score matrix list"))
     } else if (length(cost) == 1) {
-        return(list(1 - cost[[1]]))
-    } else {
-        buffer <- 1 - cost[[1]]
-        for (i in seq(2, length(cost))){
-            buffer <- buffer + (1 - cost[[i]])
+        if (complement) {
+            return(list(1 - cost[[1]]))
+        } else {
+            return(list(cost[[1]]))
         }
+    } else {
+        if (complement) {
+            buffer <- 1 - cost[[1]]
+            for (i in seq(2, length(cost))){
+                buffer <- buffer + (1 - cost[[i]])
+            }
+            return(list(buffer))
+        } else {
+            buffer <- cost[[1]]
+            for (i in seq(2, length(cost))){
+                buffer <- buffer + (cost[[i]])
+            }
         return(list(buffer))
+        }
+        
     }
 
 }
@@ -804,6 +798,159 @@ score_matches <- function(matched_indices,
     }
     return(matched_indices)
 }
+
+
+
+filter_maps <- function(mapped, threshold, allow_duplicates, verbose) {
+    message_switch("post_map_filter",verbose)
+    map_score <- mapped$prob
+    #-------------------------------------------------------------------------#
+    # First we remove points that have a score below threshold
+    #-------------------------------------------------------------------------#
+    cols <- seq((grep("init", colnames(map_score)) + 1), ncol(map_score))
+    if ( length(cols) == 1) {
+        tmp <- matrix(map_score[,cols], ncol = length(cols))
+    } else {
+        tmp <- map_score[,cols]
+    }
+    
+    locs <- apply(
+        X = tmp,
+        MARGIN = 1,
+        FUN = function(r, t) {sum(r < t)}, t = threshold)
+    map_score <- map_score[locs == 0, ]
+    if (nrow(map_score) == 0){
+        stop("No cells retained under current filter threshold")
+    }
+    mapped$prob <- map_score
+    #-------------------------------------------------------------------------#
+    # Next we check for dupliactes and gert the best ones
+    #-------------------------------------------------------------------------#
+    if (!allow_duplicates) {
+        map_score <- map_score[order(map_score$cost), ]
+        duplicates <- duplicated(map_score$from) | duplicated(map_score$to)
+        map_score <- map_score[!duplicates, ]
+        mapped$prob <- map_score
+    }
+    
+    #-------------------------------------------------------------------------#
+    # Remove thos points from cost matrices
+    #-------------------------------------------------------------------------#
+    cost <- mapped$cost
+    cost <- lapply(cost,
+        function(cost, row, col) {
+            return(cost[row, col])
+        },row = map_score$from,
+        col = map_score$to)
+    mapped$cost <- cost
+    
+    return(mapped)
+}
+
+
+build_mapped_assay <- function(mapped,
+    seed_assay,
+    query_assay,
+    cell_label) {
+    assay <- paste0("mapped_",get_assay_names(query_assay))
+    from <- mapped$prob$from
+    to <- mapped$prob$to
+    mapped_scores <- mapped$prob
+    mapped_cost <- mapped$cost
+    #-------------------------------------------------------------------------#
+    # Filter raw counts using mapped
+    #-------------------------------------------------------------------------#
+    counts <- get_counts(query_assay, type = "raw")
+    counts <- counts[, match(from, colnames(counts))]
+    colnames(counts) <- make.unique(from, sep = "-")
+    #-------------------------------------------------------------------------#
+    # Filter coord
+    #-------------------------------------------------------------------------#
+    coord <- get_coordinates(seed_assay,
+        original = TRUE)[, c("barcodes", "x_orig", "y_orig")]
+    colnames(coord) <- c("barcodes", "x", "y")
+    coord <- coord[match(to, coord$barcodes), ]
+    coord <- align_index(mapped$prob, coord)
+    #-------------------------------------------------------------------------#
+    # maps
+    #-------------------------------------------------------------------------#
+    mapped_scores$from <- make.unique(from, sep = "-")
+    mapped_scores$to <- make.unique(to, sep = "-")
+    mapped_cost <- lapply(mapped_cost, function(x) {
+        colnames(x) <- make.unique(colnames(x), sep = "-")
+        rownames(x) <- make.unique(rownames(x), sep = "-")
+        return(x)
+    })
+    
+    #-------------------------------------------------------------------------#
+    # Meta
+    #-------------------------------------------------------------------------#
+    scale <- seed_assay@meta$scale$scale
+    unit <- seed_assay@meta$unit
+    #-------------------------------------------------------------------------#
+    # Images
+    #-------------------------------------------------------------------------#
+    image <- check_image(query_assay, image_name = NULL, as_is = TRUE)
+    #-------------------------------------------------------------------------#
+    # Cells
+    #-------------------------------------------------------------------------#
+    if (is.null(cell_label)) {
+        cell_label <- "Cells"
+    }
+    cells <- which(colnames(query_assay@territories) %in% cell_label)
+    if (length(cells) > 0){
+        cells <- query_assay@territories[, cells]
+        names(cells) <- query_assay@territories$barcodes
+        cells <- cells[match(from, names(cells))]
+        names(cells) <- make.unique(names(cells), sep = "-")
+    } else {
+        cells <- NULL
+    }
+    #-------------------------------------------------------------------------#
+    # Building assay
+    #-------------------------------------------------------------------------#
+    mapped <- build_vesalius_assay(coordinates = coord,
+        counts = counts,
+        image = image,
+        assay = assay,
+        scale = scale,
+        unit = unit, 
+        verbose = FALSE)
+    mapped <- update_vesalius_assay(mapped,
+        data = mapped_cost,
+        slot = "cost",
+        append = TRUE)
+    mapped <- update_vesalius_assay(mapped,
+        data = mapped_scores,
+        slot = "map",
+        append = TRUE)
+    mapped <- add_cells(mapped, cells,
+        add_name = cell_label, verbose = FALSE)
+    mapped@log[[length(mapped@log)]]$add_name  <- cell_label
+    return(mapped)
+}
+
+
+#' assign coordinates to matched indices
+#' @param matched_index data.frame containing matching pairs of 
+#' coordinates
+#' @param seed data.frame containing seed coordinates 
+#' @param query data.frame containing quert cooridates
+#' @param verbose logical - should progress message be outputed to the 
+#' console
+#' @return adjusted query coordinate data.frame where each point
+#' receives the coordinates of its best matche in the seed. 
+align_index <- function(matched_index,
+    coord) {
+    coord$barcodes <- matched_index$from
+    locs <- duplicated(paste0(coord$x,"_", coord$y))
+    coord$x[locs] <- jitter(coord$x[locs], amount = 1)
+    coord$y[locs] <- jitter(coord$y[locs], amount = 1)
+    coord$barcodes <- make.unique(coord$barcodes, sep = "-")
+    return(coord)
+}
+
+
 
 
 

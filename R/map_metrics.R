@@ -213,28 +213,61 @@ get_composition <- function(seed_assay,
     
 }
 
-
-
-
-# #' remove scores that are below a certain threshold 
-# #' @param cost list - score list to be filtered 
-# #' @param threshold numeric - score threshold [0,1]
-# #' @param use_cost - character - which score matrices to filter
-# #' @return filtered cost list 
-# #' @export
-# filter_maps <- function(vesalius_assay, by = NULL, threshold = 0.3) {
-#     if (is.null(by)) {
-#         warning("No mapping score requested - returning assay as is")
-#         return(vesalius_assay)
-#     }
-#     maps <- check_map_selection(vesalius_assay, by = by)
-#     map_score <- vesalius_assay@meta$mapping_scores
-#     for (i in seq_along(maps)) {
-#         map_score <- map_score[map_score[, maps[i]] >= threshold, ]
-#     }
-#     # vesalius_assay <- filter_assay(vesalius_assay,
-#     #     cells = map_score$from)
-#     # vesalius_assay@meta$mapping_scores <- map_score
-#     return(map_score)
-# }
-
+#' @export
+get_metric_clusters <- function(vesalius_assay,
+    use_cost = "feature",
+    distance = "euclidean",
+    cell_label = NULL,
+    group_identity = NULL,
+    by_similarity = TRUE,
+    h = 0.75,
+    k = NULL,
+    verbose = TRUE,
+    ...) {
+    simple_bar(verbose)
+    # add this correctly
+    args <- list(...)
+    #-------------------------------------------------------------------------#
+    # get barcodes representing cells / sub group of cells 
+    #-------------------------------------------------------------------------#
+    cells <- dispatch_cost_groups(vesalius_assay,
+        cell_label = cell_label,
+        group_identity = group_identity)
+    #-------------------------------------------------------------------------#
+    # set up cost matrics 
+    #-------------------------------------------------------------------------#
+    cost <- get_cost(vesalius_assay, use_cost)
+    score <- concat_cost(cost, use_cost, complement = !by_similarity)[[1L]]
+    score <- score[rownames(score) %in% cells, ]
+    #-------------------------------------------------------------------------#
+    # clustering 
+    #-------------------------------------------------------------------------#
+    clusters <- hclust(dist(score, method = distance))
+    clusters <- cutree(clusters, h = h, k = k)
+    #-------------------------------------------------------------------------#
+    # rebuilding and adding to map slot 
+    # for this we need to create a tag for both 
+    #-------------------------------------------------------------------------#
+    trial <- vesalius_assay@map
+    trial$trial <- NA
+    locs <- match(names(clusters), trial[,"from"])
+    trial$trial[locs[!is.na(locs)]] <- unname(clusters)
+    new_trial <- create_trial_tag(colnames(trial),
+        "Map_cluster") %>%
+        tail(1)
+    colnames(trial) <- gsub("trial", new_trial, colnames(trial))
+    #-------------------------------------------------------------------------#
+    # update vesalius assay with 
+    #-------------------------------------------------------------------------#
+    vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
+        data = trial,
+        slot = "map",
+        append = TRUE)
+    commit <- create_commit_log(arg_match = as.list(match.call()),
+        default = formals(get_metric_clusters))
+    vesalius_assay <- commit_log(vesalius_assay,
+        commit,
+        get_assay_names(vesalius_assay))
+  simple_bar(verbose)
+  return(vesalius_assay)
+}

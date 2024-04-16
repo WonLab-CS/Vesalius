@@ -44,7 +44,7 @@ check_inputs <- function(counts,
         comment(counts) <- "empty"
     }
     #--------------------------------------------------------------------------#
-    # checking image 
+    # checking image  and map
     #--------------------------------------------------------------------------#
     image <- check_image_input(image)
     #--------------------------------------------------------------------------#
@@ -81,6 +81,11 @@ check_image_input <- function(image) {
     return(image)
 }
 
+check_map_input <- function(map){
+    if (is.null(map)) {
+        map <- list()
+    } 
+}
 
 #' checking overlap between barcodes in counts and coordinates
 #' @param mat_barcodes character vector containing barcode names in matrix
@@ -521,8 +526,8 @@ check_territory_trial <- function(vesalius_assay, trial) {
             value = TRUE)
         warning(paste("More than one trial contains that name: \n",
             paste(trial, collapse = " ", sep = " "),
-            "\nUsing first trial"))
-        trial <- trial[1L]
+            "\nUsing last trial"))
+        trial <- tail(trial,1)
     } else {
         trial <- grep(x = colnames(vesalius_assay@territories),
             pattern = paste0("^", trial, "$"),
@@ -566,8 +571,8 @@ check_segment_trial <- function(vesalius_assay, trial = "last") {
             value = TRUE)
         warning(paste("More than one trial contains that name: \n",
             paste(trial, collapse = " ", sep = " "),
-            "\nUsing first trial"))
-        trial <- trial[1L]
+            "\nUsing last trial"))
+        trial <- tail(trial,1)
     } else {
         trial <- grep(x = colnames(vesalius_assay@territories),
             pattern = paste0("^", trial, "$"),
@@ -682,10 +687,10 @@ check_group_value <- function(territories, group) {
     present <- unique(territories$trial)
     group_sub <- group[group %in% present]
     if (length(group_sub) == 0) {
-        stop(paste("Territory", group, "is not present in the selected trial!"))
+        stop(paste("Identity", group, "is not present in the selected trial!"))
     } else if (length(group_sub) < length(group)) {
         tmp <- paste(group_sub, collapse = " ")
-        warning(paste("Only group territory(ies)", tmp,
+        warning(paste("Only group Identity(ies)", tmp,
             "is (are) present in the selected trial. \n
             Vesalius will discard the others!"))
         return(group_sub)
@@ -994,4 +999,33 @@ check_for_unmatched <- function(matched) {
     either <- is.na(matched$from) | is.na(matched$to)
     matched <- matched[!either, ]
     return(matched)
+}
+
+
+check_metric_trial <- function(vesalius_assay, trial) {
+    if (sum(dim(vesalius_assay@map)) == 0) {
+        stop("No map metrics have been computed yet!")
+    } else {
+        map <- vesalius_assay@map
+    }
+    if (length(grep(trial, colnames(map))) == 0) {
+        stop(
+            paste(deparse(substitute(trial)), "is not in map data frame")
+        )
+    } else if (length(grep(x = colnames(vesalius_assay@map),
+        pattern = paste0("^", trial, "$"))) > 1) {
+        trial <- grep(x = colnames(vesalius_assay@map),
+            pattern = paste0("^", trial, "$"),
+            value = TRUE)
+        warning(paste("More than one trial contains that name: \n",
+            paste(trial, collapse = " ", sep = " "),
+            "\nUsing last trial"))
+        trial <- tail(trial,1)
+    } else {
+        trial <- grep(x = colnames(vesalius_assay@map),
+            pattern = paste0("^", trial, "$"),
+            value = TRUE)
+    }
+    map <- map[, c("from", "to", "init", trial)]
+    return(map)
 }

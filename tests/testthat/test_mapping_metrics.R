@@ -31,7 +31,8 @@ matched <- map_assays(vesalius,
     jitter_ves,
     threshold = 0,
     use_cost = c("feature","niche","territory","composition"),
-    batch_size = 10000)
+    batch_size = 2000,
+    epoch = 1)
 # cells <- sample(LETTERS[1:6], size = nrow(matched@territories),replace =T)
 # names(cells) <- matched@territories$barcodes
 # matched <- add_cells(matched, cells = cells, add_name = "Cells")
@@ -48,6 +49,13 @@ matched <- map_assays(vesalius,
 # sub_jitter <- sample(matched@tiles$barcodes, size = 10)
 # ter_ves <- c(1, 2)
 # ter_jitter <- c(1, 2)
+
+
+
+test_that("metric clusters", {
+    expect_s4_class(get_metric_clusters(matched),"vesalius_assay")
+})
+
 
 test_that("comparing niches", {
     # this should return some data

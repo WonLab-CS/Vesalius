@@ -327,8 +327,22 @@ generate_tiles <- function(vesalius_assay,
       append = FALSE)
   }
   #----------------------------------------------------------------------#
-  # return tiles
+  # check if anything has already been added to territories slot
+  # happens if you use add_cells - then update with new coord 
+  # Add new tiles as well 
   #----------------------------------------------------------------------#
+  if (!all(dim(slot(vesalius_assay, "territories")) == c(0, 0))){
+    territory_coord <- filter(tiles, origin == 1) %>%
+        select(c("barcodes","x","y"))
+    tmp <- vesalius_assay@territories
+    territory_coord <- data.frame(territory_coord,
+        tmp[,!colnames(tmp) %in% c("barcodes","x","y")])
+    colnames(territory_coord) <- colnames(tmp)
+    vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
+        data = territory_coord,
+        slot = "territories",
+        append = FALSE)
+  }
   vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
     data = tiles,
     slot = "tiles",
