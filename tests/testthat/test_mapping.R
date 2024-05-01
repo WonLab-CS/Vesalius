@@ -174,7 +174,6 @@ test_that("batching case with multi epoch", {
         epochs = 3,
         threshold = 0,
         batch_size = 1000,
-        merge = F,
         signal = "variable_features"),
         "vesalius_assay")
     expect_s4_class(map_assays(vesalius,

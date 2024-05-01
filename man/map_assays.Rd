@@ -21,10 +21,9 @@ map_assays(
   scale = FALSE,
   threshold = 0.3,
   custom_cost = NULL,
-  return_cost = FALSE,
   seed_cell_labels = NULL,
   query_cell_labels = NULL,
-  merge = TRUE,
+  jitter = TRUE,
   verbose = TRUE
 )
 }

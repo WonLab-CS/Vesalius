@@ -16,7 +16,6 @@ point_mapping(
   depth = 1,
   batch_size = 10000,
   epochs = 1,
-  allow_duplicates = TRUE,
   use_cost = c("feature", "niche"),
   threshold = 0.5,
   seed_cell_labels = NULL,

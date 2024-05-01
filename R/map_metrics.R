@@ -271,3 +271,41 @@ get_metric_clusters <- function(vesalius_assay,
   simple_bar(verbose)
   return(vesalius_assay)
 }
+
+
+get_cost_contribution <- function(vesalius_assay,
+    method = "dispersion",
+    verbose = TRUE){
+    simple_bar(verbose)
+    #-------------------------------------------------------------------------#
+    # check if cost matrix has been returned
+    #-------------------------------------------------------------------------#
+    cost <- check_cost_contribution(vesalius_assay)
+    #-------------------------------------------------------------------------#
+    # for now i will use dispersion scores
+    #-------------------------------------------------------------------------#
+    contribution <- switch(EXPR = method,
+        "dispersion" = lapply(cost, dispersion))
+    contribution <- data.frame("metric" = names(contribution),
+        "score" = unlist(contribution))
+    contribution <- list("contribution_score" = contribution)
+    #-------------------------------------------------------------------------#
+    # rebuild and add
+    #-------------------------------------------------------------------------#
+    vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
+        data = contribution,
+        slot = "cost",
+        append = TRUE)
+    commit <- create_commit_log(arg_match = as.list(match.call()),
+        default = formals(get_cost_contribution))
+    vesalius_assay <- commit_log(vesalius_assay,
+        commit,
+        get_assay_names(vesalius_assay))
+  simple_bar(verbose)
+  return(vesalius_assay)
+}
+
+
+dispersion <- function(x) {
+    return(var(x)/mean(x))
+}

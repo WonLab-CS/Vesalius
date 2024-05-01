@@ -110,10 +110,9 @@ map_assays <- function(seed_assay,
     scale = FALSE,
     threshold = 0.3,
     custom_cost = NULL,
-    return_cost = FALSE,
     seed_cell_labels = NULL,
     query_cell_labels = NULL,
-    merge = TRUE,
+    jitter = TRUE,
     verbose = TRUE) {
     simple_bar(verbose)
     #-------------------------------------------------------------------------#
@@ -146,7 +145,6 @@ map_assays <- function(seed_assay,
         depth = depth,
         batch_size = batch_size,
         epochs = epochs,
-        allow_duplicates = allow_duplicates,
         use_cost = use_cost,
         threshold = threshold,
         seed_cell_labels = seed_cell_labels,
@@ -162,7 +160,8 @@ map_assays <- function(seed_assay,
     vesalius_assay <- build_mapped_assay(mapped,
         seed_assay = seed_assay,
         query_assay = query_assay,
-        cell_label = query_cell_labels)
+        cell_label = query_cell_labels,
+        jitter = jitter)
     commit <- create_commit_log(arg_match = as.list(match.call()),
       default = formals(map_assays))
     vesalius_assay <- commit_log(vesalius_assay,
@@ -251,7 +250,6 @@ point_mapping <- function(query_signal,
     depth = 1,
     batch_size = 10000,
     epochs = 1,
-    allow_duplicates = TRUE,
     use_cost = c("feature", "niche"),
     threshold = 0.5,
     seed_cell_labels = NULL,
@@ -339,7 +337,9 @@ point_mapping <- function(query_signal,
         cost <- c(cost, signal_similarity(seed_niche, query_niche, method = "jaccard"))
         names(cost)[length(cost)] <-  "composition"
     }
-
+    #--------------------------------------------------------------------------#
+    # cell type label comparison => if same label =1 / if differenct label = 0
+    #--------------------------------------------------------------------------#
     if (any(grepl("cell_type", use_cost))) {
         message_switch("cell_cost", verbose, assay = assay)
         seed_labels <- check_cell_labels(seed_assay, seed_cell_labels)
@@ -359,11 +359,13 @@ point_mapping <- function(query_signal,
     matched_indices <- optimize_matching(cost$total_cost,
         batch_size,
         epochs)
-    scores <- score_matches(matched_indices,
+    scores <- score_matches(matched_indices$matched,
         cost,
         use_cost = use_cost)
    
-    return(list("prob" = scores, "cost" = cost))
+    return(list("prob" = scores,
+        "cost" = cost,
+        "cost_by_epoch" = matched_indices$cost_by_epoch))
 }
 
 #' concat cost - pairwise sum of score complement
@@ -526,8 +528,16 @@ knn_neighborhood <- function(coord, k) {
 #' spatial index.
 #' @importFrom RANN nn2
 radius_neighborhood <- function(coord, radius) {
+    # avoid int overflow 
+    # keeping thsi for now - but not super efficient.
+    # Might need to find a better wat of doing this
+    if (nrow(coord) > 1000) {
+        k <- 1000
+    } else {
+        k <- nrow(coord)
+    }
     coord_dist <- RANN::nn2(coord[, c("x", "y")],
-        k = nrow(coord))
+        k = k)
     coord_dist <- lapply(seq(1, nrow(coord_dist$nn.idx)),
         function(i,x,r){
             tmp <- x$nn.idx[i, x$nn.dists[i, ] <= r]
@@ -653,15 +663,19 @@ optimize_matching <- function(cost_matrix,
 
     matched <- initialize_matches(cost_matrix)
     current_epoch <- 1
+    current_cost <- data.frame("cost" = rep(0, epochs),
+        "epoch" =  rep(0, epochs))
     while (current_epoch <= epochs) {
         message_switch("mapping", verbose , epoch = current_epoch)
         batch <- dispatch_batch(cost_matrix, matched, batch_size)
         mapped <- lapply(batch, map_index)
         matched <- update_matches(matched, mapped, current_epoch)
+        current_cost$epoch[current_epoch] <- current_epoch
+        current_cost$cost[current_epoch] <- mean(matched$cost)
         current_epoch <- current_epoch + 1
     }
     matched <- check_for_unmatched(matched)
-    return(matched)
+    return(list("matched" = matched, "cost_by_epoch" = current_cost))
 
 }
 
@@ -744,7 +758,6 @@ update_matches <- function(matched, mapped, epoch) {
     }
     for (i in seq_along(mapped)) {
         loc <- match(mapped[[i]][, init_col], matched[, init_col])
-        if(any(is.na(loc)))browser()
         loc <- loc[!is.na(loc)]
         cost <- mapped[[i]][, "cost"] < matched[loc, "cost"]
         matched[loc[cost], map_col] <- mapped[[i]][cost, map_col]
@@ -822,17 +835,16 @@ filter_maps <- function(mapped, threshold, allow_duplicates, verbose) {
     if (nrow(map_score) == 0){
         stop("No cells retained under current filter threshold")
     }
-    mapped$prob <- map_score
+    map_score <- map_score[order(map_score$cost), ]
     #-------------------------------------------------------------------------#
     # Next we check for dupliactes and gert the best ones
     #-------------------------------------------------------------------------#
     if (!allow_duplicates) {
-        map_score <- map_score[order(map_score$cost), ]
         duplicates <- duplicated(map_score$from) | duplicated(map_score$to)
         map_score <- map_score[!duplicates, ]
         mapped$prob <- map_score
     }
-    
+    mapped$prob <- map_score
     #-------------------------------------------------------------------------#
     # Remove thos points from cost matrices
     #-------------------------------------------------------------------------#
@@ -851,12 +863,15 @@ filter_maps <- function(mapped, threshold, allow_duplicates, verbose) {
 build_mapped_assay <- function(mapped,
     seed_assay,
     query_assay,
-    cell_label) {
+    cell_label,
+    jitter) {
     assay <- paste0("mapped_",get_assay_names(query_assay))
     from <- mapped$prob$from
     to <- mapped$prob$to
     mapped_scores <- mapped$prob
     mapped_cost <- mapped$cost
+    mapped_cost_by_epoch <-  mapped$cost_by_epoch
+    cost <- list("cost" = mapped_cost, "cost_by_epoch" = mapped_cost_by_epoch)
     #-------------------------------------------------------------------------#
     # Filter raw counts using mapped
     #-------------------------------------------------------------------------#
@@ -870,7 +885,7 @@ build_mapped_assay <- function(mapped,
         original = TRUE)[, c("barcodes", "x_orig", "y_orig")]
     colnames(coord) <- c("barcodes", "x", "y")
     coord <- coord[match(to, coord$barcodes), ]
-    coord <- align_index(mapped$prob, coord)
+    coord <- align_index(mapped$prob, coord, jitter)
     #-------------------------------------------------------------------------#
     # maps
     #-------------------------------------------------------------------------#
@@ -917,7 +932,7 @@ build_mapped_assay <- function(mapped,
         unit = unit, 
         verbose = FALSE)
     mapped <- update_vesalius_assay(mapped,
-        data = mapped_cost,
+        data = cost,
         slot = "cost",
         append = TRUE)
     mapped <- update_vesalius_assay(mapped,
@@ -941,11 +956,14 @@ build_mapped_assay <- function(mapped,
 #' @return adjusted query coordinate data.frame where each point
 #' receives the coordinates of its best matche in the seed. 
 align_index <- function(matched_index,
-    coord) {
+    coord,
+    jitter = TRUE) {
     coord$barcodes <- matched_index$from
-    locs <- duplicated(paste0(coord$x,"_", coord$y))
-    coord$x[locs] <- jitter(coord$x[locs], amount = 1)
-    coord$y[locs] <- jitter(coord$y[locs], amount = 1)
+    if (jitter){
+        locs <- duplicated(paste0(coord$x,"_", coord$y))
+        coord$x[locs] <- jitter(coord$x[locs], amount = 1)
+        coord$y[locs] <- jitter(coord$y[locs], amount = 1)
+    }
     coord$barcodes <- make.unique(coord$barcodes, sep = "-")
     return(coord)
 }

@@ -1029,3 +1029,12 @@ check_metric_trial <- function(vesalius_assay, trial) {
     map <- map[, c("from", "to", "init", trial)]
     return(map)
 }
+
+check_cost_contribution <- function(vesalius_assay) {
+    cost <- vesalius_assay@cost$cost
+    if (length(cost) == 0){
+        stop("Cost is not being returned during mapping!
+            Set return cost to TRUE")
+    } 
+    return(cost)
+}

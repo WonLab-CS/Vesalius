@@ -529,7 +529,7 @@ filter_assay <- function(vesalius_assay,
 
 
 get_cost <- function(vesalius_assay, use_cost = NULL) {
-    cost <- vesalius_assay@cost
+    cost <- vesalius_assay@cost$cost
     if (length(cost) == 0) {
         stop("No cost has been computed")
     }
