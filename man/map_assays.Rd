@@ -23,7 +23,7 @@ map_assays(
   custom_cost = NULL,
   seed_cell_labels = NULL,
   query_cell_labels = NULL,
-  jitter = TRUE,
+  jitter = 0,
   verbose = TRUE
 )
 }

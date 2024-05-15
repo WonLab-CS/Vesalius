@@ -39,6 +39,11 @@ regularise_image denoise Vesalius images via variance regularization
 Image regularization can be seen as a form of image denoising.
 Details on each method can be found in the tvR package under the denoise2
 function \href{tvR}{https://cran.r-project.org/web/packages/tvR/tvR.pdf}.
+
+A higher value for lambda will results in a smoother image. It should be noted
+that in the context of spatial omics the more sparse the points in the data
+(the more space between coordinates), the more you will need to increase
+the value of lambda to obtain better denoising.
 }
 \examples{
 \dontrun{

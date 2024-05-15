@@ -44,9 +44,8 @@ compare_assays <- function(seed_assay,
     #-------------------------------------------------------------------------#
     if (grepl("niche|composition", compare)) {
         if (is.null(group_1)){
-            group_1 <- query_assay@meta$mapping_score$to
+            group_1 <- query_assay@map$mapping_score$to
         }
-        
         group_1 <- dispatch_niches(assay = seed_assay,
             group = group_1,
             aggregate = aggregate,
@@ -56,7 +55,7 @@ compare_assays <- function(seed_assay,
             radius = radius,
             group_id = "1")
         if (is.null(group_2)){
-            group_2 <- query_assay@meta$mapping_score$from
+            group_2 <- query_assay@map$mapping_score$from
         }
         group_2 <- dispatch_niches(assay = query_assay,
             group = group_2,
@@ -217,9 +216,11 @@ get_composition <- function(seed_assay,
 get_metric_clusters <- function(vesalius_assay,
     use_cost = "feature",
     distance = "euclidean",
-    cell_label = NULL,
+    trial = NULL,
     group_identity = NULL,
     by_similarity = TRUE,
+    ref_cells = NULL,
+    query_cells = NULL,
     h = 0.75,
     k = NULL,
     verbose = TRUE,
@@ -228,29 +229,34 @@ get_metric_clusters <- function(vesalius_assay,
     # add this correctly
     args <- list(...)
     #-------------------------------------------------------------------------#
-    # get barcodes representing cells / sub group of cells 
-    #-------------------------------------------------------------------------#
-    cells <- dispatch_cost_groups(vesalius_assay,
-        cell_label = cell_label,
-        group_identity = group_identity)
-    #-------------------------------------------------------------------------#
     # set up cost matrics 
     #-------------------------------------------------------------------------#
     cost <- get_cost(vesalius_assay, use_cost)
     score <- concat_cost(cost, use_cost, complement = !by_similarity)[[1L]]
-    score <- score[rownames(score) %in% cells, ]
+    #-------------------------------------------------------------------------#
+    # get barcodes representing cells / sub group of cells 
+    #-------------------------------------------------------------------------#
+    cells <- dispatch_cost_groups(vesalius_assay,
+        cost = score,
+        trial = trial,
+        group_identity = group_identity,
+        ref_cells = ref_cells,
+        query_cells = query_cells)
+   
+    score <- score[rownames(score) %in% cells$query, cells$ref]
     #-------------------------------------------------------------------------#
     # clustering 
     #-------------------------------------------------------------------------#
     clusters <- hclust(dist(score, method = distance))
+    h <- h * (max(clusters$height) - min(clusters$height) / max(clusters$height))
     clusters <- cutree(clusters, h = h, k = k)
     #-------------------------------------------------------------------------#
     # rebuilding and adding to map slot 
     # for this we need to create a tag for both 
     #-------------------------------------------------------------------------#
-    trial <- vesalius_assay@map
-    trial$trial <- NA
-    locs <- match(names(clusters), trial[,"from"])
+    trial <- vesalius_assay@territories
+    trial$trial <- "Not Selected"
+    locs <- match(names(clusters), trial$barcodes)
     trial$trial[locs[!is.na(locs)]] <- unname(clusters)
     new_trial <- create_trial_tag(colnames(trial),
         "Map_cluster") %>%
@@ -261,7 +267,7 @@ get_metric_clusters <- function(vesalius_assay,
     #-------------------------------------------------------------------------#
     vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
         data = trial,
-        slot = "map",
+        slot = "territories",
         append = TRUE)
     commit <- create_commit_log(arg_match = as.list(match.call()),
         default = formals(get_metric_clusters))

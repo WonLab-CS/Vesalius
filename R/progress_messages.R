@@ -126,7 +126,9 @@ message_switch <- function(type, verbose = TRUE, ...) {
         "integrate" = cat(paste(t,
             " Intergrating Counts \n")),
         "post_map_filter" = cat(paste(t,
-            " Filtering Mapped Indices \n"))
+            " Filtering Mapped Indices \n")),
+        "count_only" = cat(paste(t,
+            " No barcode maps found - Integrating counts only \n")),
         )
     } else {
         return(NULL)

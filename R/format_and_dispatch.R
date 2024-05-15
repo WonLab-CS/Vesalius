@@ -21,9 +21,9 @@ format_ves_to_c <- function(vesalius_assay,
   embed = "last",
   verbose = TRUE) {
     #--------------------------------------------------------------------------#
-    # For this function we will not create a "method". There are too many
-    # other options that we need to account for.
-    # Might update this with medici later
+    # This whole thing is too slow
+    # for large images this section is always the slowest 
+    # the whole function I mean not the sanity checks
     #--------------------------------------------------------------------------#
     embeddings <- check_embedding_selection(vesalius_assay, embed, dims)
     tiles <- check_tiles(vesalius_assay)
@@ -92,6 +92,8 @@ format_c_to_ves <- function(cimg,
   # Only need to push the embed selection warning once. It will have been 
   # thrown in the 1st conversion. Makes unit test throw a little tantrum
   # They don't like when more than one warning is pushed
+  # Will need to update this at one point 
+  # also make it faster
   #--------------------------------------------------------------------------#
   tiles <- check_tiles(vesalius_assay)
   embeddings <- suppressWarnings(check_embedding_selection(
@@ -314,21 +316,55 @@ cost_to_prob <- function(cost, n_cost) {
 }
 
 
+#' dispatch barcodes to subset cost for match clustering
+#' @param vesalius_assay vesalius_assay object post cell mapping
+#' @param cell_label character - name of column containing cell names
+#' if the clustering is to be done by cell types only
+#' @param group_identity character - name of column containing group
+#' to be used for cluster (i.e. territories, segments, layers etc)
+#' @return character string of barcodes
 dispatch_cost_groups <- function(vesalius_assay,
-    cell_label = NULL,
-    group_identity = NULL) {
+    cost,
+    trial = NULL,
+    group_identity = NULL,
+    ref_cells = NULL,
+    query_cells = NULL) {
     #-------------------------------------------------------------------------#
     # Get trial and filter sub categories if needed
     # this could added to the sanity checks 
     #-------------------------------------------------------------------------#
-    if (!is.null(cell_label)) {
+    if (!is.null(trial)) {
         trial <- check_cell_labels(vesalius_assay, cell_label = cell_label)
         if(!is.null(group_identity)) {
-            trial <- check_group_value(trial, group_identity)
+            group_identity <- check_group_value(trial, group_identity)
         }
+        trial <- trial$barcodes[trial$trial %in% group_identity,]
     } else {
-        trial <- get_coordinates(vesalius_assay)
-    } 
-    return(trial$barcodes)
+        trial <- get_coordinates(vesalius_assay)$barcodes
+    }
+    #-------------------------------------------------------------------------#
+    # check ref cell abd subset
+    #-------------------------------------------------------------------------#
+    if (is.null(ref_cells)) {
+        ref_cells <- colnames(cost)
+    } else {
+        ref_cells <- intersect(ref_cells, colnames(cost))
+    }
+    if (length(ref_cells) == 0){
+        stop("No overlap between reference cells provided and cells present in cost matrices")
+    }
+    #-------------------------------------------------------------------------#
+    # check query cells and subset
+    #-------------------------------------------------------------------------#
+    if (is.null(query_cells)) {
+        query_cells <- trial
+    } else {
+        query_cells <- intersect(query_cells, trial)
+    }
+    if (length(query_cells) == 0){
+        stop("No overlap between query cells provided and cells present in cost matrices")
+    }
+
+    return(list("ref" = ref_cells, "query" = query_cells))
 
 }

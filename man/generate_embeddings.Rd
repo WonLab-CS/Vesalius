@@ -27,6 +27,12 @@ generate_embeddings(
 reduction method should be used. One of the following:
 "PCA", "PCA_L", "UMAP", "LSI", "LSI_UMAP".}
 
+\item{normalization}{string describing which normalisation 
+method to use. One of the following "log_norm", "SCT", "TFIDF", "none".}
+
+\item{use_counts}{string describing which counts should be used for the 
+generating emebddings. Default = "raw". See details.}
+
 \item{dimensions}{numeric describing the number of Principle Components or
 Latent space dimension to use. Default dimensions = 30}
 
@@ -53,12 +59,6 @@ indicating if the first LSI component should be removed from further analysis
 as it usually captures sequencing depth (technical variation)}
 
 \item{verbose}{logical output progress message or not. Default = TRUE}
-
-\item{normalisation}{string describing which normalisation 
-method to use. One of the following "log_norm", "SCT", "TFIDF", "none".}
-
-\item{use_count}{string describing which counts should be used for the 
-generating emebddings. Default = "raw". See details.}
 }
 \value{
 vesalius_assay
@@ -71,7 +71,7 @@ The core principle behind vesalius is to convert spatial omics
 data into an image. \code{generate_embeddings} allows you to convert
 your omics data into a stack of gray scale images.
 The stack hight will be equal to the number of dimenions you
-selected excluding UMAP type as only 3 dimesnions are availbale.
+selected excluding UMAP embeddings as only 3 dimesnions are availbale.
 
 If tiles have not yet been generated (see \code{\link{generate_tiles}}),
 pixel will be generated from the spatial coordinates provided. 
@@ -82,7 +82,7 @@ The algorithm is broadly applicable to many spatial omics assays.
 Vesalius provides a 3 nornalization methods log_norm, SCTransform,
 and TF-IDF.
 
-The `use_count` argument specifies which count matrix should be used
+The `use_counts` argument specifies which count matrix should be used
 for normalization. This argument is only necessary if you use a custom
 normalised count matrix. In this case, set this argument to the name
 you gave your count matrix (see \code{\link{add_counts}}) and
@@ -90,7 +90,12 @@ you gave your count matrix (see \code{\link{add_counts}}) and
 count matrix to generate image embeddings. 
 
 Note that it is also possible to add custom embeddings by using the 
-\code{\link{add_embeddings}} function.
+\code{\link{add_embeddings}} function. 
+
+Embeddings can be created using a custom set of genes. These genes 
+can be provided to the `features` argument in the form of a character
+vector. Note that this will not filter the count matrix hence you 
+will still have access to the whole matrix for downsteam analysis.
 }
 \examples{
 \dontrun{

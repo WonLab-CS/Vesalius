@@ -112,7 +112,7 @@ map_assays <- function(seed_assay,
     custom_cost = NULL,
     seed_cell_labels = NULL,
     query_cell_labels = NULL,
-    jitter = TRUE,
+    jitter = 0,
     verbose = TRUE) {
     simple_bar(verbose)
     #-------------------------------------------------------------------------#
@@ -718,13 +718,13 @@ dispatch_batch <- function(cost_matrix, matched, batch_size = 10000) {
         seed <- c(sample(seed_barcodes,
             size = batch_seed, replace = FALSE),
             sample(seed_barcodes,
-            size = padding, replace = FALSE))
+            size = padding, replace = TRUE))
         seed_sample <- unique(c(seed_sample,seed))
         padding <- ifelse((batch_query - batch_seed) >= 0 ,0, batch_seed - batch_query)
         query <- c(sample(query_barcodes,
             size = batch_query, replace = FALSE),
             sample(query_barcodes,
-            size = padding, replace = FALSE))
+            size = padding, replace = TRUE))
         query_sample <- unique(c(query_sample,query))
         batch[[i]] <- list("cost" = cost_matrix[query, seed],
             "match" = data.frame("from" = query, "to" = seed))
@@ -842,7 +842,7 @@ filter_maps <- function(mapped, threshold, allow_duplicates, verbose) {
     if (!allow_duplicates) {
         duplicates <- duplicated(map_score$from) | duplicated(map_score$to)
         map_score <- map_score[!duplicates, ]
-        mapped$prob <- map_score
+        #mapped$prob <- map_score
     }
     mapped$prob <- map_score
     #-------------------------------------------------------------------------#
@@ -858,6 +858,8 @@ filter_maps <- function(mapped, threshold, allow_duplicates, verbose) {
     
     return(mapped)
 }
+
+
 
 
 build_mapped_assay <- function(mapped,
@@ -957,12 +959,12 @@ build_mapped_assay <- function(mapped,
 #' receives the coordinates of its best matche in the seed. 
 align_index <- function(matched_index,
     coord,
-    jitter = TRUE) {
+    jitter = 0) {
     coord$barcodes <- matched_index$from
     if (jitter){
         locs <- duplicated(paste0(coord$x,"_", coord$y))
-        coord$x[locs] <- jitter(coord$x[locs], amount = 1)
-        coord$y[locs] <- jitter(coord$y[locs], amount = 1)
+        coord$x[locs] <- jitter(coord$x[locs], amount = jitter)
+        coord$y[locs] <- jitter(coord$y[locs], amount = jitter)
     }
     coord$barcodes <- make.unique(coord$barcodes, sep = "-")
     return(coord)

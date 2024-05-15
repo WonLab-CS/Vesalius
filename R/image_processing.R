@@ -307,7 +307,7 @@ equalize_image <- function(vesalius_assay,
         future.seed = TRUE))
     #--------------------------------------------------------------------------#
     # shifting format
-    # c_to_ves => format.R
+    # c_to_ves => format_and_dispatch.R
     #--------------------------------------------------------------------------#
     embeds <- format_c_to_ves(images,
       vesalius_assay,
@@ -357,7 +357,10 @@ ecdf_eq <- function(im) {
 #' Details on each method can be found in the tvR package under the denoise2
 #' function \href{tvR}{https://cran.r-project.org/web/packages/tvR/tvR.pdf}.
 #'
-#'
+#' A higher value for lambda will results in a smoother image. It should be noted
+#' that in the context of spatial omics the more sparse the points in the data
+#' (the more space between coordinates), the more you will need to increase
+#' the value of lambda to obtain better denoising. 
 #' @return a vesalius_assay
 #' @examples
 #' \dontrun{
@@ -372,8 +375,6 @@ ecdf_eq <- function(im) {
 #'}
 #' @export
 #' @importFrom future.apply future_lapply
-
-
 regularise_image <- function(vesalius_assay,
   dimensions = seq(1, 3),
   embedding = "last",
@@ -458,7 +459,8 @@ regularise <- function(img,
 #' @param embedding character string describing which embedding should
 #' be used.
 #' @param method character string for which method should be used for
-#' segmentation. Select from "kmeans", "louvain", "leiden" or "slic".
+#' segmentation. Select from "kmeans", "louvain", "leiden", "slic", 
+#' "leiden_slic","louvain_slic","som"
 #' @param col_resolution numeric colour resolution used for segmentation. 
 #' (see details)
 #' @param compactness numeric - factor defining super pixel compaction.
@@ -472,8 +474,9 @@ regularise <- function(img,
 #' @details Applying image segmentation ensures a reduction in colour
 #' complexity.
 #'
-#' Vesalius provides 3 different methods for clustering colours and
-#' reducing color complexity: **Kmeans**, **Louvain**, and **Leiden**.
+#' Vesalius provides 7 different methods for clustering colours and
+#' reducing color complexity: **Kmeans**, **Louvain**, **Leiden**,
+#' **slic**, **leiden_slic**, **louvain_slic**, and **som**
 #'
 #' In the case of kmeans clustering the \code{col_resolution} argument
 #' shows the number of colours that the images should be reduced to.

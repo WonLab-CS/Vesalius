@@ -21,7 +21,7 @@ process_counts(
 pre-processed in the vesaliusObject or vesalius_assay}
 
 \item{method}{character string describing which normalisation method to use.
-One of the following "log_norm", "SCT", "TFIDF", "raw".}
+One of the following "log_norm", "SCT", "TFIDF", "none".}
 
 \item{use_count}{string describing which counts should be used for the 
 generating emebddings. Default = "raw".}

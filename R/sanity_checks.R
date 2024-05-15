@@ -980,7 +980,7 @@ check_cell_labels <- function(vesalius_assay, cell_label = NULL) {
 
 
 check_map_selection <- function(vesalius_assay, by) {
-    maps <- vesalius_assay@meta$mapping_scores
+    maps <- vesalius_assay@map$mapping_scores
     locs <- grep(paste0(by, collapse = "|"), colnames(maps), value =TRUE)
     if (length(locs) < length(by)){
         not_in <- paste(grep(paste0(by, collapse = "|"), colnames(maps),
@@ -1037,4 +1037,13 @@ check_cost_contribution <- function(vesalius_assay) {
             Set return cost to TRUE")
     } 
     return(cost)
+}
+
+check_maps <- function(vesalius_assay) {
+    assay <- get_assay_names(vesalius_assay)
+    maps <- vesalius_assay@map
+    if (length(maps) == 0){
+        return(NULL)
+    }
+    return(maps)
 }

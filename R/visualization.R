@@ -317,8 +317,8 @@ territory_plot <- function(vesalius_assay,
 
 order_labels <- function(territories) {
       ter <- unique(territories$trial)
-      iso <- ter[ter == "isolated"]
-      tmp <- ter[ter != "isolated"]
+      iso <- ter[grepl(pattern = "isolated|Not Selected",x = ter)]
+      tmp <- ter[!grepl(pattern = "isolated|Not Selected",x = ter)]
       if (all(is.na(suppressWarnings(as.numeric(tmp))))) {
          labels <- c(sort(tmp), iso)
       } else {

@@ -2,7 +2,7 @@
 % Please edit documentation in R/embeddings_and_tiles.R
 \name{no_norm}
 \alias{no_norm}
-\title{raw norm}
+\title{no norm}
 \usage{
 no_norm(counts, use_count = "raw")
 }
@@ -23,5 +23,5 @@ no normalisation applied simply return raw counts
 \details{
 Here, either the user doesn't want to normalise the data or
 they provide their custom count matrix. In this case, we parse it 
-as "raw" to avoid writing another function and add the custom name.
+as "none" to avoid writing another function and add the custom name.
 }

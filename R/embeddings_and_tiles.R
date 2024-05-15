@@ -12,9 +12,9 @@
 #' @param dim_reduction string describing which dimensionality
 #' reduction method should be used. One of the following:
 #' "PCA", "PCA_L", "UMAP", "LSI", "LSI_UMAP".
-#' @param normalisation string describing which normalisation 
+#' @param normalization string describing which normalisation 
 #' method to use. One of the following "log_norm", "SCT", "TFIDF", "none".
-#' @param use_count string describing which counts should be used for the 
+#' @param use_counts string describing which counts should be used for the 
 #' generating emebddings. Default = "raw". See details.
 #' @param dimensions numeric describing the number of Principle Components or
 #' Latent space dimension to use. Default dimensions = 30
@@ -38,7 +38,7 @@
 #' data into an image. \code{generate_embeddings} allows you to convert
 #' your omics data into a stack of gray scale images.
 #' The stack hight will be equal to the number of dimenions you
-#' selected excluding UMAP type as only 3 dimesnions are availbale.
+#' selected excluding UMAP embeddings as only 3 dimesnions are availbale.
 #'
 #' If tiles have not yet been generated (see \code{\link{generate_tiles}}),
 #' pixel will be generated from the spatial coordinates provided. 
@@ -49,7 +49,7 @@
 #' Vesalius provides a 3 nornalization methods log_norm, SCTransform,
 #' and TF-IDF.
 #' 
-#' The `use_count` argument specifies which count matrix should be used
+#' The `use_counts` argument specifies which count matrix should be used
 #' for normalization. This argument is only necessary if you use a custom
 #' normalised count matrix. In this case, set this argument to the name
 #' you gave your count matrix (see \code{\link{add_counts}}) and
@@ -59,7 +59,10 @@
 #' Note that it is also possible to add custom embeddings by using the 
 #' \code{\link{add_embeddings}} function. 
 #'
-#'
+#' Embeddings can be created using a custom set of genes. These genes 
+#' can be provided to the `features` argument in the form of a character
+#' vector. Note that this will not filter the count matrix hence you 
+#' will still have access to the whole matrix for downsteam analysis. 
 #'
 #' @return vesalius_assay
 #' @examples
@@ -395,6 +398,8 @@ filter_grid <- function(coordinates, filter_grid) {
 ### we could used reduced image size at a different point. The point is we 
 ### don't need full resolution images. It slows things down and for territory
 ### isolation very finer details are not retained after smoothing anyway. 
+### The main issue here is how to account for changes of coordinates 
+### once we have reduced the resolution.
 
 #' reduce tensor resoltuon 
 #' 
@@ -644,7 +649,7 @@ convexify <- function(xside, yside, indx, indy, order = FALSE) {
 #' @param assay character string describing the assay that is being 
 #' pre-processed in the vesaliusObject or vesalius_assay
 #' @param method character string describing which normalisation method to use.
-#' One of the following "log_norm", "SCT", "TFIDF", "raw".
+#' One of the following "log_norm", "SCT", "TFIDF", "none".
 #' @param use_count string describing which counts should be used for the 
 #' generating emebddings. Default = "raw".
 #' @param nfeatures numeric describing the number of variable features to use.
@@ -685,7 +690,7 @@ process_counts <- function(counts,
     return(counts)
 }
 
-#' raw norm
+#' no norm
 #' 
 #' no normalisation applied simply return raw counts
 #' @param counts seurat object containing counts
@@ -694,7 +699,7 @@ process_counts <- function(counts,
 #' the vesalius_assay. 
 #' @details Here, either the user doesn't want to normalise the data or
 #' they provide their custom count matrix. In this case, we parse it 
-#' as "raw" to avoid writing another function and add the custom name. 
+#' as "none" to avoid writing another function and add the custom name. 
 #' @return list with seurat object used later and raw counts to be stored in
 #' the vesalius objects 
 #' @importFrom Seurat GetAssayData
@@ -707,6 +712,8 @@ no_norm <- function(counts, use_count = "raw") {
     # they can do that and just always call norm
     # We are using this just for formating at the moment
     # We have to be a bit hacky with the Seurat object
+    # This will become an issue when change are made to Seurat objects
+    # Really need to move aways from seurat for internal computing
     #--------------------------------------------------------------------------#
     counts <- Seurat::NormalizeData(object = counts, verbose = FALSE)
     counts <- Seurat::ScaleData(counts, verbose = FALSE)
@@ -816,8 +823,8 @@ embed_latent_space <- function(counts,
         features = features,
         verbose = verbose),
       "NMF" = embed_nmf(counts,
-                        dimensions = dimensions,
-                        verbose = verbose),
+            dimensions = dimensions,
+            verbose = verbose),
       "PCA_L" = embed_pcal(counts,
         dimensions = dimensions,
         features = features,
@@ -957,7 +964,6 @@ embed_umap <- function(counts,
   # Progress message pca_tensor() => Prog.R
   #----------------------------------------------------------------------------#
   message_switch("pca_tensor", verbose)
-
   counts <- Seurat::RunPCA(counts,
     npcs = dimensions,
     features = features,
@@ -997,7 +1003,6 @@ embed_lsi <- function(counts,
   # Run partial singular value decomposition(SVD) on TF-IDF normalized matrix
   #--------------------------------------------------------------------------#
   message_switch("svd_tensor", verbose)
-  #counts[["RNA3"]] <- as(object = counts[["RNA"]], Class = "Assay")
   svd <- Signac::RunSVD(counts,
     n = dimensions + 1,
     features = features,
@@ -1075,6 +1080,7 @@ embed_lsi_umap <- function(counts,
   names(colour_matrix) <- "LSI_UMAP"
   return(colour_matrix)
 }
+
 #' embed nmf
 #' 
 #' embed in grey scale using NMF embeddings 

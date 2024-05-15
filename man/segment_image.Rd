@@ -26,7 +26,8 @@ segment_image(
 be used.}
 
 \item{method}{character string for which method should be used for
-segmentation. Select from "kmeans", "louvain", "leiden" or "slic".}
+segmentation. Select from "kmeans", "louvain", "leiden", "slic", 
+"leiden_slic","louvain_slic","som"}
 
 \item{col_resolution}{numeric colour resolution used for segmentation. 
 (see details)}
@@ -54,8 +55,9 @@ segment vesalius images to find initial territories
 Applying image segmentation ensures a reduction in colour
 complexity.
 
-Vesalius provides 3 different methods for clustering colours and
-reducing color complexity: **Kmeans**, **Louvain**, and **Leiden**.
+Vesalius provides 7 different methods for clustering colours and
+reducing color complexity: **Kmeans**, **Louvain**, **Leiden**,
+**slic**, **leiden_slic**, **louvain_slic**, and **som**
 
 In the case of kmeans clustering the \code{col_resolution} argument
 shows the number of colours that the images should be reduced to.

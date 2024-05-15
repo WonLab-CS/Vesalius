@@ -6,6 +6,40 @@
 ############################## COUNT INTEGRATION ##############################
 #-----------------------------------------------------------------------------#
 
+
+integrate_assays <- function(seed,
+    query,
+    method = "harmony",
+    infer = TRUE,
+    use_counts = "raw",
+    verbose = TRUE) {
+    #-------------------------------------------------------------------------#
+    # First check if mapping has been done
+    # If not we can just do the count integration
+    #-------------------------------------------------------------------------#
+    query_map <- check_maps(query)
+    if (is.null(query_map)) {
+        message_switch("count_only",
+            verbose = verbose)
+        seed_counts <- get_counts(seed, type = use_counts)
+        query_counts <- get_counts(query, type = use_counts)
+    } else {
+        seed_counts <- get_counts(seed, type = use_counts)
+        seed_counts <- seed_counts[, match(query_map$mapping, colnames(seed_counts))] 
+        colnames(seed_counts) <- make.unique(mapped$prob$to, sep = "_")
+        query_counts <- get_counts(query, type = use_counts)
+        query_counts <- query_counts[, match(mapped$prob$from, colnames(query_counts))]
+        colnames(query_counts) <- make.unique(mapped$prob$from, sep = "-")
+    }
+
+    counts <- integrate_counts(seed = seed,
+            query = query,
+            method = method,
+            infer = infer,
+            verbose = verbose)
+}
+
+
 #' @export
 integrate_assays <- function(mapped,
     query,
