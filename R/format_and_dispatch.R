@@ -226,13 +226,14 @@ dispatch_territory <- function(territories, ter_1, ter_2, cells) {
 #' @param query interger vector indicating which territories should be included
 #' in query group
 #' @param cells cell barcodes
+#' @param sample barcodes for each sample type
 #' @param verbose logical if progress messages should be outputed
 #' @details This function generates groups for DEG analysis. It creates 
 #' different groups depending on what is being parse to both seed and query. 
 #' This could probably be cleaned up and simplified. Always need to return 
 #' a list though.
 #' @return list with seed group and seed id as well as query group and query id 
-dispatch_deg_group <- function(ter, seed, query, cells, verbose) {
+dispatch_deg_group <- function(ter, seed, query, cells, sample, verbose) {
     if (is.null(seed) && is.null(query)) {
         #----------------------------------------------------------------------#
         # If no territories are provided - then we assume that the user
@@ -301,10 +302,29 @@ dispatch_deg_group <- function(ter, seed, query, cells, verbose) {
       query <- mapply(check_cells, territory_barcodes = query,
         ter = query_id, MoreArgs = list(cells), SIMPLIFY = FALSE)
     }
+    if (!is.null(sample)) {
+        seed <-  mapply(dispatch_sample, territory_barcodes = seed,
+            ter = seed_id, MoreArgs = list(sample$matched), SIMPLIFY = FALSE)
+        seed_id <- paste0(seed_id,"_matched")
+        query <- mapply(dispatch_sample, territory_barcodes = query,
+            ter = query_id, MoreArgs = list(sample$reference), SIMPLIFY = FALSE)
+        query_id <- paste0(query_id,"_reference")
+    }
     return(list("seed" = seed, "seed_id" = seed_id,
         "query" = query, "query_id" = query_id))
 }
 
+
+
+dispatch_sample <- function(territory_barcodes, ter, sample) {
+    common <- intersect(territory_barcodes, sample)
+    if (length(common) == 0) {
+        warning(paste0("No overlap between sample and territory in ", ter,
+            "\n Returning NULL\n"))
+        common <- NULL
+    }
+    return(common)
+}
 
 #' convert cost to prob
 #' @param cost matrix containing cost 
@@ -334,11 +354,12 @@ dispatch_cost_groups <- function(vesalius_assay,
     # this could added to the sanity checks 
     #-------------------------------------------------------------------------#
     if (!is.null(trial)) {
-        trial <- check_cell_labels(vesalius_assay, cell_label = cell_label)
+        trial <- check_cell_labels(vesalius_assay, trial = trial)
         if(!is.null(group_identity)) {
             group_identity <- check_group_value(trial, group_identity)
         }
-        trial <- trial$barcodes[trial$trial %in% group_identity,]
+        trial <- trial$barcodes[trial$trial %in% group_identity]
+
     } else {
         trial <- get_coordinates(vesalius_assay)$barcodes
     }
@@ -356,6 +377,7 @@ dispatch_cost_groups <- function(vesalius_assay,
     #-------------------------------------------------------------------------#
     # check query cells and subset
     #-------------------------------------------------------------------------#
+     trial <- clean_trial(trial)
     if (is.null(query_cells)) {
         query_cells <- trial
     } else {
@@ -367,4 +389,11 @@ dispatch_cost_groups <- function(vesalius_assay,
 
     return(list("ref" = ref_cells, "query" = query_cells))
 
+}
+
+clean_trial <- function(trial) {
+    trial <- sapply(strsplit(trial, "-"), function(str){
+        return(paste0(str[seq(1, length(str) - 1)], collapse = "-"))
+    })
+    return(trial)
 }

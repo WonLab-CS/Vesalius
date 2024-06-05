@@ -12,6 +12,7 @@ identify_markers(
   seed = NULL,
   query = NULL,
   cells = NULL,
+  sample = FALSE,
   method = "wilcox",
   log_fc = 0.25,
   pval = 0.05,
@@ -38,6 +39,8 @@ included in group 1 for differential gene expression analysis.}
 included in group 2 for differential gene expression analysis. Default = NULL}
 
 \item{cells}{character vector containing barcodes of cells of interest.}
+
+\item{sample}{logical}
 
 \item{method}{character describing the statistical test to use in order to
 extract differantial gene expression.

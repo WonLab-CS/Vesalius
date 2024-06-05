@@ -4,7 +4,7 @@
 \alias{dispatch_deg_group}
 \title{dispatch barcodes to seed and query groups}
 \usage{
-dispatch_deg_group(ter, seed, query, cells, verbose)
+dispatch_deg_group(ter, seed, query, cells, sample, verbose)
 }
 \arguments{
 \item{ter}{territories data frame from territoires slot in
@@ -17,6 +17,8 @@ in seed group}
 in query group}
 
 \item{cells}{cell barcodes}
+
+\item{sample}{barcodes for each sample type}
 
 \item{verbose}{logical if progress messages should be outputed}
 }

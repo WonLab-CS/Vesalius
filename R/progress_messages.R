@@ -34,7 +34,7 @@ simple_bar <- function(verbose = TRUE) {
 #' code than buggy code with undefined functions...
 message_switch <- function(type, verbose = TRUE, ...) {
     args <- list(...)
-    t <- Sys.time()
+    t <- format(Sys.time(), format = "%Y-%M-%D %H:%M:%S")
     if (verbose) {
         switch(EXPR = type,
         "in_assay" = cat(paste(t,
@@ -125,10 +125,18 @@ message_switch <- function(type, verbose = TRUE, ...) {
             " Computing Cell Type cost in", args$assay, "\n")),
         "integrate" = cat(paste(t,
             " Intergrating Counts \n")),
+        "integrated_embed" = cat(paste(t,
+            " Setting",args$tag, "as active embedding \n")),
+        "integrated_counts" = cat(paste(t,
+            " Setting",args$tag, "as active count matrix \n")),
         "post_map_filter" = cat(paste(t,
             " Filtering Mapped Indices \n")),
         "count_only" = cat(paste(t,
             " No barcode maps found - Integrating counts only \n")),
+        "hclust_scores" = cat(paste(t,
+            " Applying hierarchical clustering to mapping scores \n")),
+        "louvain_scores" = cat(paste(t,
+            " Applying Louvain clustering to mapping scores \n"))
         )
     } else {
         return(NULL)

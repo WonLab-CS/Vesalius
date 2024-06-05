@@ -284,15 +284,16 @@ get_tiles <- function(vesalius_assay) {
 #' @export
 #' @importFrom methods slot
 get_coordinates <- function(vesalius_assay, original = FALSE) {
-    if (original) {
-        tiles <- vesalius_assay@meta$orig_coord
+    tiles <- vesalius_assay@meta$orig_coord
+    if (!is.null(tiles) && original){
+        return(tiles)    
     } else {
         tiles <- slot(vesalius_assay, "tiles")
         if ("origin" %in% colnames(tiles)) {
             tiles <- tiles %>% filter(origin == 1)
         } 
-    }
-    return(tiles)
+         return(tiles)
+    }   
 }
 
 #' get embeddings from vesalius_assay
@@ -323,7 +324,6 @@ get_embeddings <- function(vesalius_assay, active = TRUE) {
 #' @importFrom methods slot
 get_territories <- function(vesalius_assay) {
     territories <- slot(vesalius_assay, "territories")
-
     return(territories)
 }
 

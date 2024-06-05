@@ -17,7 +17,8 @@
 #' included in group 1 for differential gene expression analysis.
 #' @param query Integer or vector of integers describing territories to be
 #' included in group 2 for differential gene expression analysis. Default = NULL
-#' @param cells character vector containing barcodes of cells of interest. 
+#' @param cells character vector containing barcodes of cells of interest.
+#' @param sample logical
 #' @param method character describing the statistical test to use in order to
 #' extract differantial gene expression.
 #' Select from:
@@ -85,6 +86,7 @@ identify_markers <- function(vesalius_assay,
   seed = NULL,
   query = NULL,
   cells = NULL,
+  sample = FALSE,
   method = "wilcox",
   log_fc = 0.25,
   pval = 0.05,
@@ -110,10 +112,11 @@ identify_markers <- function(vesalius_assay,
     ter <- check_territory_trial(vesalius_assay, trial)
     seed <- check_group_value(ter, seed)
     query <- check_group_value(ter, query)
+    sample <- check_sample(vesalius_assay, sample)
     #--------------------------------------------------------------------------#
     # Getting and setting territory categories
     #--------------------------------------------------------------------------#
-    buffer <- dispatch_deg_group(ter, seed, query, cells, verbose)
+    buffer <- dispatch_deg_group(ter, seed, query, cells, sample, verbose)
     if (is.null(buffer$seed[[1L]]) || is.null(buffer$query[[1L]])) {
       return(vesalius_assay)
     }

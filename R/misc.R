@@ -54,6 +54,15 @@ listify <- function(mat) {
 }
 
 
+remove_suffix <- function(barcodes) {
+    prefix <- sapply(barcodes, function(dat){
+        prefix <- paste0(strsplit(x = dat, split = "-")[[1]][1:2], collapse = "-")
+        return(prefix)
+    })
+    return(prefix)
+}
+
+
 
 #------------------------/ Normalising Embeds /--------------------------------#
 

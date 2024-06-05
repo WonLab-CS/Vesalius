@@ -31,24 +31,10 @@ matched <- map_assays(vesalius,
     jitter_ves,
     threshold = 0,
     use_cost = c("feature","niche","territory","composition"),
-    batch_size = 2000,
-    epoch = 1)
-# cells <- sample(LETTERS[1:6], size = nrow(matched@territories),replace =T)
-# names(cells) <- matched@territories$barcodes
-# matched <- add_cells(matched, cells = cells, add_name = "Cells")
+    batch_size = 500,
+    epoch = 5,
+    jitter = 1)
 
-# matched <- generate_embeddings(matched)
-# matched <- smooth_image(matched, embedding = "PCA", sigma = 5, iter = 10)
-# matched <- equalize_image(matched, sleft = 5, sright = 5)
-# matched <- segment_image(matched, col_resolution = 2)
-# matched <- isolate_territories(matched)
-
-# Set up some basic params
-# set.seed(1547)
-# sub_ves <- sample(colnames(counts), size = 10)
-# sub_jitter <- sample(matched@tiles$barcodes, size = 10)
-# ter_ves <- c(1, 2)
-# ter_jitter <- c(1, 2)
 
 
 

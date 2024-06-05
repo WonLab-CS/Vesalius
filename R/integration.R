@@ -6,216 +6,157 @@
 ############################## COUNT INTEGRATION ##############################
 #-----------------------------------------------------------------------------#
 
-
-integrate_assays <- function(seed,
-    query,
-    method = "harmony",
+#' integrate counts from 2 vesalius assays
+#' @param mapped vesalius_assay object - matched veslius assay (map_assays)
+#' @param reference vesalius_assay object - reference vesalius_assay (seed)
+#' @param method character - count integration method (methods provided by 
+#' Seurat v5)
+#' @param infer logical - back infer original counts by reversing reduced 
+#' dimensional space roations. 
+#' @param use_counts character - which count matrix to use during integration
+#' @param verbose logical - should progressed message be printed
+#' @export 
+integrate_assays <- function(mapped,
+    reference,
+    method = "CCAIntegration",
+    nfeatures = 2000,
+    signal = "variable_features",
+    dimensions = 30,
     infer = TRUE,
     use_counts = "raw",
+    cell_label_mapped = "Cells",
+    cell_label_reference = "Cells",
     verbose = TRUE) {
+    simple_bar(verbose)
     #-------------------------------------------------------------------------#
-    # First check if mapping has been done
-    # If not we can just do the count integration
+    # check map and get counts - use only barcodes that were actually mapped
     #-------------------------------------------------------------------------#
-    query_map <- check_maps(query)
-    if (is.null(query_map)) {
-        message_switch("count_only",
-            verbose = verbose)
-        seed_counts <- get_counts(seed, type = use_counts)
-        query_counts <- get_counts(query, type = use_counts)
-    } else {
-        seed_counts <- get_counts(seed, type = use_counts)
-        seed_counts <- seed_counts[, match(query_map$mapping, colnames(seed_counts))] 
-        colnames(seed_counts) <- make.unique(mapped$prob$to, sep = "_")
-        query_counts <- get_counts(query, type = use_counts)
-        query_counts <- query_counts[, match(mapped$prob$from, colnames(query_counts))]
-        colnames(query_counts) <- make.unique(mapped$prob$from, sep = "-")
-    }
+    query_map <- check_maps(mapped)
 
-    counts <- integrate_counts(seed = seed,
-            query = query,
-            method = method,
-            infer = infer,
-            verbose = verbose)
-}
+    query_counts <- get_counts(mapped, type = use_counts)
+    #from <- remove_suffix(query_map$from)
+    from <- query_map$from
+    query_counts <- query_counts[, match(from, colnames(query_counts))]
 
-
-#' @export
-integrate_assays <- function(mapped,
-    query,
-    seed,
-    signal = "variable_features",
-    return_cost = FALSE,
-    threshold = 0.3,
-    allow_duplicates = TRUE,
-    seed_cell_labels = NULL,
-    query_cell_labels = NULL,
-    merge = TRUE,
-    verbose = TRUE) {
-    #-------------------------------------------------------------------------#
-    # filter based on threshold and duplicates
-    #-------------------------------------------------------------------------#
-    mapped <- filter_maps(mapped, threshold, allow_duplicates, verbose)
-    #-------------------------------------------------------------------------#
-    # prepare counts for integration 
-    # Vesalius won't like having duplicates so got to make sure that 
-    # all barcodes have unique names
-    # we also filter any cells that need to be removed
-    #-------------------------------------------------------------------------#
-    seed_counts <- get_counts(seed, type = "raw")
-    seed_counts <- seed_counts[, match(mapped$prob$to, colnames(seed_counts))] 
-    colnames(seed_counts) <- make.unique(mapped$prob$to, sep = "_")
-    query_counts <- get_counts(query, type = "raw")
-    query_counts <- query_counts[, match(mapped$prob$from, colnames(query_counts))]
-    colnames(query_counts) <- make.unique(mapped$prob$from, sep = "-")
-    integrated <- integrate_counts(seed_counts, query_counts, signal, verbose)
-    counts <- integrated$counts
-    embeds <- integrated$embeds
-    comment(counts) <- "integrated"
-    comment(embeds) <- "CCA"
-    #-------------------------------------------------------------------------#
-    # Prepare coordinates
-    #-------------------------------------------------------------------------#
-    seed_coord <- get_coordinates(seed,
-        original = TRUE)[, c("barcodes","x_orig","y_orig","z")]
-    colnames(seed_coord) <- c("barcodes", "x","y","z")
-    seed_coord <- seed_coord[match(mapped$prob$to, seed_coord$barcodes), ]
-    seed_coord <- adjust_duplicated_coord(seed_coord)
-    query_coord <- align_index(mapped$prob, seed_coord)
-    query_coord$z <- max(seed_coord$z) + 1
-    #query_coord <- query_coord[match(mapped$prob$from, query_coord$barcodes), ]
-    
-    #-------------------------------------------------------------------------#
-    # check for images
-    #-------------------------------------------------------------------------#
-    seed_image <- check_image(seed, image_name = NULL, as_is = TRUE)
-    query_image <- check_image(query, image_name = NULL, as_is = TRUE)
+    reference_counts <- get_counts(reference, type = use_counts)
+    #to <- remove_suffix(query_map$to)
+    to <- query_map$to
+    reference_counts <- reference_counts[, match(to, colnames(reference_counts))] 
 
     #-------------------------------------------------------------------------#
-    # check scales
+    # Count integration using Seurat methods 
+    # Using harmony as default since it seems that it is the best method
     #-------------------------------------------------------------------------#
-    seed_scale <- seed@meta[c("scale","unit")]
-    query_scale <- query@meta[c("scale","unit")]
+    integrated <- integrate_counts(matched = query_counts,
+        reference = reference_counts,
+        method = method,
+        nfeatures = nfeatures,
+        infer = infer,
+        signal = signal,
+        verbose = verbose)
     #-------------------------------------------------------------------------#
-    # check for cell type annotations
+    # Construct vesalius object 
     #-------------------------------------------------------------------------#
-    seed_cells <- check_cell_labels(seed, seed_cell_labels)
-    locs <- match(mapped$prob$to, seed_cells$barcodes)
-    seed_cells <- cbind(
-        seed_coord,
-        seed_cells$trial[locs[!is.na(locs)]])
-    colnames(seed_cells) <- c("barcodes", "x", "y", "z", "Cells")
-    seed_cells$barcodes <- make.unique(mapped$prob$to, sep = "_")
-    
-    query_cells <- check_cell_labels(query, query_cell_labels)
-    locs <- match(mapped$prob$from, query_cells$barcodes)
-    query_cells <- cbind(
-        query_coord,
-        query_cells$trial[locs[!is.na(locs)]])
-    
-    colnames(query_cells) <- c("barcodes", "x", "y", "z", "Cells")
-    query_cells$barcodes <- make.unique(mapped$prob$from, sep = "_")
-    #-------------------------------------------------------------------------#
-    # rebuild object
-    #-------------------------------------------------------------------------#
-    if (merge) {
-        vesalius_assay <- new("vesalius_assay")
-        vesalius_assay@assay <- "mapped"
-        vesalius_assay@tiles <- check_coordinates(
-            rbind(seed_coord, query_coord),
-            "mapped",
-            verbose = FALSE)
-        vesalius_assay@active <- embeds
-        vesalius_assay@embeddings <- setNames(list(embeds),"CCA")
-        vesalius_assay@counts <- counts
-        vesalius_assay@territories <- rbind(seed_cells, query_cells)
-        vesalius_assay@image <- list("image" = seed_image)
-        vesalius_assay@meta <- c(seed_scale,
-            "orig_coord" = list(rbind(seed_coord, query_coord)),
-            "mapping_scores" = list(mapped$prob))
-        if (return_cost){
-            vesalius_assay@meta$cost <- mapped$cost
-        }
-
-    } else {
-        vesalius_assay_2 <- new("vesalius_assay")
-        vesalius_assay_2@assay <- "query"
-        vesalius_assay_2@tiles <- check_coordinates(
-            query_coord,
-            "query",
-            verbose = FALSE)
-        counts_2 <- counts[c("raw_2","log_norm_2","integrated")]
-        names(counts_2) <- c("raw","log_norm","integrated")
-        comment(counts_2) <- "integrated"
-        counts_2$integrated <- counts_2$counts[,query_coord$barcodes]
-        vesalius_assay_2@counts <- counts_2
-        vesalius_assay_2@territories <- query_cells
-        vesalius_assay_2@image <- list("image" = query_image)
-        vesalius_assay_2@meta <- c(query_scale,
-            "orig_coord" = list(query_coord),
-            "mapping_scores" = list(mapped$prob))
-        vesalius_assay_1 <- new("vesalius_assay")
-        vesalius_assay_1@assay <- "reference"
-        vesalius_assay_1@tiles <- check_coordinates(
-            seed_coord,
-            "reference",
-            verbose = FALSE)
-        counts_1 <- counts[c("raw_1","log_norm_1","integrated")]
-        names(counts_1) <- c("raw","log_norm","integrated")
-        comment(counts_1) <- "integrated"
-        counts_1$integrated <- counts_1$counts[,seed_coord$barcodes]
-        vesalius_assay_1@counts <- counts_1
-        vesalius_assay_1@territories <- seed_cells
-        vesalius_assay_1@image <- list("image" = seed_image)
-        vesalius_assay_1@meta <- c(seed_scale,
-            "orig_coord" = list(seed_coord),
-            "mapping_scores" = list(mapped$prob))
-        if (return_cost){
-            vesalius_assay_1@meta$cost <- mapped$cost
-            vesalius_assay_2@meta$cost <- mapped$cost
-        }
-        vesalius_assay <- list("seed" = vesalius_assay_1,
-            "query" = vesalius_assay_2)
-    }
+    coordinates <- merge_coordinates(mapped,
+        reference,
+        rownames(integrated$integrated))
+    territories <- merge_territories(mapped,
+        reference,
+        coordinates,
+        cell_label_mapped,
+        cell_label_reference)
+    cells <- merge_cells(mapped,
+        reference,
+        rownames(integrated$integrated),
+        cell_label_mapped,
+        cell_label_reference)
+    vesalius_assay <- build_vesalius_assay(coordinates = coordinates, verbose = FALSE)
+    vesalius_assay <- update_vesalius_assay(vesalius_assay,
+        data = integrated$counts,
+        slot = "counts",
+        append = FALSE)
+    vesalius_assay <- update_vesalius_assay(vesalius_assay,
+        data = integrated["integrated"],
+        slot = "embeddings",
+        append = TRUE)
+    vesalius_assay <- update_vesalius_assay(vesalius_assay,
+        data = integrated[["integrated"]],
+        slot = "active",
+        append = FALSE)
+    vesalius_assay <- update_vesalius_assay(vesalius_assay,
+        data = territories,
+        slot = "territories",
+        append = FALSE)
+    vesalius_assay <- update_vesalius_assay(vesalius_assay,
+        data = mapped@map,
+        slot = "map",
+        append = FALSE)
+    vesalius_assay <- update_vesalius_assay(vesalius_assay,
+        data = mapped@cost,
+        slot = "cost",
+        append = FALSE)
+    vesalius_assay <- add_cells(vesalius_assay, cells = cells, verbose = FALSE)
+    message_switch("integrated_embed", verbose, tag = "integrated")
+    vesalius_assay <- add_active_embedding_tag(vesalius_assay, "integrated")
+    message_switch("integrated_counts", verbose,
+        tag = ifelse(infer, "inferred","scaled"))
+    vesalius_assay <- add_active_count_tag(vesalius_assay,
+        norm = ifelse(infer, "inferred","scaled"))
+    commit <- create_commit_log(arg_match = as.list(match.call()),
+      default = formals(integrate_assays))
+    vesalius_assay <- commit_log(vesalius_assay,
+      commit,
+      "Integrated")
+    simple_bar(verbose)
     return(vesalius_assay)
 }
 
-
 #' @importFrom Seurat CreateSeuratObject NormalizeData FindVariableFeatures
 #' @importFrom Seurat ScaleData RunPCA IntegrateLayers
-integrate_counts <- function(seed,
-    query,
-    signal,
+integrate_counts <- function(matched,
+    reference,
+    features,
+    method = "HarmonyIntegration",
+    nfeatures = 2000,
+    dimensions = 30,
+    infer = FALSE,
+    signal = "variable_features",
     verbose) {
+    
     message_switch("integrate",verbose)
-    seed_cells <- colnames(seed)
-    seed_genes <- rownames(seed)
-    seed <- Seurat::CreateSeuratObject(seed)
-    query_cells <- colnames(query)
-    query_genes <- rownames(query)
-    query <- Seurat::CreateSeuratObject(query)
-    integrated <- merge(seed, query)
+    matched_cells <- colnames(matched)
+    matched_genes <- rownames(matched)
+    matched <- Seurat::CreateSeuratObject(matched)
+    reference_cells <- colnames(reference)
+    reference_genes <- rownames(reference)
+    reference <- Seurat::CreateSeuratObject(reference)
+    integrated <- merge(reference, matched)
     integrated <- integrated %>% 
         Seurat::NormalizeData(verbose = FALSE) %>%
-        Seurat::FindVariableFeatures(verbose = FALSE, nfeatures = 2000) %>%
+        Seurat::FindVariableFeatures(verbose = FALSE, nfeatures = nfeatures) %>%
         Seurat::ScaleData(verbose = FALSE) %>%
-        Seurat::RunPCA(verbose = FALSE)
+        Seurat::RunPCA(verbose = FALSE, npcs = dimensions)
     features <- check_feature_integration(signal, integrated)
     integrated <- Seurat::IntegrateLayers(integrated,
-        method = "CCAIntegration",
+        method = method,
         new.reduction = "integrated",
         features = features,
         verbose = FALSE)
     counts <- integrated@assays$RNA@layers
     counts <- rename_counts(counts,
-        seed_cells,
-        seed_genes,
-        query_cells,
-        query_genes,
+        reference_cells,
+        reference_genes,
+        matched_cells,
+        matched_genes,
         features)
-    counts <- back_infer(counts, integrated@reductions$integrated)
+    if (infer) {
+        back <- back_infer(counts, integrated@reductions$integrated)
+        tags <- c(names(counts), "inferred")
+        counts <- c(counts, back)
+        names(counts) <- tags
+    }
     integrated <- integrated@reductions$integrated@cell.embeddings
-    return(list("counts" = counts, "embeds" = integrated))
+    return(list("counts" = counts, "integrated" = integrated))
 }
 
 
@@ -225,7 +166,7 @@ rename_counts <- function(counts,
     query_cells,
     query_genes,
     features) {
-    seed <- lapply(counts[c(1,3)],function(counts, names){
+    seed <- lapply(counts[c("counts.1","data.1")],function(counts, names){
             colnames(counts) <- names
             return(counts)
         }, names = seed_cells)
@@ -233,7 +174,7 @@ rename_counts <- function(counts,
             rownames(counts) <- names
             return(counts)
         }, names = seed_genes)
-    query <- lapply(counts[c(2,4)],function(counts, names){
+    query <- lapply(counts[c("counts.2","data.2")],function(counts, names){
             colnames(counts) <- names
             return(counts)
         }, names = query_cells)
@@ -241,7 +182,7 @@ rename_counts <- function(counts,
             rownames(counts) <- names
             return(counts)
         }, names = query_genes)
-    intergrated <- counts[[5]]
+    intergrated <- counts[["scale.data"]]
     colnames(intergrated) <- c(seed_cells, query_cells)
     rownames(intergrated) <- features
     counts <- c(seed,query, list(intergrated))
@@ -263,6 +204,86 @@ back_infer <- function(counts, embeds) {
     back <- embeds@cell.embeddings %*% t(embeds@feature.loadings)
     back <- t(scale(back, center = -mu, scale = FALSE))
     back[which(back <= 0, arr.ind = TRUE)] <- 0
-    counts <- c(counts, setNames(list(Matrix(back)), "integrated"))
-    return(counts)
+    return(list(back))
+}
+
+
+merge_coordinates <- function(matched, reference, barcodes) {
+    matched <- get_coordinates(matched, original = TRUE)
+    colnames(matched) <- c("barcodes", "x","y")
+    reference <- get_coordinates(reference, original = TRUE)
+    colnames(reference) <- c("barcodes", "x","y")
+    merged <- rbind(matched, reference)
+    locs <- paste0(merged$x,"_",merged$y)
+    dups <- duplicated(locs)
+    while (sum(dups) > 0) {
+        warning("No duplicated coordinates allowed - Adding noise!")    
+        merged$x[dups] <- jitter(merged$x[dups], amount = 1)
+        merged$y[dups] <- jitter(merged$y[dups], amount = 1)
+        locs <- paste0(merged$x,"_",merged$y)
+        dups <- duplicated(locs)
+    }
+    colnames(merged) <- c("barcodes", "x","y")
+    merged <- merged[merged$barcodes %in% barcodes, c("barcodes", "x","y")]
+    return(merged)
+}
+
+merge_territories <- function(matched,
+    reference,
+    coordinates,
+    cell_label_mapped,
+    cell_label_reference) {
+    matched <- get_territories(matched)
+    matched_barcodes <- matched$barcodes
+    reference <- get_territories(reference)
+    reference_barcodes <- reference$barcodes
+    if (!is.null(matched)){
+        matched <- right_join(matched, coordinates, by = "barcodes")
+        matched <- matched[,grep(x = colnames(matched),pattern = cell_label_mapped, invert = TRUE)]
+        matched <- data.frame(matched[ ,!colnames(matched) %in% c("barcodes","x.x","y.x","x.y","y.y")])
+        if (ncol(matched) > 0){
+            colnames(matched) <- paste0("mapped_", colnames(matched))
+        }
+        
+    }
+    if (!is.null(reference)) {
+        reference <- right_join(reference, coordinates, by = "barcodes")
+        reference <- reference[,grep(x = colnames(reference),pattern = cell_label_reference, invert = TRUE)]
+        reference <- data.frame(reference[ ,!colnames(reference) %in% c("barcodes","x.x","y.x","x.y","y.y")])
+        if (ncol(reference) > 0){
+            colnames(reference) <- paste0("ref_", colnames(reference))
+        }
+    }
+    coordinates$sample <- NA
+    coordinates$sample[coordinates$barcodes %in% matched_barcodes] <- "matched"
+    coordinates$sample[coordinates$barcodes %in% reference_barcodes] <- "reference"
+    merged <- cbind(coordinates, matched,reference)
+    rownames(merged) <- NULL
+    return(merged)
+}
+
+merge_cells <- function(matched,
+    reference,
+    barcodes,
+    cell_labels_matched,
+    cell_labels_reference) {
+    matched <- get_territories(matched)
+    matched_cells <- which(colnames(matched) %in% cell_labels_matched)
+    if (length(matched_cells) > 0){
+        matched_cells <- matched[, matched_cells]
+        names(matched_cells) <- matched$barcodes
+    } else {
+        matched_cells <- NULL
+    }
+    reference <- get_territories(reference)
+    reference_cells <- which(colnames(reference) %in% cell_labels_reference)
+    if (length(reference_cells) > 0){
+        reference_cells <- reference[, reference_cells]
+        names(reference_cells) <- reference$barcodes
+    } else {
+        reference_cells <- NULL
+    }
+    merged_cells <- c(matched_cells,reference_cells)
+    merged_cells <- merged_cells[names(merged_cells) %in% barcodes]
+    return(merged_cells)
 }

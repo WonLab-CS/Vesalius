@@ -215,6 +215,7 @@ get_composition <- function(seed_assay,
 #' @export
 get_metric_clusters <- function(vesalius_assay,
     use_cost = "feature",
+    cluster_method = "hclust",
     distance = "euclidean",
     trial = NULL,
     group_identity = NULL,
@@ -223,6 +224,8 @@ get_metric_clusters <- function(vesalius_assay,
     query_cells = NULL,
     h = 0.75,
     k = NULL,
+    nn = 30,
+    resolution = 1,
     verbose = TRUE,
     ...) {
     simple_bar(verbose)
@@ -242,21 +245,21 @@ get_metric_clusters <- function(vesalius_assay,
         group_identity = group_identity,
         ref_cells = ref_cells,
         query_cells = query_cells)
-   
-    score <- score[rownames(score) %in% cells$query, cells$ref]
+    score <- score[match(cells$query, rownames(score)), cells$ref]
     #-------------------------------------------------------------------------#
     # clustering 
     #-------------------------------------------------------------------------#
-    clusters <- hclust(dist(score, method = distance))
-    h <- h * (max(clusters$height) - min(clusters$height) / max(clusters$height))
-    clusters <- cutree(clusters, h = h, k = k)
+    clusters <- switch(EXPR = cluster_method,
+        "hclust" = hclust_scores(score, h, k, distance, verbose),
+        "louvain" = louvain_scores(score, resolution, nn, verbose),
+        "leiden" = leiden_scores(score, resolution, nn, verbose))
     #-------------------------------------------------------------------------#
     # rebuilding and adding to map slot 
     # for this we need to create a tag for both 
     #-------------------------------------------------------------------------#
     trial <- vesalius_assay@territories
     trial$trial <- "Not Selected"
-    locs <- match(names(clusters), trial$barcodes)
+    locs <- match(make.unique(names(clusters),sep = "-"), trial$barcodes)
     trial$trial[locs[!is.na(locs)]] <- unname(clusters)
     new_trial <- create_trial_tag(colnames(trial),
         "Map_cluster") %>%
@@ -277,6 +280,78 @@ get_metric_clusters <- function(vesalius_assay,
   simple_bar(verbose)
   return(vesalius_assay)
 }
+
+#' hclust of mapping scores
+#' @param score matrix containing mapping scores
+#' @param h cutree height will take precedent over k
+#' @param k number of cluster to get from hclust
+#' @param distance which distance metric should be used to compute hclust
+#' @param verbose logical for progress message output
+#' @return named vector - vector = clusters and names = barcodes
+#' @importFrom stats hclust cutree
+hclust_scores <- function(score, h, k, distance, verbose) {
+    message_switch("hclust_scores", verbose)
+    clusters <- hclust(dist(score, method = distance))
+    h <- h * (max(clusters$height) - min(clusters$height) / max(clusters$height))
+    clusters <- cutree(clusters, h = h, k = k)
+    return(clusters)
+}
+
+
+#' louvain clustering applied to mapping scores
+#' @param scores matrix containing mapping scores
+#' @param resolution numeric - clustering resolution
+#' @param nn integer - number of nearest neighbors based on scores
+#' @param verbose logical - if progress message should be printed
+#' @details Unweighted louvain custering could be weighted by score
+#' this could help discriminate of scores are low but still above 
+#' filter criteria
+#' @return named vector - vector = clusters and names = barcodes
+#' @importFrom igraph graph_from_data_frame cluster_louvain
+louvain_scores <- function(score, resolution, nn, verbose) {
+    message_switch("louvain_scores", verbose)
+    locs <- lapply(seq_len(nrow(score)), function(idx, scores, nn){
+        locs <- order(scores[idx, ],decreasing = TRUE)[seq(1,nn)]
+        local_graph <- data.frame("from" = rownames(scores)[idx],
+            "to" = colnames(score)[locs])
+        return(local_graph)
+    }, scores = score, nn = nn)
+    graph <- do.call("rbind", locs)
+    graph <- igraph::graph_from_data_frame(graph, directed = FALSE)
+    clusters <- igraph::cluster_louvain(graph, resolution = resolution)
+    cluster <- clusters$membership
+    names(cluster) <- clusters$names
+    cluster <- cluster[!names(cluster) %in% colnames(score)]
+    return(cluster)
+}
+
+#' leiden clustering applied to mapping scores
+#' @param scores matrix containing mapping scores
+#' @param resolution numeric - clustering resolution
+#' @param nn integer - number of nearest neighbors based on scores
+#' @param verbose logical - if progress message should be printed
+#' @details Unweighted leiden custering could be weighted by score
+#' this could help discriminate of scores are low but still above 
+#' filter criteria
+#' @return named vector - vector = clusters and names = barcodes
+#' @importFrom igraph graph_from_data_frame cluster_leiden
+leiden_scores <- function(score, resolution, nn, verbose) {
+    message_switch("louvain_scores", verbose)
+    locs <- lapply(seq_len(nrow(score)), function(idx, scores, nn){
+        locs <- order(scores[idx, ],decreasing = TRUE)[seq(1,nn)]
+        local_graph <- data.frame("from" = rownames(scores)[idx],
+            "to" = colnames(score)[locs])
+        return(local_graph)
+    }, scores = score, nn = nn)
+    graph <- do.call("rbind", locs)
+    graph <- graphigraph::graph_from_data_frame(graph, directed = FALSE)
+    clusters <- igraph::cluster_leiden(graph, resolution_parameter = resolution)
+    cluster <- clusters$membership
+    names(cluster) <- clusters$names
+    cluster <- cluster[!names(cluster) %in% colnames(score)]
+    return(cluster)
+}
+
 
 
 get_cost_contribution <- function(vesalius_assay,

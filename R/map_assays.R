@@ -273,6 +273,7 @@ point_mapping <- function(query_signal,
         names(cost)[length(cost)] <-  "feature"
 
     }
+     
     #--------------------------------------------------------------------------#
     # Correlation between the cellular niche centered around the cell
     #--------------------------------------------------------------------------#
@@ -354,8 +355,6 @@ point_mapping <- function(query_signal,
     names(cost)[length(cost)] <- "total_cost"
     #--------------------------------------------------------------------------#
     # devide cost matrix
-    #--------------------------------------------------------------------------#
-    #
     matched_indices <- optimize_matching(cost$total_cost,
         batch_size,
         epochs)
@@ -465,6 +464,7 @@ signal_similarity <- function(seed, query, method = "pearson") {
         cost <- do.call("rbind", local_cost)
         total_cost[[i]] <- cost
     }
+   
     #-------------------------------------------------------------------------#
     # Rebuild total matrix
     #-------------------------------------------------------------------------#
@@ -851,11 +851,10 @@ filter_maps <- function(mapped, threshold, allow_duplicates, verbose) {
     cost <- mapped$cost
     cost <- lapply(cost,
         function(cost, row, col) {
-            return(cost[row, col])
+            return(cost[unique(row), unique(col)])
         },row = map_score$from,
         col = map_score$to)
     mapped$cost <- cost
-    
     return(mapped)
 }
 
@@ -873,7 +872,6 @@ build_mapped_assay <- function(mapped,
     mapped_scores <- mapped$prob
     mapped_cost <- mapped$cost
     mapped_cost_by_epoch <-  mapped$cost_by_epoch
-    cost <- list("cost" = mapped_cost, "cost_by_epoch" = mapped_cost_by_epoch)
     #-------------------------------------------------------------------------#
     # Filter raw counts using mapped
     #-------------------------------------------------------------------------#
@@ -898,7 +896,7 @@ build_mapped_assay <- function(mapped,
         rownames(x) <- make.unique(rownames(x), sep = "-")
         return(x)
     })
-    
+    cost <- list("cost" = mapped_cost, "cost_by_epoch" = mapped_cost_by_epoch)
     #-------------------------------------------------------------------------#
     # Meta
     #-------------------------------------------------------------------------#
@@ -926,6 +924,7 @@ build_mapped_assay <- function(mapped,
     #-------------------------------------------------------------------------#
     # Building assay
     #-------------------------------------------------------------------------#
+    
     mapped <- build_vesalius_assay(coordinates = coord,
         counts = counts,
         image = image,

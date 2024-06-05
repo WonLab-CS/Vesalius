@@ -132,7 +132,7 @@ test_that("Scale of coordinates",{
     vesalius <- build_vesalius_assay(coordinates,
         counts, scale = 15)
     expect_equal(vesalius@meta$scale$scale, 15)
-    expect_equal(vesalius@meta$unit$unit, "um")
+    expect_equal(vesalius@meta$unit, "um")
 })
 
 test_that("Adding Cells",{

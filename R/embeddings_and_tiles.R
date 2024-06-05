@@ -338,8 +338,9 @@ generate_tiles <- function(vesalius_assay,
     territory_coord <- filter(tiles, origin == 1) %>%
         select(c("barcodes","x","y"))
     tmp <- vesalius_assay@territories
-    territory_coord <- data.frame(territory_coord,
-        tmp[,!colnames(tmp) %in% c("barcodes","x","y")])
+    territory_coord <- left_join(territory_coord, tmp, by = "barcodes")
+    territory_coord <- territory_coord[, 
+        !colnames(territory_coord) %in% c("x.y","y.y")]
     colnames(territory_coord) <- colnames(tmp)
     vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
         data = territory_coord,
