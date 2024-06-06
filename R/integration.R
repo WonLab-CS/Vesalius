@@ -227,7 +227,7 @@ merge_coordinates <- function(matched, reference, barcodes) {
     merged <- merged[merged$barcodes %in% barcodes, c("barcodes", "x","y")]
     return(merged)
 }
-
+#' @importFrom dplyr right_join
 merge_territories <- function(matched,
     reference,
     coordinates,
