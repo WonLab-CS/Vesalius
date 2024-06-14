@@ -219,9 +219,9 @@ get_metric_clusters <- function(vesalius_assay,
     distance = "euclidean",
     trial = NULL,
     group_identity = NULL,
-    by_similarity = TRUE,
     ref_cells = NULL,
     query_cells = NULL,
+    top_nn = 30,
     h = 0.75,
     k = NULL,
     nn = 30,
@@ -235,7 +235,7 @@ get_metric_clusters <- function(vesalius_assay,
     # set up cost matrics 
     #-------------------------------------------------------------------------#
     cost <- get_cost(vesalius_assay, use_cost)
-    score <- concat_cost(cost, use_cost, complement = !by_similarity)[[1L]]
+    score <- concat_cost(cost, use_cost, complement = FALSE)[[1L]]
     #-------------------------------------------------------------------------#
     # get barcodes representing cells / sub group of cells 
     #-------------------------------------------------------------------------#
@@ -245,12 +245,15 @@ get_metric_clusters <- function(vesalius_assay,
         group_identity = group_identity,
         ref_cells = ref_cells,
         query_cells = query_cells)
-    score <- score[match(cells$query, rownames(score)), cells$ref]
+    query_cells <- match(cells$query, rownames(score))
+    ref_cells <- match(cells$ref, colnames(score))
+    score <- score[query_cells[!is.na(query_cells)],ref_cells[!is.na(ref_cells)]]
+    score <- overlap_distance_matrix(score, top_nn, verbose)
     #-------------------------------------------------------------------------#
     # clustering 
     #-------------------------------------------------------------------------#
     clusters <- switch(EXPR = cluster_method,
-        "hclust" = hclust_scores(score, h, k, distance, verbose),
+        "hclust" = hclust_scores(score,  h, k, distance,  verbose),
         "louvain" = louvain_scores(score, resolution, nn, verbose),
         "leiden" = leiden_scores(score, resolution, nn, verbose))
     #-------------------------------------------------------------------------#
@@ -281,42 +284,25 @@ get_metric_clusters <- function(vesalius_assay,
   return(vesalius_assay)
 }
 
-#' hclust of mapping scores
-#' @param score matrix containing mapping scores
-#' @param h cutree height will take precedent over k
-#' @param k number of cluster to get from hclust
-#' @param distance which distance metric should be used to compute hclust
-#' @param verbose logical for progress message output
-#' @return named vector - vector = clusters and names = barcodes
-#' @importFrom stats hclust cutree
 hclust_scores <- function(score, h, k, distance, verbose) {
     message_switch("hclust_scores", verbose)
-    clusters <- hclust(dist(score, method = distance))
+    clusters <- hclust(as.dist(score))
     h <- h * (max(clusters$height) - min(clusters$height) / max(clusters$height))
     clusters <- cutree(clusters, h = h, k = k)
     return(clusters)
 }
 
 
-#' louvain clustering applied to mapping scores
-#' @param scores matrix containing mapping scores
-#' @param resolution numeric - clustering resolution
-#' @param nn integer - number of nearest neighbors based on scores
-#' @param verbose logical - if progress message should be printed
-#' @details Unweighted louvain custering could be weighted by score
-#' this could help discriminate of scores are low but still above 
-#' filter criteria
-#' @return named vector - vector = clusters and names = barcodes
-#' @importFrom igraph graph_from_data_frame cluster_louvain
+
+
 louvain_scores <- function(score, resolution, nn, verbose) {
     message_switch("louvain_scores", verbose)
-    locs <- lapply(seq_len(nrow(score)), function(idx, scores, nn){
-        locs <- order(scores[idx, ],decreasing = TRUE)[seq(1,nn)]
-        local_graph <- data.frame("from" = rownames(scores)[idx],
-            "to" = colnames(score)[locs])
-        return(local_graph)
-    }, scores = score, nn = nn)
-    graph <- do.call("rbind", locs)
+    nn <- min(c(nn, nrow(score)))
+    graph <- lapply(seq_len(ncol(score)),function(idx, score, nn) {
+        return(order(score[, idx], decreasing = TRUE)[seq(1, nn)])
+    })
+    graph <- do.call("rbind",graph)
+    graph <- populate_graph(graph)
     graph <- igraph::graph_from_data_frame(graph, directed = FALSE)
     clusters <- igraph::cluster_louvain(graph, resolution = resolution)
     cluster <- clusters$membership
@@ -325,26 +311,14 @@ louvain_scores <- function(score, resolution, nn, verbose) {
     return(cluster)
 }
 
-#' leiden clustering applied to mapping scores
-#' @param scores matrix containing mapping scores
-#' @param resolution numeric - clustering resolution
-#' @param nn integer - number of nearest neighbors based on scores
-#' @param verbose logical - if progress message should be printed
-#' @details Unweighted leiden custering could be weighted by score
-#' this could help discriminate of scores are low but still above 
-#' filter criteria
-#' @return named vector - vector = clusters and names = barcodes
-#' @importFrom igraph graph_from_data_frame cluster_leiden
 leiden_scores <- function(score, resolution, nn, verbose) {
     message_switch("louvain_scores", verbose)
-    locs <- lapply(seq_len(nrow(score)), function(idx, scores, nn){
-        locs <- order(scores[idx, ],decreasing = TRUE)[seq(1,nn)]
-        local_graph <- data.frame("from" = rownames(scores)[idx],
-            "to" = colnames(score)[locs])
-        return(local_graph)
-    }, scores = score, nn = nn)
-    graph <- do.call("rbind", locs)
-    graph <- graphigraph::graph_from_data_frame(graph, directed = FALSE)
+    graph <- lapply(seq_len(ncol(score)),function(idx, score, nn) {
+        return(order(score[, idx], decreasing = TRUE)[seq(1, nn)])
+    })
+    graph <- do.call("rbind",graph)
+    graph <- populate_graph(graph)
+    graph <- igraph::graph_from_data_frame(graph, directed = FALSE)
     clusters <- igraph::cluster_leiden(graph, resolution_parameter = resolution)
     cluster <- clusters$membership
     names(cluster) <- clusters$names
@@ -352,7 +326,36 @@ leiden_scores <- function(score, resolution, nn, verbose) {
     return(cluster)
 }
 
-
+#' create a distance matrix based on mapping scores overlaps
+#' @param score matrix - cost matrix 
+#' @param top_nn integer nearest neighbors
+#' @param dec logical - if order should be decreasing i.e return cost or score
+overlap_distance_matrix <- function(score, top_nn, verbose) {
+    message_switch("overlap_scores", verbose)
+    top_nn <- min(c(top_nn, ncol(score)))
+    rows <- rownames(score)
+    score <- lapply(seq_len(nrow(score)), function(i, score, top_nn) {
+        return(as.character(order(score[i, ], decreasing = TRUE)[seq(1, top_nn)]))
+    }, score =score, top_nn = top_nn)
+    tmp <- vector("list", length(score))
+    for (i in seq_along(score)) {
+        local_seed <- score[i]
+        buffer <- future_lapply(seq_along(score),
+            function(idx, score, local_seed) {
+            local_query <- score[idx]
+            local_score <- jaccard_cost(local_seed,local_query)
+            colnames(local_score) <- names(local_seed)
+            rownames(local_score) <- names(local_query)
+            return(local_score)
+        }, score = score, local_seed = local_seed)
+        buffer <- do.call("rbind", buffer)
+        tmp[[i]] <- buffer
+    }
+    tmp <- do.call("cbind", tmp)
+    colnames(tmp) <- rows
+    rownames(tmp) <- rows
+    return(1 - tmp)
+}
 
 get_cost_contribution <- function(vesalius_assay,
     method = "dispersion",

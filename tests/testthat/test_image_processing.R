@@ -201,3 +201,11 @@ test_that("Vesalius assay works as expect with isolate ter", {
     tmp <- isolate_territories(tmp)
     expect_output(show(tmp))
 })
+
+
+test_that("Gradient segmentation works as expected", {
+    tmp <- segment_gradient(vesalius)
+    expect_s4_class(segment_gradient(vesalius),
+        "vesalius_assay")
+    
+})

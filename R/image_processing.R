@@ -668,12 +668,12 @@ assign_centers <- function(vesalius_assay,
   ratio = NULL) {
   #sp <- map(1:spectrum(images),~ km$centers[km$cluster,2+.]) %>% do.call(c,.) %>% as.cimg(dim=dim(images))
   active <- vesalius_assay@active
-  for (d in dimensions) {
-      tmp <- kcenters[clusters$Segment, d]
+  for (d in seq_along(dimensions)) {
+      tmp <- kcenters[clusters$Segment, dimensions[d]]
       if (!is.null(ratio)) {
         tmp <- tmp / ratio 
       }
-      active[, d] <- tmp
+      active[, dimensions[d]] <- tmp
   }
   return(active)
 }
@@ -1290,6 +1290,115 @@ hex_grid <- function(coordinates, n_centers, return_index = TRUE) {
     
 }
 
+
+#' Segment gradients from images 
+#' @export 
+segment_gradient <- function(vesalius_assay,
+    dimensions = seq(1,3),
+    embedding = "last",
+    gradients = 10,
+    kernel = NULL,
+    verbose = TRUE) {
+    simple_bar(verbose)
+    if (is(vesalius_assay, "vesalius_assay")) {
+        assay <- get_assay_names(vesalius_assay)
+        images <- format_ves_to_c(vesalius_assay = vesalius_assay,
+            embed = embedding,
+            dims = dimensions,
+            verbose = verbose)
+        #kernel <- check_gradient_kernel(kernel)
+    } else {
+        stop("Unsupported format to segment_gradient function")
+    }
+    #--------------------------------------------------------------------------#
+    # get gradients across images 
+    #--------------------------------------------------------------------------#
+    #message_switch("smooth", verbose)
+    images <- future_lapply(images, compute_gradient, future.seed = TRUE)
+
+    images <- unlist(images, recursive = FALSE)
+    names(images) <- paste0("grad_", seq(1, length(images)))
+
+    images <- lapply(images, function(img, tiles){
+        img <- as.data.frame(img)
+        img <- right_join(img, tiles, by = c("x","y"))
+        img <- img[,c("barcodes","x","y","value")]
+        return(img)
+    },tiles = get_tiles(vesalius_assay))
+    
+    images <- lapply(images, function(img) {
+        img <- split(img, img$barcodes)
+        img <- lapply(img, function(img) {
+            if ( max(img$value) > min(img$value)) {
+                img$value <- max(img$value)
+            } else {
+                img$value <- min(img$value)
+            }
+            return(img)
+        })
+        img <- do.call("rbind",img)
+        img$value <- min_max(img$value)
+        return(img[,c("x","y","value")])
+    })
+
+    active <- matrix(0,
+        ncol = max(dimensions) * 2,
+        nrow = nrow(vesalius_assay@active))
+    rownames(active) <- rownames(vesalius_assay@active)
+    colnames(active) <- names(images)
+    vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
+        data = active,
+        slot = "active",
+        append = FALSE)
+    vesalius_assay <- add_active_embedding_tag(vesalius_assay, embedding)
+    grads <- format_c_to_ves(images,
+        vesalius_assay,
+        dims = seq(1, ncol(active)),
+        embed = embedding,
+        verbose = verbose)
+    coord <- get_tiles(vesalius_assay) %>%
+        filter(origin == 1)
+    #--------------------------------------------------------------------------#
+    # Now lets cluster colours
+    # Remember that here colours are your new active embedding values
+    #--------------------------------------------------------------------------#
+
+    km <- suppressWarnings(kmeans(grads,
+        gradients,
+        iter.max = 10000,
+        nstart = 10))
+    clusters <- km$cluster
+    kcenters <- km$centers
+    match_loc <- match(coord$barcodes, names(clusters))
+    clusters <- data.frame(coord, "Segment" = clusters[match_loc])
+    #active <- assign_centers(vesalius_assay, clusters, kcenters, seq_len(ncol(active)))
+    new_trial <- create_trial_tag(colnames(vesalius_assay@territories),
+        "Gradient") %>%
+        tail(1)
+    colnames(clusters) <- gsub("Gradient", new_trial, colnames(clusters))
+    
+    vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
+        data = grads,
+        slot = "active",
+        append = FALSE)
+    vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
+        data = clusters,
+        slot = "territories",
+        append = TRUE)
+    vesalius_assay <- add_active_embedding_tag(vesalius_assay, embedding)
+    commit <- create_commit_log(arg_match = as.list(match.call()),
+        default = formals(segment_gradient))
+    vesalius_assay <- commit_log(vesalius_assay,
+        commit,
+        get_assay_names(vesalius_assay))
+    simple_bar(verbose)
+    return(vesalius_assay)
+}
+
+compute_gradient <- function(cimg, kernel){
+    cimg <- cimg %>% imgradient(axes = "xy")
+    return(list("x" = cimg[[1]], "y" = cimg[[2]]))
+}
 
 
 #' isolating territories from vesalius image segments

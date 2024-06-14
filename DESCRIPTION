@@ -27,9 +27,9 @@ Collate: image_processing.R
     map_assays.R
     map_metrics.R
     interoperability.R
-    RcppExports.R
     vesalius.R
     integration.R
+    RcppExports.R
 Depends: R (>= 4.0.0)
 LinkingTo: Rcpp
 Imports:
@@ -61,7 +61,6 @@ Imports:
     pwr,
     purrr,
     patchwork,
-    RcppHungarian,
     ggnewscale,
     kohonen,
     Rcpp,

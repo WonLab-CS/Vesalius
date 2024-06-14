@@ -116,6 +116,8 @@ format_c_to_ves <- function(cimg,
   return(embeddings)
 }
 
+
+
 #' format counts for DESeq
 #' @param seed seed count matrix
 #' @param query query count matrix
