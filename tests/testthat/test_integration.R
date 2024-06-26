@@ -38,6 +38,10 @@ test_that("simple integration", {
     expect_s4_class(integrate_assays(matched,
         vesalius), "vesalius_assay")
     # checks?
+    integrate_assays(matched,
+        vesalius,
+        labels_mapped = "Cells",
+        labels_reference = "Cells") -> test
     
 
 })

@@ -347,6 +347,26 @@ generate_tiles <- function(vesalius_assay,
         slot = "territories",
         append = FALSE)
   }
+  #----------------------------------------------------------------------#
+  # check if there are already some embeddings and then filter
+  # This can happen when integrating or when adding custom embeddings
+  #----------------------------------------------------------------------#
+  if (!all(dim(slot(vesalius_assay,"active")) == c(0, 0))) {
+        # filter active first
+        tmp_bar <- unique(tiles$barcodes)
+        active <- vesalius_assay@active[rownames(vesalius_assay) %in% tmp_bar, ]
+        embeds <- lapply(vesalius_assay@embeddings, function(x,bar){
+            return(x[rownames(x) %in% bar, ])
+        }, bar = tmp_bar)
+        vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
+            data = active,
+            slot = "active",
+            append = FALSE)
+        vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
+            data = embeds,
+            slot = "embeddings",
+            append = FALSE)
+  }
   vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
     data = tiles,
     slot = "tiles",

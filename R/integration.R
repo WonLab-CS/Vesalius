@@ -24,8 +24,8 @@ integrate_assays <- function(mapped,
     dimensions = 30,
     infer = TRUE,
     use_counts = "raw",
-    cell_label_mapped = "Cells",
-    cell_label_reference = "Cells",
+    labels_mapped = NULL,
+    labels_reference = NULL,
     verbose = TRUE) {
     simple_bar(verbose)
     #-------------------------------------------------------------------------#
@@ -63,13 +63,13 @@ integrate_assays <- function(mapped,
     territories <- merge_territories(mapped,
         reference,
         coordinates,
-        cell_label_mapped,
-        cell_label_reference)
-    cells <- merge_cells(mapped,
-        reference,
-        rownames(integrated$integrated),
-        cell_label_mapped,
-        cell_label_reference)
+        labels_mapped,
+        labels_reference)
+    # cells <- merge_cells(mapped,
+    #     reference,
+    #     rownames(integrated$integrated),
+    #     labels_mapped,
+    #     labels_reference)
     vesalius_assay <- build_vesalius_assay(coordinates = coordinates, verbose = FALSE)
     vesalius_assay <- update_vesalius_assay(vesalius_assay,
         data = integrated$counts,
@@ -95,7 +95,7 @@ integrate_assays <- function(mapped,
         data = mapped@cost,
         slot = "cost",
         append = FALSE)
-    vesalius_assay <- add_cells(vesalius_assay, cells = cells, verbose = FALSE)
+    # vesalius_assay <- add_cells(vesalius_assay, cells = cells, verbose = FALSE)
     message_switch("integrated_embed", verbose, tag = "integrated")
     vesalius_assay <- add_active_embedding_tag(vesalius_assay, "integrated")
     message_switch("integrated_counts", verbose,
@@ -156,6 +156,7 @@ integrate_counts <- function(matched,
         names(counts) <- tags
     }
     integrated <- integrated@reductions$integrated@cell.embeddings
+    integrated <- apply(integrated, 2, min_max)
     return(list("counts" = counts, "integrated" = integrated))
 }
 
@@ -217,9 +218,9 @@ merge_coordinates <- function(matched, reference, barcodes) {
     locs <- paste0(merged$x,"_",merged$y)
     dups <- duplicated(locs)
     while (sum(dups) > 0) {
-        warning("No duplicated coordinates allowed - Adding noise!")    
-        merged$x[dups] <- jitter(merged$x[dups], amount = 1)
-        merged$y[dups] <- jitter(merged$y[dups], amount = 1)
+        warning("No duplicated coordinates allowed - Adding noise!")
+        merged$x[dups] <- merged$x[dups] + runif(length(merged$x[dups]), min = 1, max = 2)
+        merged$y[dups] <- merged$y[dups] + runif(length(merged$y[dups]), min = 1, max = 2)
         locs <- paste0(merged$x,"_",merged$y)
         dups <- duplicated(locs)
     }
@@ -231,35 +232,59 @@ merge_coordinates <- function(matched, reference, barcodes) {
 merge_territories <- function(matched,
     reference,
     coordinates,
-    cell_label_mapped,
-    cell_label_reference) {
+    labels_mapped,
+    labels_reference) {
     matched <- get_territories(matched)
     matched_barcodes <- matched$barcodes
     reference <- get_territories(reference)
     reference_barcodes <- reference$barcodes
-    if (!is.null(matched)){
-        matched <- right_join(matched, coordinates, by = "barcodes")
-        matched <- matched[,grep(x = colnames(matched),pattern = cell_label_mapped, invert = TRUE)]
-        matched <- data.frame(matched[ ,!colnames(matched) %in% c("barcodes","x.x","y.x","x.y","y.y")])
-        if (ncol(matched) > 0){
-            colnames(matched) <- paste0("mapped_", colnames(matched))
-        }
-        
-    }
-    if (!is.null(reference)) {
-        reference <- right_join(reference, coordinates, by = "barcodes")
-        reference <- reference[,grep(x = colnames(reference),pattern = cell_label_reference, invert = TRUE)]
-        reference <- data.frame(reference[ ,!colnames(reference) %in% c("barcodes","x.x","y.x","x.y","y.y")])
-        if (ncol(reference) > 0){
-            colnames(reference) <- paste0("ref_", colnames(reference))
-        }
-    }
     coordinates$sample <- NA
     coordinates$sample[coordinates$barcodes %in% matched_barcodes] <- "matched"
     coordinates$sample[coordinates$barcodes %in% reference_barcodes] <- "reference"
-    merged <- cbind(coordinates, matched,reference)
-    rownames(merged) <- NULL
-    return(merged)
+    #-------------------------------------------------------------------------#
+    # Add collumns that should not ne merged
+    #-------------------------------------------------------------------------#
+    if (!is.null(matched)){
+        matched_cols <- colnames(matched)[!colnames(matched) %in%
+            c("barcodes","x","y", labels_mapped)]
+        for (i in seq_along(matched_cols)) {
+            local_name <- paste0("mapped_",matched_cols[i])
+            tmp <- match(coordinates$barcodes, matched$barcodes)
+            coordinates[local_name] <- tmp
+            coordinates[!is.na(tmp), local_name] <- matched[!is.na(tmp),matched_cols[i]]
+        }
+    }
+    if (!is.null(reference)){
+        reference_cols <- colnames(reference)[!colnames(reference) %in%
+            c("barcodes","x","y", labels_reference)]
+        for (i in seq_along(reference_cols)) {
+            local_name <- paste0("reference_",reference_cols[i])
+            tmp <- match(coordinates$barcodes, reference[reference_cols[i]])
+            coordinates[local_name] <- tmp
+            coordinates[!is.na(tmp), local_name] <- reference[!is.na(tmp),reference_cols[i]]
+        }
+    }
+    #-------------------------------------------------------------------------#
+    # Merge columns 
+    # Could add this as sanity check function
+    #-------------------------------------------------------------------------#
+    if (!is.null(labels_mapped) && !is.null(labels_reference)) {
+        if (length(labels_mapped) != length(labels_reference)) {
+            stop("label vectors are not same length - Only pairwise merging possible!")
+        }
+        for (i in seq_along(labels_mapped)) {
+            mapped_local <- match(matched$barcodes, coordinates$barcodes)
+            ref_local <- match(reference$barcodes, coordinates$barcodes)
+            name_local <- paste0(labels_mapped[i],"_",labels_reference[i])
+            coordinates[name_local] <- NA
+            coordinates[mapped_local[!is.na(mapped_local)], name_local] <-
+                matched[!is.na(mapped_local),labels_mapped[i]]
+            coordinates[ref_local[!is.na(ref_local)], name_local] <-
+                reference[!is.na(ref_local),labels_reference[i]]
+        }
+    }
+    rownames(coordinates) <- NULL
+    return(coordinates)
 }
 
 merge_cells <- function(matched,

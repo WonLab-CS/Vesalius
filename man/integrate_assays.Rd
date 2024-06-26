@@ -13,8 +13,8 @@ integrate_assays(
   dimensions = 30,
   infer = TRUE,
   use_counts = "raw",
-  cell_label_mapped = "Cells",
-  cell_label_reference = "Cells",
+  labels_mapped = NULL,
+  labels_reference = NULL,
   verbose = TRUE
 )
 }

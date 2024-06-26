@@ -1368,7 +1368,7 @@ segment_gradient <- function(vesalius_assay,
         iter.max = 10000,
         nstart = 10))
     clusters <- km$cluster
-    kcenters <- km$centers
+    #kcenters <- km$centers
     match_loc <- match(coord$barcodes, names(clusters))
     clusters <- data.frame(coord, "Segment" = clusters[match_loc])
     #active <- assign_centers(vesalius_assay, clusters, kcenters, seq_len(ncol(active)))
