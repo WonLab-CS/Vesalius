@@ -70,8 +70,6 @@ to limit the number of cores being used.
 
 ```{r env_set_ip, eval = FALSE, echo = TRUE}
 # Load libraries and set seed
-library(vesalius, lib.loc = "/common/martinp4/R")
-library(pwr, lib.loc = "/common/martinp4/R")
 library(ggplot2)
 library(patchwork)
 library(ggpubr)
@@ -79,18 +77,21 @@ library(future)
 library(Matrix)
 library(tidyverse)
 set.seed(1514)
+library(vesalius, lib.loc = "/common/martinp4/R")
+library(pwr, lib.loc = "/common/martinp4/R")
+
 
 # Using Multi core !!! See note below !!!
 plan(multicore, workers = 10)
 
 
 # Input data directory Brain
-spatial_coordinates_brain <- "/common/martinp4/SSv2/Puck_200115_08_bead_locations.csv"
-counts_brain <- "/common/martinp4/SSv2/Puck_200115_08.digital_expression.txt.gz"
+spatial_coordinates_brain <- "/common/wonklab/SSv2/Puck_200115_08_bead_locations.csv"
+counts_brain <- "/common/wonklab/SSv2/Puck_200115_08.digital_expression.txt.gz"
 
 # Input data directory Embryo
-spatial_coordinates_embryo <- "/common/martinp4/SSv2/Puck_190926_03_bead_locations.csv"
-counts_embryo <- "/common/martinp4/SSv2/Puck_190926_03.digital_expression.txt.gz"
+spatial_coordinates_embryo <- "/common/wonklab/SSv2/Puck_190926_03_bead_locations.csv"
+counts_embryo <- "/common/wonklab/SSv2/Puck_190926_03.digital_expression.txt.gz"
 
 # Output directory
 if (!dir.exists("/common/martinp4/output_plots/")) {
@@ -189,7 +190,7 @@ vesalius_brain <- generate_embeddings(vesalius_brain,
 vesalius_embryo <- generate_embeddings(vesalius_embryo,
     dim_reduction = "PCA",
     dimensions = 50,
-    tensor_resolution = 1,
+    tensor_resolution = 0.3,
     verbose = FALSE)
 vesalius_brain
 vesalius_embryo
