@@ -30,6 +30,8 @@
 #' contain any given gene. Deault set at 0.05
 #' @param min_spatial_index integer defining minimum number of 
 #' barcodes in a territory.
+#' @param genes character vector - vector of gene names to use directly for
+#' DEG analysis.
 #' @param verbose logical - progress message output
 #' @param ... other parameters parsed to DESeq2 or edgeR (not functional)
 #' @details Identifying markers is a key aspect of spatial data analysis. 
@@ -92,6 +94,7 @@ identify_markers <- function(vesalius_assay,
   pval = 0.05,
   min_pct = 0.05,
   min_spatial_index = 10,
+  genes = NULL,
   verbose = TRUE,
   ...) {
     simple_bar(verbose)
@@ -120,6 +123,7 @@ identify_markers <- function(vesalius_assay,
     if (is.null(buffer$seed[[1L]]) || is.null(buffer$query[[1L]])) {
       return(vesalius_assay)
     }
+    genes <- check_genes(genes, counts)
     #--------------------------------------------------------------------------#
     # buffer will contain seed group(s) and query group(s) as well ids for each
     # group. We can loop over each to get Differentially expressed genes
@@ -131,10 +135,12 @@ identify_markers <- function(vesalius_assay,
       assay = get_assay_names(vesalius_assay))
     deg <- vector("list", length(seed))
     for (i in seq_along(buffer$seed)) {
-      seed <- counts[, colnames(counts) %in% buffer$seed[[i]]]
+      seed <- counts[rownames(counts) %in% genes,
+        colnames(counts) %in% buffer$seed[[i]]]
       seed_id <- buffer$seed_id[i]
 
-      query <- counts[, colnames(counts) %in% buffer$query[[i]]]
+      query <- counts[rownames(counts) %in% genes,
+        colnames(counts) %in% buffer$query[[i]]]
       query_id <- buffer$query_id[i]
 
       deg[[i]] <- vesalius_deg(seed,

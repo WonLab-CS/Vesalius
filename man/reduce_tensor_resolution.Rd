@@ -23,8 +23,5 @@ compressing coordinates values
 While we compress the coordinates, we retain all barcodes. 
 Each barcode that overlap with each other are marged together. Their 
 respective counts will also be merged together. This allows us to 
-retain all barcodes for downstream analysis. 
-
-
-TO DO: replace the tensor resolution reduction with super pixels
+retain all barcodes for downstream analysis.
 }

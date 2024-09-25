@@ -18,6 +18,7 @@ identify_markers(
   pval = 0.05,
   min_pct = 0.05,
   min_spatial_index = 10,
+  genes = NULL,
   verbose = TRUE,
   ...
 )
@@ -57,6 +58,9 @@ contain any given gene. Deault set at 0.05}
 
 \item{min_spatial_index}{integer defining minimum number of 
 barcodes in a territory.}
+
+\item{genes}{character vector - vector of gene names to use directly for
+DEG analysis.}
 
 \item{verbose}{logical - progress message output}
 

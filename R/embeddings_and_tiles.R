@@ -355,7 +355,7 @@ generate_tiles <- function(vesalius_assay,
         # filter active first
         tmp_bar <- unique(tiles$barcodes)
         active <- vesalius_assay@active[rownames(vesalius_assay) %in% tmp_bar, ]
-        embeds <- lapply(vesalius_assay@embeddings, function(x,bar){
+        embeds <- lapply(vesalius_assay@embeddings, function(x, bar) {
             return(x[rownames(x) %in% bar, ])
         }, bar = tmp_bar)
         vesalius_assay <- update_vesalius_assay(vesalius_assay = vesalius_assay,
@@ -433,9 +433,6 @@ filter_grid <- function(coordinates, filter_grid) {
 #' Each barcode that overlap with each other are marged together. Their 
 #' respective counts will also be merged together. This allows us to 
 #' retain all barcodes for downstream analysis. 
-#' 
-#' 
-#' TO DO: replace the tensor resolution reduction with super pixels 
 #' @return a data frame with barcodes, x and coordinates
 #' @importFrom dplyr %>% distinct
 reduce_tensor_resolution <- function(coordinates,

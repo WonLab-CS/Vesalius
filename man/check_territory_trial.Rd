@@ -4,12 +4,14 @@
 \alias{check_territory_trial}
 \title{check if territory selection is a valid option}
 \usage{
-check_territory_trial(vesalius_assay, trial)
+check_territory_trial(vesalius_assay, trial, return_label = FALSE)
 }
 \arguments{
 \item{vesalius_assay}{a vesalius_assay object}
 
 \item{trial}{string - trial selection parse by user}
+
+\item{return_label}{string - only return the colmun name}
 }
 \value{
 data frame contain selected trial

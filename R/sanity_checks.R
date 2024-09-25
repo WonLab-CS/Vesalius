@@ -504,11 +504,12 @@ check_tiles <- function(vesalius_assay) {
 #' check if territory selection is a valid option
 #' @param vesalius_assay a vesalius_assay object
 #' @param trial string - trial selection parse by user
+#' @param return_label string - only return the colmun name
 #' @details check if the trial selection exists in territory slot
 #' Default is last that will take the last entry. This function
 #' will also reformat to only include the necessay information.
 #' @return data frame contain selected trial
-check_territory_trial <- function(vesalius_assay, trial) {
+check_territory_trial <- function(vesalius_assay, trial, return_label = FALSE) {
     if (sum(dim(vesalius_assay@territories)) == 0) {
         stop("No territories have been computed!")
     } else {
@@ -533,9 +534,14 @@ check_territory_trial <- function(vesalius_assay, trial) {
             pattern = paste0("^", trial, "$"),
             value = TRUE)
     }
-    territories <- territories[, c("barcodes", "x", "y", trial)]
-    colnames(territories) <- c("barcodes", "x", "y", "trial")
-    return(territories)
+    if (return_label) {
+        return(trial)
+    } else {
+        territories <- territories[, c("barcodes", "x", "y", trial)]
+        colnames(territories) <- c("barcodes", "x", "y", "trial")
+        return(territories)
+    }
+    
 }
 
 
@@ -843,7 +849,21 @@ check_features <- function(counts) {
     return(features)
 }
 
-
+check_genes <- function(genes, counts) {
+    if (is.null(genes)){
+        return(rownames(counts))
+    }
+    g_local <- genes %in% rownames(counts)
+    if (sum(!g_local) > 0) {
+        mess <- paste(paste(genes[!g_local], collapse = " "),
+            "are not present in count matrix")
+        warning(mess, immediate. = TRUE)
+    }
+    if (sum(g_local) == 0) {
+        stop("None of the selected genes are present in count matrix")
+    }
+    return(genes[g_local])
+}
 
 check_cost_matrix_validity <- function(custom_cost) {
     #-------------------------------------------------------------------------#

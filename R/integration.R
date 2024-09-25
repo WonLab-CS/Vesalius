@@ -6,15 +6,42 @@
 ############################## COUNT INTEGRATION ##############################
 #-----------------------------------------------------------------------------#
 
-#' integrate counts from 2 vesalius assays
-#' @param mapped vesalius_assay object - matched veslius assay (map_assays)
+#' integrate 2 vesalius assays
+#' @param mapped vesalius_assay object - mapped veslius assay (map_assays)
 #' @param reference vesalius_assay object - reference vesalius_assay (seed)
 #' @param method character - count integration method (methods provided by 
 #' Seurat v5)
+#' @param nfeatures integer - number of variable features to sue during 
+#' integration.
+#' @param signal character - defining which signal should be returned:
+#' variable_features, all_features or custom gene list.
+#' @param dimensions interger - number of dimensions integrated latent space
+#' dimensions.
 #' @param infer logical - back infer original counts by reversing reduced 
 #' dimensional space roations. 
 #' @param use_counts character - which count matrix to use during integration
+#' @param labels_mapped  character - which columns in the mapped data assay
+#' should be merged with the reference data (see details)
+#' @param labels_reference character - which columns in the reference data assay
+#' should be merged with the mapped data (see details)
 #' @param verbose logical - should progressed message be printed
+#' @details After mapping coordinates from a query onto a reference, vesalius
+#' provides a way to then integrate the assays together. This function will:
+#'
+#' * Integrate Counts using Seurat 
+#' * Merge coordinates (adding a jitter to avoid overlapping coordinayes)
+#' * Merge territories (pair-wise merging using labels_mapped and labels_reference 
+#' - everything else will have a separate column).
+#'
+#' We also infer log nomalized counts from CCA latent space. 
+#'
+#' The final output of this function is a vesalius_assay object containing 
+#' coordinates from the mapped and reference, integrated latent space (e.g.CCA)
+#' integrated counts, merged territories, an additional meta data.
+#'
+#' It should be noted that this object does not contain tiles. To use this 
+#' vesalius_assay as any other, add tiles by using \code{\link{generate_tiles}}
+#' @return a vesalius_assay object
 #' @export 
 integrate_assays <- function(mapped,
     reference,
@@ -32,20 +59,16 @@ integrate_assays <- function(mapped,
     # check map and get counts - use only barcodes that were actually mapped
     #-------------------------------------------------------------------------#
     query_map <- check_maps(mapped)
-
     query_counts <- get_counts(mapped, type = use_counts)
     #from <- remove_suffix(query_map$from)
     from <- query_map$from
     query_counts <- query_counts[, match(from, colnames(query_counts))]
-
     reference_counts <- get_counts(reference, type = use_counts)
     #to <- remove_suffix(query_map$to)
     to <- query_map$to
     reference_counts <- reference_counts[, match(to, colnames(reference_counts))] 
-
     #-------------------------------------------------------------------------#
     # Count integration using Seurat methods 
-    # Using harmony as default since it seems that it is the best method
     #-------------------------------------------------------------------------#
     integrated <- integrate_counts(matched = query_counts,
         reference = reference_counts,
@@ -111,6 +134,17 @@ integrate_assays <- function(mapped,
     return(vesalius_assay)
 }
 
+#' Integrate counts using Seurat
+#' @param matched matrix - matrix containing counts from matched/mapped assay
+#' @param reference matrix - matrix containing counts from reference assay
+#' @param method character - Seurat integration method to use
+#' @param nfeatures integer - number of features to use during integration
+#' @param dimensions interger - number of dimensions integrated latent space
+#' dimensions.
+#' @param infer logical - back infer original counts by reversing reduced 
+#' dimensional space roations. 
+#' @param signal character - defining which signal should be returned:
+#' variable_features, all_features or custom gene list.
 #' @importFrom Seurat CreateSeuratObject NormalizeData FindVariableFeatures
 #' @importFrom Seurat ScaleData RunPCA IntegrateLayers
 integrate_counts <- function(matched,
@@ -160,7 +194,7 @@ integrate_counts <- function(matched,
     return(list("counts" = counts, "integrated" = integrated))
 }
 
-
+#' renaming counts to remain consistent with vesalius nomenclature
 rename_counts <- function(counts,
     seed_cells,
     seed_genes,
