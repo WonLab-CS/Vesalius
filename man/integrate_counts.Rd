@@ -7,7 +7,6 @@
 integrate_counts(
   matched,
   reference,
-  features,
   method = "HarmonyIntegration",
   nfeatures = 2000,
   dimensions = 30,

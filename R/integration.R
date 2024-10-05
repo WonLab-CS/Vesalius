@@ -57,14 +57,14 @@ integrate_assays <- function(mapped,
     simple_bar(verbose)
     #-------------------------------------------------------------------------#
     # check map and get counts - use only barcodes that were actually mapped
+    # NOTE update this - need to be able to integrate assays without needing 
+    # mapped
     #-------------------------------------------------------------------------#
     query_map <- check_maps(mapped)
     query_counts <- get_counts(mapped, type = use_counts)
-    #from <- remove_suffix(query_map$from)
     from <- query_map$from
     query_counts <- query_counts[, match(from, colnames(query_counts))]
     reference_counts <- get_counts(reference, type = use_counts)
-    #to <- remove_suffix(query_map$to)
     to <- query_map$to
     reference_counts <- reference_counts[, match(to, colnames(reference_counts))] 
     #-------------------------------------------------------------------------#
@@ -88,11 +88,6 @@ integrate_assays <- function(mapped,
         coordinates,
         labels_mapped,
         labels_reference)
-    # cells <- merge_cells(mapped,
-    #     reference,
-    #     rownames(integrated$integrated),
-    #     labels_mapped,
-    #     labels_reference)
     vesalius_assay <- build_vesalius_assay(coordinates = coordinates, verbose = FALSE)
     vesalius_assay <- update_vesalius_assay(vesalius_assay,
         data = integrated$counts,
@@ -149,7 +144,6 @@ integrate_assays <- function(mapped,
 #' @importFrom Seurat ScaleData RunPCA IntegrateLayers
 integrate_counts <- function(matched,
     reference,
-    features,
     method = "HarmonyIntegration",
     nfeatures = 2000,
     dimensions = 30,
@@ -176,13 +170,12 @@ integrate_counts <- function(matched,
         new.reduction = "integrated",
         features = features,
         verbose = FALSE)
-    counts <- integrated@assays$RNA@layers
-    counts <- rename_counts(counts,
+    
+    counts <- rename_counts(integrated,
         reference_cells,
         reference_genes,
         matched_cells,
-        matched_genes,
-        features)
+        matched_genes)
     if (infer) {
         back <- back_infer(counts, integrated@reductions$integrated)
         tags <- c(names(counts), "inferred")
@@ -195,12 +188,13 @@ integrate_counts <- function(matched,
 }
 
 #' renaming counts to remain consistent with vesalius nomenclature
-rename_counts <- function(counts,
+rename_counts <- function(integrated,
     seed_cells,
     seed_genes,
     query_cells,
-    query_genes,
-    features) {
+    query_genes) {
+    features <- Seurat::VariableFeatures(integrated)
+    counts <- integrated@assays$RNA@layers
     seed <- lapply(counts[c("counts.1","data.1")],function(counts, names){
             colnames(counts) <- names
             return(counts)
@@ -217,10 +211,10 @@ rename_counts <- function(counts,
             rownames(counts) <- names
             return(counts)
         }, names = query_genes)
-    intergrated <- counts[["scale.data"]]
-    colnames(intergrated) <- c(seed_cells, query_cells)
-    rownames(intergrated) <- features
-    counts <- c(seed,query, list(intergrated))
+    integrated <- counts[["scale.data"]]
+    colnames(integrated) <- c(seed_cells, query_cells)
+    rownames(integrated) <- features
+    counts <- c(seed,query, list(integrated))
     names(counts) <- c("raw_1", "log_norm_1", "raw_2", "log_norm_2", "scaled")
     return(counts)
 

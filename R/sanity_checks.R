@@ -812,18 +812,20 @@ check_signal <- function(assay, signal, type) {
 
 
 check_feature_integration <- function(signal, intergrated) {
-    if (signal == "variable_features") {
+    if (any(signal %in% "variable_features")) {
         features <- Seurat::VariableFeatures(intergrated)
-    } else if (signal == "all_features") {
-        seed <- rownames(intergrated@assays$RNA@layers$counts.1)
-        query <- rownames(intergrated@assays$RNA@layers$counts.2)
-        features <- intersect(seed, query)
-    } else if (
-    any(signal %in% rownames(intergrated@assays$RNA@layers$counts.1)) |
-    any(signal %in% rownames(intergrated@assays$RNA@layers$counts.2))) {
-        seed <- rownames(intergrated@assays$RNA@layers$counts.1[signal, ])
-        query <- rownames(intergrated@assays$RNA@layers$counts.2[signal, ])
-        features <- intersect(seed, query)
+    } else if (any(signal %in% "all_features")) {
+        features <- intergrated@assays$RNA@features@.Data[,"scale.data"]
+        features <- rownames(intergrated@assays$RNA@features@.Data)[features]
+    } else if (any(signal %in% rownames(intergrated@assays$RNA@features@.Data))) {
+        features <- intergrated@assays$RNA@features@.Data[,"scale.data"]
+        features <- rownames(intergrated@assays$RNA@features@.Data)[features]
+        tmp <- signal[signal %in% features]
+        if (length(tmp) < 50) {
+            warning("Too small number of features to integrate - padding with variable genes",
+                immediate. = TRUE)
+            features <- c(tmp, features[seq(1,l = 51 - length(tmp))])
+        }
     } else {
         stop("Unknown signal type! Select from:
         variable_features or all_features

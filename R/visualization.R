@@ -372,11 +372,18 @@ create_palette <- function(territories, randomise) {
 #' @return vector of alpha values
 create_alpha <- function(territories, highlight, alpha) {
   if (!is.null(highlight)) {
-    ter_col <- rep(alpha * 0.25, length(levels(territories$trial)))
-    loc <- as.character(levels(territories$trial)) %in% highlight
-    ter_col[loc] <- alpha
+    if (length(alpha) > 1){
+        ter_col <- rep(alpha[2L], length(levels(territories$trial)))
+        loc <- as.character(levels(territories$trial)) %in% highlight
+        ter_col[loc] <- alpha[1L]
+    } else {
+        ter_col <- rep(alpha[1L] * 0.15, length(levels(territories$trial)))
+        loc <- as.character(levels(territories$trial)) %in% highlight
+        ter_col[loc] <- alpha[1L]
+    }
+    
   } else {
-    ter_col <- rep(alpha, length(levels(territories$trial)))
+    ter_col <- rep(alpha[1L], length(levels(territories$trial)))
   }
   return(ter_col[as.integer(territories$trial)])
 }

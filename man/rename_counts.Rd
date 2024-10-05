@@ -4,14 +4,7 @@
 \alias{rename_counts}
 \title{renaming counts to remain consistent with vesalius nomenclature}
 \usage{
-rename_counts(
-  counts,
-  seed_cells,
-  seed_genes,
-  query_cells,
-  query_genes,
-  features
-)
+rename_counts(integrated, seed_cells, seed_genes, query_cells, query_genes)
 }
 \description{
 renaming counts to remain consistent with vesalius nomenclature
