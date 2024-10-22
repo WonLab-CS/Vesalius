@@ -34,7 +34,7 @@ install_github("WonLab-CS/Vesalius")
 ## How to use Vesalius?
 Vesalius provides an internal data set taken from real Spatial Transcriptomic
 data. This can be used as a dummy data set to get a feel for the Vesalius
-workflow.
+workflow. The run time on this data sets should not exceed a minute. 
 
 The "Quick Start" guide can be found [here](https://github.com/WonLab-CS/Vesalius/blob/main/vignettes/vesalius.Rmd)
 
