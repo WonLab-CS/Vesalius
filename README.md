@@ -5,7 +5,7 @@
 Welcome to the Vesalius GitHub page!
 <img src="man/figures/banner.png" />
 
-UNDER CONSTRUCTION - NEW VERSION COMMING SOON
+
 
 
 ## What is Vesalius ?
@@ -14,6 +14,8 @@ image analysis techniques for high-resolution ST data. Vesalius identifies
 spatially expressed genes linked to the morphology of tissue structures.
 
 ## How to install Vesalius?
+
+Vesalius requires R 4.0.0 or higher. The list of dependencies can be found in the [DESCRIPTION FILE](https://github.com/WonLab-CS/Vesalius/blob/main/DESCRIPTION).
 
 If you do not have `devtools` already installed, please do so beforehand.
 
@@ -36,11 +38,13 @@ workflow.
 
 The "Quick Start" guide can be found [here](https://github.com/WonLab-CS/Vesalius/blob/main/vignettes/vesalius.Rmd)
 
-An in depth view of the Vesalius workflow can be found [here](https://github.com/WonLab-CS/Vesalius/blob/main/vignettes/Vesalius_Analysis/Vesalius_MSB_analysis.Rmd). This contains the entire analysis related to
-the Vesalius [Molecular Systems Biology](https://www.embopress.org/doi/full/10.15252/msb.202211080).
 
-NOTE: The in depth analysis file, contains path to files that should be changed
-accordingly.
+Further in depth examples can be found in the [Vesalius Analysis Page](https://github.com/WonLab-CS/Vesalius_analysis)
+
+Vesalius has been tested on:
+
+* macOS Sequoia 15.0
+* Red Hat Enterprise Linux 8.5 (Ootpa)
 
 
 ## What's next?
@@ -48,3 +52,7 @@ The Vesalius package is in its early stage of development. We would ask you to
 share with us any bugs, concerns, or features you wish to see implemented.
 
 Please open a GitHub issue or send an email to Patrick Martin (Patrick.Martin@cshs.org - pcnmartin@gmail.com)
+
+## Archived Analysis 
+
+An in depth view of the Vesalius workflow  related to the [MSB](https://www.embopress.org/doi/full/10.15252/msb.202211080) manuscript can be found [here](https://github.com/WonLab-CS/Vesalius/blob/main/vignettes/Vesalius_Analysis/Vesalius_MSB_analysis.Rmd). 
