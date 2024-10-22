@@ -106,7 +106,7 @@ vesalius
 ```
 
 Count matrices can be added sperately using the `add_counts` function. 
-For more information, please refere to the [Modifying vesalius objects]()
+
 
 ## Interoperability
 
@@ -175,8 +175,7 @@ vesalius
 ```
 
 You can also add your own embeddings and they will be appended into vesalius
-in a similar manner. For more information, please refere to the [modifying vesalius objects]()
-vignette. Alternively, you can also check the manual page for [add_embeddings]()
+in a similar manner. You can also check the manual page for `add_embeddings`
 
 
 ## Visualising Grey scale images
@@ -361,12 +360,133 @@ p8 <- view_gene_expression(vesalius, genes = "Malat1", as_layer = TRUE)
 p7 + p8
 ```
 
-# See Also 
+# Mapping Cells across samples
+Another key features of Vesalius is to be able to map cells across samples. 
+Here, we will show a quick break down of how to achieve this. A more in depth 
+view of cell mapping is available in the [Vesalius analysis repository](https://github.com/WonLab-CS/Vesalius_analysis)
 
-For more information about different aspects of Vesalius:
+## Mapping cells
+First, we build 2 vesalius objects that we have process independantly. 
+The jitter territory is the same as the original version but we flipped the coordinates,
+added noise to coordinates and counts, and remove a few randomly sampled locations. 
+```{r mapping_build, eval = TRUE, echo = TRUE}
+# load vesalius data 
+data(vesalius)
 
-- [Modifying objects]()
-- [Understanding vesalius_assay object]()
+# Create Vesalius object for processing
+vesalius <- build_vesalius_assay(coordinates, counts)
+cells <- sample(LETTERS[1:6], size = nrow(vesalius@tiles),replace =T)
+names(cells) <- vesalius@tiles$barcodes
+vesalius <- add_cells(vesalius, cells = cells, add_name = "Cells")
+jitter_ves <- build_vesalius_assay(jitter_coord, jitter_counts)
+cells <- sample(LETTERS[1:6], size = nrow(jitter_ves@tiles),replace =T)
+names(cells) <- jitter_ves@tiles$barcodes
+jitter_ves <- add_cells(jitter_ves, cells = cells, add_name = "Cells")
+
+vesalius <- generate_embeddings(vesalius,
+    filter_threshold = 1,
+    filter_grid = 1)
+vesalius <- smooth_image(vesalius, embedding = "PCA", sigma = 5, iter = 10)
+vesalius <- segment_image(vesalius, col_resolution = 2)
+vesalius <- isolate_territories(vesalius)
+
+
+jitter_ves <- generate_embeddings(jitter_ves,
+    filter_threshold = 1,
+    filter_grid = 1)
+jitter_ves <- smooth_image(jitter_ves, embedding = "PCA", sigma = 5, iter = 10)
+jitter_ves <- equalize_image(jitter_ves, sleft = 5, sright = 5)
+jitter_ves <- segment_image(jitter_ves, col_resolution = 2)
+jitter_ves <- isolate_territories(jitter_ves)
+
+
+
+```
+Next, we can proceed with the mapping of cells on to the other. We will run 
+the mapping using cell (feature), niche, territory similarity and cell composition.
+
+```{r mapping, eval = TRUE, echo = TRUE}
+matched <- map_assays(vesalius,
+    jitter_ves,
+    threshold = 0,
+    use_cost = c("feature","niche","territory","composition"),
+    batch_size = 500,
+    epoch = 5,
+    jitter = 1)
+```
+
+The mapping produces a new vesalius object with mapped coordinates for the query data set.
+In this case our query was `jitter_ves`.
+
+From here, we can treat this new object as a frech data sets with new coordinates. As such:
+
+```{r map_embeddings, eval = TRUE, echo = TRUE}
+matched <- generate_embeddings(matched,
+    dim_reduction = "PCA",
+  nfeatures = 200, 
+  verbose = FALSE) %>%
+matched <- regularise_image(matched, lambda = 1)
+matched <- smooth_image(matched, sigma = 5, iter = 10)
+matched <- equalize_image(matched, sleft = 5, sright = 5)
+matched <- segment_image(col_resolution = 2)
+```
+We can then look at the resulting embeddings
+
+```{r map_image_plot, eval = TRUE, echo = TRUE}
+m <- image_plot(vesalius)
+m1 <- image_plot(jitter_ves)
+m2 <- image_plot(matched)
+
+m + m1 + m2
+
+```
+
+We can also look at the new territories.
+
+```{r map_territory, eval = TRUE, echo = TRUE}
+t <- territory_plot(vesalius)
+t1 <- territory_plot(jitter_ves)
+t2 <- territory_plot(matched)
+```
+
+## Integrating data sets
+Once we have our data sets and the new set of coordinates, we can integrate the data
+sets to obtain an integrate mapping object upon which we can perform differential gene 
+expression analysis.
+
+```{r map_inter, eval = TRUE, echo = TRUE}
+inter <- integrate_assays(matched,
+    vesalius)
+```
+
+Since this data set now contains an integrated latent space, we can also call
+territories on this object. There is no need to create new embeddings. They are
+provided during integration. 
+
+```{r inter_territory, eval = TRUE, echo = TRUE}
+inter <- regularise_image(inter, lambda = 1)
+inter <- smooth_image(inter, sigma = 5, iter = 10)
+inter <- equalize_image(inter, sleft = 5, sright = 5)
+inter <- segment_image(col_resolution = 2)
+```
+
+We can view the resulting embeddings and territories.
+
+```{r inter_plot, eval = TRUE, echo = TRUE}
+i <- image_plot(inter)
+i1 <- territory_plot(inter)
+
+i + i1
+```
+
+## DEG analysis between samples 
+Finally, we can look at DEG analysis between samples in specific territories.
+
+```{r inter_DEG, eval = TRUE, echo  = TRUE}
+inter <- identify_markers(inter, sample = TRUE)
+degs <- get_markers(inter)
+head(degs)
+```
 
 # Session Info
 ```{r, session, eval = TRUE, echo = TRUE}
