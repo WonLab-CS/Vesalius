@@ -315,6 +315,8 @@ territory_plot <- function(vesalius_assay,
     return(ter_plot)
 }
 
+
+#need to rework this one
 order_labels <- function(territories) {
       ter <- unique(territories$trial)
       iso <- ter[grepl(pattern = "isolated|Not Selected",x = ter)]

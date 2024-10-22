@@ -32,6 +32,8 @@ dimensional space roations.}
 
 \item{signal}{character - defining which signal should be returned:
 variable_features, all_features or custom gene list.}
+
+\item{verbose}{logical - print output messages}
 }
 \description{
 Integrate counts using Seurat

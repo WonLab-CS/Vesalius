@@ -142,7 +142,8 @@ graph_from_voronoi <- function(centers) {
     do.call("rbind", .)
     return(graph)
 }
-
+#' get path length in a graph
+#' @param graph graph data.frame 
 #'@importFrom igraph graph_from_data_frame distances
 graph_path_length <- function(graph) {
     gr <- igraph::graph_from_data_frame(graph, directed = FALSE)
@@ -154,8 +155,9 @@ graph_path_length <- function(graph) {
 #-----------------------------/ Scaling  /----------------------------------#
 #' calculate scale of assay
 #' @param coordinates Spatial coordinates as data frame
+#' @param q quantile range
 #' @details Calculate the average distance between spots/beads/indeces
-#' @return Single float 
+#' @return Single numeric 
 #' @importFrom RANN nn2
 calculate_scale <- function(coordinates, q = 0.999) {
     scale <- RANN::nn2(data = coordinates[, c("x", "y")], k = 2)

@@ -5,7 +5,7 @@
 \alias{counts}
 \title{Count matrix for vesalius}
 \format{
-coordinate data frame and sparse count matrix
+sparse count matrix
 \describe{
  \item{counts}{gene counts of Puck_200815 taken from slide-seV2}
 }

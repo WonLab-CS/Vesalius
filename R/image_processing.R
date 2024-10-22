@@ -1188,7 +1188,6 @@ random_sampling <- function(coordinates, n_centers) {
 # } 
 
 bubble_stack <- function(coordinates,
-    #embeddings,
     n_centers = 500,
     max_iter = 500) {
     coordinates <- coordinates %>% filter(origin == 1)
@@ -1237,7 +1236,7 @@ bubble_stack <- function(coordinates,
             Returning Approximation")
         }
         #---------------------------------------------------------------------#
-        # we change the radius based on how many points there were
+        # we change the radius based on how many points there 
         # we assume that if there are 2 few barcodes then the radius is to 
         # large 
         # if there are too many barcodes then the radius is 2 small. 

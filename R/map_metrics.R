@@ -3,220 +3,50 @@
 ###############################################################################
 
 #-----------------------------------------------------------------------------#
-############################ Mapping Matrics####### ###########################
+############################ Mapping Matrics ##################################
 #-----------------------------------------------------------------------------#
 
-#' @export
-compare_assays <- function(seed_assay,
-    query_assay,
-    compare = "niche",
-    method = "wilcox",
-    group_1 = NULL,
-    group_2 = NULL,
-    aggregate = FALSE,
-    neighborhood = "knn",
-    signal = "variable_features",
-    use_norm = "log_norm",
-    seed_cells = "Cells",
-    query_cells = "Cells",
-    k = 10,
-    depth = 1,
-    radius = 1,
-    log_fc = 0.25,
-    pval = 0.05,
-    min_pct = 0.05,
-    min_spatial_index = 10,
-    verbose = TRUE,
-    ...) {
-    simple_bar(verbose)
-    args <- list(...)
-    #-------------------------------------------------------------------------#
-    # add some check here to make sure the assays are mapped assays and 
-    # what not
-    #-------------------------------------------------------------------------#
-    method <- check_deg_method(method)
-    if (compare == "feature" && is.null(group_1) && is.null(group_2)) {
-        stop("If using 'feature' to compare assays \n 
-        please specifiy barcodes to compare in group_1 and group_2")
-    }
-    #-------------------------------------------------------------------------#
-    # dispatch groups
-    #-------------------------------------------------------------------------#
-    if (grepl("niche|composition", compare)) {
-        if (is.null(group_1)){
-            group_1 <- query_assay@map$mapping_score$to
-        }
-        group_1 <- dispatch_niches(assay = seed_assay,
-            group = group_1,
-            aggregate = aggregate,
-            neighborhood = neighborhood,
-            k = k,
-            depth = depth,
-            radius = radius,
-            group_id = "1")
-        if (is.null(group_2)){
-            group_2 <- query_assay@map$mapping_score$from
-        }
-        group_2 <- dispatch_niches(assay = query_assay,
-            group = group_2,
-            aggregate = aggregate,
-            neighborhood = neighborhood,
-            k = k,
-            depth = depth,
-            radius = radius,
-            group_id = "2")
-    }
-    if (grepl("territory", compare)) {
-        group_1 <- dispatch_territories(seed_assay,
-            group = group_1,
-            aggregate = aggregate,
-            group_id = "1")
-        group_2 <- dispatch_territories(query_assay,
-            group = group_2,
-            aggregate = aggregate,
-            group_id = "2")
-    }
-    
-    if(length(group_1) != length(group_2)){
-        stop("Groups must have the same length for pairwise comparison!
-        Use aggregate = TRUE to aggregate groups of different lengths into 1")
-    }
-    #-------------------------------------------------------------------------#
-    # get data to compare
-    #-------------------------------------------------------------------------#
-    if (grepl("niche|territory|feature", compare)) {
-       signal <- get_signal(seed_assay,
-            query_assay,
-            signal,
-            verbose = verbose)
-    }
-    if(grepl("composition", compare)) {
-        signal <- get_composition(seed_assay,
-            query_assay,
-            seed_cells = seed_cells,
-            query_cells = query_cells,
-            verbose = verbose)
-    }
-    #-------------------------------------------------------------------------#
-    # get diff expression
-    #-------------------------------------------------------------------------#
-    deg <- vector("list", length(group_1))
-    for (i in seq_along(group_1)) {
-        seed <- signal$seed[,group_1[[i]]]
-        seed_id <- names(group_1)[i]
-        query <- signal$query[,group_2[[i]]]
-        query_id <- names(group_2)[i]
-
-        deg[[i]] <- vesalius_deg(as.matrix(seed),
-            as.matrix(query),
-            seed_id,
-            query_id,
-            method,
-            log_fc,
-            pval,
-            min_pct,
-            min_spatial_index,
-            verbose,
-            args)
-    }
-    deg <- do.call("rbind", deg)
-    simple_bar(verbose)
-    return(deg)
-
-}
-
-
-#' @export 
-get_neighborhood <- function(vesalius_assay,
-    neighborhood = "knn",
-    k = 10,
-    depth = 1,
-    radius = 1) {
-    coord <- get_tiles(vesalius_assay) %>% filter(origin == 1)
-    niches <- switch(neighborhood,
-        "knn" = knn_neighborhood(coord, k),
-        "radius" = radius_neighborhood(coord, radius),
-        "graph" = graph_neighborhood(coord, depth))
-    return(niches)
-}
-
-
-
-dispatch_niches <- function(assay,
-            group = NULL,
-            aggregate = FALSE,
-            neighborhood = "knn",
-            k = 10,
-            depth = 1,
-            radius = 1,
-            group_id = "1") {
-    niches <- get_neighborhood(assay,
-        neighborhood = neighborhood,
-        k = k,
-        depth = depth,
-        radius = radius)
-    loc <- match(group, names(niches))
-    if (aggregate) {
-        niches <- list(unique(unlist(niches[loc[!is.na(loc)]])))
-        names(niches) <- paste0("group_", group_id)
-    } else {
-        niches <- niches[loc[!is.na(loc)]]
-    }
-    return(niches)
-}
-
-
-dispatch_territories <- function(assay,
-    group,
-    aggregate = FALSE,
-    group_id = "1") {
-    trial <- check_territory_trial(assay, "last")
-    ter <- check_group_value(trial, group)
-    if (is.null(ter)) {
-        ter <- sort(unique(trial$trial))
-    }
-    trial <- lapply(ter, function(ter,trial){
-        return(trial$barcodes[trial$trial == ter])
-    }, trial = trial)
-    names(trial) <- ter
-    if (aggregate) {
-        trial <- list(unlist(trial))
-        names(trial) <- paste0("group_", group_id)
-    }
-    return(trial)
-}
-
-get_composition <- function(seed_assay,
-    query_assay,
-    seed_cells = "Cells",
-    query_cells = "Cells",
-    verbose = TRUE) {
-    seed_cells <- check_territory_trial(seed_assay, trial = seed_cells)
-    query_cells <- check_territory_trial(query_assay, trial = query_cells)
-    cell_union <- sort(union(unique(seed_cells$trial),unique(query_cells$trial)))
-
-    seed_composition <- matrix(0,
-        nrow = length(cell_union),
-        ncol = nrow(seed_cells))
-    rownames(seed_composition) <- cell_union
-    colnames(seed_composition) <- seed_cells$barcodes
-    query_composition <- matrix(0,
-        nrow = length(cell_union),
-        ncol = nrow(query_cells))
-    rownames(query_composition) <- cell_union
-    colnames(query_composition) <- query_cells$barcodes
-
-    seed_composition[match(seed_cells$trial, cell_union) + seq(0,l= nrow(seed_cells), by = nrow(seed_composition))] <- 1
-    query_composition[match(query_cells$trial, cell_union) +seq(0,l= nrow(query_cells), by = nrow(query_composition))] <- 1
-    return(list("seed" = seed_composition,"query" = query_composition,"feature" = cell_union))
-    
-}
-
+#' Cluster query cells based on which reference cells they tend to mapped to
+#' @param vesalius_assay vesalius_assay object after mapping a query onto a 
+#' reference.
+#' @param use_cost character vector describing which cost matrices should be
+#' used to compare cells
+#' @param cluster_method character string - which method should be used for
+#' clustering (hclust, louvain, leiden)
+#' @param trial character string defining which trial should be used for
+#' clustering if any. If NULL, will search for "Cells".
+#' @param group_identitiy character vector - which specific substes of trial 
+#' should be used for clustering By default will use all labels present.
+#' @param ref_cells character vector with reference cell barcodes
+#' (by default will use all barcodes)
+#' @param query_cells character with query cell barcodes
+#' (by default will use all barcodes)
+#' @param top_nn int - how many cells should be used to define clustering
+#' similarity (see details)
+#' @param h numeric - normalized height to use as hclust cutoff [0,1]
+#' @param k int - number of cluster to obtain from hclust
+#' @param nn int - number of nearest neighbors to use when creating graph
+#' for community clustering algorithms
+#' @param resolution numeric - clustering resolution to be parsed to 
+#' community clustering algorithms
+#' @param verbose logical - print output message
+#' @details Once we have mapped cells between sample, we can identify which cells
+#' tend to map to the same group of cells. To achieve this, we first create a 
+#' cost matrix that will serve as a basis to find similar-mapping instances.
+#' The cost matrix can be constructed from any cost matrix that was used during the 
+#' mapping phase. 
+#' Next, for each query cell we extract the top_nn cells in the reference with lowest
+#' cost. Using the ordered index as a character label, we compute a jaccard index 
+#' between overlapping labels. Query cells with a high jaccard index tend to map 
+#' to the same reference cells. We then use the reciprocal to define a distance between
+#' cells and cluster cells based on this distance.
+#' The same approach is used for every clustering method provided. 
+#' This function will add a new column with the metric clustering results.
+#' @return vesalius_assay with clustering results 
 #' @export
 get_metric_clusters <- function(vesalius_assay,
     use_cost = "feature",
     cluster_method = "hclust",
-    distance = "euclidean",
     trial = NULL,
     group_identity = NULL,
     ref_cells = NULL,
@@ -253,7 +83,7 @@ get_metric_clusters <- function(vesalius_assay,
     # clustering 
     #-------------------------------------------------------------------------#
     clusters <- switch(EXPR = cluster_method,
-        "hclust" = hclust_scores(score,  h, k, distance,  verbose),
+        "hclust" = hclust_scores(score,  h, k,  verbose),
         "louvain" = louvain_scores(score, resolution, nn, verbose),
         "leiden" = leiden_scores(score, resolution, nn, verbose))
     #-------------------------------------------------------------------------#
@@ -284,7 +114,14 @@ get_metric_clusters <- function(vesalius_assay,
   return(vesalius_assay)
 }
 
-hclust_scores <- function(score, h, k, distance, verbose) {
+#' Hiearchal clustering of mapping scores for co mapping events
+#' @param score matrix containing mapping scores
+#' @param h numeric representing the normalized height that will be 
+#' used for clustering (normalized to ensure that it will be between 0 and 1)
+#' @param k int - number of clusters
+#' @param verbose logical - print progress messages
+#' @importFrom stats hclust cutree
+hclust_scores <- function(score, h, k, verbose) {
     message_switch("hclust_scores", verbose)
     clusters <- hclust(as.dist(score))
     h <- h * (max(clusters$height) - min(clusters$height) / max(clusters$height))
@@ -294,7 +131,12 @@ hclust_scores <- function(score, h, k, distance, verbose) {
 
 
 
-
+#' Using Louvain community clustering to for co-mapping events
+#' @param score matrix containing mapping scores
+#' @param resoltuion numeric - clustering resolution
+#' @param nn int - number of nearest neighbors to use for graph construction
+#' @param verbose logical - print output messages
+#' @importFrom igraph graph_from_data_frame cluster_louvain
 louvain_scores <- function(score, resolution, nn, verbose) {
     message_switch("louvain_scores", verbose)
     nn <- min(c(nn, nrow(score)))
@@ -311,6 +153,12 @@ louvain_scores <- function(score, resolution, nn, verbose) {
     return(cluster)
 }
 
+#' Using Leiden community clustering to for co-mapping events
+#' @param score matrix containing mapping scores
+#' @param resoltuion numeric - clustering resolution
+#' @param nn int - number of nearest neighbors to use for graph construction
+#' @param verbose logical - print output messages
+#' @importFrom igraph graph_from_data_frame cluster_leiden
 leiden_scores <- function(score, resolution, nn, verbose) {
     message_switch("louvain_scores", verbose)
     graph <- lapply(seq_len(ncol(score)),function(idx, score, nn) {
@@ -329,7 +177,8 @@ leiden_scores <- function(score, resolution, nn, verbose) {
 #' create a distance matrix based on mapping scores overlaps
 #' @param score matrix - cost matrix 
 #' @param top_nn integer nearest neighbors
-#' @param dec logical - if order should be decreasing i.e return cost or score
+#' @param verbose logical - print progress messages
+#' @importFrom future.apply future_lapply
 overlap_distance_matrix <- function(score, top_nn, verbose) {
     message_switch("overlap_scores", verbose)
     top_nn <- min(c(top_nn, ncol(score)))
@@ -357,6 +206,17 @@ overlap_distance_matrix <- function(score, top_nn, verbose) {
     return(1 - tmp)
 }
 
+
+#-----------------------------------------------------------------------------#
+############################ Cost Contribution ################################
+#-----------------------------------------------------------------------------#
+#' Compute mapping score contribution to mapping
+#' @param vesalius_assay vesalius_assay object after mapping a query 
+#' onto a reference assay.
+#' @param method character - which method to use to compute contribution
+#' currently only dispersion availble
+#' @param verbose logical - print progress messages
+#' @export
 get_cost_contribution <- function(vesalius_assay,
     method = "dispersion",
     verbose = TRUE){

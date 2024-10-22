@@ -306,18 +306,22 @@ dispatch_deg_group <- function(ter, seed, query, cells, sample, verbose) {
     }
     if (!is.null(sample)) {
         seed <-  mapply(dispatch_sample, territory_barcodes = seed,
-            ter = seed_id, MoreArgs = list(sample$matched), SIMPLIFY = FALSE)
-        seed_id <- paste0(seed_id,"_matched")
+            ter = seed_id, MoreArgs = list(sample$reference), SIMPLIFY = FALSE)
+        seed_id <- paste0(seed_id,"_reference")
         query <- mapply(dispatch_sample, territory_barcodes = query,
-            ter = query_id, MoreArgs = list(sample$reference), SIMPLIFY = FALSE)
-        query_id <- paste0(query_id,"_reference")
+            ter = query_id, MoreArgs = list(sample$matched), SIMPLIFY = FALSE)
+        query_id <- paste0(query_id,"_matched")
     }
     return(list("seed" = seed, "seed_id" = seed_id,
         "query" = query, "query_id" = query_id))
 }
 
 
-
+#' dispatch barcodes associted with a specific territory in a specific samples
+#' @param territory_barcodes character vector barcodes associated with territory
+#' @param ter chracter territory id  
+#' @param sample character vector associeted with sample
+#' @return character vector of barcodes at the intersection of territory and sample
 dispatch_sample <- function(territory_barcodes, ter, sample) {
     common <- intersect(territory_barcodes, sample)
     if (length(common) == 0) {
@@ -392,6 +396,7 @@ dispatch_cost_groups <- function(vesalius_assay,
     return(list("ref" = ref_cells, "query" = query_cells))
 
 }
+
 
 clean_trial <- function(trial) {
     trial <- sapply(strsplit(trial, "-"), function(str){

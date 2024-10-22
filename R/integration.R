@@ -113,7 +113,6 @@ integrate_assays <- function(mapped,
         data = mapped@cost,
         slot = "cost",
         append = FALSE)
-    # vesalius_assay <- add_cells(vesalius_assay, cells = cells, verbose = FALSE)
     message_switch("integrated_embed", verbose, tag = "integrated")
     vesalius_assay <- add_active_embedding_tag(vesalius_assay, "integrated")
     message_switch("integrated_counts", verbose,
@@ -140,6 +139,7 @@ integrate_assays <- function(mapped,
 #' dimensional space roations. 
 #' @param signal character - defining which signal should be returned:
 #' variable_features, all_features or custom gene list.
+#' @param verbose logical - print output messages
 #' @importFrom Seurat CreateSeuratObject NormalizeData FindVariableFeatures
 #' @importFrom Seurat ScaleData RunPCA IntegrateLayers
 integrate_counts <- function(matched,
@@ -150,7 +150,6 @@ integrate_counts <- function(matched,
     infer = FALSE,
     signal = "variable_features",
     verbose) {
-    
     message_switch("integrate",verbose)
     matched_cells <- colnames(matched)
     matched_genes <- rownames(matched)
@@ -188,6 +187,13 @@ integrate_counts <- function(matched,
 }
 
 #' renaming counts to remain consistent with vesalius nomenclature
+#' @param integrated seurat object containing integrated count data
+#' @param seed_cells character vector contain seed barcodes 
+#' @param seed_genes character vector contain seed genes 
+#' @param query_cells character vector contain query barcodes 
+#' @param query_genes character vector contain query genes
+#' @return list of count matrices with cell and gene names added and 
+#' each matrix is renamed to follow the vesalius nomencalture  
 rename_counts <- function(integrated,
     seed_cells,
     seed_genes,
@@ -220,7 +226,10 @@ rename_counts <- function(integrated,
 
 }
 
-
+#' Infer normalized counts from shared embedding values 
+#' @param counts list of count matrices containing normalized gene expression
+#' @param embeds shared embedding matrix produced by Seurat.
+#' @return list containing inferred count values from embeddings  
 #' @importFrom Matrix Matrix
 back_infer <- function(counts, embeds) {
     genes <- intersect(rownames(counts[["log_norm_1"]]), rownames(counts[["log_norm_2"]]))
@@ -236,12 +245,21 @@ back_infer <- function(counts, embeds) {
     return(list(back))
 }
 
-
+#' Merge coordinates from 2 vesalius assays
+#' @param matched matched vesalius_assay object (query object)
+#' @param reference reference vesalius_assay object
+#' @param barcodes barcodes to use for matching and merging
+#' @details Simple merge followed a duplication check. Duplicated
+#' coordinates produce errors when running tesselation. Just
+#' adding some noise
+#' @return merged coordinate data frame (barcodes, x, y)
 merge_coordinates <- function(matched, reference, barcodes) {
-    matched <- get_coordinates(matched, original = TRUE)
+    matched <- get_coordinates(matched, original = FALSE)
     colnames(matched) <- c("barcodes", "x","y")
-    reference <- get_coordinates(reference, original = TRUE)
+    matched  <- matched[, c("barcodes", "x","y")]
+    reference <- get_coordinates(reference, original = FALSE)
     colnames(reference) <- c("barcodes", "x","y")
+    reference <- reference[, c("barcodes", "x","y")]
     merged <- rbind(matched, reference)
     locs <- paste0(merged$x,"_",merged$y)
     dups <- duplicated(locs)
@@ -256,6 +274,22 @@ merge_coordinates <- function(matched, reference, barcodes) {
     merged <- merged[merged$barcodes %in% barcodes, c("barcodes", "x","y")]
     return(merged)
 }
+
+#' Merge territories using specified labels
+#' @param matched matched (query) vesalius_assay object
+#' @param reference reference vesalius_assay
+#' @param coordinates coord data frame after merging (see merge_coordinates)
+#' @param labels_mapped Territory columns to merge in mapped object
+#' @param labels_reference Territory columns to merge in reference object
+#' @details Territory data frame generally contain a lot of information 
+#' depending on how much analysis the user has run. 
+#' (Segments, Cells, territories, morphology). 
+#' Using pariwise matching of labels parse in labels_mapped and labels_reference
+#' the data will be merged into a single column. 
+#' A new column will be added to distinguish samples. All other columns that are not
+#' present in the labels argument will retain their name and NA will be added 
+#' to cell present in the other data set (similar to left and right joins).
+#' @return territory data frame with merged columns 
 #' @importFrom dplyr right_join
 merge_territories <- function(matched,
     reference,
@@ -315,28 +349,4 @@ merge_territories <- function(matched,
     return(coordinates)
 }
 
-merge_cells <- function(matched,
-    reference,
-    barcodes,
-    cell_labels_matched,
-    cell_labels_reference) {
-    matched <- get_territories(matched)
-    matched_cells <- which(colnames(matched) %in% cell_labels_matched)
-    if (length(matched_cells) > 0){
-        matched_cells <- matched[, matched_cells]
-        names(matched_cells) <- matched$barcodes
-    } else {
-        matched_cells <- NULL
-    }
-    reference <- get_territories(reference)
-    reference_cells <- which(colnames(reference) %in% cell_labels_reference)
-    if (length(reference_cells) > 0){
-        reference_cells <- reference[, reference_cells]
-        names(reference_cells) <- reference$barcodes
-    } else {
-        reference_cells <- NULL
-    }
-    merged_cells <- c(matched_cells,reference_cells)
-    merged_cells <- merged_cells[names(merged_cells) %in% barcodes]
-    return(merged_cells)
-}
+

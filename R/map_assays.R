@@ -628,13 +628,16 @@ niche_composition <- function(coord,
     niches <- lapply(niches, function(n, cell_labs) {
             composition <- cell_labs$trial[cell_labs$barcodes %in% n]
             composition <- make.unique(composition, sep = "_")
-            # ord <- names(sort(table(composition), decreasing = TRUE))
-            # composition <- unlist(lapply(ord,function(o,co){co[co == o]},composition))
             return(composition)
     }, cell_labs = cell_labels)
     return(niches)
 }
 
+#' Compute score based on cell type labels
+#' @param seed_labels cell type labels in seed (reference) data
+#' @param query_labels cell type labels in query data 
+#' @details Return 1 if same label and 0 if different.
+#' @return Score matrix based on cell label similarity
 cell_type_match <- function(seed_labels, query_labels) {
     cell_labels <- future_lapply(seq(1, nrow(query_labels)),
         match_cells,
@@ -649,13 +652,24 @@ cell_type_match <- function(seed_labels, query_labels) {
     return(list(cell_labels))
 }
 
+#' Internal function returning cell type label match as numiric
+#' @param idx numeric - used to iterate down the labels
+#' @param query_labels cell type labels for query
+#' @param seed_labels cell type labels for seed
+#' @return binary numeric vector 
 match_cells <- function(idx, query_labels, seed_labels) {
     return(as.numeric(query_labels[idx, "trial"] == seed_labels$trial))
 }
 
 
 
-
+#' optimize matching scores through batching
+#' @param cost_matrix matrix containing mapping cost for each cell
+#' @param batch_size int - number of cells to be assigned to each batch
+#' @param epoch number of epochs to run the optimization
+#' @param verbose logical - output progress messages 
+#' @return list with best matching cell pairs (data.frame) and 
+#' total cost at each epoch 
 optimize_matching <- function(cost_matrix,
     batch_size = 10000,
     epochs = 1,
@@ -667,7 +681,7 @@ optimize_matching <- function(cost_matrix,
         "epoch" =  rep(0, epochs))
     while (current_epoch <= epochs) {
         message_switch("mapping", verbose , epoch = current_epoch)
-        batch <- dispatch_batch(cost_matrix, matched, batch_size)
+        batch <- dispatch_batch(cost_matrix, batch_size)
         mapped <- lapply(batch, map_index)
         matched <- update_matches(matched, mapped, current_epoch)
         current_cost$epoch[current_epoch] <- current_epoch
@@ -680,6 +694,9 @@ optimize_matching <- function(cost_matrix,
 }
 
 
+#' initialize matched data frame
+#' @param cost_matrix matrix containing cost of each cell pair
+#' @return data.frame templated which will contain the best matching pairs 
 initialize_matches <- function(cost_matrix) {
     if (ncol(cost_matrix) > nrow(cost_matrix)) {
         n_row <- ncol(cost_matrix)
@@ -696,18 +713,24 @@ initialize_matches <- function(cost_matrix) {
             "cost" = rep((max(cost_matrix) +1), n_row),
             "init" = rep("from", n_row))
     }
-
-    
     return(matches)
 }
 
-dispatch_batch <- function(cost_matrix, matched, batch_size = 10000) {
+#' Dispatch cells into batches
+#' @param cost_matrix matrix containing cost for each cell pair
+#' @param batch_size int size of batch
+#' @details Create cell batches that will dynamically adapt to the size of
+#' the data set with respect to batch size. Smalled data sets, cells
+#' will be sampled to match the size of the larger data set. This
+#' allows for multiple to multiple matching. All cells will be selected
+#' at least once.
+#' @return Nested list. Each element of the list will contain 
+#' a batched cost matrix and the mapping pairs 
+dispatch_batch <- function(cost_matrix, batch_size = 10000) {
     seed_barcodes <- colnames(cost_matrix)
     query_barcodes <- rownames(cost_matrix)
-    
     batch_seed <- min(c(batch_size, length(seed_barcodes)))
     batch_query <- min(c(batch_size, length(query_barcodes)))
-    
     batch <- list()
     i <- 1
     seed_sample <- c()
@@ -734,6 +757,9 @@ dispatch_batch <- function(cost_matrix, matched, batch_size = 10000) {
     return(batch)
 }
 
+#' LAPVJ solver 
+#' @param batch cost matrix batch to be solved
+#' @return data frame with best matches for this batch
 map_index <- function(batch) {
     mapped <- TreeDist::LAPJV(batch$cost)$matching
     match <- batch$match
@@ -748,6 +774,11 @@ map_index <- function(batch) {
     return(match)
 }
 
+#' Update best matched cell pairs with new mapping costs
+#' @param matched data frame containing mapping pairs template
+#' @param mapped best mapping pairs for each batch
+#' @param epoch int - which epoch was the optimal match found
+#' @return updated matched data frame
 update_matches <- function(matched, mapped, epoch) {
     if (all(matched$init == "from")) {
         init_col <- "from"
@@ -814,6 +845,12 @@ score_matches <- function(matched_indices,
 
 
 
+#' filter mapped cells 
+#'@param mapped data frame containing mapped cells
+#'@param threshold score threshold (applied to each cost)
+#'@param allow_duplicates logical - if duplicated matches are to be reatained
+#'@param verbose logical - output progress messages
+#'@return filtered mappped data frame
 filter_maps <- function(mapped, threshold, allow_duplicates, verbose) {
     message_switch("post_map_filter",verbose)
     map_score <- mapped$prob
@@ -858,93 +895,6 @@ filter_maps <- function(mapped, threshold, allow_duplicates, verbose) {
     return(mapped)
 }
 
-
-
-
-build_mapped_assay <- function(mapped,
-    seed_assay,
-    query_assay,
-    cell_label,
-    jitter) {
-    assay <- paste0("mapped_",get_assay_names(query_assay))
-    from <- mapped$prob$from
-    to <- mapped$prob$to
-    mapped_scores <- mapped$prob
-    mapped_cost <- mapped$cost
-    mapped_cost_by_epoch <-  mapped$cost_by_epoch
-    #-------------------------------------------------------------------------#
-    # Filter raw counts using mapped
-    #-------------------------------------------------------------------------#
-    counts <- get_counts(query_assay, type = "raw")
-    counts <- counts[, match(from, colnames(counts))]
-    colnames(counts) <- make.unique(from, sep = "-")
-    #-------------------------------------------------------------------------#
-    # Filter coord
-    #-------------------------------------------------------------------------#
-    coord <- get_coordinates(seed_assay,
-        original = TRUE)[, c("barcodes", "x_orig", "y_orig")]
-    colnames(coord) <- c("barcodes", "x", "y")
-    coord <- coord[match(to, coord$barcodes), ]
-    coord <- align_index(mapped$prob, coord, jitter)
-    #-------------------------------------------------------------------------#
-    # maps
-    #-------------------------------------------------------------------------#
-    mapped_scores$from <- make.unique(from, sep = "-")
-    mapped_scores$to <- make.unique(to, sep = "-")
-    mapped_cost <- lapply(mapped_cost, function(x) {
-        colnames(x) <- make.unique(colnames(x), sep = "-")
-        rownames(x) <- make.unique(rownames(x), sep = "-")
-        return(x)
-    })
-    cost <- list("cost" = mapped_cost, "cost_by_epoch" = mapped_cost_by_epoch)
-    #-------------------------------------------------------------------------#
-    # Meta
-    #-------------------------------------------------------------------------#
-    scale <- seed_assay@meta$scale$scale
-    unit <- seed_assay@meta$unit
-    #-------------------------------------------------------------------------#
-    # Images
-    #-------------------------------------------------------------------------#
-    image <- check_image(query_assay, image_name = NULL, as_is = TRUE)
-    #-------------------------------------------------------------------------#
-    # Cells
-    #-------------------------------------------------------------------------#
-    if (is.null(cell_label)) {
-        cell_label <- "Cells"
-    }
-    cells <- which(colnames(query_assay@territories) %in% cell_label)
-    if (length(cells) > 0){
-        cells <- query_assay@territories[, cells]
-        names(cells) <- query_assay@territories$barcodes
-        cells <- cells[match(from, names(cells))]
-        names(cells) <- make.unique(names(cells), sep = "-")
-    } else {
-        cells <- NULL
-    }
-    #-------------------------------------------------------------------------#
-    # Building assay
-    #-------------------------------------------------------------------------#
-    
-    mapped <- build_vesalius_assay(coordinates = coord,
-        counts = counts,
-        image = image,
-        assay = assay,
-        scale = scale,
-        unit = unit, 
-        verbose = FALSE)
-    mapped <- update_vesalius_assay(mapped,
-        data = cost,
-        slot = "cost",
-        append = TRUE)
-    mapped <- update_vesalius_assay(mapped,
-        data = mapped_scores,
-        slot = "map",
-        append = TRUE)
-    mapped <- add_cells(mapped, cells,
-        add_name = cell_label, verbose = FALSE)
-    mapped@log[[length(mapped@log)]]$add_name  <- cell_label
-    return(mapped)
-}
 
 
 #' assign coordinates to matched indices

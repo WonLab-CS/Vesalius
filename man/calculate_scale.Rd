@@ -8,9 +8,11 @@ calculate_scale(coordinates, q = 0.999)
 }
 \arguments{
 \item{coordinates}{Spatial coordinates as data frame}
+
+\item{q}{quantile range}
 }
 \value{
-Single float
+Single numeric
 }
 \description{
 calculate scale of assay

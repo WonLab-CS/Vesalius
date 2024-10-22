@@ -11,7 +11,7 @@ overlap_distance_matrix(score, top_nn, verbose)
 
 \item{top_nn}{integer nearest neighbors}
 
-\item{dec}{logical - if order should be decreasing i.e return cost or score}
+\item{verbose}{logical - print progress messages}
 }
 \description{
 create a distance matrix based on mapping scores overlaps
