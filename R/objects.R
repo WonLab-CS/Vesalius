@@ -338,15 +338,17 @@ build_mapped_assay <- function(mapped,
     # Filter raw counts using mapped
     #-------------------------------------------------------------------------#
     counts <- get_counts(query_assay, type = "raw")
-    counts <- counts[, match(from, colnames(counts))]
-    colnames(counts) <- make.unique(from, sep = "-")
+    local <- match(from, colnames(counts))
+    counts <- counts[, local[!is.na(local)]]
+    colnames(counts) <- make.unique(colnames(counts), sep = "-")
     #-------------------------------------------------------------------------#
     # Filter coord
     #-------------------------------------------------------------------------#
     coord <- get_coordinates(seed_assay,
         original = TRUE)[, c("barcodes", "x_orig", "y_orig")]
     colnames(coord) <- c("barcodes", "x", "y")
-    coord <- coord[match(to, coord$barcodes), ]
+    local <- match(to, coord$barcodes)
+    coord <- coord[local[!is.na(local)], ]
     coord <- align_index(mapped$prob, coord, jitter)
     #-------------------------------------------------------------------------#
     # maps

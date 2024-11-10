@@ -1,5 +1,6 @@
 # load vesalius data 
 data(vesalius)
+set.seed(1453)
 
 # Create Vesalius object for processing
 vesalius <- build_vesalius_assay(coordinates, counts)
@@ -29,7 +30,8 @@ jitter_ves <- add_cells(jitter_ves, cells, add_name = "Cells")
 matched <- map_assays(vesalius,
     jitter_ves,
     batch_size = 1000,
-    epochs = 2,
+    epochs = 10,
+    threshold = -1, # noisy data will generate poor matches
     signal = "variable_features")
 
 
@@ -38,10 +40,22 @@ test_that("simple integration", {
     expect_s4_class(integrate_assays(matched,
         vesalius), "vesalius_assay")
     # checks?
-    integrate_assays(matched,
+    expect_error(integrate_assays(matched,
         vesalius,
         labels_mapped = "Cells",
-        labels_reference = "Cells") -> test
+        labels_reference = c("Cells","Something_else")))
+
+})
+
+test_that("Duplicated Barcodes", {
+    matched_loc <- map_assays(jitter_ves,
+        vesalius,
+        batch_size = 1000,
+        epochs = 10,
+        threshold = -1,
+        signal = "variable_features")
+    expect_warning(integrate_assays(matched_loc,
+        jitter_ves), "vesalius_assay")
     
 
 })
