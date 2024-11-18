@@ -304,10 +304,19 @@ point_mapping <- function(query_signal,
     #--------------------------------------------------------------------------#
     if (any(grepl("territory", use_cost))) {
         message_switch("territory_cost", verbose, assay = assay)
-        seed_signal_niche <- get_neighborhood_signal(seed_assay,
+        #----------------------------------------------------------------------#
+        # Since this is a block of cells - needs to be filter just is case
+        # there are drops outs from the custom cost
+        #----------------------------------------------------------------------#
+        seed_coord  <- check_territory_trial(seed_assay, "last")
+        seed_coord <- seed_coord[seed_coord$barcodes %in% seed$barcodes,]
+        query_coord  <- check_territory_trial(query_assay, "last")
+        query_coord <- query_coord[query_coord$barcodes %in% query$barcodes,]
+        
+        seed_signal_niche <- get_neighborhood_signal(seed,
             seed_signal,
             "territory")
-        query_signal_niche <- get_neighborhood_signal(query_assay,
+        query_signal_niche <- get_neighborhood_signal(query,
             query_signal,
             "territory")
         cost <- c(cost, signal_similarity(seed_signal_niche,
@@ -571,7 +580,6 @@ graph_neighborhood <- function(coord, depth) {
 #' @return list containing barcodes of spatial indices in each territory
 territory_neighborhood <- function(coord) {
     # for now only last trial 
-    coord <- check_territory_trial(coord, "last")
     coord_dist <- lapply(seq(1, nrow(coord)),function(i, coord) {
     bars <- coord$barcodes[coord$trial == coord$trial[i]]
             return(bars)
