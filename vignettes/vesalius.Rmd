@@ -424,11 +424,11 @@ From here, we can treat this new object as a frech data sets with new coordinate
 matched <- generate_embeddings(matched,
     dim_reduction = "PCA",
   nfeatures = 200, 
-  verbose = FALSE) %>%
+  verbose = FALSE)
 matched <- regularise_image(matched, lambda = 1)
 matched <- smooth_image(matched, sigma = 5, iter = 10)
 matched <- equalize_image(matched, sleft = 5, sright = 5)
-matched <- segment_image(col_resolution = 2)
+matched <- segment_image(matched,col_resolution = 2)
 ```
 We can then look at the resulting embeddings
 
