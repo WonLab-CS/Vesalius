@@ -1,5 +1,2 @@
-^_pkgdown\.yml$
-^docs$
-^pkgdown$
 ^\.github$
 ^src/\.cargo$
