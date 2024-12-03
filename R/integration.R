@@ -62,11 +62,15 @@ integrate_assays <- function(mapped,
     #-------------------------------------------------------------------------#
     query_map <- check_maps(mapped)
     query_counts <- get_counts(mapped, type = use_counts)
-    from <- query_map$from
+    from <- sub("-.*", "", query_map$from)
     query_counts <- query_counts[, match(from, colnames(query_counts))]
+    colnames(query_counts) <- make.unique(colnames(query_counts), sep = "-")
     reference_counts <- get_counts(reference, type = use_counts)
-    to <- query_map$to
-    reference_counts <- reference_counts[, match(to, colnames(reference_counts))] 
+    to <- sub("-.*", "", query_map$to)
+    reference_counts <- reference_counts[,
+        match(to, colnames(reference_counts))] 
+    colnames(reference_counts) <- make.unique(
+        colnames(reference_counts), sep = "-")
     #-------------------------------------------------------------------------#
     # Count integration using Seurat methods 
     #-------------------------------------------------------------------------#
