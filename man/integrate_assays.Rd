@@ -15,6 +15,10 @@ integrate_assays(
   use_counts = "raw",
   labels_mapped = NULL,
   labels_reference = NULL,
+  regenerate_tiles = TRUE,
+  tensor_resolution = 1,
+  filter_grid = 1,
+  filter_threshold = 1,
   verbose = TRUE
 )
 }
@@ -45,6 +49,9 @@ should be merged with the reference data (see details)}
 
 \item{labels_reference}{character - which columns in the reference data assay
 should be merged with the mapped data (see details)}
+
+\item{regenerate_tiles}{logical - should tiles be regenrated from integrated 
+coordinates}
 
 \item{verbose}{logical - should progressed message be printed}
 }

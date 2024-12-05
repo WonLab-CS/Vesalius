@@ -12,7 +12,9 @@ Vesalius: Spatial Omics analysis using images processing
 \seealso{
 Useful links:
 \itemize{
-  \item \url{https://patrickcnmartin.github.io/Vesalius/,https://github.com/patrickCNMartin/Vesalius}
+  \item \url{https://patrickcnmartin.github.io/Vesalius/}
+  \item \url{https://github.com/patrickCNMartin/Vesalius}
+  \item \url{https://wonlab-cs.github.io/Vesalius/}
 }
 
 }

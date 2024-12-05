@@ -24,6 +24,8 @@
 #' should be merged with the reference data (see details)
 #' @param labels_reference character - which columns in the reference data assay
 #' should be merged with the mapped data (see details)
+#' @param regenerate_tiles logical - should tiles be regenrated from integrated 
+#' coordinates
 #' @param verbose logical - should progressed message be printed
 #' @details After mapping coordinates from a query onto a reference, vesalius
 #' provides a way to then integrate the assays together. This function will:
@@ -53,6 +55,10 @@ integrate_assays <- function(mapped,
     use_counts = "raw",
     labels_mapped = NULL,
     labels_reference = NULL,
+    regenerate_tiles = TRUE,
+    tensor_resolution = 1,
+    filter_grid = 1,
+    filter_threshold = 1,
     verbose = TRUE) {
     simple_bar(verbose)
     #-------------------------------------------------------------------------#
@@ -92,7 +98,16 @@ integrate_assays <- function(mapped,
         coordinates,
         labels_mapped,
         labels_reference)
-    vesalius_assay <- build_vesalius_assay(coordinates = coordinates, verbose = FALSE)
+    vesalius_assay <- build_vesalius_assay(
+        coordinates = coordinates,
+        verbose = FALSE)
+    if (regenerate_tiles) {
+        vesalius_assay <- generate_tiles(vesalius_assay,
+            tensor_resolution = tensor_resolution,
+            filter_grid = filter_grid,
+            filter_threshold = filter_threshold,
+            verbose = verbose)
+    }
     vesalius_assay <- update_vesalius_assay(vesalius_assay,
         data = integrated$counts,
         slot = "counts",
@@ -128,6 +143,7 @@ integrate_assays <- function(mapped,
     vesalius_assay <- commit_log(vesalius_assay,
       commit,
       "Integrated")
+    
     simple_bar(verbose)
     return(vesalius_assay)
 }

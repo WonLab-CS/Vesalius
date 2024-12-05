@@ -76,6 +76,6 @@ Encoding: UTF-8
 LazyData: true
 RoxygenNote: 7.3.2
 VignetteBuilder: knitr
-URL: https://patrickcnmartin.github.io/Vesalius/,https://github.com/patrickCNMartin/Vesalius
+URL: https://patrickcnmartin.github.io/Vesalius/, https://github.com/patrickCNMartin/Vesalius, https://wonlab-cs.github.io/Vesalius/
 Config/testthat/edition: 3
 Config/rextendr/version: 0.2.0.9000
