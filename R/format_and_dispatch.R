@@ -332,14 +332,6 @@ dispatch_sample <- function(territory_barcodes, ter, sample) {
     return(common)
 }
 
-#' convert cost to prob
-#' @param cost matrix containing cost 
-#' @param n_cost number of custom cost matrices parsed
-#' @return a probability matrix 
-cost_to_prob <- function(cost, n_cost) {
-    cost$score <- (n_cost - cost$score) / n_cost
-    return(cost)
-}
 
 
 #' dispatch barcodes to subset cost for match clustering

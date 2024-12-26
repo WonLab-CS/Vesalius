@@ -35,7 +35,7 @@ matched <- map_assays(vesalius,
     epoch = 5,
     jitter = 1)
 
-
+matched <- get_cost_contribution(matched, method = "range")
 
 
 test_that("metric clusters", {

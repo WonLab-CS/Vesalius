@@ -39,6 +39,7 @@ add_counts <- function(vesalius_assay,
     force = FALSE,
     verbose = TRUE) {
     if (is.null(counts)){
+        # used for internally 
         return(vesalius_assay)
     }
     simple_bar(verbose)
@@ -146,6 +147,7 @@ add_embeddings <- function(vesalius_assay,
     add_name = NULL,
     verbose = TRUE) {
     if (is.null(embeddings)) {
+        # used for internally 
         return(vesalius_assay)
     }
     simple_bar(verbose)
@@ -212,6 +214,7 @@ add_embeddings <- function(vesalius_assay,
 #' @export
 add_cells <- function(vesalius_assay, cells, add_name = NULL, verbose = TRUE){
     if (is.null(cells)){
+        # used for internally 
         return(vesalius_assay)
     }
     simple_bar(verbose)

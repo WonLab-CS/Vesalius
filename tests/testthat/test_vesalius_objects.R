@@ -78,6 +78,11 @@ test_that("Adding counts to vesalius_assay with counts", {
         counts = counts,
         raw = counts),
         "vesalius_assay")
+    # return the same object if counts is NULL used internally
+    expect_s4_class(add_counts(vesalius,
+        counts = NULL,
+        raw = counts),
+        "vesalius_assay")
     expect_error(add_counts(vesalius,
         counts = counts))
     expect_s4_class(add_counts(vesalius,
@@ -110,6 +115,8 @@ test_that("Adding custom embeddings", {
     # expect valid object now that you have rownames
     expect_s4_class(add_embeddings(vesalius, embeds),
         "vesalius_assay")
+    expect_s4_class(add_embeddings(vesalius, NULL),
+        "vesalius_assay")
     expect_s4_class(add_embeddings(vesalius, as.data.frame(embeds)),
         "vesalius_assay")
     # adding duplicated colnames
@@ -117,7 +124,13 @@ test_that("Adding custom embeddings", {
     #expect_error(add_embeddings(vesalius, embeds))
     # We expect the same thing even if it is truncated
     expect_warning(add_embeddings(vesalius, embeds[-(1:20), ]))
-    # Add sanity checks to make sure that barcodes overlap
+
+    # Testng if new name is being added 
+    vesalius <- add_embeddings(vesalius, embeds, add_name = "funky")
+    expect_s4_class(vesalius, "vesalius_assay")
+    expect_equal(get_active_embedding_tag(vesalius), "funky")
+
+    
 })
 
 test_that("Scale of coordinates",{
@@ -146,9 +159,17 @@ test_that("Adding Cells",{
     # adding new territory slot
     names(cells) <- coordinates$barcodes
     expect_s4_class(add_cells(vesalius, cells), "vesalius_assay")
+    expect_s4_class(add_cells(vesalius, NULL), "vesalius_assay")
     cells <- sample(LETTERS[1:13], size = nrow(coordinates), replace = TRUE)
     names(cells) <- coordinates$barcodes
     expect_s4_class(add_cells(vesalius, cells),
+        "vesalius_assay")
+    # check show methods for cells 
+    buffer <- add_cells(vesalius, cells)
+    expect_s4_class(buffer,
+        "vesalius_assay")
+    buffer <- add_cells(vesalius, cells, add_name = "funky")
+    expect_s4_class(buffer,
         "vesalius_assay")
 
 })

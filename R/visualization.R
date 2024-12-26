@@ -412,7 +412,6 @@ unpack_territory_path <- function(trial,
         path <- switch(method,
           "none" = trial,
           "edge" = territory_edge(trial, tiles, territory),
-          "concave" = territory_concave(trial, territory),
           "convex" = territory_convex(trial, territory))
         trial_split[[i]] <- path
     }
@@ -477,21 +476,6 @@ territory_convex <- function(trial, territory) {
 }
 
 
-# #' @importFrom concaveman concaveman
-# territory_concave <- function(trial, territory) {
-#   trial <- trial %>%
-#     filter(trial %in% territory)
-#   bars <- trial$barcodes
-#   trial_mat <- as.matrix(trial[, c("x", "y")])
-#   rownames(trial_mat) <- bars
-#   hull <- as.data.frame(concaveman(trial_mat, concavity = 3))
-#   colnames(hull) <- c("x", "y")
-#   knn <- RANN::nn2(data = trial_mat,
-#     query = hull,
-#     k = 1)
-#   trial <- trial[knn$nn.idx[, 1], ]
-#   return(trial)
-# }
 
 adjust_cooridnates <- function(trial, vesalius_assay) {
     orig_coord <- vesalius_assay@meta$orig_coord

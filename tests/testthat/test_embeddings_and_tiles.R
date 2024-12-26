@@ -8,6 +8,20 @@ test_that("Vesalius skips tile generation if already computed", {
     expect_warning(generate_tiles(vesalius))
 })
 
+
+test_that("Vesalius checks and filters if custom embeds already present", {
+    vesalius <- build_vesalius_assay(coordinates)
+    # Generate custom embedding matrix of identical size
+    embeds <- matrix(0,
+        ncol = 30,
+        nrow = length(unique(vesalius@tiles$barcodes)))
+    rownames(embeds) <- unique(vesalius@tiles$barcodes)
+    vesalius <- add_embeddings(vesalius, embeds)
+})
+
+
+
+
 test_that("Vesalius reduce tensor resolution works", {
     # testing that reduced tensor works as expected 
     new_coord <- data.frame("barcodes" = paste0("barcode", seq(1, 256)),
@@ -111,6 +125,14 @@ test_that("Vesalius PCA embeds", {
     expect_true(get_active_embedding_tag(vesalius) == "PCA.1")
     expect_true(all(names(get_embeddings(vesalius, active = FALSE)) %in%
         c("PCA", "PCA.1")))
+    # testing if show method works when many embeds are generated
+    vesalius <- generate_embeddings(vesalius,
+        dim_reduction = "PCA",
+        normalization = "log_norm")
+    vesalius <- generate_embeddings(vesalius,
+        dim_reduction = "PCA",
+        normalization = "log_norm")
+    expect_s4_class(vesalius, "vesalius_assay")
 })
 
 test_that("Vesalius NMF embeds", {
@@ -270,6 +292,8 @@ test_that("Vesalius mixed embeds", {
         c("PCA", "UMAP", "PCA.1")))
 })
 
+
+
 test_that("Vealius log_norm", {
     vesalius <- build_vesalius_assay(coordinates, counts)
     # simple embeds
@@ -312,4 +336,12 @@ test_that("Vealius Custom", {
     expect_s4_class(vesalius, "vesalius_assay")
 })
 
-
+test_that("Vealius Custom features", {
+    vesalius <- build_vesalius_assay(coordinates, counts)
+    features <- sample(rownames(counts), size = 200)
+    vesalius <- generate_embeddings(vesalius,
+        use_counts = "raw",
+        features = features)
+    expect_s4_class(vesalius, "vesalius_assay")
+ 
+})

@@ -54,14 +54,6 @@ listify <- function(mat) {
 }
 
 
-remove_suffix <- function(barcodes) {
-    prefix <- sapply(barcodes, function(dat){
-        prefix <- paste0(strsplit(x = dat, split = "*")[[1]][1:2], collapse = "*")
-        return(prefix)
-    })
-    return(prefix)
-}
-
 
 
 #------------------------/ Normalising Embeds /--------------------------------#
@@ -97,14 +89,6 @@ min_max <- function(x) {
   }
 }
 
-# z_norm <- function(x) {
-#   if (length(table(x)) == 1) {
-#     return(x)
-#     warning("Cannot minmax normalise - all values are equal!")
-#   } else {
-#     return((x - mean(x)) / sd(x))
-#   }
-# }
 
 
 
@@ -116,9 +100,9 @@ chunk <- function(x, n, l = NULL) {
     seq.int(from = 1, to = length(x), by = n),
     pmin(seq.int(from = 1, to = length(x), by = n) + (n - 1), length(x)),
     SIMPLIFY = FALSE)
-    if (!is.null(l) && length(chunk) > l){
+    if (!is.null(l) && length(chunk) > l) {
         chunk[[l]] <- unlist(chunk[l:length(chunk)])
-        chunk <- chunk[seq(1,l)]
+        chunk <- chunk[seq(1, l)]
     }
     return(chunk)
 }

@@ -320,6 +320,8 @@ test_that("cell type labels", {
         threshold = 0.1,
         use_cost = "cell_type"),
         "vesalius_assay")
+    # checking if wrong cell labels parsed throws warning
+
 })
 
 test_that("multi_cost_types", {

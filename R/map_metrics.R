@@ -229,9 +229,16 @@ get_cost_contribution <- function(vesalius_assay,
     # for now i will use dispersion scores
     #-------------------------------------------------------------------------#
     contribution <- switch(EXPR = method,
-        "dispersion" = lapply(cost, dispersion))
+        "dispersion" = lapply(cost, dispersion),
+        "CV" = lapply(cost, coef_of_var),
+        "gini" = lapply(cost, gini),
+        "IQR" = lapply(cost, IQR),
+        "POC" = poc(vesalius_assay),
+        "SA" = sa(vesalius_assay))
+
     contribution <- data.frame("metric" = names(contribution),
         "score" = unlist(contribution))
+    colnames(contribution) <- sub("score", method, colnames(contribution))
     contribution <- list("contribution_score" = contribution)
     #-------------------------------------------------------------------------#
     # rebuild and add
@@ -251,5 +258,48 @@ get_cost_contribution <- function(vesalius_assay,
 
 
 dispersion <- function(x) {
-    return(var(x)/mean(x))
+    return(var(x) / mean(x))
+}
+
+coef_of_var <- function(x) {
+    return(sd(x) / mean(x))
+}
+
+gini <- function(x) {
+    x <- sort(x)
+    num <- sum(x * seq_along(x))
+    dem <- seq_along(x) * sum(x) - num
+    g <- num / dem
+    return(g)
+}
+
+get_range <- function(x) {
+    return(max(x) - min(x))
+}
+
+poc <- function(vesalius_assay) {
+    cost <- sum(vesalius_assay@map$cost)
+    loc <- grep("init",colnames(vesalius_assay@map))
+    local_contribs <- vesalius_assay@map[,seq(loc + 1, ncol(vesalius_assay@map))]
+    contrib <- apply(local_contribs,
+        2,
+        sum)
+    contrib <- contrib / cost
+    names(contrib) <- colnames(local_contribs)
+    return(contrib)
+}
+
+sa <- function(vesalius_assay) {
+    cost <- sum(vesalius_assay@map$cost)
+    loc <- grep("init",colnames(vesalius_assay@map))
+    local_contribs <- vesalius_assay@map[,seq(loc + 1, ncol(vesalius_assay@map))]
+    impacts <- apply(local_contribs,
+        2,
+        function(x,cost) {
+            new_cost <- cost - sum(x)
+            return(cost - new_cost)
+        }, cost = cost)
+    relative_contributions <- impacts / sum(impacts)
+    names(relative_contributions) <- colnames(local_contribs)
+    return(relative_contributions)
 }

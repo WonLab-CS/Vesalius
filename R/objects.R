@@ -377,13 +377,20 @@ build_mapped_assay <- function(mapped,
         cell_label <- "Cells"
     }
     cells <- which(colnames(query_assay@territories) %in% cell_label)
-    if (length(cells) > 0){
-        cells <- query_assay@territories[, cells]
-        names(cells) <- query_assay@territories$barcodes
-        cells <- cells[match(from, names(cells))]
-        names(cells) <- make.unique(names(cells), sep = "-")
+    label_list <- vector("list", length(cells))
+    names(label_list) <- colnames(query_assay@territories)[cells]
+    if (length(cells) > 0) {
+        for (l in seq_along(cells)){
+            tmp <- query_assay@territories[, cells[l]]
+            names(tmp) <- query_assay@territories$barcodes
+            tmp <- tmp[match(from, names(tmp))]
+            names(tmp) <- make.unique(names(tmp), sep = "-")
+            label_list[[l]] <- tmp
+        }
+        cells <- TRUE
     } else {
-        cells <- NULL
+        warnings("Query Cell labels not found - Ignoring Cells")
+        cells <- FALSE
     }
     #-------------------------------------------------------------------------#
     # Building assay
@@ -404,9 +411,14 @@ build_mapped_assay <- function(mapped,
         data = mapped_scores,
         slot = "map",
         append = TRUE)
-    mapped <- add_cells(mapped, cells,
-        add_name = cell_label, verbose = FALSE)
-    mapped@log[[length(mapped@log)]]$add_name  <- cell_label
+    if (cells) {
+        for (l  in seq_along(label_list)) {
+            mapped <- add_cells(mapped, label_list[[l]],
+                add_name = names(label_list)[l], verbose = FALSE)
+            mapped@log[[length(mapped@log)]]$add_name  <- names(label_list)[l]
+        }
+    }
+    
     return(mapped)
 }
 

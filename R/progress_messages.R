@@ -131,16 +131,10 @@ message_switch <- function(type, verbose = TRUE, ...) {
             " Setting",args$tag, "as active count matrix \n")),
         "post_map_filter" = cat(paste(t,
             " Filtering Mapped Indices \n")),
-        "count_only" = cat(paste(t,
-            " No barcode maps found - Integrating counts only \n")),
         "overlap_scores" = cat(paste(t,
             " Computing mapping overlaps between query cells \n")),
         "hclust_scores" = cat(paste(t,
-            " Applying hierarchical clustering to mapping scores \n")),
-        "louvain_scores" = cat(paste(t,
-            " Applying Louvain clustering to mapping scores \n")),
-        "leiden_scores" = cat(paste(t,
-            " Applying Leiden clustering to mapping scores \n"))
+            " Applying hierarchical clustering to mapping scores \n"))
         )
     } else {
         return(NULL)

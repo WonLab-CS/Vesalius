@@ -47,7 +47,7 @@ test_that("simple integration", {
 
 })
 
-test_that("Duplicated Barcodes", {
+test_that("Duplicated Spatial Indices", {
     matched_loc <- map_assays(jitter_ves,
         vesalius,
         batch_size = 1000,
@@ -57,5 +57,14 @@ test_that("Duplicated Barcodes", {
     expect_warning(integrate_assays(matched_loc,
         jitter_ves), "vesalius_assay")
     
+
+})
+
+test_that("simple integration - DEGs", {
+    # check that we can get exact match
+    inter <- integrate_assays(matched, vesalius)
+    # checks?
+    expect_s4_class(identify_markers(inter, sample = TRUE),
+        "vesalius_assay")
 
 })
