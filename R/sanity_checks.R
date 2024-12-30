@@ -1011,7 +1011,10 @@ check_cell_labels <- function(vesalius_assay, trial = NULL) {
     if (is.null(trial)) {
         cells <- check_territory_trial(vesalius_assay, trial = "Cells")
     } else {
-        cells <- check_territory_trial(vesalius_assay, trial = trial)
+        if (length(trial) > 1){
+            warning("More than one cell label provided - using 1st one.")
+        }
+        cells <- check_territory_trial(vesalius_assay, trial = trial[1L])
     }
     return(cells[, c("barcodes", "trial")])
 }
