@@ -10,26 +10,38 @@ Description: We present Vesalius to decipher tissue anatomy by embracing various
    Vesalius is a tool to perform high-resolution in silico anatomization and
    molecular characterization from ST data.
 License: GPL-3 + file LICENSE
-Collate: image_processing.R
-    morphology_operators.R
-    misc.R
-    progress_messages.R
-    territory_identity_and_markers.R
-    visualization.R
+Collate: data.R
+    dispatch.R
+    embeddings.R
+    equalize_image.R
     global_bindings.R
-    data.R
-    objects.R
-    embeddings_and_tiles.R
-    format_and_dispatch.R
-    object_utilities_and_methods.R
-    sanity_checks.R
-    object_modification.R
+    image_plot.R
+    integration.R
+    interoperability.R
+    isolate_territories.R
     map_assays.R
     map_metrics.R
-    interoperability.R
-    vesalius.R
-    integration.R
+    misc.R
+    morphology_operators.R
+    multi_mod.R
+    normalization.R
+    object_modification.R
+    object_utilities_and_methods.R
+    objects.R
+    progress_messages.R
     RcppExports.R
+    reformat.R
+    regularize_image.R
+    sanity_checks.R
+    segment_image.R
+    smooth_image.R
+    spix.R
+    territory_identity_and_markers.R
+    territory_plot.R
+    tiles.R
+    vesalius.R
+    view_gene_expression.R
+    view_mapping_metrics.R
 Depends: R (>= 4.0.0)
 LinkingTo: Rcpp
 Imports:
