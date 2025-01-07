@@ -2,6 +2,8 @@
 data(vesalius)
 
 # Create Vesalius object for processing
+
+
 vesalius <- build_vesalius_assay(coordinates, counts)
 jitter_ves <- build_vesalius_assay(jitter_coord, jitter_counts)
 
@@ -367,4 +369,5 @@ test_that("multi_cost_types", {
         custom_cost = custom_matrix),
         "vesalius_assay")
 })
+
 

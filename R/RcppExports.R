@@ -5,6 +5,10 @@ pearson_cost <- function(seed, query) {
     .Call('_vesalius_pearson_cost', PACKAGE = 'vesalius', seed, query)
 }
 
+distance_cost <- function(seed, query) {
+    .Call('_vesalius_distance_cost', PACKAGE = 'vesalius', seed, query)
+}
+
 jaccard_cost <- function(seed, query) {
     .Call('_vesalius_jaccard_cost', PACKAGE = 'vesalius', seed, query)
 }

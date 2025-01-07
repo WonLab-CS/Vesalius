@@ -43,7 +43,9 @@ Collate: data.R
     view_gene_expression.R
     view_mapping_metrics.R
 Depends: R (>= 4.0.0)
-LinkingTo: Rcpp
+LinkingTo:
+    Rcpp,
+    RcppEigen
 Imports:
     grDevices,
     stats,
@@ -76,6 +78,7 @@ Imports:
     ggnewscale,
     kohonen,
     Rcpp,
+    RcppEigen,
     TreeDist
 Suggests:
     knitr,

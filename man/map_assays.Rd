@@ -9,6 +9,7 @@ map_assays(
   query_assay,
   signal = "variable_features",
   use_cost = c("feature", "niche"),
+  use_distance = FALSE,
   neighborhood = "knn",
   k = 20,
   radius = 0.05,

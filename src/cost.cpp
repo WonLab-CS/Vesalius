@@ -1,5 +1,5 @@
 #include <Rcpp.h>
-#include <iostream>
+#include <RcppEigen.h>
 #include <vector>
 #include <cmath>
 #include <math.h>
@@ -12,24 +12,70 @@
 using namespace Rcpp;
 
 
-float fast_cor(const NumericVector& cell_1, const NumericVector& cell_2){
-    int n = cell_1.size();
-    double sum_cell_1 = 0.0, sum_cell_2 = 0.0, sum_cell_1_2 = 0.0;
-    double sq_sum_cell_1 = 0, sq_sum_cell_2 = 0.0;
-    for (int i = 0; i < n; i++){
-        sum_cell_1 += cell_1[i];
-        sum_cell_2 += cell_2[i];
-        sum_cell_1_2 += cell_1[i] * cell_2[i];
-        sq_sum_cell_1 += cell_1[i] * cell_1[i];
-        sq_sum_cell_2 += cell_2[i] * cell_2[i];
-    }
-    float corr = static_cast<float>((n * sum_cell_1_2 - sum_cell_1 * sum_cell_2)
-                  / sqrt((n * sq_sum_cell_1 - sum_cell_1 * sum_cell_1)
-                      * (n * sq_sum_cell_2 - sum_cell_2 * sum_cell_2)));
-    return corr;
+
+Eigen::VectorXd col_means(const Eigen::MatrixXd& mat) {
+    return mat.colwise().mean();
 }
 
 
+Eigen::VectorXd col_stds(const Eigen::MatrixXd& mat, const Eigen::VectorXd& means) {
+    Eigen::VectorXd stds(mat.cols());
+    for (int i = 0; i < mat.cols(); i++) {
+        stds[i] = sqrt((mat.col(i).array() - means[i]).square().sum() / (mat.rows() - 1));
+    }
+    return stds;
+}
+
+// [[Rcpp::export]]
+Rcpp::NumericMatrix pearson_cost(const Eigen::Map<Eigen::MatrixXd>& seed,
+                               const Eigen::Map<Eigen::MatrixXd>& query) {
+    int seed_cols = seed.cols(); // Number of columns in matA
+    int query_cols = query.cols(); // Number of columns in matB
+    NumericMatrix result(query_cols, seed_cols);
+
+    // Compute means and standard deviations for both matrices
+    Eigen::VectorXd mean_seed = col_means(seed);
+    Eigen::VectorXd mean_query = col_means(query);
+    Eigen::VectorXd std_seed = col_stds(seed, mean_seed);
+    Eigen::VectorXd std_query = col_stds(query, mean_query);
+
+    // Center the matrices
+    Eigen::MatrixXd centered_seed = seed.rowwise() - mean_seed.transpose();
+    Eigen::MatrixXd centered_query = query.rowwise() - mean_query.transpose();
+
+    // Compute correlations sequentially
+    for (int i = 0; i < seed_cols; i++) {
+        for (int j = 0; j < query_cols; j++) {
+            double numerator = (centered_seed.col(i).array() * centered_query.col(j).array()).sum();
+            double denominator = (std_seed[i] * std_query[j]) * (seed.rows() - 1);
+            result(j, i) = numerator / denominator;
+        }
+    }
+
+    return result;
+}
+
+
+
+;
+
+
+inline double euclidean_distance(const Eigen::VectorXd& vec1, const Eigen::VectorXd& vec2) {
+    return (vec1 - vec2).norm();
+}
+
+// [[Rcpp::export]]
+Eigen::MatrixXd distance_cost(const Eigen::MatrixXd& seed, const Eigen::MatrixXd& query) {
+    size_t cols1 = seed.cols(); 
+    size_t cols2 = query.cols(); 
+    Eigen::MatrixXd distance_matrix(cols2, cols1);
+    for (size_t i = 0; i < cols2; ++i) {  
+        for (size_t j = 0; j < cols1; ++j) {  
+            distance_matrix(i, j) = euclidean_distance(seed.col(j), query.col(i));
+        }
+    }
+    return distance_matrix;
+}
 
 
 // Rcpp::CharacterVector intersection(CharacterVector& v1,
@@ -58,34 +104,17 @@ std::vector<std::string> intersection(std::vector<std::string>& v1, std::vector<
 }
 
 
-float jaccard_index(std::vector<std::string>& niche_1, std::vector<std::string>& niche_2){
+double jaccard_index(std::vector<std::string>& niche_1, std::vector<std::string>& niche_2){
     double size_niche_1 = niche_1.size();
     double size_niche_2 = niche_2.size();
     std::vector<std::string> intersect = intersection(niche_1, niche_2);
     double size_in = intersect.size();
-    float jaccard_index = static_cast<float>(size_in
+    double jaccard_index = static_cast<float>(size_in
                         / (size_niche_1 + size_niche_2 - size_in));
     return jaccard_index;
 }
 
 
-
-
-// [[Rcpp::export]]
-Rcpp::NumericMatrix pearson_cost(const List& seed,
-    const List& query) {
-    int cell_seed = seed.size();
-    int cell_query = query.size();
-    Rcpp::NumericMatrix score(cell_query, cell_seed);
-    for (int i = 0 ; i < cell_seed; i++){
-        for (int j = 0; j < cell_query; j++){
-            Rcpp::NumericVector s = seed[i];
-            Rcpp::NumericVector q = query[j];
-            score(j,i) = fast_cor(s,q);
-        }
-    }
-    return score;
-}
 
 
 // [[Rcpp::export]]

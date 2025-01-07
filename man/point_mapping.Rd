@@ -10,6 +10,7 @@ point_mapping(
   cost,
   seed_signal,
   seed_assay,
+  use_distance = FALSE,
   neighborhood = "knn",
   k = 20,
   radius = 0.05,

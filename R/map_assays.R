@@ -9,6 +9,9 @@
 #' Aling and integrate spatial assay from the same modality using super pixels
 #' @param seed_assay vesalius_assay object - data to be mapped to
 #' @param query_assay vesalius_assay objecy - data to map
+#' @param use_cost character string defining how should total cost be computer
+#' Available: feature, niche, territory, composition (See details for combinations
+#' and custom matrices)
 #' @param neighborhood character - how should the neighborhood be selected?
 #' "knn", "radius", "graph"(See details)
 #' @param k int ]2, n_points] number of neareset neighbors to be considered for
@@ -27,9 +30,7 @@
 #' @param scale logical - should signal be scaled 
 #' @param threshold score threshold below which indicices should be removed.
 #' Scores will always be between 0 and 1
-#' @param use_cost character string defining how should total cost be computer
-#' Available: feature, niche, territory, composition (See details for combinations
-#' and custom matrices)
+
 #' @param custom_cost matrix - matrix of size n (query cells) by p (seed cells)
 #' containing custom cost matrix. Used instead of vesalius cost matrix
 #' @param verbose logical - should I be a noisy boy?
@@ -98,6 +99,7 @@ map_assays <- function(seed_assay,
     query_assay,
     signal = "variable_features",
     use_cost = c("feature","niche"),
+    use_distance = FALSE,
     neighborhood = "knn",
     k = 20,
     radius = 0.05,
@@ -139,6 +141,7 @@ map_assays <- function(seed_assay,
         cost = custom_cost,
         seed_signal = signal_out$seed,
         seed_assay = seed_assay,
+        use_distance = use_distance,
         neighborhood = neighborhood,
         k = k,
         radius = radius,
@@ -244,6 +247,7 @@ point_mapping <- function(query_signal,
     cost,
     seed_signal,
     seed_assay,
+    use_distance = FALSE,
     neighborhood = "knn",
     k = 20,
     radius = 0.05,
@@ -262,14 +266,16 @@ point_mapping <- function(query_signal,
         query_assay,
         query_signal,
         use_cost)
+
     #--------------------------------------------------------------------------#
     # Correlation between individual cells 
     #--------------------------------------------------------------------------#
     if (any(grepl("feature", use_cost))){
+        method <- ifelse(use_distance, "distance","pearson")
         message_switch("feature_cost", verbose, assay = assay)
         cost <- c(cost, signal_similarity(seed_signal,
             query_signal,
-            method = "pearson"))
+            method = method))
         names(cost)[length(cost)] <-  "feature"
 
     }
@@ -278,6 +284,7 @@ point_mapping <- function(query_signal,
     # Correlation between the cellular niche centered around the cell
     #--------------------------------------------------------------------------#
     if (any(grepl("niche", use_cost))) {
+        method <- ifelse(use_distance, "distance","pearson")
         message_switch("get_neigh", verbose, assay = assay)
         seed_signal_niche <- get_neighborhood_signal(seed,
             seed_signal,
@@ -294,7 +301,7 @@ point_mapping <- function(query_signal,
         message_switch("neighbor_cost", verbose, assay = assay)
         cost <- c(cost, signal_similarity(seed_signal_niche,
             query_signal_niche,
-            method = "pearson"))
+            method = method))
         names(cost)[length(cost)] <-  "niche"
     }
     #--------------------------------------------------------------------------#
@@ -303,6 +310,7 @@ point_mapping <- function(query_signal,
     # score after
     #--------------------------------------------------------------------------#
     if (any(grepl("territory", use_cost))) {
+        method <- ifelse(use_distance, "distance","pearson")
         message_switch("territory_cost", verbose, assay = assay)
         #----------------------------------------------------------------------#
         # Since this is a block of cells - needs to be filter just is case
@@ -321,7 +329,7 @@ point_mapping <- function(query_signal,
             "territory")
         cost <- c(cost, signal_similarity(seed_signal_niche,
             query_signal_niche,
-            method = "pearson"))
+            method = method))
         names(cost)[length(cost)] <-  "territory"
     }
     #--------------------------------------------------------------------------#
@@ -370,7 +378,6 @@ point_mapping <- function(query_signal,
     scores <- score_matches(matched_indices$matched,
         cost,
         use_cost = use_cost)
-   
     return(list("prob" = scores,
         "cost" = cost,
         "cost_by_epoch" = matched_indices$cost_by_epoch))
@@ -426,47 +433,44 @@ concat_cost <- function(cost, use_cost, complement = TRUE) {
 #' @importFrom future nbrOfWorkers
 #' @importFrom future.apply future_lapply
 signal_similarity <- function(seed, query, method = "pearson") {
-    seed <- listify(seed)
-    query <- listify(query)
-    batch_size_seed <- ceiling(length(seed) / future::nbrOfWorkers())
-    batch_size_query <- ceiling(length(query) / future::nbrOfWorkers())
+    batch_size_seed <- ceiling(ncol(seed) / future::nbrOfWorkers())
+    batch_size_query <- ceiling(ncol(query) / future::nbrOfWorkers())
     #-------------------------------------------------------------------------#
     # First we chunk seed and query 
     # running a parallel lapply internally
     #-------------------------------------------------------------------------#
-    seed_batch <- chunk(seq(1, length(seed)), batch_size_seed)
-    query_batch <- chunk(seq(1, length(query)), batch_size_query)
+    seed_batch <- chunk(seq(1, ncol(seed)), batch_size_seed)
+    query_batch <- chunk(seq(1, ncol(query)), batch_size_query)
+    seed_bar <- colnames(seed)
+    query_bar <- colnames(query)
+    seed <- listify(seed, seed_batch)
+    query <- listify(query, query_batch)
     total_cost <- vector("list", length(seed_batch))
     #-------------------------------------------------------------------------#
     # Loop over seed batch - idealy we would use the loop over the 
     # smallest batch 
     #-------------------------------------------------------------------------#
-    for (i in seq_along(seed_batch)) {
+    for (i in seq_along(seed)) {
         #---------------------------------------------------------------------#
         # Splitting into sub lists
         #---------------------------------------------------------------------#
-        local_seed <- seed[seed_batch[[i]]]
+        local_seed <- as.matrix(seed[[i]])
         #---------------------------------------------------------------------#
         # computing score in batches
         #---------------------------------------------------------------------#
-        local_cost <- future_lapply(query_batch,
-            function(query_batch, local_seed, query) {
-                local_query <- query[query_batch]
+        local_cost <- lapply(query,
+            function(local_query, local_seed) {
+                local_query <- as.matrix(local_query)
+                gc()
                 cost <- switch(EXPR = method,
                     "jaccard" = jaccard_cost(local_seed, local_query),
-                    "pearson" = pearson_cost(local_seed, local_query))
-                #-------------------------------------------------------------#
-                # this can return Nan when SD is 0 - happens when all counts 
-                # are 0. Can happen with the overlap between variable features
-                # Will replace with 0 instead 
-                #-------------------------------------------------------------#
+                    "pearson" = pearson_cost(local_seed, local_query),
+                    "distance" = distance_cost(local_seed, local_query))
                 cost[which(is.na(cost), arr.ind = TRUE)] <- 0
-                colnames(cost) <- names(local_seed)
-                rownames(cost) <- names(local_query)
+                colnames(cost) <- colnames(local_seed)
+                rownames(cost) <- colnames(local_query)
                 return(cost)
-            }, local_seed = local_seed,
-            query = query,
-            future.seed = TRUE)
+            }, local_seed = local_seed)#, future.seed = TRUE)
         #---------------------------------------------------------------------#
         # rebuild slice 
         #---------------------------------------------------------------------#
@@ -478,10 +482,18 @@ signal_similarity <- function(seed, query, method = "pearson") {
     # Rebuild total matrix
     #-------------------------------------------------------------------------#
     total_cost <- do.call("cbind", total_cost)
-    colnames(total_cost) <- names(seed)
-    rownames(total_cost) <- names(query)
+    colnames(total_cost) <- seed_bar
+    rownames(total_cost) <- query_bar
     total_cost <- total_cost[order(rownames(total_cost)),
         order(colnames(total_cost))]
+    #-------------------------------------------------------------------------#
+    # normalize if distance used
+    # we want the max distance the be cosidered as the heighest cost
+    #-------------------------------------------------------------------------#
+    if (method == "distance") {
+        total_cost <- total_cost / max(total_cost) 
+        total_cost <- 1 - total_cost
+    }
     return(list(total_cost))
 }
 
