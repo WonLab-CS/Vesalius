@@ -10,7 +10,8 @@ Description: We present Vesalius to decipher tissue anatomy by embracing various
    Vesalius is a tool to perform high-resolution in silico anatomization and
    molecular characterization from ST data.
 License: GPL-3 + file LICENSE
-Collate: data.R
+Collate: cost.R
+    data.R
     dispatch.R
     embeddings.R
     equalize_image.R

@@ -99,7 +99,7 @@ map_assays <- function(seed_assay,
     query_assay,
     signal = "variable_features",
     use_cost = c("feature","niche"),
-    use_distance = FALSE,
+    method = "pearson",
     neighborhood = "knn",
     k = 20,
     radius = 0.05,
@@ -112,6 +112,8 @@ map_assays <- function(seed_assay,
     scale = FALSE,
     threshold = 0.3,
     custom_cost = NULL,
+    seed_territory_labels = "Territory",
+    query_territory_labels = "Territory",
     seed_cell_labels = NULL,
     query_cell_labels = NULL,
     jitter = 0,
@@ -141,7 +143,7 @@ map_assays <- function(seed_assay,
         cost = custom_cost,
         seed_signal = signal_out$seed,
         seed_assay = seed_assay,
-        use_distance = use_distance,
+        method = method,
         neighborhood = neighborhood,
         k = k,
         radius = radius,
@@ -150,6 +152,8 @@ map_assays <- function(seed_assay,
         epochs = epochs,
         use_cost = use_cost,
         threshold = threshold,
+        seed_territory_labels = seed_territory_labels,
+        query_territory_labels = query_territory_labels,
         seed_cell_labels = seed_cell_labels,
         query_cell_labels = query_cell_labels,
         verbose = verbose)
@@ -247,7 +251,7 @@ point_mapping <- function(query_signal,
     cost,
     seed_signal,
     seed_assay,
-    use_distance = FALSE,
+    method = "pearson",
     neighborhood = "knn",
     k = 20,
     radius = 0.05,
@@ -256,6 +260,8 @@ point_mapping <- function(query_signal,
     epochs = 1,
     use_cost = c("feature", "niche"),
     threshold = 0.5,
+    seed_territory_labels = "Territory",
+    query_territory_labels = "Territory",
     seed_cell_labels = NULL,
     query_cell_labels = NULL,
     verbose = TRUE) {
@@ -271,7 +277,7 @@ point_mapping <- function(query_signal,
     # Correlation between individual cells 
     #--------------------------------------------------------------------------#
     if (any(grepl("feature", use_cost))){
-        method <- ifelse(use_distance, "distance","pearson")
+        
         message_switch("feature_cost", verbose, assay = assay)
         cost <- c(cost, signal_similarity(seed_signal,
             query_signal,
@@ -284,7 +290,7 @@ point_mapping <- function(query_signal,
     # Correlation between the cellular niche centered around the cell
     #--------------------------------------------------------------------------#
     if (any(grepl("niche", use_cost))) {
-        method <- ifelse(use_distance, "distance","pearson")
+        
         message_switch("get_neigh", verbose, assay = assay)
         seed_signal_niche <- get_neighborhood_signal(seed,
             seed_signal,
@@ -308,23 +314,28 @@ point_mapping <- function(query_signal,
     # Correlation between territories centered around the cell
     # Note: this can be sped up using much smaller matrices and then dispatchin
     # score after
+    # This can get a bit weird if there are cells that have been added and no
+    # territory is specified. Not sure how I can make this better without 
+    # breaking everything else. Essentially, if cells are added after, ves
+    # will consider the Cells as territories. Could be find of interesting to 
+    # to do though - meta cells? 
     #--------------------------------------------------------------------------#
     if (any(grepl("territory", use_cost))) {
-        method <- ifelse(use_distance, "distance","pearson")
         message_switch("territory_cost", verbose, assay = assay)
+
         #----------------------------------------------------------------------#
         # Since this is a block of cells - needs to be filter just is case
         # there are drops outs from the custom cost
         #----------------------------------------------------------------------#
-        seed_coord  <- check_territory_trial(seed_assay, "last")
+        seed_coord  <- check_territory_trial(seed_assay, seed_territory_labels)
         seed_coord <- seed_coord[seed_coord$barcodes %in% seed$barcodes,]
-        query_coord  <- check_territory_trial(query_assay, "last")
+        query_coord  <- check_territory_trial(query_assay, query_territory_labels)
         query_coord <- query_coord[query_coord$barcodes %in% query$barcodes,]
         
-        seed_signal_niche <- get_neighborhood_signal(seed,
+        seed_signal_niche <- get_neighborhood_signal(seed_coord,
             seed_signal,
             "territory")
-        query_signal_niche <- get_neighborhood_signal(query,
+        query_signal_niche <- get_neighborhood_signal(query_coord,
             query_signal,
             "territory")
         cost <- c(cost, signal_similarity(seed_signal_niche,
@@ -464,8 +475,9 @@ signal_similarity <- function(seed, query, method = "pearson") {
                 gc()
                 cost <- switch(EXPR = method,
                     "jaccard" = jaccard_cost(local_seed, local_query),
-                    "pearson" = pearson_cost(local_seed, local_query),
-                    "distance" = distance_cost(local_seed, local_query))
+                    "pearson" = pearson_approx(local_seed, local_query),
+                    "pearson_fast" = pearson_fast(local_seed, local_query),
+                    "pearson_exact" = pearson_exact(local_seed, local_query))
                 cost[which(is.na(cost), arr.ind = TRUE)] <- 0
                 colnames(cost) <- colnames(local_seed)
                 rownames(cost) <- colnames(local_query)
@@ -650,6 +662,7 @@ niche_composition <- function(coord,
             composition <- make.unique(composition, sep = "_")
             return(composition)
     }, cell_labs = cell_labels)
+    niches <- make_composition_matrix(niches)
     return(niches)
 }
 

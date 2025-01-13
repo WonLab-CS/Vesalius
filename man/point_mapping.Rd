@@ -10,7 +10,7 @@ point_mapping(
   cost,
   seed_signal,
   seed_assay,
-  use_distance = FALSE,
+  method = "pearson",
   neighborhood = "knn",
   k = 20,
   radius = 0.05,
@@ -19,6 +19,8 @@ point_mapping(
   epochs = 1,
   use_cost = c("feature", "niche"),
   threshold = 0.5,
+  seed_territory_labels = "Territory",
+  query_territory_labels = "Territory",
   seed_cell_labels = NULL,
   query_cell_labels = NULL,
   verbose = TRUE

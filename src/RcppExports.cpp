@@ -11,46 +11,46 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
-// pearson_cost
-Rcpp::NumericMatrix pearson_cost(const Eigen::Map<Eigen::MatrixXd>& seed, const Eigen::Map<Eigen::MatrixXd>& query);
-RcppExport SEXP _vesalius_pearson_cost(SEXP seedSEXP, SEXP querySEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type seed(seedSEXP);
-    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type query(querySEXP);
-    rcpp_result_gen = Rcpp::wrap(pearson_cost(seed, query));
-    return rcpp_result_gen;
-END_RCPP
-}
-// distance_cost
-Eigen::MatrixXd distance_cost(const Eigen::MatrixXd& seed, const Eigen::MatrixXd& query);
-RcppExport SEXP _vesalius_distance_cost(SEXP seedSEXP, SEXP querySEXP) {
+// pearson_fast
+Eigen::MatrixXd pearson_fast(const Eigen::MatrixXd& seed, const Eigen::MatrixXd& query);
+RcppExport SEXP _vesalius_pearson_fast(SEXP seedSEXP, SEXP querySEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const Eigen::MatrixXd& >::type seed(seedSEXP);
     Rcpp::traits::input_parameter< const Eigen::MatrixXd& >::type query(querySEXP);
-    rcpp_result_gen = Rcpp::wrap(distance_cost(seed, query));
+    rcpp_result_gen = Rcpp::wrap(pearson_fast(seed, query));
+    return rcpp_result_gen;
+END_RCPP
+}
+// pearson_exact
+Rcpp::NumericMatrix pearson_exact(const Eigen::Map<Eigen::MatrixXd>& seed, const Eigen::Map<Eigen::MatrixXd>& query);
+RcppExport SEXP _vesalius_pearson_exact(SEXP seedSEXP, SEXP querySEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type seed(seedSEXP);
+    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type query(querySEXP);
+    rcpp_result_gen = Rcpp::wrap(pearson_exact(seed, query));
     return rcpp_result_gen;
 END_RCPP
 }
 // jaccard_cost
-Rcpp::NumericMatrix jaccard_cost(const List& seed, const List& query);
+Eigen::MatrixXd jaccard_cost(const Rcpp::CharacterMatrix& seed, const Rcpp::CharacterMatrix& query);
 RcppExport SEXP _vesalius_jaccard_cost(SEXP seedSEXP, SEXP querySEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const List& >::type seed(seedSEXP);
-    Rcpp::traits::input_parameter< const List& >::type query(querySEXP);
+    Rcpp::traits::input_parameter< const Rcpp::CharacterMatrix& >::type seed(seedSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::CharacterMatrix& >::type query(querySEXP);
     rcpp_result_gen = Rcpp::wrap(jaccard_cost(seed, query));
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_vesalius_pearson_cost", (DL_FUNC) &_vesalius_pearson_cost, 2},
-    {"_vesalius_distance_cost", (DL_FUNC) &_vesalius_distance_cost, 2},
+    {"_vesalius_pearson_fast", (DL_FUNC) &_vesalius_pearson_fast, 2},
+    {"_vesalius_pearson_exact", (DL_FUNC) &_vesalius_pearson_exact, 2},
     {"_vesalius_jaccard_cost", (DL_FUNC) &_vesalius_jaccard_cost, 2},
     {NULL, NULL, 0}
 };
