@@ -63,7 +63,7 @@
                         <h4 data-toc-skip class="author">Patrick C.N.
 Martin</h4>
             
-            <h4 data-toc-skip class="date">2025-01-06</h4>
+            <h4 data-toc-skip class="date">2025-01-13</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/patrickCNMartin/Vesalius/blob/main/vignettes/vesalius.Rmd" class="external-link"><code>vignettes/vesalius.Rmd</code></a></small>
       <div class="d-none name"><code>vesalius.Rmd</code></div>
@@ -116,11 +116,8 @@ Dentate Gyrus.</p>
 principles will apply for other modalities. For examples using other
 modalities, please refer to the other articles.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/message.html" class="external-link">suppressMessages</a></span><span class="op">(</span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://patrickcnmartin.github.io/Vesalius/" class="external-link">vesalius</a></span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## Error in get(paste0(generic, ".", class), envir = get_method_env()) : </span></span>
-<span><span class="co">##   object 'type_sum.accel' not found</span></span></code></pre>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://patchwork.data-imaginist.com" class="external-link">patchwork</a></span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/message.html" class="external-link">suppressMessages</a></span><span class="op">(</span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://patrickcnmartin.github.io/Vesalius/" class="external-link">vesalius</a></span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://patchwork.data-imaginist.com" class="external-link">patchwork</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">vesalius</span>, package <span class="op">=</span> <span class="st">"vesalius"</span><span class="op">)</span></span></code></pre></div>
 <div class="section level4">
@@ -130,7 +127,7 @@ modalities, please refer to the other articles.</p>
 <p>The counts are the gene counts for all genes. As per convention,
 columns r epresent the spatial indices (barcodes, spots, beads,…) and
 rows are the genes that were captured.</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/str.html" class="external-link">str</a></span><span class="op">(</span><span class="va">counts</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Formal class 'dgCMatrix' [package "Matrix"] with 6 slots</span></span>
 <span><span class="co">##   ..@ i       : int [1:653622] 4 8 10 15 18 19 30 38 41 51 ...</span></span>
@@ -143,7 +140,7 @@ rows are the genes that were captured.</p>
 <span><span class="co">##   ..@ factors : list()</span></span></code></pre>
 <p>The coordinates represent the x and y coordinates for each spatial
 index.</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/str.html" class="external-link">str</a></span><span class="op">(</span><span class="va">coordinates</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## 'data.frame':    1052 obs. of  3 variables:</span></span>
 <span><span class="co">##  $ barcodes: chr  "CTCCAGCCTTGCAT" "AACCCCAAGGTAAT" "GCCCAACACACTTT" "GTCCAGAGTCTTAT" ...</span></span>
@@ -160,7 +157,7 @@ into count matrices (more specifically tile matrices) using the <a href="https:/
 </h3>
 <p>We can build a vesalius assay by simply parsing both counts and
 cooridnates to the (vesalius assay contructor)[link to manual page].</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">vesalius</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/build_vesalius_assay.html">build_vesalius_assay</a></span><span class="op">(</span></span>
 <span>  coordinates <span class="op">=</span> <span class="va">coordinates</span>, <span class="co"># spatial coordinates</span></span>
 <span>  counts  <span class="op">=</span> <span class="va">counts</span>, <span class="co"># count matrix</span></span>
@@ -172,7 +169,7 @@ cooridnates to the (vesalius assay contructor)[link to manual page].</p>
 </h4>
 <p>A vesalius object is a container that requires at the very least
 spatial indices. Here, we parsed both counts and spatial indices</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">vesalius</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
 <span><span class="co">## spatial_omics as vesalius assay containing:</span></span>
@@ -203,7 +200,7 @@ SpatialFeatureExperiments, SingleCellExperiment and anndata.</p>
 </h3>
 <p>We can use this object top embed our latent space into grey scale
 images.</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">vesalius</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_embeddings.html">generate_embeddings</a></span><span class="op">(</span><span class="va">vesalius</span>,</span>
 <span>  dim_reduction <span class="op">=</span> <span class="st">"PCA"</span>,</span>
 <span>  normalization <span class="op">=</span> <span class="st">"log_norm"</span>,</span>
@@ -234,7 +231,7 @@ default embedding called the “active” embedding. See section below on
 </h3>
 <p>We can test out multiple embeddings and every trial will be stored
 into the <code>vesalius_assay</code> object.</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">vesalius</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_embeddings.html">generate_embeddings</a></span><span class="op">(</span><span class="va">vesalius</span>,</span>
 <span>  dim_reduction <span class="op">=</span> <span class="st">"UMAP"</span>,</span>
 <span>  nfeatures <span class="op">=</span> <span class="fl">100</span>, <span class="co"># Setting number of features low for low run time</span></span>
@@ -262,7 +259,7 @@ method you select.</p>
 <div class="section level4">
 <h4 id="what-do-we-have-3">What do we have ?<a class="anchor" aria-label="anchor" href="#what-do-we-have-3"></a>
 </h4>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">vesalius</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
 <span><span class="co">## spatial_omics as vesalius assay containing:</span></span>
@@ -290,18 +287,18 @@ for more information. Since we are leaving the embedding argument as the
 default “last” value, we can only look at the 3 UMAP dimensions. We can
 look at them simulaneously by creating RGB images with one dimension per
 color channel.</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">p1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/image_plot.html">image_plot</a></span><span class="op">(</span><span class="va">vesalius</span>, dimensions <span class="op">=</span> <span class="fl">1</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>title <span class="op">=</span> <span class="st">"Grey PCA dim 1"</span><span class="op">)</span></span>
 <span><span class="va">p2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/image_plot.html">image_plot</a></span><span class="op">(</span><span class="va">vesalius</span>, dimensions <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>title <span class="op">=</span> <span class="st">"RGB PCA"</span><span class="op">)</span></span></code></pre></div>
 <p>If we wanted to look at “UMAP” instead, we can simply specify the
 embedding. Since we used 30 dimensions for UMAP, we can use any
 dimensions to build RGB images.</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">p3</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/image_plot.html">image_plot</a></span><span class="op">(</span><span class="va">vesalius</span>, dimensions <span class="op">=</span> <span class="fl">1</span>, embedding <span class="op">=</span> <span class="st">"UMAP"</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>title <span class="op">=</span> <span class="st">"Grey UMAP dim 1"</span><span class="op">)</span></span>
 <span><span class="va">p4</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/image_plot.html">image_plot</a></span><span class="op">(</span><span class="va">vesalius</span>, dimensions <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span>, embedding <span class="op">=</span> <span class="st">"UMAP"</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>title <span class="op">=</span> <span class="st">"RGB UMAP dim 1, 2, and 3"</span><span class="op">)</span></span></code></pre></div>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="op">(</span><span class="va">p1</span> <span class="op">+</span> <span class="va">p2</span><span class="op">)</span> <span class="op">/</span> <span class="op">(</span><span class="va">p3</span> <span class="op">+</span> <span class="va">p4</span><span class="op">)</span></span></code></pre></div>
 <p><img src="vesalius_files/figure-html/out_plot_grey-1.png" width="960"></p>
 </div>
@@ -313,7 +310,7 @@ dimensions to build RGB images.</p>
 contains the embedding values that will be used during image processing
 and image segmentation.</p>
 <p>In the examples above, we tested multiple embeddings.</p>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/get_active_embedding_tag.html">get_active_embedding_tag</a></span><span class="op">(</span><span class="va">vesalius</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## [1] "PCA.2"</span></span></code></pre>
 <p>We see that “UMAP.1” is used as the active embedding. Any time the
@@ -340,26 +337,26 @@ any processing you may have done to it will be overwritten.</p>
 </h3>
 <p>Once we have these images, we can apply image processing techniques
 to each gray scale image.</p>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">vesalius</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/regularise_image.html">regularise_image</a></span><span class="op">(</span><span class="va">vesalius</span>, lambda <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:25  Converting Vesalius to Image</span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:26  Regularising Image </span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:30  Converting Images to Vesalius</span></span>
+<span><span class="co">## 2025-56-01/13/25 21:56:58  Converting Vesalius to Image</span></span>
+<span><span class="co">## 2025-56-01/13/25 21:56:59  Regularising Image </span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:02  Converting Images to Vesalius</span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
-<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">vesalius</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/smooth_image.html">smooth_image</a></span><span class="op">(</span><span class="va">vesalius</span>, sigma <span class="op">=</span> <span class="fl">5</span>, iter <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:31  Converting Vesalius to Image</span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:31  Smoothing Image Arrays </span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:32  Converting Images to Vesalius</span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:03  Converting Vesalius to Image</span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:04  Smoothing Image Arrays </span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:04  Converting Images to Vesalius</span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
-<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">vesalius</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/equalize_image.html">equalize_image</a></span><span class="op">(</span><span class="va">vesalius</span>, sleft <span class="op">=</span> <span class="fl">5</span>, sright <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:32  Converting Vesalius to Image</span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:32  Equalizing Histogram </span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:33  Converting Images to Vesalius</span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:04  Converting Vesalius to Image</span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:05  Equalizing Histogram </span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:05  Converting Images to Vesalius</span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
 <p>You can apply any image processing method you wish and in any order
 you desire. Please note that the default number of dimensions for these
@@ -369,7 +366,7 @@ how many dimensions you wish to process.</p>
 <p>This also alows for the selction of abitrary of PCs. For example,
 based on the grey scale images, you might decided that this would be a
 better choice of PCs</p>
-<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Selecting a subset of PCs</span></span>
 <span><span class="va">dims</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">3</span>, <span class="fl">4</span>, <span class="fl">5</span>, <span class="fl">7</span><span class="op">:</span><span class="fl">11</span><span class="op">)</span></span>
 <span></span>
@@ -404,7 +401,7 @@ Note that the segmentation here is applied to the whole stack and not
 individually.</p>
 <p>The goal is top obtain colour segments that we can subdivived into
 territories.</p>
-<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">vesalius</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/segment_image.html">segment_image</a></span><span class="op">(</span><span class="va">vesalius</span>,</span>
 <span>  method <span class="op">=</span> <span class="st">"kmeans"</span>,</span>
 <span>  col_resolution <span class="op">=</span> <span class="fl">2</span>,</span>
@@ -415,7 +412,7 @@ territories.</p>
 </h3>
 <p>We can see that the vesalius_assay object now contains some more
 information related to the segmentation.</p>
-<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">vesalius</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
 <span><span class="co">## spatial_omics as vesalius assay containing:</span></span>
@@ -435,7 +432,7 @@ information related to the segmentation.</p>
 <span><span class="co">## 0 Layering trials. </span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
 <p>We can also have a look at the results of the image segmentation.</p>
-<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">p5</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/image_plot.html">image_plot</a></span><span class="op">(</span><span class="va">vesalius</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>title <span class="op">=</span> <span class="st">"Segments only"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">p5</span><span class="op">)</span></span></code></pre></div>
 <p><img src="vesalius_files/figure-html/plot_segments_only-1.png" width="960"></p>
@@ -453,11 +450,11 @@ also provides <em>louvain</em> and <em>leiden</em> based approaches.</p>
 territories. Similar color segments may be of the same colour but are
 seperated in 2D space. We want to be able to isolate each patch. For
 this, we can use the <code>isolate_territories</code> function.</p>
-<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">vesalius</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/isolate_territories.html">isolate_territories</a></span><span class="op">(</span><span class="va">vesalius</span>, capture_radius <span class="op">=</span> <span class="fl">0.05</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:35  Pooling Segment  1 </span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:35  Pooling Segment  2 </span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:07  Pooling Segment  1 </span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:07  Pooling Segment  2 </span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
 <div class="section level4">
 <h4 id="what-do-we-have-5">What do we have?<a class="anchor" aria-label="anchor" href="#what-do-we-have-5"></a>
@@ -465,7 +462,7 @@ this, we can use the <code>isolate_territories</code> function.</p>
 <p>Now we can have a look at the isolated territories. We can keep track
 of how many instances of image segmentation and image manipulation we
 have gone through.</p>
-<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">vesalius</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
 <span><span class="co">## spatial_omics as vesalius assay containing:</span></span>
@@ -492,7 +489,7 @@ have gone through.</p>
 <p>We can plot our territories using vesalius plotting functions. Note
 that this is a <code>ggplot</code> object as such it is customisable
 using <code>ggplot2</code> functionalities.</p>
-<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">p6</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/territory_plot.html">territory_plot</a></span><span class="op">(</span><span class="va">vesalius</span>, cex_pt <span class="op">=</span> <span class="fl">3.5</span><span class="op">)</span></span>
 <span><span class="va">p6</span></span></code></pre></div>
 <p><img src="vesalius_files/figure-html/plot_territories-1.png" width="960"></p>
@@ -503,19 +500,19 @@ using <code>ggplot2</code> functionalities.</p>
 </h2>
 <p>Once we have our territories, we can compare the expression of genes
 between territories.</p>
-<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">vesalius</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/identify_markers.html">identify_markers</a></span><span class="op">(</span><span class="va">vesalius</span>, seed <span class="op">=</span> <span class="fl">1</span>, query <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:36 ===&gt; Computing DEGs in spatial_omics &lt;===</span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:36 ===&gt; 1 VS 2 &lt;=== </span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:08 ===&gt; Computing DEGs in spatial_omics &lt;===</span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:09 ===&gt; 1 VS 2 &lt;=== </span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
-<div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">deg</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/get_markers.html">get_markers</a></span><span class="op">(</span><span class="va">vesalius</span><span class="op">)</span></span></code></pre></div>
 <p>And finally we can visualise the expression of our genes of interest.
 You can parse more than one gene. Here we show the overall expression
 profile of <strong>Malat1</strong> but also its mean expression in each
 territory.</p>
-<div class="sourceCode" id="cb40"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">p7</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/view_gene_expression.html">view_gene_expression</a></span><span class="op">(</span><span class="va">vesalius</span>, genes <span class="op">=</span> <span class="st">"Malat1"</span><span class="op">)</span></span>
 <span><span class="va">p8</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/view_gene_expression.html">view_gene_expression</a></span><span class="op">(</span><span class="va">vesalius</span>, genes <span class="op">=</span> <span class="st">"Malat1"</span>, as_layer <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="va">p7</span> <span class="op">+</span> <span class="va">p8</span></span></code></pre></div>
@@ -535,122 +532,122 @@ repository</a></p>
 independantly. The jitter territory is the same as the original version
 but we flipped the coordinates, added noise to coordinates and counts,
 and remove a few randomly sampled locations.</p>
-<div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># load vesalius data </span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">vesalius</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Create Vesalius object for processing</span></span>
 <span><span class="va">vesalius</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/build_vesalius_assay.html">build_vesalius_assay</a></span><span class="op">(</span><span class="va">coordinates</span>, <span class="va">counts</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:38  Checking Coordinates in spatial_omics </span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:38  Checking Counts in spatial_omics </span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:38  Calculating Assay scale from coordinates</span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:11  Checking Coordinates in spatial_omics </span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:11  Checking Counts in spatial_omics </span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:11  Calculating Assay scale from coordinates</span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
-<div class="sourceCode" id="cb43"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">cells</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="va">LETTERS</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">6</span><span class="op">]</span>, size <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">vesalius</span><span class="op">@</span><span class="va">tiles</span><span class="op">)</span>,replace <span class="op">=</span><span class="cn">T</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">cells</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">vesalius</span><span class="op">@</span><span class="va">tiles</span><span class="op">$</span><span class="va">barcodes</span></span>
 <span><span class="va">vesalius</span> <span class="op">&lt;-</span> <span class="fu">add_cells</span><span class="op">(</span><span class="va">vesalius</span>, cells <span class="op">=</span> <span class="va">cells</span>, add_name <span class="op">=</span> <span class="st">"Cells"</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:38  Adding cell labels to Cells territory column in spatial_omics </span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:11  Adding cell labels to Cells territory column in spatial_omics </span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
-<div class="sourceCode" id="cb45"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb43"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">jitter_ves</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/build_vesalius_assay.html">build_vesalius_assay</a></span><span class="op">(</span><span class="va">jitter_coord</span>, <span class="va">jitter_counts</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:38  Checking Coordinates in spatial_omics </span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:38  Checking Counts in spatial_omics </span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:39  Calculating Assay scale from coordinates</span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:11  Checking Coordinates in spatial_omics </span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:11  Checking Counts in spatial_omics </span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:12  Calculating Assay scale from coordinates</span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
-<div class="sourceCode" id="cb47"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb45"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">cells</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="va">LETTERS</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">6</span><span class="op">]</span>, size <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">jitter_ves</span><span class="op">@</span><span class="va">tiles</span><span class="op">)</span>,replace <span class="op">=</span><span class="cn">T</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">cells</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">jitter_ves</span><span class="op">@</span><span class="va">tiles</span><span class="op">$</span><span class="va">barcodes</span></span>
 <span><span class="va">jitter_ves</span> <span class="op">&lt;-</span> <span class="fu">add_cells</span><span class="op">(</span><span class="va">jitter_ves</span>, cells <span class="op">=</span> <span class="va">cells</span>, add_name <span class="op">=</span> <span class="st">"Cells"</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:39  Adding cell labels to Cells territory column in spatial_omics </span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:12  Adding cell labels to Cells territory column in spatial_omics </span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
-<div class="sourceCode" id="cb49"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb47"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">vesalius</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_embeddings.html">generate_embeddings</a></span><span class="op">(</span><span class="va">vesalius</span>,</span>
 <span>    filter_threshold <span class="op">=</span> <span class="fl">1</span>,</span>
 <span>    filter_grid <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:39 ===&gt; Generating Tiles in spatial_omics &lt;===</span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:39  Generating Voronoi Tesselation </span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:39  Filtering Tiles</span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:39  Rasterising Tiles </span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:42  Adjusting count matrix</span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:42 ===&gt; Pre-processing counts in spatial_omics &lt;===</span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:43 ===&gt; Compute Latent Space in spatial_omics &lt;===</span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:43  Running Principal Component Analysis </span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:45  Converting PCA Embedding Values to gray scale </span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:12 ===&gt; Generating Tiles in spatial_omics &lt;===</span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:12  Generating Voronoi Tesselation </span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:12  Filtering Tiles</span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:12  Rasterising Tiles </span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:14  Adjusting count matrix</span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:14 ===&gt; Pre-processing counts in spatial_omics &lt;===</span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:16 ===&gt; Compute Latent Space in spatial_omics &lt;===</span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:16  Running Principal Component Analysis </span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:17  Converting PCA Embedding Values to gray scale </span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
-<div class="sourceCode" id="cb51"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb49"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">vesalius</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/smooth_image.html">smooth_image</a></span><span class="op">(</span><span class="va">vesalius</span>, embedding <span class="op">=</span> <span class="st">"PCA"</span>, sigma <span class="op">=</span> <span class="fl">5</span>, iter <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:45  Converting Vesalius to Image</span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:45  Smoothing Image Arrays </span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:46  Converting Images to Vesalius</span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:17  Converting Vesalius to Image</span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:18  Smoothing Image Arrays </span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:18  Converting Images to Vesalius</span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
-<div class="sourceCode" id="cb53"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb51"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">vesalius</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/equalize_image.html">equalize_image</a></span><span class="op">(</span><span class="va">vesalius</span>, sleft <span class="op">=</span> <span class="fl">5</span>, sright <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:46  Converting Vesalius to Image</span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:46  Equalizing Histogram </span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:47  Converting Images to Vesalius</span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:18  Converting Vesalius to Image</span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:19  Equalizing Histogram </span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:19  Converting Images to Vesalius</span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
-<div class="sourceCode" id="cb55"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb53"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">vesalius</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/segment_image.html">segment_image</a></span><span class="op">(</span><span class="va">vesalius</span>, col_resolution <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:47  Segmenting Image using kmeans </span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:19  Segmenting Image using kmeans </span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
-<div class="sourceCode" id="cb57"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb55"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">vesalius</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/isolate_territories.html">isolate_territories</a></span><span class="op">(</span><span class="va">vesalius</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:47  Pooling Segment  1 </span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:47  Pooling Segment  2 </span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:19  Pooling Segment  1 </span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:19  Pooling Segment  2 </span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
-<div class="sourceCode" id="cb59"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb57"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">jitter_ves</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_embeddings.html">generate_embeddings</a></span><span class="op">(</span><span class="va">jitter_ves</span>,</span>
 <span>    filter_threshold <span class="op">=</span> <span class="fl">1</span>,</span>
 <span>    filter_grid <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:47 ===&gt; Generating Tiles in spatial_omics &lt;===</span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:47  Generating Voronoi Tesselation </span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:47  Filtering Tiles</span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:47  Rasterising Tiles </span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:49  Adjusting count matrix</span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:49 ===&gt; Pre-processing counts in spatial_omics &lt;===</span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:54 ===&gt; Compute Latent Space in spatial_omics &lt;===</span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:54  Running Principal Component Analysis </span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:54  Converting PCA Embedding Values to gray scale </span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:19 ===&gt; Generating Tiles in spatial_omics &lt;===</span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:19  Generating Voronoi Tesselation </span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:19  Filtering Tiles</span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:19  Rasterising Tiles </span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:21  Adjusting count matrix</span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:21 ===&gt; Pre-processing counts in spatial_omics &lt;===</span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:26 ===&gt; Compute Latent Space in spatial_omics &lt;===</span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:26  Running Principal Component Analysis </span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:27  Converting PCA Embedding Values to gray scale </span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
-<div class="sourceCode" id="cb61"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb59"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">jitter_ves</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/smooth_image.html">smooth_image</a></span><span class="op">(</span><span class="va">jitter_ves</span>, embedding <span class="op">=</span> <span class="st">"PCA"</span>, sigma <span class="op">=</span> <span class="fl">5</span>, iter <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:54  Converting Vesalius to Image</span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:55  Smoothing Image Arrays </span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:55  Converting Images to Vesalius</span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:27  Converting Vesalius to Image</span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:28  Smoothing Image Arrays </span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:28  Converting Images to Vesalius</span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
-<div class="sourceCode" id="cb63"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb61"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">jitter_ves</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/equalize_image.html">equalize_image</a></span><span class="op">(</span><span class="va">jitter_ves</span>, sleft <span class="op">=</span> <span class="fl">5</span>, sright <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:56  Converting Vesalius to Image</span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:56  Equalizing Histogram </span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:56  Converting Images to Vesalius</span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:28  Converting Vesalius to Image</span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:29  Equalizing Histogram </span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:29  Converting Images to Vesalius</span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
-<div class="sourceCode" id="cb65"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb63"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">jitter_ves</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/segment_image.html">segment_image</a></span><span class="op">(</span><span class="va">jitter_ves</span>, col_resolution <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:56  Segmenting Image using kmeans </span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:29  Segmenting Image using kmeans </span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
-<div class="sourceCode" id="cb67"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb65"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">jitter_ves</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/isolate_territories.html">isolate_territories</a></span><span class="op">(</span><span class="va">jitter_ves</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:56  Pooling Segment  1 </span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:56  Pooling Segment  2 </span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:29  Pooling Segment  1 </span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:29  Pooling Segment  2 </span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
 <p>Next, we can proceed with the mapping of cells on to the other. We
 will run the mapping using cell (feature), niche, territory similarity
 and cell composition.</p>
-<div class="sourceCode" id="cb69"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb67"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">matched</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/map_assays.html">map_assays</a></span><span class="op">(</span><span class="va">vesalius</span>,</span>
 <span>    <span class="va">jitter_ves</span>,</span>
 <span>    threshold <span class="op">=</span> <span class="fl">0</span>,</span>
@@ -659,49 +656,49 @@ and cell composition.</p>
 <span>    epoch <span class="op">=</span> <span class="fl">5</span>,</span>
 <span>    jitter <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:56  Extracting assay signal</span></span>
-<span><span class="co">## 2025-50-01/06/25 20:50:57  Computing feature cost in spatial_omics </span></span>
-<span><span class="co">## 2025-51-01/06/25 20:51:01  Getting Neighborhoods in spatial_omics </span></span>
-<span><span class="co">## 2025-51-01/06/25 20:51:02  Computing neighborhood cost in spatial_omics </span></span>
-<span><span class="co">## 2025-51-01/06/25 20:51:05  Computing Territory cost in spatial_omics </span></span>
-<span><span class="co">## 2025-51-01/06/25 20:51:10  Computing niche composition index in spatial_omics </span></span>
-<span><span class="co">## 2025-51-01/06/25 20:51:13  Mapping query to seed - Epoch =  1 </span></span>
-<span><span class="co">## 2025-51-01/06/25 20:51:14  Mapping query to seed - Epoch =  2 </span></span>
-<span><span class="co">## 2025-51-01/06/25 20:51:14  Mapping query to seed - Epoch =  3 </span></span>
-<span><span class="co">## 2025-51-01/06/25 20:51:15  Mapping query to seed - Epoch =  4 </span></span>
-<span><span class="co">## 2025-51-01/06/25 20:51:15  Mapping query to seed - Epoch =  5 </span></span>
-<span><span class="co">## 2025-51-01/06/25 20:51:15  Filtering Mapped Indices </span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:29  Extracting assay signal</span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:29  Computing Feature cost in spatial_omics </span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:30  Getting Neighborhoods in spatial_omics </span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:31  Computing Neighborhood cost in spatial_omics </span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:31  Computing Territory cost in spatial_omics </span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:33  Computing Niche Composition Index in spatial_omics </span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:39  Mapping query to seed - Epoch =  1 </span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:40  Mapping query to seed - Epoch =  2 </span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:41  Mapping query to seed - Epoch =  3 </span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:41  Mapping query to seed - Epoch =  4 </span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:41  Mapping query to seed - Epoch =  5 </span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:41  Filtering Mapped Indices </span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
 <p>The mapping produces a new vesalius object with mapped coordinates
 for the query data set. In this case our query was
 <code>jitter_ves</code>.</p>
 <p>From here, we can treat this new object as a frech data sets with new
 coordinates. As such:</p>
-<div class="sourceCode" id="cb71"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb69"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">matched</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_embeddings.html">generate_embeddings</a></span><span class="op">(</span><span class="va">matched</span>,</span>
 <span>    dim_reduction <span class="op">=</span> <span class="st">"PCA"</span>,</span>
 <span>  nfeatures <span class="op">=</span> <span class="fl">200</span>, </span>
 <span>  verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="va">matched</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/smooth_image.html">smooth_image</a></span><span class="op">(</span><span class="va">matched</span>, sigma <span class="op">=</span> <span class="fl">5</span>, iter <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-51-01/06/25 20:51:23  Converting Vesalius to Image</span></span>
-<span><span class="co">## 2025-51-01/06/25 20:51:23  Smoothing Image Arrays </span></span>
-<span><span class="co">## 2025-51-01/06/25 20:51:23  Converting Images to Vesalius</span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:48  Converting Vesalius to Image</span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:49  Smoothing Image Arrays </span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:50  Converting Images to Vesalius</span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
-<div class="sourceCode" id="cb73"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb71"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">matched</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/equalize_image.html">equalize_image</a></span><span class="op">(</span><span class="va">matched</span>, sleft <span class="op">=</span> <span class="fl">5</span>, sright <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-51-01/06/25 20:51:24  Converting Vesalius to Image</span></span>
-<span><span class="co">## 2025-51-01/06/25 20:51:24  Equalizing Histogram </span></span>
-<span><span class="co">## 2025-51-01/06/25 20:51:24  Converting Images to Vesalius</span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:50  Converting Vesalius to Image</span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:51  Equalizing Histogram </span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:51  Converting Images to Vesalius</span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
-<div class="sourceCode" id="cb75"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb73"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">matched</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/segment_image.html">segment_image</a></span><span class="op">(</span><span class="va">matched</span>,col_resolution <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-51-01/06/25 20:51:25  Segmenting Image using kmeans </span></span>
+<span><span class="co">## 2025-57-01/13/25 21:57:51  Segmenting Image using kmeans </span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
 <p>We can then look at the resulting embeddings</p>
-<div class="sourceCode" id="cb77"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb75"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">m</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/image_plot.html">image_plot</a></span><span class="op">(</span><span class="va">vesalius</span><span class="op">)</span></span>
 <span><span class="va">m1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/image_plot.html">image_plot</a></span><span class="op">(</span><span class="va">jitter_ves</span><span class="op">)</span></span>
 <span><span class="va">m2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/image_plot.html">image_plot</a></span><span class="op">(</span><span class="va">matched</span><span class="op">)</span></span>
@@ -709,7 +706,7 @@ coordinates. As such:</p>
 <span><span class="va">m</span> <span class="op">+</span> <span class="va">m1</span> <span class="op">+</span> <span class="va">m2</span></span></code></pre></div>
 <p><img src="vesalius_files/figure-html/map_image_plot-1.png" width="1152"></p>
 <p>We can also look at the new territories.</p>
-<div class="sourceCode" id="cb78"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb76"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">t</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/territory_plot.html">territory_plot</a></span><span class="op">(</span><span class="va">vesalius</span><span class="op">)</span></span>
 <span><span class="va">t1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/territory_plot.html">territory_plot</a></span><span class="op">(</span><span class="va">jitter_ves</span><span class="op">)</span></span>
 <span><span class="va">t2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/territory_plot.html">territory_plot</a></span><span class="op">(</span><span class="va">matched</span><span class="op">)</span></span>
@@ -722,46 +719,46 @@ coordinates. As such:</p>
 <p>Once we have our data sets and the new set of coordinates, we can
 integrate the data sets to obtain an integrate mapping object upon which
 we can perform differential gene expression analysis.</p>
-<div class="sourceCode" id="cb79"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb77"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">inter</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/integrate_assays.html">integrate_assays</a></span><span class="op">(</span><span class="va">matched</span>,</span>
 <span>    <span class="va">vesalius</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-51-01/06/25 20:51:31  Intergrating Counts</span></span></code></pre>
+<span><span class="co">## 2025-57-01/13/25 21:57:57  Intergrating Counts</span></span></code></pre>
 <pre><code><span><span class="co">## Warning in merge_coordinates(mapped, reference,</span></span>
 <span><span class="co">## rownames(integrated$integrated)): No duplicated coordinates allowed - Adding</span></span>
 <span><span class="co">## noise!</span></span></code></pre>
-<pre><code><span><span class="co">## 2025-51-01/06/25 20:51:38 ===&gt; Generating Tiles in spatial_omics &lt;===</span></span>
-<span><span class="co">## 2025-51-01/06/25 20:51:38  Generating Voronoi Tesselation </span></span>
-<span><span class="co">## 2025-51-01/06/25 20:51:38  Filtering Tiles</span></span>
-<span><span class="co">## 2025-51-01/06/25 20:51:38  Rasterising Tiles </span></span>
-<span><span class="co">## 2025-51-01/06/25 20:51:42  Adjusting count matrix</span></span>
-<span><span class="co">## 2025-51-01/06/25 20:51:42  Setting integrated as active embedding </span></span>
-<span><span class="co">## 2025-51-01/06/25 20:51:42  Setting inferred as active count matrix </span></span>
+<pre><code><span><span class="co">## 2025-58-01/13/25 21:58:05 ===&gt; Generating Tiles in spatial_omics &lt;===</span></span>
+<span><span class="co">## 2025-58-01/13/25 21:58:05  Generating Voronoi Tesselation </span></span>
+<span><span class="co">## 2025-58-01/13/25 21:58:05  Filtering Tiles</span></span>
+<span><span class="co">## 2025-58-01/13/25 21:58:05  Rasterising Tiles </span></span>
+<span><span class="co">## 2025-58-01/13/25 21:58:08  Adjusting count matrix</span></span>
+<span><span class="co">## 2025-58-01/13/25 21:58:08  Setting integrated as active embedding </span></span>
+<span><span class="co">## 2025-58-01/13/25 21:58:08  Setting inferred as active count matrix </span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
 <p>Since this data set now contains an integrated latent space, we can
 also call territories on this object. There is no need to create new
 embeddings. They are provided during integration.</p>
-<div class="sourceCode" id="cb83"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb81"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">inter</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/smooth_image.html">smooth_image</a></span><span class="op">(</span><span class="va">inter</span>, sigma <span class="op">=</span> <span class="fl">5</span>, iter <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-51-01/06/25 20:51:42  Converting Vesalius to Image</span></span>
-<span><span class="co">## 2025-51-01/06/25 20:51:42  Smoothing Image Arrays </span></span>
-<span><span class="co">## 2025-51-01/06/25 20:51:43  Converting Images to Vesalius</span></span>
+<span><span class="co">## 2025-58-01/13/25 21:58:09  Converting Vesalius to Image</span></span>
+<span><span class="co">## 2025-58-01/13/25 21:58:09  Smoothing Image Arrays </span></span>
+<span><span class="co">## 2025-58-01/13/25 21:58:09  Converting Images to Vesalius</span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
-<div class="sourceCode" id="cb85"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb83"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">inter</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/equalize_image.html">equalize_image</a></span><span class="op">(</span><span class="va">inter</span>, sleft <span class="op">=</span> <span class="fl">5</span>, sright <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-51-01/06/25 20:51:43  Converting Vesalius to Image</span></span>
-<span><span class="co">## 2025-51-01/06/25 20:51:43  Equalizing Histogram </span></span>
-<span><span class="co">## 2025-51-01/06/25 20:51:43  Converting Images to Vesalius</span></span>
+<span><span class="co">## 2025-58-01/13/25 21:58:10  Converting Vesalius to Image</span></span>
+<span><span class="co">## 2025-58-01/13/25 21:58:10  Equalizing Histogram </span></span>
+<span><span class="co">## 2025-58-01/13/25 21:58:10  Converting Images to Vesalius</span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
-<div class="sourceCode" id="cb87"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb85"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">inter</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/segment_image.html">segment_image</a></span><span class="op">(</span><span class="va">inter</span>, col_resolution <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-51-01/06/25 20:51:44  Segmenting Image using kmeans </span></span>
+<span><span class="co">## 2025-58-01/13/25 21:58:11  Segmenting Image using kmeans </span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
 <p>We can view the resulting embeddings and territories.</p>
-<div class="sourceCode" id="cb89"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb87"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">i</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/image_plot.html">image_plot</a></span><span class="op">(</span><span class="va">inter</span><span class="op">)</span></span>
 <span><span class="va">i1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/territory_plot.html">territory_plot</a></span><span class="op">(</span><span class="va">inter</span><span class="op">)</span></span>
 <span></span>
@@ -773,37 +770,37 @@ embeddings. They are provided during integration.</p>
 </h3>
 <p>Finally, we can look at DEG analysis between samples in specific
 territories.</p>
-<div class="sourceCode" id="cb90"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb88"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">inter</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/identify_markers.html">identify_markers</a></span><span class="op">(</span><span class="va">inter</span>, sample <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-51-01/06/25 20:51:46  No territory Specified - Comparing all territories</span></span>
-<span><span class="co">## 2025-51-01/06/25 20:51:46 ===&gt; Computing DEGs in spatial_omics &lt;===</span></span>
-<span><span class="co">## 2025-51-01/06/25 20:51:46 ===&gt; 1_reference VS remaining_matched &lt;=== </span></span>
-<span><span class="co">## 2025-51-01/06/25 20:51:46 ===&gt; 2_reference VS remaining_matched &lt;=== </span></span>
+<span><span class="co">## 2025-58-01/13/25 21:58:13  No territory Specified - Comparing all territories</span></span>
+<span><span class="co">## 2025-58-01/13/25 21:58:13 ===&gt; Computing DEGs in spatial_omics &lt;===</span></span>
+<span><span class="co">## 2025-58-01/13/25 21:58:13 ===&gt; 1_reference VS remaining_matched &lt;=== </span></span>
+<span><span class="co">## 2025-58-01/13/25 21:58:13 ===&gt; 2_reference VS remaining_matched &lt;=== </span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
-<div class="sourceCode" id="cb92"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb90"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">degs</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/get_markers.html">get_markers</a></span><span class="op">(</span><span class="va">inter</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">degs</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">##         genes       p_value   p_value_adj  seed_pct query_pct fold_change</span></span>
-<span><span class="co">## Lrrtm4 Lrrtm4 1.267666e-126 3.232547e-124 0.5015576    0.9775  -1.0139431</span></span>
-<span><span class="co">## Kcnd2   Kcnd2 8.830925e-120 2.154746e-117 0.3177570    0.9350  -0.7742675</span></span>
-<span><span class="co">## Kcnip4 Kcnip4 8.286362e-115 1.930722e-112 0.7445483    0.9875  -0.9411280</span></span>
-<span><span class="co">## Lsamp   Lsamp  6.861050e-51  1.303599e-49 1.0000000    1.0000  -0.4795799</span></span>
-<span><span class="co">## Dlg2     Dlg2  1.020767e-98  1.806757e-96 0.5934579    0.9775  -0.6464258</span></span>
-<span><span class="co">## Dab1     Dab1 1.108120e-113 2.548677e-111 0.5124611    0.9575  -0.7457299</span></span>
+<span><span class="co">## Lrrtm4 Lrrtm4 4.019193e-135 1.197720e-132 0.5170279 0.9899497  -1.0924661</span></span>
+<span><span class="co">## Kcnd2   Kcnd2 2.046193e-113 4.788093e-111 0.3343653 0.9045226  -0.8337322</span></span>
+<span><span class="co">## Kcnip4 Kcnip4 4.170444e-125 1.171895e-122 0.7383901 0.9974874  -0.9770361</span></span>
+<span><span class="co">## Lsamp   Lsamp  3.629134e-59  1.161323e-57 1.0000000 1.0000000  -0.5171473</span></span>
+<span><span class="co">## Dlg2     Dlg2 1.511475e-106 3.113639e-104 0.5479876 0.9874372  -0.7059400</span></span>
+<span><span class="co">## Slit3   Slit3 4.832167e-107 1.009923e-104 0.1795666 0.8090452  -0.4566776</span></span>
 <span><span class="co">##        effect_size        seed             query</span></span>
-<span><span class="co">## Lrrtm4    1.410786 1_reference remaining_matched</span></span>
-<span><span class="co">## Kcnd2     1.410786 1_reference remaining_matched</span></span>
-<span><span class="co">## Kcnip4    1.410786 1_reference remaining_matched</span></span>
-<span><span class="co">## Lsamp     1.009390 1_reference remaining_matched</span></span>
-<span><span class="co">## Dlg2      1.396918 1_reference remaining_matched</span></span>
-<span><span class="co">## Dab1      1.410786 1_reference remaining_matched</span></span></code></pre>
+<span><span class="co">## Lrrtm4    1.411291 1_reference remaining_matched</span></span>
+<span><span class="co">## Kcnd2     1.411291 1_reference remaining_matched</span></span>
+<span><span class="co">## Kcnip4    1.411291 1_reference remaining_matched</span></span>
+<span><span class="co">## Lsamp     1.087245 1_reference remaining_matched</span></span>
+<span><span class="co">## Dlg2      1.411291 1_reference remaining_matched</span></span>
+<span><span class="co">## Slit3     1.411291 1_reference remaining_matched</span></span></code></pre>
 </div>
 </div>
 <div class="section level2">
 <h2 id="session-info">Session Info<a class="anchor" aria-label="anchor" href="#session-info"></a>
 </h2>
-<div class="sourceCode" id="cb94"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb92"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/sessionInfo.html" class="external-link">sessionInfo</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## R version 4.4.2 (2024-10-31)</span></span>
 <span><span class="co">## Platform: x86_64-pc-linux-gnu</span></span>
@@ -838,7 +835,7 @@ territories.</p>
 <span><span class="co">##  [13] globals_0.16.3              lattice_0.22-6             </span></span>
 <span><span class="co">##  [15] MASS_7.3-61                 readbitmap_0.1.5           </span></span>
 <span><span class="co">##  [17] backports_1.5.0             magrittr_2.0.3             </span></span>
-<span><span class="co">##  [19] limma_3.62.1                plotly_4.10.4              </span></span>
+<span><span class="co">##  [19] limma_3.62.2                plotly_4.10.4              </span></span>
 <span><span class="co">##  [21] sass_0.4.9                  rmarkdown_2.29             </span></span>
 <span><span class="co">##  [23] jquerylib_0.1.4             yaml_2.3.10                </span></span>
 <span><span class="co">##  [25] httpuv_1.6.15               Seurat_5.1.0               </span></span>
@@ -854,25 +851,25 @@ territories.</p>
 <span><span class="co">##  [45] GenomeInfoDbData_1.2.13     IRanges_2.40.1             </span></span>
 <span><span class="co">##  [47] S4Vectors_0.44.0            ggrepel_0.9.6              </span></span>
 <span><span class="co">##  [49] irlba_2.3.5.1               kohonen_3.0.12             </span></span>
-<span><span class="co">##  [51] listenv_0.9.1               spatstat.utils_3.1-1       </span></span>
+<span><span class="co">##  [51] listenv_0.9.1               spatstat.utils_3.1-2       </span></span>
 <span><span class="co">##  [53] goftest_1.2-3               RSpectra_0.16-2            </span></span>
-<span><span class="co">##  [55] spatstat.random_3.3-2       fitdistrplus_1.2-1         </span></span>
+<span><span class="co">##  [55] spatstat.random_3.3-2       fitdistrplus_1.2-2         </span></span>
 <span><span class="co">##  [57] parallelly_1.41.0           pkgdown_2.1.1              </span></span>
 <span><span class="co">##  [59] leiden_0.4.3.1              codetools_0.2-20           </span></span>
 <span><span class="co">##  [61] DelayedArray_0.32.0         RcppRoll_0.3.1             </span></span>
 <span><span class="co">##  [63] tidyselect_1.2.1            UCSC.utils_1.2.0           </span></span>
 <span><span class="co">##  [65] farver_2.1.2                imager_1.0.2               </span></span>
-<span><span class="co">##  [67] matrixStats_1.4.1           stats4_4.4.2               </span></span>
-<span><span class="co">##  [69] spatstat.explore_3.3-3      jsonlite_1.8.9             </span></span>
+<span><span class="co">##  [67] matrixStats_1.5.0           stats4_4.4.2               </span></span>
+<span><span class="co">##  [69] spatstat.explore_3.3-4      jsonlite_1.8.9             </span></span>
 <span><span class="co">##  [71] bmp_0.3                     progressr_0.15.1           </span></span>
 <span><span class="co">##  [73] Formula_1.2-5               ggridges_0.5.6             </span></span>
 <span><span class="co">##  [75] survival_3.7-0              systemfonts_1.1.0          </span></span>
-<span><span class="co">##  [77] TreeTools_1.12.0            tools_4.4.2                </span></span>
+<span><span class="co">##  [77] TreeTools_1.13.0            tools_4.4.2                </span></span>
 <span><span class="co">##  [79] ggnewscale_0.5.0            ragg_1.3.3                 </span></span>
 <span><span class="co">##  [81] ica_1.0-3                   Rcpp_1.0.13-1              </span></span>
 <span><span class="co">##  [83] glue_1.8.0                  gridExtra_2.3              </span></span>
-<span><span class="co">##  [85] SparseArray_1.6.0           xfun_0.49                  </span></span>
-<span><span class="co">##  [87] DESeq2_1.46.0               MatrixGenerics_1.18.0      </span></span>
+<span><span class="co">##  [85] SparseArray_1.6.0           xfun_0.50                  </span></span>
+<span><span class="co">##  [87] DESeq2_1.46.0               MatrixGenerics_1.18.1      </span></span>
 <span><span class="co">##  [89] GenomeInfoDb_1.42.1         dplyr_1.1.4                </span></span>
 <span><span class="co">##  [91] withr_3.0.2                 fastmap_1.2.0              </span></span>
 <span><span class="co">##  [93] shinyjs_2.1.0               digest_0.6.37              </span></span>
@@ -897,13 +894,13 @@ territories.</p>
 <span><span class="co">## [131] zoo_1.8-12                  stringr_1.5.1              </span></span>
 <span><span class="co">## [133] KernSmooth_2.23-24          parallel_4.4.2             </span></span>
 <span><span class="co">## [135] miniUI_0.1.1.1              desc_1.4.3                 </span></span>
-<span><span class="co">## [137] infix_0.1.0                 pillar_1.10.0              </span></span>
+<span><span class="co">## [137] infix_0.1.0                 pillar_1.10.1              </span></span>
 <span><span class="co">## [139] grid_4.4.2                  vctrs_0.6.5                </span></span>
-<span><span class="co">## [141] TreeDist_2.9.1              RANN_2.6.2                 </span></span>
+<span><span class="co">## [141] TreeDist_2.9.2              RANN_2.6.2                 </span></span>
 <span><span class="co">## [143] PlotTools_0.3.1             promises_1.3.2             </span></span>
 <span><span class="co">## [145] ggpubr_0.6.0                car_3.1-3                  </span></span>
 <span><span class="co">## [147] xtable_1.8-4                cluster_2.1.6              </span></span>
-<span><span class="co">## [149] evaluate_1.0.1              cli_3.6.3                  </span></span>
+<span><span class="co">## [149] evaluate_1.0.3              cli_3.6.3                  </span></span>
 <span><span class="co">## [151] locfit_1.5-9.10             compiler_4.4.2             </span></span>
 <span><span class="co">## [153] Rsamtools_2.22.0            rlang_1.1.4                </span></span>
 <span><span class="co">## [155] crayon_1.5.3                future.apply_1.11.3        </span></span>
@@ -918,7 +915,7 @@ territories.</p>
 <span><span class="co">## [173] future_1.34.0               statmod_1.5.0              </span></span>
 <span><span class="co">## [175] shiny_1.10.0                SummarizedExperiment_1.36.0</span></span>
 <span><span class="co">## [177] rbibutils_2.3               ROCR_1.0-11                </span></span>
-<span><span class="co">## [179] memoise_2.0.1               igraph_2.1.2               </span></span>
+<span><span class="co">## [179] memoise_2.0.1               igraph_2.1.3               </span></span>
 <span><span class="co">## [181] broom_1.0.7                 bslib_0.8.0                </span></span>
 <span><span class="co">## [183] fastmatch_1.1-6             bit_4.5.0.1                </span></span>
 <span><span class="co">## [185] ape_5.8-1</span></span></code></pre>

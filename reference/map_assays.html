@@ -51,6 +51,7 @@
 <span>  <span class="va">query_assay</span>,</span>
 <span>  signal <span class="op">=</span> <span class="st">"variable_features"</span>,</span>
 <span>  use_cost <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"feature"</span>, <span class="st">"niche"</span><span class="op">)</span>,</span>
+<span>  method <span class="op">=</span> <span class="st">"pearson"</span>,</span>
 <span>  neighborhood <span class="op">=</span> <span class="st">"knn"</span>,</span>
 <span>  k <span class="op">=</span> <span class="fl">20</span>,</span>
 <span>  radius <span class="op">=</span> <span class="fl">0.05</span>,</span>
@@ -63,6 +64,8 @@
 <span>  scale <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  threshold <span class="op">=</span> <span class="fl">0.3</span>,</span>
 <span>  custom_cost <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  seed_territory_labels <span class="op">=</span> <span class="st">"Territory"</span>,</span>
+<span>  query_territory_labels <span class="op">=</span> <span class="st">"Territory"</span>,</span>
 <span>  seed_cell_labels <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  query_cell_labels <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  jitter <span class="op">=</span> <span class="fl">0</span>,</span>
