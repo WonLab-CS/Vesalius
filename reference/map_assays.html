@@ -60,15 +60,17 @@
 <span>  batch_size <span class="op">=</span> <span class="fl">10000</span>,</span>
 <span>  epochs <span class="op">=</span> <span class="fl">1</span>,</span>
 <span>  allow_duplicates <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  threshold <span class="op">=</span> <span class="fl">0.3</span>,</span>
+<span>  filter_cells <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  use_norm <span class="op">=</span> <span class="st">"raw"</span>,</span>
 <span>  scale <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  threshold <span class="op">=</span> <span class="fl">0.3</span>,</span>
 <span>  custom_cost <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  seed_territory_labels <span class="op">=</span> <span class="st">"Territory"</span>,</span>
 <span>  query_territory_labels <span class="op">=</span> <span class="st">"Territory"</span>,</span>
-<span>  seed_cell_labels <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  query_cell_labels <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  seed_meta_labels <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  query_meta_labels <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  jitter <span class="op">=</span> <span class="fl">0</span>,</span>
+<span>  digits <span class="op">=</span> <span class="fl">5</span>,</span>
 <span>  verbose <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -126,17 +128,17 @@ to consider for the neighborhood</p></dd>
 problem solving</p></dd>
 
 
+<dt id="arg-threshold">threshold<a class="anchor" aria-label="anchor" href="#arg-threshold"></a></dt>
+<dd><p>score threshold below which indicices should be removed.
+Scores will always be between 0 and 1</p></dd>
+
+
 <dt id="arg-use-norm">use_norm<a class="anchor" aria-label="anchor" href="#arg-use-norm"></a></dt>
 <dd><p>character - which count data to use</p></dd>
 
 
 <dt id="arg-scale">scale<a class="anchor" aria-label="anchor" href="#arg-scale"></a></dt>
 <dd><p>logical - should signal be scaled</p></dd>
-
-
-<dt id="arg-threshold">threshold<a class="anchor" aria-label="anchor" href="#arg-threshold"></a></dt>
-<dd><p>score threshold below which indicices should be removed.
-Scores will always be between 0 and 1</p></dd>
 
 
 <dt id="arg-custom-cost">custom_cost<a class="anchor" aria-label="anchor" href="#arg-custom-cost"></a></dt>
