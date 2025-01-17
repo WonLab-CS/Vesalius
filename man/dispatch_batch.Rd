@@ -4,7 +4,7 @@
 \alias{dispatch_batch}
 \title{Dispatch cells into batches}
 \usage{
-dispatch_batch(cost_matrix, batch_size = 10000)
+dispatch_batch(cost_matrix, batch_size = 5000)
 }
 \arguments{
 \item{cost_matrix}{matrix containing cost for each cell pair}

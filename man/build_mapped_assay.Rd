@@ -4,7 +4,7 @@
 \alias{build_mapped_assay}
 \title{Build a new vesalius_assay object using mapping information}
 \usage{
-build_mapped_assay(mapped, seed_assay, query_assay, cell_label, jitter = 0)
+build_mapped_assay(mapped, seed_assay, query_assay, meta_labels, jitter = 0)
 }
 \arguments{
 \item{mapped}{mapping results (see output of point_mapping)}
@@ -13,7 +13,7 @@ build_mapped_assay(mapped, seed_assay, query_assay, cell_label, jitter = 0)
 
 \item{query_assay}{vesalius_assay that was mapped onto the reference}
 
-\item{cell_label}{character - name of column to be transfered to new object}
+\item{meta_labels}{character - name of column to be transfered to new object}
 
 \item{jitter}{numeric - how much coordiate jitter should be added to the 
 coordinates to avoid duplication. If 0, no jitter will be added.}

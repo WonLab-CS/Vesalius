@@ -4,7 +4,7 @@
 \alias{signal_similarity}
 \title{compute the similarity between seed and query signals}
 \usage{
-signal_similarity(seed, query, method = "pearson")
+signal_similarity(seed, query, method = "pearson", digits = 4)
 }
 \arguments{
 \item{seed}{seed signal}

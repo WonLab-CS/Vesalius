@@ -108,13 +108,6 @@ vesalius
 Count matrices can be added sperately using the `add_counts` function. 
 
 
-## Interoperability
-
-UNDER CONSTRCUTION!
-
-We are currently working on making Vesalis fully compatible with SpatialFeatureExperiments, SingleCellExperiment and anndata.
-
-
 
 # Embedding latent space into gray scale images 
 ## Embed Latent Space

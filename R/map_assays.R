@@ -108,15 +108,17 @@ map_assays <- function(seed_assay,
     batch_size = 10000,
     epochs = 1,
     allow_duplicates = TRUE,
+    threshold = 0.3,
+    filter_cells = FALSE,
     use_norm = "raw",
     scale = FALSE,
-    threshold = 0.3,
     custom_cost = NULL,
     seed_territory_labels = "Territory",
     query_territory_labels = "Territory",
-    seed_cell_labels = NULL,
-    query_cell_labels = NULL,
+    seed_meta_labels = NULL,
+    query_meta_labels = NULL,
     jitter = 0,
+    digits = 5,
     verbose = TRUE) {
     simple_bar(verbose)
     #-------------------------------------------------------------------------#
@@ -152,13 +154,14 @@ map_assays <- function(seed_assay,
         epochs = epochs,
         use_cost = use_cost,
         threshold = threshold,
+        filter_cells = filter_cells,
         seed_territory_labels = seed_territory_labels,
         query_territory_labels = query_territory_labels,
-        seed_cell_labels = seed_cell_labels,
-        query_cell_labels = query_cell_labels,
+        seed_meta_labels = seed_meta_labels,
+        query_meta_labels = query_meta_labels,
+        digits = digits,
         verbose = verbose)
     mapped <- filter_maps(mapped,
-        threshold = threshold,
         allow_duplicates = allow_duplicates,
         verbose = verbose)
     #-------------------------------------------------------------------------#
@@ -167,7 +170,7 @@ map_assays <- function(seed_assay,
     vesalius_assay <- build_mapped_assay(mapped,
         seed_assay = seed_assay,
         query_assay = query_assay,
-        cell_label = query_cell_labels,
+        meta_labels = query_meta_labels,
         jitter = jitter)
     commit <- create_commit_log(arg_match = as.list(match.call()),
       default = formals(map_assays))
@@ -260,10 +263,12 @@ point_mapping <- function(query_signal,
     epochs = 1,
     use_cost = c("feature", "niche"),
     threshold = 0.5,
+    filter_cells = FALSE,
     seed_territory_labels = "Territory",
     query_territory_labels = "Territory",
-    seed_cell_labels = NULL,
-    query_cell_labels = NULL,
+    seed_meta_labels = NULL,
+    query_meta_labels = NULL,
+    digits = 4,
     verbose = TRUE) {
     assay <- get_assay_names(query_assay)
     check_cost_validity(cost,
@@ -276,12 +281,13 @@ point_mapping <- function(query_signal,
     #--------------------------------------------------------------------------#
     # Correlation between individual cells 
     #--------------------------------------------------------------------------#
-    if (any(grepl("feature", use_cost))){
+    if ("feature" %in% use_cost){
         
         message_switch("feature_cost", verbose, assay = assay)
         cost <- c(cost, signal_similarity(seed_signal,
             query_signal,
-            method = method))
+            method = method,
+            digits = digits))
         names(cost)[length(cost)] <-  "feature"
 
     }
@@ -289,7 +295,7 @@ point_mapping <- function(query_signal,
     #--------------------------------------------------------------------------#
     # Correlation between the cellular niche centered around the cell
     #--------------------------------------------------------------------------#
-    if (any(grepl("niche", use_cost))) {
+    if ("niche" %in% use_cost) {
         
         message_switch("get_neigh", verbose, assay = assay)
         seed_signal_niche <- get_neighborhood_signal(seed,
@@ -307,7 +313,8 @@ point_mapping <- function(query_signal,
         message_switch("neighbor_cost", verbose, assay = assay)
         cost <- c(cost, signal_similarity(seed_signal_niche,
             query_signal_niche,
-            method = method))
+            method = method,
+            digits = digits))
         names(cost)[length(cost)] <-  "niche"
     }
     #--------------------------------------------------------------------------#
@@ -320,7 +327,7 @@ point_mapping <- function(query_signal,
     # will consider the Cells as territories. Could be find of interesting to 
     # to do though - meta cells? 
     #--------------------------------------------------------------------------#
-    if (any(grepl("territory", use_cost))) {
+    if ("territory" %in% use_cost) {
         message_switch("territory_cost", verbose, assay = assay)
 
         #----------------------------------------------------------------------#
@@ -340,45 +347,50 @@ point_mapping <- function(query_signal,
             "territory")
         cost <- c(cost, signal_similarity(seed_signal_niche,
             query_signal_niche,
-            method = method))
+            method = method,
+            digits = digits))
         names(cost)[length(cost)] <-  "territory"
     }
     #--------------------------------------------------------------------------#
     # Computing nich compisition
     #--------------------------------------------------------------------------#
-    if (any(grepl("composition", use_cost))) {
+    if ("composition" %in% use_cost) {
         message_switch("composition_cost", verbose, assay = assay)
         seed_niche <- niche_composition(seed,
             seed_assay,
             method = neighborhood,
-            cell_label = seed_cell_labels,
+            cell_label = seed_meta_labels,
             k = k,
             depth = depth,
             radius = radius)
         query_niche <- niche_composition(query,
             query_assay,
             method = neighborhood,
-            cell_label = query_cell_labels,
+            cell_label = query_meta_labels,
             k = k,
             depth = depth,
             radius = radius)
 
-        cost <- c(cost, signal_similarity(seed_niche, query_niche, method = "jaccard"))
+        cost <- c(cost, signal_similarity(seed_niche,
+            query_niche,
+            method = "jaccard",
+            digits = digits))
         names(cost)[length(cost)] <-  "composition"
     }
     #--------------------------------------------------------------------------#
     # cell type label comparison => if same label =1 / if differenct label = 0
     #--------------------------------------------------------------------------#
-    if (any(grepl("cell_type", use_cost))) {
+    if ("cell_type" %in% use_cost) {
         message_switch("cell_cost", verbose, assay = assay)
-        seed_labels <- check_cell_labels(seed_assay, seed_cell_labels)
-        query_labels <- check_cell_labels(query_assay, query_cell_labels)
+        seed_labels <- check_cell_labels(seed_assay, seed_meta_labels)
+        query_labels <- check_cell_labels(query_assay, query_meta_labels)
         cost <- c(cost, cell_type_match(seed_labels, query_labels))
         names(cost)[length(cost)] <- "cell_type"
     }
     #--------------------------------------------------------------------------#
     # filtering and pairwise addition of cost matrices and
     #--------------------------------------------------------------------------#
+    cost <- filter_cost(cost, threshold, filter_cells, verbose)
     cost <- c(cost, concat_cost(cost, use_cost))
     names(cost)[length(cost)] <- "total_cost"
     #--------------------------------------------------------------------------#
@@ -443,7 +455,7 @@ concat_cost <- function(cost, use_cost, complement = TRUE) {
 #' @return matrix with query as rows and seed as colmuns
 #' @importFrom future nbrOfWorkers
 #' @importFrom future.apply future_lapply
-signal_similarity <- function(seed, query, method = "pearson") {
+signal_similarity <- function(seed, query, method = "pearson", digits = 4) {
     batch_size_seed <- ceiling(ncol(seed) / future::nbrOfWorkers())
     batch_size_query <- ceiling(ncol(query) / future::nbrOfWorkers())
     #-------------------------------------------------------------------------#
@@ -469,10 +481,9 @@ signal_similarity <- function(seed, query, method = "pearson") {
         #---------------------------------------------------------------------#
         # computing score in batches
         #---------------------------------------------------------------------#
-        local_cost <- lapply(query,
+        local_cost <- future_lapply(query,
             function(local_query, local_seed) {
                 local_query <- as.matrix(local_query)
-                gc()
                 cost <- switch(EXPR = method,
                     "jaccard" = jaccard_cost(local_seed, local_query),
                     "pearson" = pearson_approx(local_seed, local_query),
@@ -481,8 +492,9 @@ signal_similarity <- function(seed, query, method = "pearson") {
                 cost[which(is.na(cost), arr.ind = TRUE)] <- 0
                 colnames(cost) <- colnames(local_seed)
                 rownames(cost) <- colnames(local_query)
+                cost <- signif(cost, digits = digits)
                 return(cost)
-            }, local_seed = local_seed)#, future.seed = TRUE)
+            }, local_seed = local_seed, future.seed = TRUE)
         #---------------------------------------------------------------------#
         # rebuild slice 
         #---------------------------------------------------------------------#
@@ -506,6 +518,7 @@ signal_similarity <- function(seed, query, method = "pearson") {
         total_cost <- total_cost / max(total_cost) 
         total_cost <- 1 - total_cost
     }
+    
     return(list(total_cost))
 }
 
@@ -695,6 +708,30 @@ match_cells <- function(idx, query_labels, seed_labels) {
 }
 
 
+filter_cost <- function(costs,
+    threshold = 0,
+    filter_cells = TRUE,
+    verbose) {
+    message_switch("filter_cost", verbose)
+    keep <- rep(TRUE, nrow(costs[[1]]))
+    for (cost in seq_along(costs)){
+        tmp <- costs[[cost]]
+        name <- names(costs)[cost]
+        if (name == "cell_type" && filter_cells){
+            keep <- keep & apply(tmp, 1, sum) > 0
+        } else {
+            keep <- keep & apply(tmp, 1, max) > threshold
+        }
+    }
+    if (sum(keep) == 0){
+        stop("No cells retained at current filter threshold!")
+    }
+
+    costs <- lapply(costs, function(mat, keep) {
+        return(mat[keep, ])
+    },keep = keep)
+    return(costs)
+}
 
 #' optimize matching scores through batching
 #' @param cost_matrix matrix containing mapping cost for each cell
@@ -715,7 +752,7 @@ optimize_matching <- function(cost_matrix,
     while (current_epoch <= epochs) {
         message_switch("mapping", verbose , epoch = current_epoch)
         batch <- dispatch_batch(cost_matrix, batch_size)
-        mapped <- lapply(batch, map_index)
+        mapped <- future_lapply(batch, map_index, future.seed = TRUE)
         matched <- update_matches(matched, mapped, current_epoch)
         current_cost$epoch[current_epoch] <- current_epoch
         current_cost$cost[current_epoch] <- mean(matched$cost)
@@ -759,36 +796,54 @@ initialize_matches <- function(cost_matrix) {
 #' at least once.
 #' @return Nested list. Each element of the list will contain 
 #' a batched cost matrix and the mapping pairs 
-dispatch_batch <- function(cost_matrix, batch_size = 10000) {
-    seed_barcodes <- colnames(cost_matrix)
-    query_barcodes <- rownames(cost_matrix)
+dispatch_batch <- function(cost_matrix, batch_size = 5000) {
+    seed_barcodes <- seed_current <- colnames(cost_matrix)
+    query_barcodes <- query_current <- rownames(cost_matrix)
+    #-------------------------------------------------------------------------#
+    # effective batch size
+    #-------------------------------------------------------------------------#
     batch_seed <- min(c(batch_size, length(seed_barcodes)))
     batch_query <- min(c(batch_size, length(query_barcodes)))
-    batch <- list()
-    i <- 1
-    seed_sample <- c()
-    query_sample <- c()
-    while (length(seed_sample) != length(seed_barcodes) && 
-        length(query_sample) != length(query_barcodes)) {
-        padding <- ifelse((batch_seed - batch_query) >= 0 ,0, batch_query - batch_seed)
-        seed <- c(sample(seed_barcodes,
-            size = batch_seed, replace = FALSE),
-            sample(seed_barcodes,
-            size = padding, replace = TRUE))
-        seed_sample <- unique(c(seed_sample,seed))
-        padding <- ifelse((batch_query - batch_seed) >= 0 ,0, batch_seed - batch_query)
-        query <- c(sample(query_barcodes,
-            size = batch_query, replace = FALSE),
-            sample(query_barcodes,
-            size = padding, replace = TRUE))
-        query_sample <- unique(c(query_sample,query))
+    batch_size <- min(c(max(c(batch_seed, batch_query)), batch_size))
+    #-------------------------------------------------------------------------#
+    # creating list for batch
+    # we can compute the what is the most amount of batch to cover all barcodes
+    # at least once
+    #-------------------------------------------------------------------------#
+    seed_length <- ceiling(length(seed_barcodes) / batch_size)
+    query_length <- ceiling(length(query_barcodes) / batch_size)
+    batch_length <- max(c(seed_length, query_length))
+    batch <- vector("list", batch_length)
+    for (i in seq_along(batch)){
+        len_seed <- length(seed_current)
+        len_query <- length(query_current)
+        if (len_seed < batch_size){
+            pad <- batch_size - len_seed
+            seed <- c(sample(seed_current, size = len_seed),
+                sample(seed_barcodes, size = pad, replace = TRUE))
+        } else {
+            seed <- sample(seed_current, size = batch_size)
+            seed_current <- seed_current[!seed_current %in% seed]
+        }
+
+        if (len_query < batch_size){
+            pad <- batch_size - len_query
+            query <- c(sample(query_current, size = len_query),
+                sample(query_barcodes, size = pad, replace = TRUE))
+        } else {
+            query <- sample(query_current, size = batch_size)
+            query_current <- query_current[!query_current %in% query]
+        }
+
         batch[[i]] <- list("cost" = cost_matrix[query, seed],
             "match" = data.frame("from" = query, "to" = seed))
-        i <- i + 1 
+
     }
     
     return(batch)
+
 }
+
 
 #' LAPVJ solver 
 #' @param batch cost matrix batch to be solved
@@ -880,51 +935,18 @@ score_matches <- function(matched_indices,
 
 #' filter mapped cells 
 #'@param mapped data frame containing mapped cells
-#'@param threshold score threshold (applied to each cost)
 #'@param allow_duplicates logical - if duplicated matches are to be reatained
 #'@param verbose logical - output progress messages
 #'@return filtered mappped data frame
-filter_maps <- function(mapped, threshold, allow_duplicates, verbose) {
+filter_maps <- function(mapped, allow_duplicates, verbose) {
     message_switch("post_map_filter",verbose)
     map_score <- mapped$prob
-    #-------------------------------------------------------------------------#
-    # First we remove points that have a score below threshold
-    #-------------------------------------------------------------------------#
-    cols <- seq((grep("init", colnames(map_score)) + 1), ncol(map_score))
-    if ( length(cols) == 1) {
-        tmp <- matrix(map_score[,cols], ncol = length(cols))
-    } else {
-        tmp <- map_score[,cols]
-    }
-    
-    locs <- apply(
-        X = tmp,
-        MARGIN = 1,
-        FUN = function(r, t) {sum(r < t)}, t = threshold)
-    map_score <- map_score[locs == 0, ]
-    if (nrow(map_score) == 0){
-        stop("No cells retained under current filter threshold")
-    }
     map_score <- map_score[order(map_score$cost), ]
-    #-------------------------------------------------------------------------#
-    # Next we check for dupliactes and gert the best ones
-    #-------------------------------------------------------------------------#
     if (!allow_duplicates) {
         duplicates <- duplicated(map_score$from) | duplicated(map_score$to)
         map_score <- map_score[!duplicates, ]
-        #mapped$prob <- map_score
     }
     mapped$prob <- map_score
-    #-------------------------------------------------------------------------#
-    # Remove thos points from cost matrices
-    #-------------------------------------------------------------------------#
-    cost <- mapped$cost
-    cost <- lapply(cost,
-        function(cost, row, col) {
-            return(cost[unique(row), unique(col)])
-        },row = map_score$from,
-        col = map_score$to)
-    mapped$cost <- cost
     return(mapped)
 }
 

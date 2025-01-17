@@ -233,8 +233,7 @@ get_cost_contribution <- function(vesalius_assay,
         "CV" = lapply(cost, coef_of_var),
         "gini" = lapply(cost, gini),
         "IQR" = lapply(cost, IQR),
-        "POC" = poc(vesalius_assay),
-        "SA" = sa(vesalius_assay))
+        "POC" = poc(cost))
 
     contribution <- data.frame("metric" = names(contribution),
         "score" = unlist(contribution))
@@ -277,29 +276,9 @@ get_range <- function(x) {
     return(max(x) - min(x))
 }
 
-poc <- function(vesalius_assay) {
-    cost <- sum(vesalius_assay@map$cost)
-    loc <- grep("init",colnames(vesalius_assay@map))
-    local_contribs <- vesalius_assay@map[,seq(loc + 1, ncol(vesalius_assay@map))]
-    contrib <- apply(local_contribs,
-        2,
-        sum)
+poc <- function(cost) {
+    contrib <- sapply(cost,sum)
     contrib <- contrib / cost
-    names(contrib) <- colnames(local_contribs)
+    names(contrib) <- names(cost)
     return(contrib)
-}
-
-sa <- function(vesalius_assay) {
-    cost <- sum(vesalius_assay@map$cost)
-    loc <- grep("init",colnames(vesalius_assay@map))
-    local_contribs <- vesalius_assay@map[,seq(loc + 1, ncol(vesalius_assay@map))]
-    impacts <- apply(local_contribs,
-        2,
-        function(x,cost) {
-            new_cost <- cost - sum(x)
-            return(cost - new_cost)
-        }, cost = cost)
-    relative_contributions <- impacts / sum(impacts)
-    names(relative_contributions) <- colnames(local_contribs)
-    return(relative_contributions)
 }

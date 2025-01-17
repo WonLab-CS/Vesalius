@@ -898,12 +898,16 @@ check_cost_validity <- function(cost,
     # for a lot of things. Keep this approach for now 
     #-------------------------------------------------------------------------#
     if (is.null(cost)) {
+        if (any(!use_cost %in%
+            c("feature",
+            "niche",
+            "composition",
+            "cell_type",
+            "territory"))){
+            stop("Requested cost matrix is not present in cost matrix list!")
+        }
         assign("seed", seed, env = parent.frame())
         assign("query", query, env = parent.frame())
-        # assign("seed_signal", seed_signal, env = parent.frame())
-        # assign("query_signal", query_signal, env = parent.frame())
-        # assign("cost", NULL, env = parent.frame())
-        # assign("use_cost", use_cost, env = parent.frame())
         return(NULL)
     }
     
@@ -922,8 +926,9 @@ check_cost_validity <- function(cost,
         
     }
     #-------------------------------------------------------------------------#
-    # then we check if the use cost request is consistent 
+    # then we check if the use cost request is consistent
     #-------------------------------------------------------------------------#
+    browser()
     if (any(!use_cost %in%
         c(cost_names,
         "feature",

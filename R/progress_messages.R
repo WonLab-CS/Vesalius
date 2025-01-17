@@ -131,6 +131,8 @@ message_switch <- function(type, verbose = TRUE, ...) {
             " Setting",args$tag, "as active count matrix \n")),
         "post_map_filter" = cat(paste(t,
             " Filtering Mapped Indices \n")),
+        "filter_cost" = cat(paste(t,
+            " Filtering Cost Matrices \n")),
         "overlap_scores" = cat(paste(t,
             " Computing mapping overlaps between query cells \n")),
         "hclust_scores" = cat(paste(t,

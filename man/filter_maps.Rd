@@ -4,12 +4,10 @@
 \alias{filter_maps}
 \title{filter mapped cells}
 \usage{
-filter_maps(mapped, threshold, allow_duplicates, verbose)
+filter_maps(mapped, allow_duplicates, verbose)
 }
 \arguments{
 \item{mapped}{data frame containing mapped cells}
-
-\item{threshold}{score threshold (applied to each cost)}
 
 \item{allow_duplicates}{logical - if duplicated matches are to be reatained}
 

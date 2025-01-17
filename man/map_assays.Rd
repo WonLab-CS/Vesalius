@@ -18,15 +18,17 @@ map_assays(
   batch_size = 10000,
   epochs = 1,
   allow_duplicates = TRUE,
+  threshold = 0.3,
+  filter_cells = FALSE,
   use_norm = "raw",
   scale = FALSE,
-  threshold = 0.3,
   custom_cost = NULL,
   seed_territory_labels = "Territory",
   query_territory_labels = "Territory",
-  seed_cell_labels = NULL,
-  query_cell_labels = NULL,
+  seed_meta_labels = NULL,
+  query_meta_labels = NULL,
   jitter = 0,
+  digits = 5,
   verbose = TRUE
 )
 }
@@ -60,12 +62,12 @@ to consider for the neighborhood}
 \item{batch_size}{number of points per batch in query during assignment
 problem solving}
 
+\item{threshold}{score threshold below which indicices should be removed.
+Scores will always be between 0 and 1}
+
 \item{use_norm}{character - which count data to use}
 
 \item{scale}{logical - should signal be scaled}
-
-\item{threshold}{score threshold below which indicices should be removed.
-Scores will always be between 0 and 1}
 
 \item{custom_cost}{matrix - matrix of size n (query cells) by p (seed cells)
 containing custom cost matrix. Used instead of vesalius cost matrix}

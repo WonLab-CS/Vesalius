@@ -316,7 +316,7 @@ build_vesalius_assay <- function(coordinates,
 #' @param mapped mapping results (see output of point_mapping)
 #' @param seed_assay vesalius_assay object used as reference
 #' @param query_assay vesalius_assay that was mapped onto the reference
-#' @param cell_label character - name of column to be transfered to new object
+#' @param meta_labels character - name of column to be transfered to new object
 #' @param jitter numeric - how much coordiate jitter should be added to the 
 #' coordinates to avoid duplication. If 0, no jitter will be added.
 #' @details This function will only return a vesalius_assay with new coordinates
@@ -326,7 +326,7 @@ build_vesalius_assay <- function(coordinates,
 build_mapped_assay <- function(mapped,
     seed_assay,
     query_assay,
-    cell_label,
+    meta_labels,
     jitter = 0) {
     assay <- paste0("mapped_",get_assay_names(query_assay))
     from <- mapped$prob$from
@@ -373,24 +373,24 @@ build_mapped_assay <- function(mapped,
     #-------------------------------------------------------------------------#
     # Cells
     #-------------------------------------------------------------------------#
-    if (is.null(cell_label)) {
-        cell_label <- "Cells"
+    if (is.null(meta_labels)) {
+        meta_labels <- "Cells"
     }
-    cells <- which(colnames(query_assay@territories) %in% cell_label)
-    label_list <- vector("list", length(cells))
-    names(label_list) <- colnames(query_assay@territories)[cells]
-    if (length(cells) > 0) {
-        for (l in seq_along(cells)){
-            tmp <- query_assay@territories[, cells[l]]
+    meta_cols <- which(colnames(query_assay@territories) %in% meta_labels)
+    label_list <- vector("list", length(meta_cols))
+    names(label_list) <- colnames(query_assay@territories)[meta_cols]
+    if (length(meta_cols) > 0) {
+        for (l in seq_along(meta_cols)){
+            tmp <- query_assay@territories[, meta_cols[l]]
             names(tmp) <- query_assay@territories$barcodes
             tmp <- tmp[match(from, names(tmp))]
             names(tmp) <- make.unique(names(tmp), sep = "-")
             label_list[[l]] <- tmp
         }
-        cells <- TRUE
+        meta_cols <- TRUE
     } else {
         warnings("Query Cell labels not found - Ignoring Cells")
-        cells <- FALSE
+        meta_cols <- FALSE
     }
     #-------------------------------------------------------------------------#
     # Building assay
@@ -411,7 +411,7 @@ build_mapped_assay <- function(mapped,
         data = mapped_scores,
         slot = "map",
         append = TRUE)
-    if (cells) {
+    if (meta_cols) {
         for (l  in seq_along(label_list)) {
             mapped <- add_cells(mapped, label_list[[l]],
                 add_name = names(label_list)[l], verbose = FALSE)

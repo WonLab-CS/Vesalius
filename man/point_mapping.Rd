@@ -19,10 +19,12 @@ point_mapping(
   epochs = 1,
   use_cost = c("feature", "niche"),
   threshold = 0.5,
+  filter_cells = FALSE,
   seed_territory_labels = "Territory",
   query_territory_labels = "Territory",
-  seed_cell_labels = NULL,
-  query_cell_labels = NULL,
+  seed_meta_labels = NULL,
+  query_meta_labels = NULL,
+  digits = 4,
   verbose = TRUE
 )
 }
