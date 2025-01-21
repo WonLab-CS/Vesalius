@@ -275,10 +275,12 @@ gini <- function(x) {
 get_range <- function(x) {
     return(max(x) - min(x))
 }
-
+#proportion of contribution 
 poc <- function(cost) {
-    contrib <- sapply(cost,sum)
-    contrib <- contrib / cost
-    names(contrib) <- names(cost)
+    contrib <- cost[names(cost) != "total_cost"]
+    metrics <- names(contrib)
+    contrib <- sapply(contrib, sum)
+    contrib <- contrib / sum(contrib)
+    names(contrib) <- metrics
     return(contrib)
 }

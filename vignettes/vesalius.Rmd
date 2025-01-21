@@ -403,7 +403,7 @@ the mapping using cell (feature), niche, territory similarity and cell compositi
 matched <- map_assays(vesalius,
     jitter_ves,
     threshold = 0,
-    use_cost = c("feature","niche","territory","composition"),
+    use_cost = c("feature"),#,"niche","territory","composition"),
     batch_size = 500,
     epoch = 5,
     jitter = 1)
