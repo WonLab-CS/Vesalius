@@ -13,3 +13,7 @@ jaccard_cost <- function(seed, query) {
     .Call('_vesalius_jaccard_cost', PACKAGE = 'vesalius', seed, query)
 }
 
+bubble_stack_optimized <- function(coordinates, n_centers = 500L, max_iter = 500L) {
+    .Call('_vesalius_bubble_stack_optimized', PACKAGE = 'vesalius', coordinates, n_centers, max_iter)
+}
+

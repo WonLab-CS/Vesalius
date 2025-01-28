@@ -47,11 +47,25 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// bubble_stack_optimized
+IntegerVector bubble_stack_optimized(const Eigen::MatrixXd& coordinates, int n_centers, int max_iter);
+RcppExport SEXP _vesalius_bubble_stack_optimized(SEXP coordinatesSEXP, SEXP n_centersSEXP, SEXP max_iterSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const Eigen::MatrixXd& >::type coordinates(coordinatesSEXP);
+    Rcpp::traits::input_parameter< int >::type n_centers(n_centersSEXP);
+    Rcpp::traits::input_parameter< int >::type max_iter(max_iterSEXP);
+    rcpp_result_gen = Rcpp::wrap(bubble_stack_optimized(coordinates, n_centers, max_iter));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_vesalius_pearson_fast", (DL_FUNC) &_vesalius_pearson_fast, 2},
     {"_vesalius_pearson_exact", (DL_FUNC) &_vesalius_pearson_exact, 2},
     {"_vesalius_jaccard_cost", (DL_FUNC) &_vesalius_jaccard_cost, 2},
+    {"_vesalius_bubble_stack_optimized", (DL_FUNC) &_vesalius_bubble_stack_optimized, 3},
     {NULL, NULL, 0}
 };
 

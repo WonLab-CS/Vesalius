@@ -20,10 +20,10 @@
 #' @param verbose logical - progress message output.
 #
 #' @return a vesalius_assay object
-
 #' @export
 
-generate_spix <- function(vesalius_assay,
+generate_spix <- function(
+  vesalius_assay,
   dimensions = seq(1, 3),
   embedding = "last",
   method = "kmeans",
@@ -84,7 +84,8 @@ generate_spix <- function(vesalius_assay,
 }
 
 #' @importFrom imager imappend imsplit spectrum
-louvain_slic_segmentation <- function(vesalius_assay,
+louvain_slic_segmentation <- function(
+    vesalius_assay,
     dimensions,
     col_resolution,
     embedding,
@@ -393,75 +394,75 @@ random_sampling <- function(coordinates, n_centers) {
 #   return(in_image)
 # } 
 
-bubble_stack <- function(coordinates,
-    n_centers = 500,
-    max_iter = 500) {
-    coordinates <- coordinates %>% filter(origin == 1)
-    #-------------------------------------------------------------------------#
-    # intialise background grid, active grod and get nearest neighbors
-    # we assume that you will have at least 4 inital points
-    # This needs to be changed later - I dont think using knn is the best 
-    # option here
-    #-------------------------------------------------------------------------#
-    knn <- RANN::nn2(coordinates[, c("x", "y")],
-      k = floor(nrow(coordinates) * 0.2))
-    radius <- max(knn$nn.dist)
-    #-------------------------------------------------------------------------#
-    # iterated a reduced space until you get the desired numbers of circles  
-    #-------------------------------------------------------------------------#
-    convergence <- FALSE
-    iter <- 1
-    while (!convergence) {
-        #---------------------------------------------------------------------#
-        # intialize everything we need 
-        #---------------------------------------------------------------------#
-        background_grid <- c()
-        active <- seq_len(nrow(coordinates))
-        nn_index <- knn$nn.idx
-        nn_dist <- knn$nn.dist
-        #---------------------------------------------------------------------#
-        # as long as their points present we repeat the process of selecting 
-        # point that are outisde the selection radius
-        #---------------------------------------------------------------------#
-        while (length(active) > 0) {
-            random_start <- active[sample(x =
-                seq(1, l = length(active)),
-                size = 1)]
+# bubble_stack <- function(coordinates,
+#     n_centers = 500,
+#     max_iter = 500) {
+#     coordinates <- coordinates %>% filter(origin == 1)
+#     #-------------------------------------------------------------------------#
+#     # intialise background grid, active grod and get nearest neighbors
+#     # we assume that you will have at least 4 inital points
+#     # This needs to be changed later - I dont think using knn is the best 
+#     # option here
+#     #-------------------------------------------------------------------------#
+#     knn <- RANN::nn2(coordinates[, c("x", "y")],
+#       k = floor(nrow(coordinates) * 0.2))
+#     radius <- max(knn$nn.dist)
+#     #-------------------------------------------------------------------------#
+#     # iterated a reduced space until you get the desired numbers of circles  
+#     #-------------------------------------------------------------------------#
+#     convergence <- FALSE
+#     iter <- 1
+#     while (!convergence) {
+#         #---------------------------------------------------------------------#
+#         # intialize everything we need 
+#         #---------------------------------------------------------------------#
+#         background_grid <- c()
+#         active <- seq_len(nrow(coordinates))
+#         nn_index <- knn$nn.idx
+#         nn_dist <- knn$nn.dist
+#         #---------------------------------------------------------------------#
+#         # as long as their points present we repeat the process of selecting 
+#         # point that are outisde the selection radius
+#         #---------------------------------------------------------------------#
+#         while (length(active) > 0) {
+#             random_start <- active[sample(x =
+#                 seq(1, l = length(active)),
+#                 size = 1)]
             
-            background_grid <- c(background_grid, random_start)
-            removing <- nn_index[random_start,
-                nn_dist[random_start, ] <= radius]
-            active <- active[!active %in% unique(removing)]
-        }
-        if (length(background_grid) == n_centers) {
-            convergence <- TRUE
-        }
-        if (iter >= max_iter) {
-            convergence <- TRUE
-            warning("Max Iteration with no convergence!
-            Returning Approximation")
-        }
-        #---------------------------------------------------------------------#
-        # we change the radius based on how many points there 
-        # we assume that if there are 2 few barcodes then the radius is to 
-        # large 
-        # if there are too many barcodes then the radius is 2 small. 
-        #---------------------------------------------------------------------#
-        if (length(background_grid) < n_centers) {
-            radius <- radius - (radius / 2)
-        } else {
-            radius <- radius + (radius / 2)
-        }
-        iter <- iter + 1
-    }
-    #-------------------------------------------------------------------------#
-    # Next we need to find what are the indices of these barcodes 
-    # within the full pixel image 
-    # could use right_join and the likes but no 
-    #-------------------------------------------------------------------------#
+#             background_grid <- c(background_grid, random_start)
+#             removing <- nn_index[random_start,
+#                 nn_dist[random_start, ] <= radius]
+#             active <- active[!active %in% unique(removing)]
+#         }
+#         if (length(background_grid) == n_centers) {
+#             convergence <- TRUE
+#         }
+#         if (iter >= max_iter) {
+#             convergence <- TRUE
+#             warning("Max Iteration with no convergence!
+#             Returning Approximation")
+#         }
+#         #---------------------------------------------------------------------#
+#         # we change the radius based on how many points there 
+#         # we assume that if there are 2 few barcodes then the radius is to 
+#         # large 
+#         # if there are too many barcodes then the radius is 2 small. 
+#         #---------------------------------------------------------------------#
+#         if (length(background_grid) < n_centers) {
+#             radius <- radius - (radius / 2)
+#         } else {
+#             radius <- radius + (radius / 2)
+#         }
+#         iter <- iter + 1
+#     }
+#     #-------------------------------------------------------------------------#
+#     # Next we need to find what are the indices of these barcodes 
+#     # within the full pixel image 
+#     # could use right_join and the likes but no 
+#     #-------------------------------------------------------------------------#
     
-    return(background_grid)
-}
+#     return(background_grid)
+# }
 
 
 hex_grid <- function(coordinates, n_centers, return_index = TRUE) {
