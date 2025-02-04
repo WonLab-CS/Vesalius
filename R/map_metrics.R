@@ -255,13 +255,34 @@ get_cost_contribution <- function(vesalius_assay,
   return(vesalius_assay)
 }
 
+# getting around long vector lims
+var_int <- function(x) {
+    x <- as.vector(x)
+    m <- mean(x)
+    x <- x - m
+    x <- x^2
+    x <- sum(x)
+    x <- x / (length(x) - 1)
+    return(x)
+}
+
+sd_int <- function(x) {
+    x <- as.vector(x)
+    m <- mean(x)
+    x <- x - m
+    x <- x^2
+    x <- sum(x)
+    x <- x / (length(x) - 1)
+    x <- sqrt(x)
+    return(x)
+}
 
 dispersion <- function(x) {
-    return(var(x) / mean(x))
+    return(var_int(x) / mean(x))
 }
 
 coef_of_var <- function(x) {
-    return(sd(x) / mean(x))
+    return(sd_int(x) / mean(x))
 }
 
 gini <- function(x) {
