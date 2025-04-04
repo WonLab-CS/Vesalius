@@ -128,6 +128,3 @@ equalize_image <- function(vesalius_assay,
 ecdf_eq <- function(im) {
    return(suppressWarnings(imager::as.cimg(stats::ecdf(im)(im), dim = dim(im))))
 }
-
-
-

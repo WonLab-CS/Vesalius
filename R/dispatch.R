@@ -10,6 +10,7 @@
 #' @param ter_1 integer vector containing territories in group 1
 #' @param ter_2 integer vector containing territories in group 2
 #' @param cells cell barcodes
+#' @return reformatted territory data frame
 dispatch_territory <- function(territories, ter_1, ter_2, cells) {
     if (is.null(ter_1) && is.null(ter_2)) {
         territories <- select(territories, c("barcodes", "x", "y", "trial"))
@@ -150,7 +151,7 @@ dispatch_sample <- function(territory_barcodes, ter, sample) {
 #' if the clustering is to be done by cell types only
 #' @param group_identity character - name of column containing group
 #' to be used for cluster (i.e. territories, segments, layers etc)
-#' @return character string of barcodes
+#' @return vector of strings (barcodes)
 dispatch_cost_groups <- function(vesalius_assay,
     cost,
     trial = NULL,
@@ -199,7 +200,9 @@ dispatch_cost_groups <- function(vesalius_assay,
 
 }
 
-
+#' removing the "make.unique" labels when original labels are needed
+#' @param trial character vector containing barcode names
+#' @return cleaned trial vector
 clean_trial <- function(trial) {
     trial <- sapply(strsplit(trial, "-"), function(str){
         return(paste0(str[seq(1, length(str) - 1)], collapse = "-"))

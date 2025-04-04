@@ -23,7 +23,7 @@ to be used for cluster (i.e. territories, segments, layers etc)}
 if the clustering is to be done by cell types only}
 }
 \value{
-character string of barcodes
+vector of strings (barcodes)
 }
 \description{
 dispatch barcodes to subset cost for match clustering

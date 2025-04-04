@@ -9,11 +9,16 @@
 #' Aling and integrate spatial assay from the same modality using super pixels
 #' @param seed_assay vesalius_assay object - data to be mapped to
 #' @param query_assay vesalius_assay objecy - data to map
+#' @param signal character (variable_features, all_features, embeddings, custom)
+#' - What should  be used as cell signal to generate the cost matrix.
+#' Seed details 
 #' @param use_cost character string defining how should total cost be computer
-#' Available: feature, niche, territory, composition (See details for combinations
+#' Available: feature, niche, territory, composition, cell_type (See details for combinations
 #' and custom matrices)
+#' @param method character - which pearson correlation to use? 
+#' (pearson, pearson_fast, pearson_exact) TO BE DEPRECIATED
 #' @param neighborhood character - how should the neighborhood be selected?
-#' "knn", "radius", "graph"(See details)
+#' "knn", "radius", "graph"
 #' @param k int ]2, n_points] number of neareset neighbors to be considered for
 #' neighborhodd computation.
 #' @param radius numeric ]0,1[ proportion of max distance between points 
@@ -23,16 +28,31 @@
 #' @param dimensions Int vector containing latent space dimensions to use
 #' @param batch_size number of points per batch in query during assignment
 #' problem solving
-#' @param signal character (variable_features, all_features, embeddings, custom)
-#' - What should  be used as cell signal to generate the cost matrix.
-#' Seed details 
-#' @param use_norm character - which count data to use
-#' @param scale logical - should signal be scaled 
-#' @param threshold score threshold below which indicices should be removed.
-#' Scores will always be between 0 and 1
-
-#' @param custom_cost matrix - matrix of size n (query cells) by p (seed cells)
-#' containing custom cost matrix. Used instead of vesalius cost matrix
+#' @param epochs int [1, [ - Across how many epochs should the mapping occur?
+#' Note that if batch_size is larger than both data sets, running across epochs
+#' will not improve mapping. 
+#' @param allow_duplicates logical - Should duplicated barcodes be retained? If FALSE
+#' then match with lowest cost will be retainined.
+#' @param threshold numeric - Any cell (accros all matrices except cell_type) whose max score
+#' falls below this threshold will be removed.
+#' @param filter_cells logical - If cell_type cost matrix is requested, remove cells from
+#' query that are not present in the seed data set.
+#' @param use_norm character - which count data to use (default = "raw")
+#' @param scale logical - should signal be scaled?
+#' @param custom_cost list - list of matrices of size n (query cells) by p (seed cells)
+#' containing custom cost matrix. List elements should be named and called for in use_cost.
+#' @param seed_territory_labels character - name of column in seed containing territories
+#' which should be used for territory cost
+#' @param query_territory_labels character - name of column in query containing territories
+#' which should be used for territory cost
+#' @param seed_meta_labels character - name of columns in seed containing meta information
+#' to be parse to the mapped object. First name will be used for cell_type cost if
+#' requested.
+#' @param query_meta_labels character - name of columns in query containing meta information
+#' to be parse to the mapped object. First name will be used for cell_type cost if
+#' requested.
+#' @param digits number of digits to retain after computing correlation. More digits
+#' equals to a more precise mapping but significantly increase run time.
 #' @param verbose logical - should I be a noisy boy?
 #' @details The goal is to assign the best matching point between a seed set and
 #' a query set.
@@ -67,25 +87,21 @@
 #' The composition matrix will compute a frequency aware jaccard index
 #' between cell types present in a niche. Cell types must be assigned 
 #' to seed and query vesalius objects  (See add_cells function)
+#' cell_type cost matrix will check cell labels. If they are the same 
+#' the cell pair receives a score of 1 otherwise 0.
 #' Total cost matrix will be computed by computing the pairwise sum 
 #' of the complement (1 - p ) of each cost matrix. 
 #'
-#' This cost matrix is then parsed to a
-#' Kuhn–Munkres algorithm that will generate point pairs that minimize
-#' the overall cost. 
+#' This cost matrix is then parsed to a LAPVJ algorithm that will 
+#' generate point pairs that minimize the overall cost. 
 #' 
-#' Since the algorithm complexity is O(n3), it can be time consuming to
-#' to run on larger data sets. As such, mapping will be approximated by
-#' dividing seed and query into batches defined by batch size. For an
-#' exact mapping ensure that batch_size is larger than the number of cells
-#' in both query and seed.
+#' To improve run time, cost matrices are split into random batches where each cell
+#' will be selected at least once for mapping. At each epoch a new random batch
+#' will be selected and the mapping pair with the lowest cost will be retained. 
 #' 
-#' Finaly once the matches are found, the coordinates are mapped to its
-#' corresponding point and a new object is returned.
-#'
 #'
 #' 
-#' @return vesalius_assay
+#' @return vesalius_assay with mapped coordinates
 #' @examples
 #' \dontrun{
 #' data(vesalius)
@@ -232,22 +248,47 @@ get_signal <- function(seed_assay,
 
 #' mapping points between data sets
 #' @param query_signal processed query signal from query assay
-#' @param query vesalius_assay object
+#' @param query_assay vesalius_assay object
 #' @param cost matrix - matrix of size n (query cells) by p (seed cells)
 #' containing custom cost matrix. 
 #' @param seed_signal processed seed signal from seed assay
-#' @param seed vesalius_assay object
-#' @param k int size of niche (knn)
-#' @param radius 0.05 proportion of max distance to use as radius for 
-#' neighborhood
-#' @param depth graph path depth to condsider for neighborhood. 
-#' @param batch_size int number of points in each query batch
+#' @param seed_assay vesalius_assay object
+#' @param method character - which pearson correlation to use? 
+#' (pearson, pearson_fast, pearson_exact) TO BE DEPRECIATED
+#' @param neighborhood character - how should the neighborhood be selected?
+#' "knn", "radius", "graph"
+#' @param k int ]2, n_points] number of neareset neighbors to be considered for
+#' neighborhodd computation.
+#' @param radius numeric ]0,1[ proportion of max distance between points 
+#' to consider for the neighborhood
+#' @param depth int [1, NA] graph depth from cell to consider from neighborhood
+#' (See details)
+#' @param batch_size number of points per batch in query during assignment
+#' problem solving
+#' @param epochs int [1, [ - Across how many epochs should the mapping occur?
+#' Note that if batch_size is larger than both data sets, running across epochs
+#' will not improve mapping. 
 #' @param use_cost character string defining how should total cost be computer
-#' Available: feature, niche, territory, composition (See details for combinations
-#' @param threshold score threshold below which indicices should be removed.
-#' Scores will always be between 0 and 1
+#' Available: feature, niche, territory, composition, cell_type (See details for combinations
+#' and custom matrices)
+#' @param threshold numeric - Any cell (accros all matrices except cell_type) whose max score
+#' falls below this threshold will be removed.
+#' @param filter_cells logical - If cell_type cost matrix is requested, remove cells from
+#' query that are not present in the seed data set.
+#' @param seed_territory_labels character - name of column in seed containing territories
+#' which should be used for territory cost
+#' @param query_territory_labels character - name of column in query containing territories
+#' which should be used for territory cost
+#' @param seed_meta_labels character - name of columns in seed containing meta information
+#' to be parse to the mapped object. First name will be used for cell_type cost if
+#' requested.
+#' @param query_meta_labels character - name of columns in query containing meta information
+#' to be parse to the mapped object. First name will be used for cell_type cost if
+#' requested.
+#' @param digits number of digits to retain after computing correlation. More digits
+#' equals to a more precise mapping but significantly increase run time.
 #' @param verbose logical - out progress to console
-#' @return list of matched and aligned coordinates in query
+#' @return list containing matched coordinates, cost matrices, and cost by epoch
 #' @importFrom future.apply future_lapply
 point_mapping <- function(query_signal,
     query_assay,
@@ -408,9 +449,10 @@ point_mapping <- function(query_signal,
 
 #' concat cost - pairwise sum of score complement
 #' @param cost list - named list contained score matrices
-#' @param use_cost character - which cost matrices to use 
-#' @return list with cost matrix 
-concat_cost <- function(cost, use_cost, complement = TRUE) { 
+#' @param use_cost character - which cost matrices to use
+#' @param recip logical - use reciprocal matrix
+#' @return list with cost matrices
+concat_cost <- function(cost, use_cost, recip = TRUE) { 
     if (length(use_cost) == 0) {
         stop("Please specify at least one score matrix to use")
     }
@@ -418,13 +460,13 @@ concat_cost <- function(cost, use_cost, complement = TRUE) {
     if (length(cost) == 0) {
         stop(paste(paste(use_cost, collapse = " "), ": not available in score matrix list"))
     } else if (length(cost) == 1) {
-        if (complement) {
+        if (recip) {
             return(list(1 - cost[[1]]))
         } else {
             return(list(cost[[1]]))
         }
     } else {
-        if (complement) {
+        if (recip) {
             buffer <- 1 - cost[[1]]
             for (i in seq(2, length(cost))){
                 buffer <- buffer + (1 - cost[[i]])
@@ -445,13 +487,14 @@ concat_cost <- function(cost, use_cost, complement = TRUE) {
 #' compute the similarity between seed and query signals
 #' @param seed seed signal
 #' @param query query signal
+#' @param method character - which pearson correlation method to use
+#' @param digits int - number of digits to retain after computing 
+#' correlations. Less digits = faster mapping
 #' @details Chunking cost and signal into smaller chunks to run the 
 #' correlation score in paralell. There is room for improvement here.
-#' First we could dispatch the longer list to future_lapply
-#' but cannot know which one it is and we need to know that so we can 
-#' subset the cost. 
-#' Also the functions calls feature_cost which is a R wrapper for a 
-#' c++ function (cost.cpp).
+#' Tested a few ways to computed pearson correlations for speed.
+#' Pearson exact is the slowest but pearson and pearson_fast give similar
+#' results. Can be changed for other metrics later. Cosine distance?
 #' @return matrix with query as rows and seed as colmuns
 #' @importFrom future nbrOfWorkers
 #' @importFrom future.apply future_lapply
@@ -616,7 +659,8 @@ graph_neighborhood <- function(coord, depth) {
 #' @param coord data.frame - coordinates of spatial indices in assay
 #' @return list containing barcodes of spatial indices in each territory
 territory_neighborhood <- function(coord) {
-    # for now only last trial 
+    # territories have been selected before so 
+    # the territory data frame has been reformated to standard vesalius format
     coord_dist <- lapply(seq(1, nrow(coord)),function(i, coord) {
     bars <- coord$barcodes[coord$trial == coord$trial[i]]
             return(bars)
@@ -648,15 +692,15 @@ neighborhood_signal <- function(neighbors, signal) {
 #' Method dispatch function for neighborhood selection - added
 #' flavor specific to composition
 #' @param coord data.frame - coordinates of assay (barcodes, x, y)
-#' @param signal matrix - matrix or sparse matrix containing assay 
-#' signal for all spatial indices contained in coord
+#' @param vesalius_assay vesalius_assay object containing cell labels
 #' @param method character - which method should be use to collect 
 #' neighborhood - switch matches
+#' @param cell_label character - which column contains the cell label names?
 #' @param k int - how many nearest neighbors from KNN algorithm
 #' @param depth int - graph path depth to define neighborhood 
 #' 0 = self, 1 = direct neigbors, 2 = neighbors of neighbors, etc
 #' @param radius - numeric - radius around center cell 
-#' @return list of all cells and cell types for each niche
+#' @return a composition matrix (cell_labels X cell barcodes)
 niche_composition <- function(coord,
     vesalius_assay,
     method,
@@ -708,6 +752,15 @@ match_cells <- function(idx, query_labels, seed_labels) {
 }
 
 
+#' filtering out cost matrices - removing cells below threshold
+#' @param costs cost list
+#' @param threshold numeric - similarity threshold (cor/jaccard <= threshold)
+#' @param filter_cells logical - remove query cell labels that are not found in
+#' seed data
+#' @param verbose logical - print output messages
+#' @details if a cell has a score below a threshold one of the cost
+#' matrices it will be removed in all
+#' @return reduced cost list 
 filter_cost <- function(costs,
     threshold = 0,
     filter_cells = TRUE,

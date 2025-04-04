@@ -6,7 +6,7 @@
 ############################## COUNT INTEGRATION ##############################
 #-----------------------------------------------------------------------------#
 
-#' integrate 2 vesalius assays
+#' integrate counts from 2 vesalius assays
 #' @param mapped vesalius_assay object - mapped veslius assay (map_assays)
 #' @param reference vesalius_assay object - reference vesalius_assay (seed)
 #' @param method character - count integration method (methods provided by 
@@ -26,6 +26,12 @@
 #' should be merged with the mapped data (see details)
 #' @param regenerate_tiles logical - should tiles be regenrated from integrated 
 #' coordinates
+#' @param tensor_resolution numeric (range 0 - 1) describing the compression
+#' ratio to be applied to the final image. Default = 1
+#' @param filter_grid numeric (range 0 - 1) size of the grid used when filtering
+#' outlier beads. Defined as a proportion of total image size. Default = 0.1
+#' @param filter_threshold numeric (range 0 -1) describing the quantile
+#' threshold at which tiles should be retained (seed details)
 #' @param verbose logical - should progressed message be printed
 #' @details After mapping coordinates from a query onto a reference, vesalius
 #' provides a way to then integrate the assays together. This function will:
@@ -41,9 +47,18 @@
 #' coordinates from the mapped and reference, integrated latent space (e.g.CCA)
 #' integrated counts, merged territories, an additional meta data.
 #'
-#' It should be noted that this object does not contain tiles. To use this 
-#' vesalius_assay as any other, add tiles by using \code{\link{generate_tiles}}
-#' @return a vesalius_assay object
+#' @return a vesalius_assay object with integrated mapped and reference objects
+#' @examples
+#' \dontrun{
+#' data(vesalius)
+#' # First we build a simple object
+#' ves <- build_vesalius_object(coordinates, counts)
+#' ves <- build_vesalius_embeddings(ves)
+#' jitter <- build_vesalius_object(jitter_coord, jitter_counts)
+#' jitter <- build_vesalius_embeddings(jitter)
+#' map <- map_assays(ves, jitter)
+#' integrated <- integrate_assays(map, ves)
+#'}
 #' @export 
 integrate_assays <- function(mapped,
     reference,

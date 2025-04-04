@@ -2,7 +2,7 @@
 % Please edit documentation in R/integration.R
 \name{integrate_assays}
 \alias{integrate_assays}
-\title{integrate 2 vesalius assays}
+\title{integrate counts from 2 vesalius assays}
 \usage{
 integrate_assays(
   mapped,
@@ -53,13 +53,22 @@ should be merged with the mapped data (see details)}
 \item{regenerate_tiles}{logical - should tiles be regenrated from integrated 
 coordinates}
 
+\item{tensor_resolution}{numeric (range 0 - 1) describing the compression
+ratio to be applied to the final image. Default = 1}
+
+\item{filter_grid}{numeric (range 0 - 1) size of the grid used when filtering
+outlier beads. Defined as a proportion of total image size. Default = 0.1}
+
+\item{filter_threshold}{numeric (range 0 -1) describing the quantile
+threshold at which tiles should be retained (seed details)}
+
 \item{verbose}{logical - should progressed message be printed}
 }
 \value{
-a vesalius_assay object
+a vesalius_assay object with integrated mapped and reference objects
 }
 \description{
-integrate 2 vesalius assays
+integrate counts from 2 vesalius assays
 }
 \details{
 After mapping coordinates from a query onto a reference, vesalius
@@ -75,7 +84,16 @@ We also infer log nomalized counts from CCA latent space.
 The final output of this function is a vesalius_assay object containing 
 coordinates from the mapped and reference, integrated latent space (e.g.CCA)
 integrated counts, merged territories, an additional meta data.
-
-It should be noted that this object does not contain tiles. To use this 
-vesalius_assay as any other, add tiles by using \code{\link{generate_tiles}}
+}
+\examples{
+\dontrun{
+data(vesalius)
+# First we build a simple object
+ves <- build_vesalius_object(coordinates, counts)
+ves <- build_vesalius_embeddings(ves)
+jitter <- build_vesalius_object(jitter_coord, jitter_counts)
+jitter <- build_vesalius_embeddings(jitter)
+map <- map_assays(ves, jitter)
+integrated <- integrate_assays(map, ves)
+}
 }

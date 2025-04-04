@@ -103,25 +103,26 @@ chunk <- function(x, n, l = NULL) {
 # getting around long vector lims
 var_int <- function(x) {
     x <- as.vector(x)
+    l <- length(x)
     m <- mean(x)
     x <- x - m
     x <- x^2
     x <- sum(x)
-    x <- x / (length(x) - 1)
+    x <- x / (l - 1)
     return(x)
 }
 
 sd_int <- function(x) {
     x <- as.vector(x)
+    l <- length(x)
     m <- mean(x)
     x <- x - m
     x <- x^2
     x <- sum(x)
-    x <- x / (length(x) - 1)
+    x <- x / (l - 1)
     x <- sqrt(x)
     return(x)
 }
-
 
 #-------------------------/ Aligning Assays /--------------------------------#
 

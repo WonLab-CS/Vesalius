@@ -65,7 +65,7 @@ get_metric_clusters <- function(vesalius_assay,
     # set up cost matrics 
     #-------------------------------------------------------------------------#
     cost <- get_cost(vesalius_assay, use_cost)
-    score <- concat_cost(cost, use_cost, complement = FALSE)[[1L]]
+    score <- concat_cost(cost, use_cost, recip = FALSE)[[1L]]
     #-------------------------------------------------------------------------#
     # get barcodes representing cells / sub group of cells 
     #-------------------------------------------------------------------------#

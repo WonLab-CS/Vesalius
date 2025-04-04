@@ -42,11 +42,14 @@ map_assays(
 Seed details}
 
 \item{use_cost}{character string defining how should total cost be computer
-Available: feature, niche, territory, composition (See details for combinations
+Available: feature, niche, territory, composition, cell_type (See details for combinations
 and custom matrices)}
 
+\item{method}{character - which pearson correlation to use? 
+(pearson, pearson_fast, pearson_exact) TO BE DEPRECIATED}
+
 \item{neighborhood}{character - how should the neighborhood be selected?
-"knn", "radius", "graph"(See details)}
+"knn", "radius", "graph"}
 
 \item{k}{int ]2, n_points] number of neareset neighbors to be considered for
 neighborhodd computation.}
@@ -62,20 +65,47 @@ to consider for the neighborhood}
 \item{batch_size}{number of points per batch in query during assignment
 problem solving}
 
-\item{threshold}{score threshold below which indicices should be removed.
-Scores will always be between 0 and 1}
+\item{epochs}{int [1, [ - Across how many epochs should the mapping occur?
+Note that if batch_size is larger than both data sets, running across epochs
+will not improve mapping.}
 
-\item{use_norm}{character - which count data to use}
+\item{allow_duplicates}{logical - Should duplicated barcodes be retained? If FALSE
+then match with lowest cost will be retainined.}
 
-\item{scale}{logical - should signal be scaled}
+\item{threshold}{numeric - Any cell (accros all matrices except cell_type) whose max score
+falls below this threshold will be removed.}
 
-\item{custom_cost}{matrix - matrix of size n (query cells) by p (seed cells)
-containing custom cost matrix. Used instead of vesalius cost matrix}
+\item{filter_cells}{logical - If cell_type cost matrix is requested, remove cells from
+query that are not present in the seed data set.}
+
+\item{use_norm}{character - which count data to use (default = "raw")}
+
+\item{scale}{logical - should signal be scaled?}
+
+\item{custom_cost}{list - list of matrices of size n (query cells) by p (seed cells)
+containing custom cost matrix. List elements should be named and called for in use_cost.}
+
+\item{seed_territory_labels}{character - name of column in seed containing territories
+which should be used for territory cost}
+
+\item{query_territory_labels}{character - name of column in query containing territories
+which should be used for territory cost}
+
+\item{seed_meta_labels}{character - name of columns in seed containing meta information
+to be parse to the mapped object. First name will be used for cell_type cost if
+requested.}
+
+\item{query_meta_labels}{character - name of columns in query containing meta information
+to be parse to the mapped object. First name will be used for cell_type cost if
+requested.}
+
+\item{digits}{number of digits to retain after computing correlation. More digits
+equals to a more precise mapping but significantly increase run time.}
 
 \item{verbose}{logical - should I be a noisy boy?}
 }
 \value{
-vesalius_assay
+vesalius_assay with mapped coordinates
 }
 \description{
 Aling and integrate spatial assay from the same modality using super pixels
@@ -114,21 +144,17 @@ territories between seed and query.
 The composition matrix will compute a frequency aware jaccard index
 between cell types present in a niche. Cell types must be assigned 
 to seed and query vesalius objects  (See add_cells function)
+cell_type cost matrix will check cell labels. If they are the same 
+the cell pair receives a score of 1 otherwise 0.
 Total cost matrix will be computed by computing the pairwise sum 
 of the complement (1 - p ) of each cost matrix. 
 
-This cost matrix is then parsed to a
-Kuhn–Munkres algorithm that will generate point pairs that minimize
-the overall cost. 
+This cost matrix is then parsed to a LAPVJ algorithm that will 
+generate point pairs that minimize the overall cost. 
 
-Since the algorithm complexity is O(n3), it can be time consuming to
-to run on larger data sets. As such, mapping will be approximated by
-dividing seed and query into batches defined by batch size. For an
-exact mapping ensure that batch_size is larger than the number of cells
-in both query and seed.
-
-Finaly once the matches are found, the coordinates are mapped to its
-corresponding point and a new object is returned.
+To improve run time, cost matrices are split into random batches where each cell
+will be selected at least once for mapping. At each epoch a new random batch
+will be selected and the mapping pair with the lowest cost will be retained.
 }
 \examples{
 \dontrun{

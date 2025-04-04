@@ -17,6 +17,9 @@ vesalius_assay object}
 
 \item{cells}{cell barcodes}
 }
+\value{
+reformatted territory data frame
+}
 \description{
 dispatch territories labels territories according to which
 group they belong to.

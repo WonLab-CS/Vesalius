@@ -4,15 +4,17 @@
 \alias{concat_cost}
 \title{concat cost - pairwise sum of score complement}
 \usage{
-concat_cost(cost, use_cost, complement = TRUE)
+concat_cost(cost, use_cost, recip = TRUE)
 }
 \arguments{
 \item{cost}{list - named list contained score matrices}
 
 \item{use_cost}{character - which cost matrices to use}
+
+\item{recip}{logical - use reciprocal matrix}
 }
 \value{
-list with cost matrix
+list with cost matrices
 }
 \description{
 concat cost - pairwise sum of score complement

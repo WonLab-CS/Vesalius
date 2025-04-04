@@ -6,6 +6,14 @@
 \usage{
 pearson_approx(seed, query)
 }
+\arguments{
+\item{seed}{(r x c) seed matrix}
+
+\item{query}{(r x c') query matrix}
+}
+\value{
+correlation matrix between each columns (c' x c)
+}
 \description{
 compute fast pearson correlation between matrices
 }

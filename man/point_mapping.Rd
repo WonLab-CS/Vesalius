@@ -31,34 +31,68 @@ point_mapping(
 \arguments{
 \item{query_signal}{processed query signal from query assay}
 
+\item{query_assay}{vesalius_assay object}
+
 \item{cost}{matrix - matrix of size n (query cells) by p (seed cells)
 containing custom cost matrix.}
 
 \item{seed_signal}{processed seed signal from seed assay}
 
-\item{k}{int size of niche (knn)}
+\item{seed_assay}{vesalius_assay object}
 
-\item{radius}{0.05 proportion of max distance to use as radius for 
-neighborhood}
+\item{method}{character - which pearson correlation to use? 
+(pearson, pearson_fast, pearson_exact) TO BE DEPRECIATED}
 
-\item{depth}{graph path depth to condsider for neighborhood.}
+\item{neighborhood}{character - how should the neighborhood be selected?
+"knn", "radius", "graph"}
 
-\item{batch_size}{int number of points in each query batch}
+\item{k}{int ]2, n_points] number of neareset neighbors to be considered for
+neighborhodd computation.}
+
+\item{radius}{numeric ]0,1[ proportion of max distance between points 
+to consider for the neighborhood}
+
+\item{depth}{int [1, NA] graph depth from cell to consider from neighborhood
+(See details)}
+
+\item{batch_size}{number of points per batch in query during assignment
+problem solving}
+
+\item{epochs}{int [1, [ - Across how many epochs should the mapping occur?
+Note that if batch_size is larger than both data sets, running across epochs
+will not improve mapping.}
 
 \item{use_cost}{character string defining how should total cost be computer
-Available: feature, niche, territory, composition (See details for combinations}
+Available: feature, niche, territory, composition, cell_type (See details for combinations
+and custom matrices)}
 
-\item{threshold}{score threshold below which indicices should be removed.
-Scores will always be between 0 and 1}
+\item{threshold}{numeric - Any cell (accros all matrices except cell_type) whose max score
+falls below this threshold will be removed.}
+
+\item{filter_cells}{logical - If cell_type cost matrix is requested, remove cells from
+query that are not present in the seed data set.}
+
+\item{seed_territory_labels}{character - name of column in seed containing territories
+which should be used for territory cost}
+
+\item{query_territory_labels}{character - name of column in query containing territories
+which should be used for territory cost}
+
+\item{seed_meta_labels}{character - name of columns in seed containing meta information
+to be parse to the mapped object. First name will be used for cell_type cost if
+requested.}
+
+\item{query_meta_labels}{character - name of columns in query containing meta information
+to be parse to the mapped object. First name will be used for cell_type cost if
+requested.}
+
+\item{digits}{number of digits to retain after computing correlation. More digits
+equals to a more precise mapping but significantly increase run time.}
 
 \item{verbose}{logical - out progress to console}
-
-\item{query}{vesalius_assay object}
-
-\item{seed}{vesalius_assay object}
 }
 \value{
-list of matched and aligned coordinates in query
+list containing matched coordinates, cost matrices, and cost by epoch
 }
 \description{
 mapping points between data sets
