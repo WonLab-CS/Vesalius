@@ -4,7 +4,7 @@
 \alias{overlap_distance_matrix}
 \title{create a distance matrix based on mapping scores overlaps}
 \usage{
-overlap_distance_matrix(score, top_nn, verbose)
+overlap_distance_matrix(score, top_nn = 10, verbose = TRUE)
 }
 \arguments{
 \item{score}{matrix - cost matrix}

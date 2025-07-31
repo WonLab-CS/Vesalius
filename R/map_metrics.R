@@ -179,31 +179,42 @@ leiden_scores <- function(score, resolution, nn, verbose) {
 #' @param top_nn integer nearest neighbors
 #' @param verbose logical - print progress messages
 #' @importFrom future.apply future_lapply
-overlap_distance_matrix <- function(score, top_nn, verbose) {
-    message_switch("overlap_scores", verbose)
-    top_nn <- min(c(top_nn, ncol(score)))
-    rows <- rownames(score)
-    score <- lapply(seq_len(nrow(score)), function(i, score, top_nn) {
-        return(as.character(order(score[i, ], decreasing = TRUE)[seq(1, top_nn)]))
-    }, score =score, top_nn = top_nn)
-    tmp <- vector("list", length(score))
-    for (i in seq_along(score)) {
-        local_seed <- score[i]
-        buffer <- future_lapply(seq_along(score),
-            function(idx, score, local_seed) {
-            local_query <- score[idx]
-            local_score <- jaccard_cost(local_seed,local_query)
-            colnames(local_score) <- names(local_seed)
-            rownames(local_score) <- names(local_query)
-            return(local_score)
-        }, score = score, local_seed = local_seed)
-        buffer <- do.call("rbind", buffer)
-        tmp[[i]] <- buffer
-    }
-    tmp <- do.call("cbind", tmp)
-    colnames(tmp) <- rows
-    rownames(tmp) <- rows
-    return(1 - tmp)
+overlap_distance_matrix <- function(score, top_nn = 10, verbose = TRUE) {
+  message_switch("overlap_scores", verbose)
+
+  top_nn <- min(top_nn, ncol(score))
+  rows <- rownames(score)
+  n_cells <- nrow(score)
+
+  # Create a character matrix with top NN column names for each row
+  score_mat <- matrix(NA_character_, nrow = top_nn, ncol = n_cells)
+  colnames(score_mat) <- rows
+  rownames(score_mat) <- paste0("rank_", seq_len(top_nn))
+
+  for (i in seq_len(n_cells)) {
+    top_indices <- order(score[i, ], decreasing = TRUE)[seq_len(top_nn)]
+    score_mat[, i] <- colnames(score)[top_indices]
+  }
+
+  # Compute the pairwise jaccard cost using the C++ function
+  tmp <- vector("list", n_cells)
+  for (i in seq_len(n_cells)) {
+    local_seed <- score_mat[, i, drop = FALSE]
+    buffer <- future_lapply(seq_len(n_cells), function(idx) {
+      local_query <- score_mat[, idx, drop = FALSE]
+      local_score <- jaccard_cost(local_seed, local_query)
+      colnames(local_score) <- colnames(local_seed)
+      rownames(local_score) <- colnames(local_query)
+      return(local_score)
+    })
+    tmp[[i]] <- do.call(rbind, buffer)
+  }
+
+  tmp <- do.call(cbind, tmp)
+  colnames(tmp) <- rows
+  rownames(tmp) <- rows
+
+  return(1 - tmp)
 }
 
 
