@@ -54,7 +54,3 @@ The Vesalius package is in its early stage of development. We would ask you to
 share with us any bugs, concerns, or features you wish to see implemented.
 
 Please open a GitHub issue or send an email to Patrick Martin (Patrick.Martin@cshs.org)
-
-## Archived Analysis 
-
-An in depth view of the Vesalius workflow  related to the [MSB](https://www.embopress.org/doi/full/10.15252/msb.202211080) manuscript can be found [here](https://github.com/WonLab-CS/Vesalius/blob/main/vignettes/Vesalius_Analysis/Vesalius_MSB_analysis.Rmd). 
