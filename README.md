@@ -1,5 +1,5 @@
 [![DOI](https://zenodo.org/badge/306332649.svg)](https://zenodo.org/badge/latestdoi/306332649)
-[![DOI](https://zenodo.org/badge/15733816.svg)](https://zenodo.org/badge/latestdoi/15733816)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15733817.svg)](https://doi.org/10.5281/zenodo.15733817)
 
 
 # Vesalius
