@@ -1,4 +1,6 @@
 [![DOI](https://zenodo.org/badge/306332649.svg)](https://zenodo.org/badge/latestdoi/306332649)
+[![DOI](https://zenodo.org/badge/306332649.svg)](https://zenodo.org/badge/latestdoi/15733816)
+
 
 # Vesalius
 
