@@ -1,11 +1,11 @@
 [![DOI](https://zenodo.org/badge/306332649.svg)](https://zenodo.org/badge/latestdoi/306332649)
-[![DOI](https://zenodo.org/badge/306332649.svg)](https://zenodo.org/badge/latestdoi/15733816)
+[![DOI](https://zenodo.org/badge/15733816.svg)](https://zenodo.org/badge/latestdoi/15733816)
 
 
 # Vesalius
 
 Welcome to the Vesalius GitHub page!
-<img src="man/figures/banner.png" />
+<img src="man/figures/banner_nat.png" />
 
 
 
