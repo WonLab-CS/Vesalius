@@ -325,23 +325,23 @@ to each gray scale image.</p>
 <div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">vesalius</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/regularise_image.html">regularise_image</a></span><span class="op">(</span><span class="va">vesalius</span>, lambda <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-31-08/27/25 19:31:34  Converting Vesalius to Image</span></span>
-<span><span class="co">## 2025-31-08/27/25 19:31:35  Regularising Image </span></span>
-<span><span class="co">## 2025-31-08/27/25 19:31:38  Converting Images to Vesalius</span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:15  Converting Vesalius to Image</span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:15  Regularising Image </span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:19  Converting Images to Vesalius</span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
 <div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">vesalius</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/smooth_image.html">smooth_image</a></span><span class="op">(</span><span class="va">vesalius</span>, sigma <span class="op">=</span> <span class="fl">5</span>, iter <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-31-08/27/25 19:31:39  Converting Vesalius to Image</span></span>
-<span><span class="co">## 2025-31-08/27/25 19:31:39  Smoothing Image Arrays </span></span>
-<span><span class="co">## 2025-31-08/27/25 19:31:40  Converting Images to Vesalius</span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:19  Converting Vesalius to Image</span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:20  Smoothing Image Arrays </span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:20  Converting Images to Vesalius</span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
 <div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">vesalius</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/equalize_image.html">equalize_image</a></span><span class="op">(</span><span class="va">vesalius</span>, sleft <span class="op">=</span> <span class="fl">5</span>, sright <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-31-08/27/25 19:31:40  Converting Vesalius to Image</span></span>
-<span><span class="co">## 2025-31-08/27/25 19:31:40  Equalizing Histogram </span></span>
-<span><span class="co">## 2025-31-08/27/25 19:31:41  Converting Images to Vesalius</span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:20  Converting Vesalius to Image</span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:21  Equalizing Histogram </span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:21  Converting Images to Vesalius</span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
 <p>You can apply any image processing method you wish and in any order
 you desire. Please note that the default number of dimensions for these
@@ -438,8 +438,8 @@ this, we can use the <code>isolate_territories</code> function.</p>
 <div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">vesalius</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/isolate_territories.html">isolate_territories</a></span><span class="op">(</span><span class="va">vesalius</span>, capture_radius <span class="op">=</span> <span class="fl">0.05</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-31-08/27/25 19:31:43  Pooling Segment  1 </span></span>
-<span><span class="co">## 2025-31-08/27/25 19:31:43  Pooling Segment  2 </span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:23  Pooling Segment  1 </span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:23  Pooling Segment  2 </span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
 <div class="section level4">
 <h4 id="what-do-we-have-5">What do we have?<a class="anchor" aria-label="anchor" href="#what-do-we-have-5"></a>
@@ -488,8 +488,8 @@ between territories.</p>
 <div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">vesalius</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/identify_markers.html">identify_markers</a></span><span class="op">(</span><span class="va">vesalius</span>, seed <span class="op">=</span> <span class="fl">1</span>, query <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-31-08/27/25 19:31:45 ===&gt; Computing DEGs in spatial_omics &lt;===</span></span>
-<span><span class="co">## 2025-31-08/27/25 19:31:45 ===&gt; 1 VS 2 &lt;=== </span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:25 ===&gt; Computing DEGs in spatial_omics &lt;===</span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:25 ===&gt; 1 VS 2 &lt;=== </span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
 <div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">deg</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/get_markers.html">get_markers</a></span><span class="op">(</span><span class="va">vesalius</span><span class="op">)</span></span></code></pre></div>
@@ -524,110 +524,110 @@ and remove a few randomly sampled locations.</p>
 <span><span class="co"># Create Vesalius object for processing</span></span>
 <span><span class="va">vesalius</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/build_vesalius_assay.html">build_vesalius_assay</a></span><span class="op">(</span><span class="va">coordinates</span>, <span class="va">counts</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-31-08/27/25 19:31:46  Checking Coordinates in spatial_omics </span></span>
-<span><span class="co">## 2025-31-08/27/25 19:31:46  Checking Counts in spatial_omics </span></span>
-<span><span class="co">## 2025-31-08/27/25 19:31:46  Calculating Assay scale from coordinates</span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:26  Checking Coordinates in spatial_omics </span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:26  Checking Counts in spatial_omics </span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:26  Calculating Assay scale from coordinates</span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
 <div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">cells</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="va">LETTERS</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">6</span><span class="op">]</span>, size <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">vesalius</span><span class="op">@</span><span class="va">tiles</span><span class="op">)</span>,replace <span class="op">=</span><span class="cn">T</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">cells</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">vesalius</span><span class="op">@</span><span class="va">tiles</span><span class="op">$</span><span class="va">barcodes</span></span>
 <span><span class="va">vesalius</span> <span class="op">&lt;-</span> <span class="fu">add_cells</span><span class="op">(</span><span class="va">vesalius</span>, cells <span class="op">=</span> <span class="va">cells</span>, add_name <span class="op">=</span> <span class="st">"Cells"</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-31-08/27/25 19:31:46  Adding cell labels to Cells territory column in spatial_omics </span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:26  Adding cell labels to Cells territory column in spatial_omics </span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
 <div class="sourceCode" id="cb43"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">jitter_ves</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/build_vesalius_assay.html">build_vesalius_assay</a></span><span class="op">(</span><span class="va">jitter_coord</span>, <span class="va">jitter_counts</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-31-08/27/25 19:31:46  Checking Coordinates in spatial_omics </span></span>
-<span><span class="co">## 2025-31-08/27/25 19:31:47  Checking Counts in spatial_omics </span></span>
-<span><span class="co">## 2025-31-08/27/25 19:31:47  Calculating Assay scale from coordinates</span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:26  Checking Coordinates in spatial_omics </span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:27  Checking Counts in spatial_omics </span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:28  Calculating Assay scale from coordinates</span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
 <div class="sourceCode" id="cb45"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">cells</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="va">LETTERS</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">6</span><span class="op">]</span>, size <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">jitter_ves</span><span class="op">@</span><span class="va">tiles</span><span class="op">)</span>,replace <span class="op">=</span><span class="cn">T</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">cells</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">jitter_ves</span><span class="op">@</span><span class="va">tiles</span><span class="op">$</span><span class="va">barcodes</span></span>
 <span><span class="va">jitter_ves</span> <span class="op">&lt;-</span> <span class="fu">add_cells</span><span class="op">(</span><span class="va">jitter_ves</span>, cells <span class="op">=</span> <span class="va">cells</span>, add_name <span class="op">=</span> <span class="st">"Cells"</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-31-08/27/25 19:31:47  Adding cell labels to Cells territory column in spatial_omics </span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:28  Adding cell labels to Cells territory column in spatial_omics </span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
 <div class="sourceCode" id="cb47"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">vesalius</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_embeddings.html">generate_embeddings</a></span><span class="op">(</span><span class="va">vesalius</span>,</span>
 <span>    filter_threshold <span class="op">=</span> <span class="fl">1</span>,</span>
 <span>    filter_grid <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-31-08/27/25 19:31:47 ===&gt; Generating Tiles in spatial_omics &lt;===</span></span>
-<span><span class="co">## 2025-31-08/27/25 19:31:47  Generating Voronoi Tesselation </span></span>
-<span><span class="co">## 2025-31-08/27/25 19:31:47  Filtering Tiles</span></span>
-<span><span class="co">## 2025-31-08/27/25 19:31:47  Rasterising Tiles </span></span>
-<span><span class="co">## 2025-31-08/27/25 19:31:50  Adjusting count matrix</span></span>
-<span><span class="co">## 2025-31-08/27/25 19:31:50 ===&gt; Pre-processing counts in spatial_omics &lt;===</span></span>
-<span><span class="co">## 2025-31-08/27/25 19:31:52 ===&gt; Compute Latent Space in spatial_omics &lt;===</span></span>
-<span><span class="co">## 2025-31-08/27/25 19:31:52  Running Principal Component Analysis </span></span>
-<span><span class="co">## 2025-31-08/27/25 19:31:53  Converting PCA Embedding Values to gray scale </span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:28 ===&gt; Generating Tiles in spatial_omics &lt;===</span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:28  Generating Voronoi Tesselation </span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:28  Filtering Tiles</span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:28  Rasterising Tiles </span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:31  Adjusting count matrix</span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:31 ===&gt; Pre-processing counts in spatial_omics &lt;===</span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:32 ===&gt; Compute Latent Space in spatial_omics &lt;===</span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:32  Running Principal Component Analysis </span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:34  Converting PCA Embedding Values to gray scale </span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
 <div class="sourceCode" id="cb49"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">vesalius</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/smooth_image.html">smooth_image</a></span><span class="op">(</span><span class="va">vesalius</span>, embedding <span class="op">=</span> <span class="st">"PCA"</span>, sigma <span class="op">=</span> <span class="fl">5</span>, iter <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-31-08/27/25 19:31:53  Converting Vesalius to Image</span></span>
-<span><span class="co">## 2025-31-08/27/25 19:31:54  Smoothing Image Arrays </span></span>
-<span><span class="co">## 2025-31-08/27/25 19:31:54  Converting Images to Vesalius</span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:34  Converting Vesalius to Image</span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:34  Smoothing Image Arrays </span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:35  Converting Images to Vesalius</span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
 <div class="sourceCode" id="cb51"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">vesalius</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/equalize_image.html">equalize_image</a></span><span class="op">(</span><span class="va">vesalius</span>, sleft <span class="op">=</span> <span class="fl">5</span>, sright <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-31-08/27/25 19:31:55  Converting Vesalius to Image</span></span>
-<span><span class="co">## 2025-31-08/27/25 19:31:55  Equalizing Histogram </span></span>
-<span><span class="co">## 2025-31-08/27/25 19:31:56  Converting Images to Vesalius</span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:35  Converting Vesalius to Image</span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:36  Equalizing Histogram </span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:36  Converting Images to Vesalius</span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
 <div class="sourceCode" id="cb53"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">vesalius</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/segment_image.html">segment_image</a></span><span class="op">(</span><span class="va">vesalius</span>, col_resolution <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-31-08/27/25 19:31:56  Segmenting Image using kmeans </span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:37  Segmenting Image using kmeans </span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
 <div class="sourceCode" id="cb55"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">vesalius</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/isolate_territories.html">isolate_territories</a></span><span class="op">(</span><span class="va">vesalius</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-31-08/27/25 19:31:56  Pooling Segment  1 </span></span>
-<span><span class="co">## 2025-31-08/27/25 19:31:56  Pooling Segment  2 </span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:37  Pooling Segment  1 </span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:37  Pooling Segment  2 </span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
 <div class="sourceCode" id="cb57"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">jitter_ves</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_embeddings.html">generate_embeddings</a></span><span class="op">(</span><span class="va">jitter_ves</span>,</span>
 <span>    filter_threshold <span class="op">=</span> <span class="fl">1</span>,</span>
 <span>    filter_grid <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-31-08/27/25 19:31:56 ===&gt; Generating Tiles in spatial_omics &lt;===</span></span>
-<span><span class="co">## 2025-31-08/27/25 19:31:56  Generating Voronoi Tesselation </span></span>
-<span><span class="co">## 2025-31-08/27/25 19:31:56  Filtering Tiles</span></span>
-<span><span class="co">## 2025-31-08/27/25 19:31:56  Rasterising Tiles </span></span>
-<span><span class="co">## 2025-31-08/27/25 19:31:58  Adjusting count matrix</span></span>
-<span><span class="co">## 2025-31-08/27/25 19:31:58 ===&gt; Pre-processing counts in spatial_omics &lt;===</span></span>
-<span><span class="co">## 2025-32-08/27/25 19:32:03 ===&gt; Compute Latent Space in spatial_omics &lt;===</span></span>
-<span><span class="co">## 2025-32-08/27/25 19:32:03  Running Principal Component Analysis </span></span>
-<span><span class="co">## 2025-32-08/27/25 19:32:04  Converting PCA Embedding Values to gray scale </span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:37 ===&gt; Generating Tiles in spatial_omics &lt;===</span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:37  Generating Voronoi Tesselation </span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:37  Filtering Tiles</span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:37  Rasterising Tiles </span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:39  Adjusting count matrix</span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:39 ===&gt; Pre-processing counts in spatial_omics &lt;===</span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:43 ===&gt; Compute Latent Space in spatial_omics &lt;===</span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:43  Running Principal Component Analysis </span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:44  Converting PCA Embedding Values to gray scale </span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
 <div class="sourceCode" id="cb59"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">jitter_ves</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/smooth_image.html">smooth_image</a></span><span class="op">(</span><span class="va">jitter_ves</span>, embedding <span class="op">=</span> <span class="st">"PCA"</span>, sigma <span class="op">=</span> <span class="fl">5</span>, iter <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-32-08/27/25 19:32:04  Converting Vesalius to Image</span></span>
-<span><span class="co">## 2025-32-08/27/25 19:32:05  Smoothing Image Arrays </span></span>
-<span><span class="co">## 2025-32-08/27/25 19:32:06  Converting Images to Vesalius</span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:44  Converting Vesalius to Image</span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:45  Smoothing Image Arrays </span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:46  Converting Images to Vesalius</span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
 <div class="sourceCode" id="cb61"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">jitter_ves</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/equalize_image.html">equalize_image</a></span><span class="op">(</span><span class="va">jitter_ves</span>, sleft <span class="op">=</span> <span class="fl">5</span>, sright <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-32-08/27/25 19:32:06  Converting Vesalius to Image</span></span>
-<span><span class="co">## 2025-32-08/27/25 19:32:07  Equalizing Histogram </span></span>
-<span><span class="co">## 2025-32-08/27/25 19:32:07  Converting Images to Vesalius</span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:46  Converting Vesalius to Image</span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:47  Equalizing Histogram </span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:47  Converting Images to Vesalius</span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
 <div class="sourceCode" id="cb63"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">jitter_ves</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/segment_image.html">segment_image</a></span><span class="op">(</span><span class="va">jitter_ves</span>, col_resolution <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-32-08/27/25 19:32:07  Segmenting Image using kmeans </span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:47  Segmenting Image using kmeans </span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
 <div class="sourceCode" id="cb65"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">jitter_ves</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/isolate_territories.html">isolate_territories</a></span><span class="op">(</span><span class="va">jitter_ves</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-32-08/27/25 19:32:07  Pooling Segment  1 </span></span>
-<span><span class="co">## 2025-32-08/27/25 19:32:07  Pooling Segment  2 </span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:47  Pooling Segment  1 </span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:47  Pooling Segment  2 </span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
 <p>Next, we can proceed with the mapping of cells on to the other. We
 will run the mapping using cell (feature), niche, territory similarity
@@ -641,19 +641,19 @@ and cell composition.</p>
 <span>    epoch <span class="op">=</span> <span class="fl">5</span>,</span>
 <span>    jitter <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-32-08/27/25 19:32:07  Extracting assay signal</span></span>
-<span><span class="co">## 2025-32-08/27/25 19:32:07  Computing Feature cost in spatial_omics </span></span>
-<span><span class="co">## 2025-32-08/27/25 19:32:08  Getting Neighborhoods in spatial_omics </span></span>
-<span><span class="co">## 2025-32-08/27/25 19:32:08  Computing Neighborhood cost in spatial_omics </span></span>
-<span><span class="co">## 2025-32-08/27/25 19:32:09  Computing Territory cost in spatial_omics </span></span>
-<span><span class="co">## 2025-32-08/27/25 19:32:11  Computing Niche Composition Index in spatial_omics </span></span>
-<span><span class="co">## 2025-32-08/27/25 19:32:16  Filtering Cost Matrices </span></span>
-<span><span class="co">## 2025-32-08/27/25 19:32:16  Mapping query to seed - Epoch =  1 </span></span>
-<span><span class="co">## 2025-32-08/27/25 19:32:17  Mapping query to seed - Epoch =  2 </span></span>
-<span><span class="co">## 2025-32-08/27/25 19:32:17  Mapping query to seed - Epoch =  3 </span></span>
-<span><span class="co">## 2025-32-08/27/25 19:32:17  Mapping query to seed - Epoch =  4 </span></span>
-<span><span class="co">## 2025-32-08/27/25 19:32:17  Mapping query to seed - Epoch =  5 </span></span>
-<span><span class="co">## 2025-32-08/27/25 19:32:17  Filtering Mapped Indices </span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:47  Extracting assay signal</span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:47  Computing Feature cost in spatial_omics </span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:48  Getting Neighborhoods in spatial_omics </span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:49  Computing Neighborhood cost in spatial_omics </span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:49  Computing Territory cost in spatial_omics </span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:51  Computing Niche Composition Index in spatial_omics </span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:56  Filtering Cost Matrices </span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:56  Mapping query to seed - Epoch =  1 </span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:57  Mapping query to seed - Epoch =  2 </span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:57  Mapping query to seed - Epoch =  3 </span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:57  Mapping query to seed - Epoch =  4 </span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:57  Mapping query to seed - Epoch =  5 </span></span>
+<span><span class="co">## 2025-50-08/27/25 19:50:57  Filtering Mapped Indices </span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
 <p>The mapping produces a new vesalius object with mapped coordinates
 for the query data set. In this case our query was
@@ -667,21 +667,21 @@ coordinates. As such:</p>
 <span>  verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="va">matched</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/smooth_image.html">smooth_image</a></span><span class="op">(</span><span class="va">matched</span>, sigma <span class="op">=</span> <span class="fl">5</span>, iter <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-32-08/27/25 19:32:25  Converting Vesalius to Image</span></span>
-<span><span class="co">## 2025-32-08/27/25 19:32:26  Smoothing Image Arrays </span></span>
-<span><span class="co">## 2025-32-08/27/25 19:32:26  Converting Images to Vesalius</span></span>
+<span><span class="co">## 2025-51-08/27/25 19:51:05  Converting Vesalius to Image</span></span>
+<span><span class="co">## 2025-51-08/27/25 19:51:06  Smoothing Image Arrays </span></span>
+<span><span class="co">## 2025-51-08/27/25 19:51:06  Converting Images to Vesalius</span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
 <div class="sourceCode" id="cb71"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">matched</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/equalize_image.html">equalize_image</a></span><span class="op">(</span><span class="va">matched</span>, sleft <span class="op">=</span> <span class="fl">5</span>, sright <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-32-08/27/25 19:32:26  Converting Vesalius to Image</span></span>
-<span><span class="co">## 2025-32-08/27/25 19:32:27  Equalizing Histogram </span></span>
-<span><span class="co">## 2025-32-08/27/25 19:32:27  Converting Images to Vesalius</span></span>
+<span><span class="co">## 2025-51-08/27/25 19:51:06  Converting Vesalius to Image</span></span>
+<span><span class="co">## 2025-51-08/27/25 19:51:07  Equalizing Histogram </span></span>
+<span><span class="co">## 2025-51-08/27/25 19:51:07  Converting Images to Vesalius</span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
 <div class="sourceCode" id="cb73"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">matched</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/segment_image.html">segment_image</a></span><span class="op">(</span><span class="va">matched</span>,col_resolution <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-32-08/27/25 19:32:27  Segmenting Image using kmeans </span></span>
+<span><span class="co">## 2025-51-08/27/25 19:51:07  Segmenting Image using kmeans </span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
 <p>We can then look at the resulting embeddings</p>
 <div class="sourceCode" id="cb75"><pre class="downlit sourceCode r">
@@ -709,7 +709,7 @@ we can perform differential gene expression analysis.</p>
 <code class="sourceCode R"><span><span class="va">inter</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/integrate_assays.html">integrate_assays</a></span><span class="op">(</span><span class="va">matched</span>,</span>
 <span>    <span class="va">vesalius</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-32-08/27/25 19:32:33  Intergrating Counts</span></span></code></pre>
+<span><span class="co">## 2025-51-08/27/25 19:51:13  Intergrating Counts</span></span></code></pre>
 <pre><code><span><span class="co">## Warning: The `slot` argument of `GetAssayData()` is deprecated as of SeuratObject 5.0.0.</span></span>
 <span><span class="co">## <span style="color: #00BBBB;">ℹ</span> Please use the `layer` argument instead.</span></span>
 <span><span class="co">## <span style="color: #00BBBB;">ℹ</span> The deprecated feature was likely used in the <span style="color: #0000BB;">Seurat</span> package.</span></span>
@@ -727,13 +727,13 @@ we can perform differential gene expression analysis.</p>
 <pre><code><span><span class="co">## Warning in merge_coordinates(mapped, reference,</span></span>
 <span><span class="co">## rownames(integrated$integrated)): No duplicated coordinates allowed - Adding</span></span>
 <span><span class="co">## noise!</span></span></code></pre>
-<pre><code><span><span class="co">## 2025-32-08/27/25 19:32:42 ===&gt; Generating Tiles in spatial_omics &lt;===</span></span>
-<span><span class="co">## 2025-32-08/27/25 19:32:42  Generating Voronoi Tesselation </span></span>
-<span><span class="co">## 2025-32-08/27/25 19:32:42  Filtering Tiles</span></span>
-<span><span class="co">## 2025-32-08/27/25 19:32:42  Rasterising Tiles </span></span>
-<span><span class="co">## 2025-32-08/27/25 19:32:46  Adjusting count matrix</span></span>
-<span><span class="co">## 2025-32-08/27/25 19:32:46  Setting integrated as active embedding </span></span>
-<span><span class="co">## 2025-32-08/27/25 19:32:46  Setting inferred as active count matrix </span></span>
+<pre><code><span><span class="co">## 2025-51-08/27/25 19:51:22 ===&gt; Generating Tiles in spatial_omics &lt;===</span></span>
+<span><span class="co">## 2025-51-08/27/25 19:51:22  Generating Voronoi Tesselation </span></span>
+<span><span class="co">## 2025-51-08/27/25 19:51:22  Filtering Tiles</span></span>
+<span><span class="co">## 2025-51-08/27/25 19:51:22  Rasterising Tiles </span></span>
+<span><span class="co">## 2025-51-08/27/25 19:51:26  Adjusting count matrix</span></span>
+<span><span class="co">## 2025-51-08/27/25 19:51:26  Setting integrated as active embedding </span></span>
+<span><span class="co">## 2025-51-08/27/25 19:51:26  Setting inferred as active count matrix </span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
 <p>Since this data set now contains an integrated latent space, we can
 also call territories on this object. There is no need to create new
@@ -741,21 +741,21 @@ embeddings. They are provided during integration.</p>
 <div class="sourceCode" id="cb83"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">inter</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/smooth_image.html">smooth_image</a></span><span class="op">(</span><span class="va">inter</span>, sigma <span class="op">=</span> <span class="fl">5</span>, iter <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-32-08/27/25 19:32:46  Converting Vesalius to Image</span></span>
-<span><span class="co">## 2025-32-08/27/25 19:32:47  Smoothing Image Arrays </span></span>
-<span><span class="co">## 2025-32-08/27/25 19:32:47  Converting Images to Vesalius</span></span>
+<span><span class="co">## 2025-51-08/27/25 19:51:26  Converting Vesalius to Image</span></span>
+<span><span class="co">## 2025-51-08/27/25 19:51:27  Smoothing Image Arrays </span></span>
+<span><span class="co">## 2025-51-08/27/25 19:51:27  Converting Images to Vesalius</span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
 <div class="sourceCode" id="cb85"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">inter</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/equalize_image.html">equalize_image</a></span><span class="op">(</span><span class="va">inter</span>, sleft <span class="op">=</span> <span class="fl">5</span>, sright <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-32-08/27/25 19:32:47  Converting Vesalius to Image</span></span>
-<span><span class="co">## 2025-32-08/27/25 19:32:48  Equalizing Histogram </span></span>
-<span><span class="co">## 2025-32-08/27/25 19:32:48  Converting Images to Vesalius</span></span>
+<span><span class="co">## 2025-51-08/27/25 19:51:27  Converting Vesalius to Image</span></span>
+<span><span class="co">## 2025-51-08/27/25 19:51:28  Equalizing Histogram </span></span>
+<span><span class="co">## 2025-51-08/27/25 19:51:28  Converting Images to Vesalius</span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
 <div class="sourceCode" id="cb87"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">inter</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/segment_image.html">segment_image</a></span><span class="op">(</span><span class="va">inter</span>, col_resolution <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-32-08/27/25 19:32:48  Segmenting Image using kmeans </span></span>
+<span><span class="co">## 2025-51-08/27/25 19:51:28  Segmenting Image using kmeans </span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
 <p>We can view the resulting embeddings and territories.</p>
 <div class="sourceCode" id="cb89"><pre class="downlit sourceCode r">
@@ -773,10 +773,10 @@ territories.</p>
 <div class="sourceCode" id="cb90"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">inter</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/identify_markers.html">identify_markers</a></span><span class="op">(</span><span class="va">inter</span>, sample <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## #--------------------------------------------------------------------------------# </span></span>
-<span><span class="co">## 2025-32-08/27/25 19:32:50  No territory Specified - Comparing all territories</span></span>
-<span><span class="co">## 2025-32-08/27/25 19:32:50 ===&gt; Computing DEGs in spatial_omics &lt;===</span></span>
-<span><span class="co">## 2025-32-08/27/25 19:32:50 ===&gt; 1_reference VS remaining_matched &lt;=== </span></span>
-<span><span class="co">## 2025-32-08/27/25 19:32:51 ===&gt; 2_reference VS remaining_matched &lt;=== </span></span>
+<span><span class="co">## 2025-51-08/27/25 19:51:30  No territory Specified - Comparing all territories</span></span>
+<span><span class="co">## 2025-51-08/27/25 19:51:30 ===&gt; Computing DEGs in spatial_omics &lt;===</span></span>
+<span><span class="co">## 2025-51-08/27/25 19:51:30 ===&gt; 1_reference VS remaining_matched &lt;=== </span></span>
+<span><span class="co">## 2025-51-08/27/25 19:51:31 ===&gt; 2_reference VS remaining_matched &lt;=== </span></span>
 <span><span class="co">## #--------------------------------------------------------------------------------#</span></span></code></pre>
 <div class="sourceCode" id="cb92"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">degs</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/get_markers.html">get_markers</a></span><span class="op">(</span><span class="va">inter</span><span class="op">)</span></span>
@@ -804,7 +804,7 @@ territories.</p>
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/sessionInfo.html" class="external-link">sessionInfo</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## R version 4.5.1 (2025-06-13)</span></span>
 <span><span class="co">## Platform: x86_64-pc-linux-gnu</span></span>
-<span><span class="co">## Running under: Ubuntu 24.04.2 LTS</span></span>
+<span><span class="co">## Running under: Ubuntu 24.04.3 LTS</span></span>
 <span><span class="co">## </span></span>
 <span><span class="co">## Matrix products: default</span></span>
 <span><span class="co">## BLAS:   /usr/lib/x86_64-linux-gnu/openblas-pthread/libblas.so.3 </span></span>
