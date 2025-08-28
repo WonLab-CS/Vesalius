@@ -928,7 +928,6 @@ check_cost_validity <- function(cost,
     #-------------------------------------------------------------------------#
     # then we check if the use cost request is consistent
     #-------------------------------------------------------------------------#
-    browser()
     if (any(!use_cost %in%
         c(cost_names,
         "feature",
