@@ -17,6 +17,7 @@ test_that("Vesalius checks and filters if custom embeds already present", {
         nrow = length(unique(vesalius@tiles$barcodes)))
     rownames(embeds) <- unique(vesalius@tiles$barcodes)
     vesalius <- add_embeddings(vesalius, embeds)
+    expect_s4_class(vesalius,"vesalius_assay")
 })
 
 
@@ -41,9 +42,9 @@ test_that("Vesalius reduce tensor resolution works", {
     expect_s4_class(tmp,
         "vesalius_assay")
     tiles <- get_tiles(tmp)
-    # check that you only have 25 barcodes 
+    # check that you only have 36 barcodes 
     expect_equal(length(unique(tiles$barcodes)), 36)
-    # check that you have 25 unique origin coordinates 
+    # check that you have 36 unique origin coordinates 
     expect_equal(sum(tiles$origin), 36)
     # check that unique barcodes all have an "origin" coordinates 
     expect_equal(length(unique(tiles$barcodes)), sum(tiles$origin))
@@ -146,17 +147,6 @@ test_that("Vesalius NMF embeds", {
   expect_true(get_active_embedding_tag(vesalius) == "NMF")
   expect_identical(get_embeddings(vesalius, active = FALSE)$NMF,
                    get_embeddings(vesalius, active = TRUE))
-  # it should work as well if run it more than once
-# NMF is slow so only run it once since this is the same as 
-# other methods 
-#   vesalius <- generate_embeddings(vesalius,
-#                                   dim_reduction = "NMF",
-#                                   normalization = "log_norm")
-#   # simple embedding build and tile build
-#   expect_s4_class(vesalius, "vesalius_assay")
-#   expect_true(get_active_embedding_tag(vesalius) == "NMF.1")
-#   expect_true(all(names(get_embeddings(vesalius, active = FALSE)) %in%
-#                     c("NMF", "NMF.1")))
 })
 
 test_that("Vesalius PCA_L embeds", {

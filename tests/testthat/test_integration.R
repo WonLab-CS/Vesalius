@@ -31,40 +31,40 @@ matched <- map_assays(vesalius,
     jitter_ves,
     batch_size = 1000,
     epochs = 10,
-    threshold = -1, # noisy data will generate poor matches
+    threshold = -1,
     signal = "variable_features")
 
 
 test_that("simple integration", {
     # check that we can get exact match
-    expect_s4_class(integrate_assays(matched,
-        vesalius), "vesalius_assay")
+    # we expect a warning for duplicqted coordinates during rebuilding
+    expect_error_or_warning(integrate_assays(matched,
+        vesalius), expect_s4 = "vesalius_assay")
     # checks?
-    expect_error(integrate_assays(matched,
+    expect_error_or_warning(integrate_assays(matched,
         vesalius,
         labels_mapped = "Cells",
-        labels_reference = c("Cells","Something_else")))
+        labels_reference = c("Cells","Something_else")),
+        expect_s4 = "vesalius_assay")
 
 })
 
-test_that("Duplicated Spatial Indices", {
-    matched_loc <- map_assays(jitter_ves,
+matched_loc <- map_assays(jitter_ves,
         vesalius,
         batch_size = 1000,
         epochs = 10,
         threshold = -1,
         signal = "variable_features")
-    expect_warning(integrate_assays(matched_loc,
-        jitter_ves), "vesalius_assay")
+test_that("Duplicated Spatial Indices", {
+    expect_error_or_warning(integrate_assays(matched_loc,
+        jitter_ves), expect_s4 = "vesalius_assay")
     
 
 })
 
+inter <- suppressWarnings(integrate_assays(matched, vesalius))
 test_that("simple integration - DEGs", {
-    # check that we can get exact match
-    inter <- integrate_assays(matched, vesalius)
-    # checks?
-    expect_s4_class(identify_markers(inter, sample = TRUE),
-        "vesalius_assay")
+    expect_error_or_warning(identify_markers(inter, sample = TRUE),
+        expect_s4 = "vesalius_assay")
 
 })

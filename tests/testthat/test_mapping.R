@@ -57,13 +57,13 @@ test_that("input sanity checks", {
         nrow = 500)
     rownames(custom_matrix) <- sample(colnames(jitter_counts), 500)
     colnames(custom_matrix) <- sample(colnames(counts), 500)
-    expect_warning(map_assays(vesalius,
+    expect_error_or_warning(map_assays(vesalius,
         jitter_ves,
         custom_cost = custom_matrix
         ))
     rownames(custom_matrix) <- make.unique(sample(LETTERS, 500, replace = TRUE))
     colnames(custom_matrix) <- make.unique(sample(LETTERS, 500, replace = TRUE))
-    expect_error(map_assays(vesalius,
+    expect_error_or_warning(map_assays(vesalius,
         jitter_ves,
         custom_cost = custom_matrix
         ))

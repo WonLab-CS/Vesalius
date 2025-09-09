@@ -11,22 +11,22 @@
 #' @param ter_2 integer vector containing territories in group 2
 #' @param cells cell barcodes
 dispatch_territory <- function(territories, ter_1, ter_2, cells) {
-    if (is.null(ter_1) && is.null(ter_2)) {
-        territories <- select(territories, c("barcodes", "x", "y", "trial"))
-    }else if (!is.null(ter_1) && is.null(ter_2)) {
-        territories$trial[!territories$trial %in% ter_1] <- "other"
-    }else if (is.null(ter_1) && !is.null(ter_2)) {
-        territories$trial[!territories$trial %in% ter_2] <- "other"
-    }else {
-        territories$trial[!territories$trial %in% c(ter_1, ter_2)] <- "other"
-    }
-    if (!is.null(cells)) {
-        territories$trial[territories$trial %in% ter_1 &
-            territories$barcodes %in% cells] <- paste0(ter_1, collapse = " ")
-        territories$trial[territories$trial %in% ter_2 &
-            territories$barcodes %in% cells] <- paste0(ter_2, collapse = " ")
-    }
-    return(territories)
+  if (is.null(ter_1) && is.null(ter_2)) {
+    territories <- select(territories, c("barcodes", "x", "y", "trial"))
+  }else if (!is.null(ter_1) && is.null(ter_2)) {
+    territories$trial[!territories$trial %in% ter_1] <- "other"
+  }else if (is.null(ter_1) && !is.null(ter_2)) {
+    territories$trial[!territories$trial %in% ter_2] <- "other"
+  }else {
+    territories$trial[!territories$trial %in% c(ter_1, ter_2)] <- "other"
+  }
+  if (!is.null(cells)) {
+    territories$trial[territories$trial %in% ter_1 &
+      territories$barcodes %in% cells] <- paste0(ter_1, collapse = " ")
+    territories$trial[territories$trial %in% ter_2 &
+      territories$barcodes %in% cells] <- paste0(ter_2, collapse = " ")
+  }
+  return(territories)
 }
 
 
@@ -199,7 +199,9 @@ dispatch_cost_groups <- function(vesalius_assay,
 
 }
 
-
+#' clean trial annotation
+#' @param trial vector of strings with trial tag
+#' @return vector of strings with sanitize numeric value
 clean_trial <- function(trial) {
     trial <- sapply(strsplit(trial, "-"), function(str){
         return(paste0(str[seq(1, length(str) - 1)], collapse = "-"))

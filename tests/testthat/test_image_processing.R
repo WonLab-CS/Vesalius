@@ -182,7 +182,7 @@ test_that("Image segmentation works as expected", {
     expect_s4_class(segment_image(vesalius, method = "leiden"),
         "vesalius_assay")
     # expect s4 with slic
-    expect_s4_class(segment_image(vesalius, method = "slic"),
+    expect_s4_class(generate_spix(vesalius, method = "slic"),
         "vesalius_assay")
 })
 
@@ -202,10 +202,3 @@ test_that("Vesalius assay works as expect with isolate ter", {
     expect_output(show(tmp))
 })
 
-
-test_that("Gradient segmentation works as expected", {
-    tmp <- segment_gradient(vesalius)
-    expect_s4_class(segment_gradient(vesalius),
-        "vesalius_assay")
-    
-})

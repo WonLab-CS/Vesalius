@@ -6,6 +6,14 @@
 \usage{
 pearson_approx(seed, query)
 }
+\arguments{
+\item{seed}{matrix/sparse matrix of seed cells}
+
+\item{query}{matrix/sparse matrix of query cells}
+}
+\value{
+correlation matrix between all cells in seed and query
+}
 \description{
 compute fast pearson correlation between matrices
 }
