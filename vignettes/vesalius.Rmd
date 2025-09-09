@@ -56,8 +56,9 @@ please refer to the other articles.
 
 ```{r loading, eval = TRUE, echo = TRUE}
 suppressMessages(library(vesalius))
-library(patchwork)
-library(ggplot2)
+library(renv)
+renv::restore(lockfile = "../renv.lock")
+libary(vesalius)
 data(vesalius, package = "vesalius")
 
 ```
