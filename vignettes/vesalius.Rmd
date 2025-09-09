@@ -55,9 +55,6 @@ will apply for other modalities. For examples using other modalities,
 please refer to the other articles.
 
 ```{r loading, eval = TRUE, echo = TRUE}
-suppressMessages(library(vesalius))
-library(renv)
-renv::restore(lockfile = "../renv.lock")
 libary(vesalius)
 data(vesalius, package = "vesalius")
 
