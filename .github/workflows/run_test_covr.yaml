@@ -1,5 +1,0 @@
-- name: Run test coverage
-  run: |
-    Rscript -e 'install.packages("covr")'
-    Rscript -e 'cov <- covr::package_coverage()'
-    Rscript -e 'covr::codecov(coverage = cov)'
