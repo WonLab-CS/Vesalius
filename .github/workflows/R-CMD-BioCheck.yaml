@@ -16,13 +16,11 @@ jobs:
         with:
           use-public-rspm: true
 
-      - name: Install dependencies
-        run: |
-          Rscript -e 'install.packages("remotes")'
-          Rscript -e 'remotes::install_deps(dependencies = TRUE)'
-
       - name: Install renv
         run: Rscript -e 'install.packages("renv")'
+      
+      - name: Install BiocManager
+        run: Rscript -e 'install.packages("BiocManager")' 
 
       - name: Restore project environment from renv.lock
         run: Rscript -e 'renv::restore()'
