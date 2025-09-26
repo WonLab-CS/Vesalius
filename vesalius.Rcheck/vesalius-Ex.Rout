@@ -1,0 +1,559 @@
+
+R version 4.5.1 (2025-06-13) -- "Great Square Root"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: aarch64-apple-darwin24.4.0
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> pkgname <- "vesalius"
+> source(file.path(R.home("share"), "R", "examples-header.R"))
+> options(warn = 1)
+> base::assign(".ExTimings", "vesalius-Ex.timings", pos = 'CheckExEnv')
+> base::cat("name\tuser\tsystem\telapsed\n", file=base::get(".ExTimings", pos = 'CheckExEnv'))
+> base::assign(".format_ptime",
++ function(x) {
++   if(!is.na(x[4L])) x[1L] <- x[1L] + x[4L]
++   if(!is.na(x[5L])) x[2L] <- x[2L] + x[5L]
++   options(OutDec = '.')
++   format(x[1L:3L], digits = 7L)
++ },
++ pos = 'CheckExEnv')
+> 
+> ### * </HEADER>
+> library('vesalius')
+Warning: replacing previous import ‘S4Arrays::makeNindexFromArrayViewport’ by ‘DelayedArray::makeNindexFromArrayViewport’ when loading ‘SummarizedExperiment’
+> 
+> base::assign(".oldSearch", base::search(), pos = 'CheckExEnv')
+> base::assign(".old_wd", base::getwd(), pos = 'CheckExEnv')
+> cleanEx()
+> nameEx("build_vesalius_assay")
+> ### * build_vesalius_assay
+> 
+> flush(stderr()); flush(stdout())
+> 
+> base::assign(".ptime", proc.time(), pos = "CheckExEnv")
+> ### Name: build_vesalius_assay
+> ### Title: build vesalius assay object
+> ### Aliases: build_vesalius_assay
+> 
+> ### ** Examples
+> 
+> data(vesalius)
+> # Single assay object
+> ves <- build_vesalius_assay(coordinates, counts)
+#--------------------------------------------------------------------------------# 
+2025-15-09/17/25 15:15:53  Checking Coordinates in spatial_omics 
+2025-15-09/17/25 15:15:53  Checking Counts in spatial_omics 
+2025-15-09/17/25 15:15:53  Calculating Assay scale from coordinates
+#--------------------------------------------------------------------------------# 
+> 
+> 
+> 
+> base::assign(".dptime", (proc.time() - get(".ptime", pos = "CheckExEnv")), pos = "CheckExEnv")
+> base::cat("build_vesalius_assay", base::get(".format_ptime", pos = 'CheckExEnv')(get(".dptime", pos = "CheckExEnv")), "\n", file=base::get(".ExTimings", pos = 'CheckExEnv'), append=TRUE, sep="\t")
+> cleanEx()
+> nameEx("equalize_image")
+> ### * equalize_image
+> 
+> flush(stderr()); flush(stdout())
+> 
+> base::assign(".ptime", proc.time(), pos = "CheckExEnv")
+> ### Name: equalize_image
+> ### Title: equalise image histogram
+> ### Aliases: equalize_image
+> 
+> ### ** Examples
+> 
+> ## Not run: 
+> ##D data(vesalius)
+> ##D # First we build a simple object
+> ##D ves <- build_vesalius_object(coordinates, counts)
+> ##D # We can do a simple run
+> ##D ves <- build_vesalius_embeddings(ves)
+> ##D 
+> ##D # simple EQ
+> ##D ves <- equalisz_image(ves, embedding = "PCA")
+> ## End(Not run)
+> 
+> 
+> 
+> base::assign(".dptime", (proc.time() - get(".ptime", pos = "CheckExEnv")), pos = "CheckExEnv")
+> base::cat("equalize_image", base::get(".format_ptime", pos = 'CheckExEnv')(get(".dptime", pos = "CheckExEnv")), "\n", file=base::get(".ExTimings", pos = 'CheckExEnv'), append=TRUE, sep="\t")
+> cleanEx()
+> nameEx("generate_embeddings")
+> ### * generate_embeddings
+> 
+> flush(stderr()); flush(stdout())
+> 
+> base::assign(".ptime", proc.time(), pos = "CheckExEnv")
+> ### Name: generate_embeddings
+> ### Title: Generate embeddings.
+> ### Aliases: generate_embeddings
+> 
+> ### ** Examples
+> 
+> ## Not run: 
+> ##D data(vesalius)
+> ##D # First we build a simple object
+> ##D ves <- build_vesalius_object(coordinates, counts)
+> ##D # We can do a simple run 
+> ##D ves <- generate_embeddings(ves)
+> ##D # maybe we want to try a different method
+> ##D # both will be stored in the object
+> ##D ves <- generate_embeddings(ves, dim_reduction = "UMAP")
+> ##D 
+> ## End(Not run)
+> 
+> 
+> 
+> base::assign(".dptime", (proc.time() - get(".ptime", pos = "CheckExEnv")), pos = "CheckExEnv")
+> base::cat("generate_embeddings", base::get(".format_ptime", pos = 'CheckExEnv')(get(".dptime", pos = "CheckExEnv")), "\n", file=base::get(".ExTimings", pos = 'CheckExEnv'), append=TRUE, sep="\t")
+> cleanEx()
+> nameEx("identify_markers")
+> ### * identify_markers
+> 
+> flush(stderr()); flush(stdout())
+> 
+> base::assign(".ptime", proc.time(), pos = "CheckExEnv")
+> ### Name: identify_markers
+> ### Title: identify_markers computes differential observation expression
+> ###   between selected territories.
+> ### Aliases: identify_markers
+> 
+> ### ** Examples
+> 
+> ## Not run: 
+> ##D data(vesalius)
+> ##D # First we build a simple object
+> ##D ves <- build_vesalius_object(coordinates, counts)
+> ##D # We can do a simple run
+> ##D ves <- build_vesalius_embeddings(ves)
+> ##D 
+> ##D # simple smoothing
+> ##D ves <- smooth_image(ves, dimensions = seq(1, 30))
+> ##D 
+> ##D # quick segmentation
+> ##D ves <- segment_image(ves, dimensions = seq(1, 30))
+> ##D 
+> ##D # isolate territories
+> ##D ves <- isolate_territories(ves)
+> ##D 
+> ##D # identify markers
+> ##D ves <- identify_markers(ves, seed = c(3,5), query = 8)
+> ##D deg <- get_markers(ves)
+> ## End(Not run)
+> 
+> 
+> 
+> base::assign(".dptime", (proc.time() - get(".ptime", pos = "CheckExEnv")), pos = "CheckExEnv")
+> base::cat("identify_markers", base::get(".format_ptime", pos = 'CheckExEnv')(get(".dptime", pos = "CheckExEnv")), "\n", file=base::get(".ExTimings", pos = 'CheckExEnv'), append=TRUE, sep="\t")
+> cleanEx()
+> nameEx("image_plot")
+> ### * image_plot
+> 
+> flush(stderr()); flush(stdout())
+> 
+> base::assign(".ptime", proc.time(), pos = "CheckExEnv")
+> ### Name: image_plot
+> ### Title: image_plot - plotting vesalius embeddings
+> ### Aliases: image_plot
+> 
+> ### ** Examples
+> 
+> ## Not run: 
+> ##D data(vesalius)
+> ##D # First we build a simple object
+> ##D ves <- build_vesalius_object(coordinates, counts)
+> ##D # We can do a simple run 
+> ##D ves <- build_vesalius_embeddings(ves)
+> ##D # Plot 1st 3 PCs
+> ##D p <- image_plot(ves)
+> ##D 
+> ## End(Not run)
+> 
+> 
+> 
+> base::assign(".dptime", (proc.time() - get(".ptime", pos = "CheckExEnv")), pos = "CheckExEnv")
+> base::cat("image_plot", base::get(".format_ptime", pos = 'CheckExEnv')(get(".dptime", pos = "CheckExEnv")), "\n", file=base::get(".ExTimings", pos = 'CheckExEnv'), append=TRUE, sep="\t")
+> cleanEx()
+> nameEx("isolate_territories")
+> ### * isolate_territories
+> 
+> flush(stderr()); flush(stdout())
+> 
+> base::assign(".ptime", proc.time(), pos = "CheckExEnv")
+> ### Name: isolate_territories
+> ### Title: isolating territories from vesalius image segments
+> ### Aliases: isolate_territories
+> 
+> ### ** Examples
+> 
+> ## Not run: 
+> ##D data(vesalius)
+> ##D # First we build a simple object
+> ##D ves <- build_vesalius_object(coordinates, counts)
+> ##D # We can do a simple run
+> ##D ves <- build_vesalius_embeddings(ves)
+> ##D 
+> ##D # simple smoothing
+> ##D ves <- smooth_image(ves, dimensions = seq(1, 30))
+> ##D 
+> ##D # quick segmentation
+> ##D ves <- segment_image(ves, dimensions = seq(1, 30))
+> ##D 
+> ##D # isolate territories
+> ##D ves <- isolate_territories(ves)
+> ## End(Not run)
+> 
+> 
+> 
+> base::assign(".dptime", (proc.time() - get(".ptime", pos = "CheckExEnv")), pos = "CheckExEnv")
+> base::cat("isolate_territories", base::get(".format_ptime", pos = 'CheckExEnv')(get(".dptime", pos = "CheckExEnv")), "\n", file=base::get(".ExTimings", pos = 'CheckExEnv'), append=TRUE, sep="\t")
+> cleanEx()
+> nameEx("layer_territory")
+> ### * layer_territory
+> 
+> flush(stderr()); flush(stdout())
+> 
+> base::assign(".ptime", proc.time(), pos = "CheckExEnv")
+> ### Name: layer_territory
+> ### Title: layer_territory generates layer from the outside to the inside
+> ###   of a territory
+> ### Aliases: layer_territory
+> 
+> ### ** Examples
+> 
+> ## Not run: 
+> ##D data(vesalius)
+> ##D # First we build a simple object
+> ##D ves <- build_vesalius_object(coordinates, counts)
+> ##D # We can do a simple run
+> ##D ves <- build_vesalius_embeddings(ves)
+> ##D 
+> ##D # simple smoothing
+> ##D ves <- smooth_image(ves, dimensions = seq(1, 30))
+> ##D 
+> ##D # quick segmentation
+> ##D ves <- segment_image(ves, dimensions = seq(1, 30))
+> ##D 
+> ##D # isolate territories
+> ##D ves <- isolate_territories(ves)
+> ##D 
+> ##D # morph territory
+> ##D 
+> ##D ves <- layer_territory(ves)
+> ##D 
+> ##D # view territory morphing
+> ##D territory_plot(ves)
+> ## End(Not run)
+> 
+> 
+> 
+> base::assign(".dptime", (proc.time() - get(".ptime", pos = "CheckExEnv")), pos = "CheckExEnv")
+> base::cat("layer_territory", base::get(".format_ptime", pos = 'CheckExEnv')(get(".dptime", pos = "CheckExEnv")), "\n", file=base::get(".ExTimings", pos = 'CheckExEnv'), append=TRUE, sep="\t")
+> cleanEx()
+> nameEx("map_assays")
+> ### * map_assays
+> 
+> flush(stderr()); flush(stdout())
+> 
+> base::assign(".ptime", proc.time(), pos = "CheckExEnv")
+> ### Name: map_assays
+> ### Title: Aling and integrate spatial assay from the same modality using
+> ###   super pixels
+> ### Aliases: map_assays
+> 
+> ### ** Examples
+> 
+> ## Not run: 
+> ##D data(vesalius)
+> ##D # Create Vesalius object for processing
+> ##D vesalius <- build_vesalius_assay(coordinates, counts)
+> ##D jitter_ves <- build_vesalius_assay(jitter_coord, jitter_counts)
+> ##D mapped <- map_assays(vesalius, jitter_ves)
+> ## End(Not run)
+> 
+> 
+> 
+> base::assign(".dptime", (proc.time() - get(".ptime", pos = "CheckExEnv")), pos = "CheckExEnv")
+> base::cat("map_assays", base::get(".format_ptime", pos = 'CheckExEnv')(get(".dptime", pos = "CheckExEnv")), "\n", file=base::get(".ExTimings", pos = 'CheckExEnv'), append=TRUE, sep="\t")
+> cleanEx()
+> nameEx("regularise_image")
+> ### * regularise_image
+> 
+> flush(stderr()); flush(stdout())
+> 
+> base::assign(".ptime", proc.time(), pos = "CheckExEnv")
+> ### Name: regularise_image
+> ### Title: regularise image
+> ### Aliases: regularise_image
+> 
+> ### ** Examples
+> 
+> ## Not run: 
+> ##D data(vesalius)
+> ##D # First we build a simple object
+> ##D ves <- build_vesalius_object(coordinates, counts)
+> ##D # We can do a simple run
+> ##D ves <- build_vesalius_embeddings(ves)
+> ##D 
+> ##D # simple regularisation
+> ##D ves <- regularise_image(ves, embedding = "PCA")
+> ## End(Not run)
+> 
+> 
+> 
+> base::assign(".dptime", (proc.time() - get(".ptime", pos = "CheckExEnv")), pos = "CheckExEnv")
+> base::cat("regularise_image", base::get(".format_ptime", pos = 'CheckExEnv')(get(".dptime", pos = "CheckExEnv")), "\n", file=base::get(".ExTimings", pos = 'CheckExEnv'), append=TRUE, sep="\t")
+> cleanEx()
+> nameEx("search_log")
+> ### * search_log
+> 
+> flush(stderr()); flush(stdout())
+> 
+> base::assign(".ptime", proc.time(), pos = "CheckExEnv")
+> ### Name: search_log
+> ### Title: search through log for parameter values or names
+> ### Aliases: search_log
+> 
+> ### ** Examples
+> 
+> ## Not run: 
+> ##D data(vesalius)
+> ##D # First we build a simple object
+> ##D ves <- build_vesalius_object(coordinates, counts)
+> ##D # We can do a simple run 
+> ##D ves <- build_vesalius_embeddings(ves)
+> ##D # maybe we want to try a different method 
+> ##D # both will be stored in the object
+> ##D ves <- build_vesalius_embeddings(ves, dim_reduction = "UMAP")
+> ##D 
+> ##D # search log 
+> ##D search_log(ves, "tensor_resolution")
+> ## End(Not run)
+> 
+> 
+> 
+> base::assign(".dptime", (proc.time() - get(".ptime", pos = "CheckExEnv")), pos = "CheckExEnv")
+> base::cat("search_log", base::get(".format_ptime", pos = 'CheckExEnv')(get(".dptime", pos = "CheckExEnv")), "\n", file=base::get(".ExTimings", pos = 'CheckExEnv'), append=TRUE, sep="\t")
+> cleanEx()
+> nameEx("segment_image")
+> ### * segment_image
+> 
+> flush(stderr()); flush(stdout())
+> 
+> base::assign(".ptime", proc.time(), pos = "CheckExEnv")
+> ### Name: segment_image
+> ### Title: segment image
+> ### Aliases: segment_image
+> 
+> ### ** Examples
+> 
+> ## Not run: 
+> ##D data(vesalius)
+> ##D # First we build a simple object
+> ##D ves <- build_vesalius_object(coordinates, counts)
+> ##D # We can do a simple run
+> ##D ves <- build_vesalius_embeddings(ves)
+> ##D 
+> ##D # simple smoothing
+> ##D ves <- smooth_image(ves, dimensions = seq(1, 30))
+> ##D 
+> ##D # quick segmentation
+> ##D ves <- segment_image(ves, dimensions = seq(1, 30))
+> ## End(Not run)
+> 
+> 
+> 
+> base::assign(".dptime", (proc.time() - get(".ptime", pos = "CheckExEnv")), pos = "CheckExEnv")
+> base::cat("segment_image", base::get(".format_ptime", pos = 'CheckExEnv')(get(".dptime", pos = "CheckExEnv")), "\n", file=base::get(".ExTimings", pos = 'CheckExEnv'), append=TRUE, sep="\t")
+> cleanEx()
+> nameEx("smooth_image")
+> ### * smooth_image
+> 
+> flush(stderr()); flush(stdout())
+> 
+> base::assign(".ptime", proc.time(), pos = "CheckExEnv")
+> ### Name: smooth_image
+> ### Title: Smooth Image
+> ### Aliases: smooth_image
+> 
+> ### ** Examples
+> 
+> ## Not run: 
+> ##D data(vesalius)
+> ##D # First we build a simple object
+> ##D ves <- build_vesalius_object(coordinates, counts)
+> ##D # We can do a simple run
+> ##D ves <- build_vesalius_embeddings(ves)
+> ##D 
+> ##D # simple smoothing
+> ##D ves <- smooth_image(ves, embedding = "PCA")
+> ##D # multiple rounds
+> ##D ves <- smooth_image(ves, iter = 3, embedding = "PCA")
+> ##D # accross level
+> ##D ves <- smooth_image(ves, box = seq(3,11),
+> ##D  accross_level = "mean",
+> ##D  embedding = "PCA")
+> ## End(Not run)
+> 
+> 
+> 
+> base::assign(".dptime", (proc.time() - get(".ptime", pos = "CheckExEnv")), pos = "CheckExEnv")
+> base::cat("smooth_image", base::get(".format_ptime", pos = 'CheckExEnv')(get(".dptime", pos = "CheckExEnv")), "\n", file=base::get(".ExTimings", pos = 'CheckExEnv'), append=TRUE, sep="\t")
+> cleanEx()
+> nameEx("territory_morphing")
+> ### * territory_morphing
+> 
+> flush(stderr()); flush(stdout())
+> 
+> base::assign(".ptime", proc.time(), pos = "CheckExEnv")
+> ### Name: territory_morphing
+> ### Title: territory_morphing applies morphological operators to a set of
+> ###   territoriees
+> ### Aliases: territory_morphing
+> 
+> ### ** Examples
+> 
+> ## Not run: 
+> ##D data(vesalius)
+> ##D # First we build a simple object
+> ##D ves <- build_vesalius_object(coordinates, counts)
+> ##D # We can do a simple run
+> ##D ves <- build_vesalius_embeddings(ves)
+> ##D 
+> ##D # simple smoothing
+> ##D ves <- smooth_image(ves, dimensions = seq(1, 30))
+> ##D 
+> ##D # quick segmentation
+> ##D ves <- segment_image(ves, dimensions = seq(1, 30))
+> ##D 
+> ##D # isolate territories
+> ##D ves <- isolate_territories(ves)
+> ##D 
+> ##D # morph territory
+> ##D 
+> ##D ves <- territory_morphing(ves, 8, morphology_factor = 30)
+> ##D ves <- terriotry_morphing(ves, 1, morpholgy_factor = c(-15, 15))
+> ##D 
+> ##D # view territory morphing
+> ##D territory_plot(ves)
+> ## End(Not run)
+> 
+> 
+> 
+> base::assign(".dptime", (proc.time() - get(".ptime", pos = "CheckExEnv")), pos = "CheckExEnv")
+> base::cat("territory_morphing", base::get(".format_ptime", pos = 'CheckExEnv')(get(".dptime", pos = "CheckExEnv")), "\n", file=base::get(".ExTimings", pos = 'CheckExEnv'), append=TRUE, sep="\t")
+> cleanEx()
+> nameEx("territory_plot")
+> ### * territory_plot
+> 
+> flush(stderr()); flush(stdout())
+> 
+> base::assign(".ptime", proc.time(), pos = "CheckExEnv")
+> ### Name: territory_plot
+> ### Title: territory_plot - plotting Vesalius territories
+> ### Aliases: territory_plot
+> 
+> ### ** Examples
+> 
+> ## Not run: 
+> ##D data(vesalius)
+> ##D # First we build a simple object
+> ##D ves <- build_vesalius_object(coordinates, counts)
+> ##D # We can do a simple run
+> ##D ves <- build_vesalius_embeddings(ves)
+> ##D 
+> ##D # simple smoothing
+> ##D ves <- smooth_image(ves, dimensions = seq(1, 30))
+> ##D 
+> ##D # quick segmentation
+> ##D ves <- segment_image(ves, dimensions = seq(1, 30))
+> ##D 
+> ##D # isolate territories
+> ##D ves <- isolate_territories(ves)
+> ##D 
+> ##D # Plot Territories
+> ##D p <- territory_plot(ves)
+> ## End(Not run)
+> 
+> 
+> 
+> base::assign(".dptime", (proc.time() - get(".ptime", pos = "CheckExEnv")), pos = "CheckExEnv")
+> base::cat("territory_plot", base::get(".format_ptime", pos = 'CheckExEnv')(get(".dptime", pos = "CheckExEnv")), "\n", file=base::get(".ExTimings", pos = 'CheckExEnv'), append=TRUE, sep="\t")
+> cleanEx()
+> nameEx("view_gene_expression")
+> ### * view_gene_expression
+> 
+> flush(stderr()); flush(stdout())
+> 
+> base::assign(".ptime", proc.time(), pos = "CheckExEnv")
+> ### Name: view_gene_expression
+> ### Title: view_gene_expression
+> ### Aliases: view_gene_expression
+> 
+> ### ** Examples
+> 
+> ## Not run: 
+> ##D data(vesalius)
+> ##D # First we build a simple object
+> ##D ves <- build_vesalius_object(coordinates, counts)
+> ##D # We can do a simple run
+> ##D ves <- build_vesalius_embeddings(ves)
+> ##D 
+> ##D # simple smoothing
+> ##D ves <- smooth_image(ves, dimensions = seq(1, 30))
+> ##D 
+> ##D # quick segmentation
+> ##D ves <- segment_image(ves, dimensions = seq(1, 30))
+> ##D 
+> ##D # isolate territories
+> ##D ves <- isolate_territories(ves)
+> ##D 
+> ##D # view over all expression
+> ##D p <- view_gene_expression(ves, genes = "Malat1")
+> ##D p1 <- view_gene_expression(ves, genes = "Malat1", as_layer = TRUE)
+> ##D 
+> ##D # view expression in isolated territory 
+> ##D p2 <- view_gene_expression(ves, genes = "Malat1", territory_1 = 5)
+> ##D 
+> ##D # view expression of cells
+> ##D cells <- sample(colnames(get_counts(ves)),300)
+> ##D p3 <- view_gene_expression(ves,
+> ##D  genes = "Malat",
+> ##D  cells = cells,
+> ##D  territory_1 = 5,
+> ##D  terriotry_2 = 8)
+> ## End(Not run)
+> 
+> 
+> 
+> base::assign(".dptime", (proc.time() - get(".ptime", pos = "CheckExEnv")), pos = "CheckExEnv")
+> base::cat("view_gene_expression", base::get(".format_ptime", pos = 'CheckExEnv')(get(".dptime", pos = "CheckExEnv")), "\n", file=base::get(".ExTimings", pos = 'CheckExEnv'), append=TRUE, sep="\t")
+> ### * <FOOTER>
+> ###
+> cleanEx()
+> options(digits = 7L)
+> base::cat("Time elapsed: ", proc.time() - base::get("ptime", pos = 'CheckExEnv'),"\n")
+Time elapsed:  14.508 0.564 15.48 0 0 
+> grDevices::dev.off()
+null device 
+          1 
+> ###
+> ### Local variables: ***
+> ### mode: outline-minor ***
+> ### outline-regexp: "\\(> \\)?### [*]+" ***
+> ### End: ***
+> quit('no')

@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html>
+<head><title>R: Vesalius: Dissecting Tissue Anatomy from Spatial Transcriptomic
+Data</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body><div class="container">
+<h1> Vesalius: Dissecting Tissue Anatomy from Spatial Transcriptomic
+Data
+<img class="toplogo" src="../../../doc/html/Rlogo.svg" alt="[R logo]" />
+</h1>
+<hr/>
+<div style="text-align: center;">
+<a href="../../../doc/html/packages.html"><img class="arrow" src="../../../doc/html/left.jpg" alt="[Up]" /></a>
+<a href="../../../doc/html/index.html"><img class="arrow" src="../../../doc/html/up.jpg" alt="[Top]" /></a>
+</div><h2>Documentation for package &lsquo;vesalius&rsquo; version 2.0.0</h2>
+
+<ul><li><a href="../DESCRIPTION" type="text/plain; charset=utf-8">DESCRIPTION file</a>.</li>
+<li><a href="../doc/index.html">User guides, package vignettes and other documentation.</a></li>
+<li><a href="../NEWS.md">Package NEWS</a>.</li>
+</ul>
+
+<h2>Help Pages</h2>
+
+
+<p style="text-align: center;">
+<a href="# "> </a>
+<a href="#A">A</a>
+<a href="#B">B</a>
+<a href="#C">C</a>
+<a href="#D">D</a>
+<a href="#E">E</a>
+<a href="#F">F</a>
+<a href="#G">G</a>
+<a href="#H">H</a>
+<a href="#I">I</a>
+<a href="#J">J</a>
+<a href="#K">K</a>
+<a href="#L">L</a>
+<a href="#M">M</a>
+<a href="#N">N</a>
+<a href="#O">O</a>
+<a href="#P">P</a>
+<a href="#R">R</a>
+<a href="#S">S</a>
+<a href="#T">T</a>
+<a href="#U">U</a>
+<a href="#V">V</a>
+</p>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="vesalius_package.html">vesalius-package</a></td>
+<td>vesalius</td></tr>
+</table>
+
+<h2><a id="A">-- A --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="add_active_count_tag.html">add_active_count_tag</a></td>
+<td>add active count tag</td></tr>
+<tr><td style="width: 25%;"><a href="add_active_embedding_tag.html">add_active_embedding_tag</a></td>
+<td>add active embedding tag</td></tr>
+<tr><td style="width: 25%;"><a href="add_counts.html">add_counts</a></td>
+<td>Add counts to vesalius assay Adding custom count matrix to a vesalius assay object.</td></tr>
+<tr><td style="width: 25%;"><a href="add_embeddings.html">add_embeddings</a></td>
+<td>Add embeddings Add custom embeddings to vesalius objects</td></tr>
+<tr><td style="width: 25%;"><a href="adjust_counts.html">adjust_counts</a></td>
+<td>adjust count</td></tr>
+<tr><td style="width: 25%;"><a href="align_index.html">align_index</a></td>
+<td>assign coordinates to matched indices</td></tr>
+<tr><td style="width: 25%;"><a href="assign_centers.html">assign_centers</a></td>
+<td>assign centroid values to active embedding</td></tr>
+<tr><td style="width: 25%;"><a href="average_embed.html">average_embed</a></td>
+<td>average image stack between seed and query</td></tr>
+</table>
+
+<h2><a id="B">-- B --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="back_infer.html">back_infer</a></td>
+<td>Infer normalized counts from shared embedding values</td></tr>
+<tr><td style="width: 25%;"><a href="bubble_stack.html">bubble_stack</a></td>
+<td>importFrom imager nPix</td></tr>
+<tr><td style="width: 25%;"><a href="build_mapped_assay.html">build_mapped_assay</a></td>
+<td>Build a new vesalius_assay object using mapping information</td></tr>
+<tr><td style="width: 25%;"><a href="build_vesalius_assay.html">build_vesalius_assay</a></td>
+<td>build vesalius assay object</td></tr>
+</table>
+
+<h2><a id="C">-- C --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="calculate_scale.html">calculate_scale</a></td>
+<td>calculate scale of assay</td></tr>
+<tr><td style="width: 25%;"><a href="cell_type_match.html">cell_type_match</a></td>
+<td>Compute score based on cell type labels</td></tr>
+<tr><td style="width: 25%;"><a href="check_barcodes.html">check_barcodes</a></td>
+<td>checking overlap between barcodes in counts and coordinates</td></tr>
+<tr><td style="width: 25%;"><a href="check_binary_nature.html">check_binary_nature</a></td>
+<td>check binary nature</td></tr>
+<tr><td style="width: 25%;"><a href="check_cells.html">check_cells</a></td>
+<td>check if provided cells are contained withing provided territory</td></tr>
+<tr><td style="width: 25%;"><a href="check_coordinates.html">check_coordinates</a></td>
+<td>check if coordinates are of the correct type and format and adjust coordinate value to remove white edge space</td></tr>
+<tr><td style="width: 25%;"><a href="check_counts.html">check_counts</a></td>
+<td>check if counts are of the correct type and format</td></tr>
+<tr><td style="width: 25%;"><a href="check_deg_method.html">check_deg_method</a></td>
+<td>check if DEG method is one of the available options</td></tr>
+<tr><td style="width: 25%;"><a href="check_dim_selection_method.html">check_dim_selection_method</a></td>
+<td>check dimension selection method</td></tr>
+<tr><td style="width: 25%;"><a href="check_embeddings.html">check_embeddings</a></td>
+<td>check embeddings checking user provided embedding matrix</td></tr>
+<tr><td style="width: 25%;"><a href="check_embedding_selection.html">check_embedding_selection</a></td>
+<td>check embedding selection</td></tr>
+<tr><td style="width: 25%;"><a href="check_embed_methods.html">check_embed_methods</a></td>
+<td>check if embedding method is present in availble options</td></tr>
+<tr><td style="width: 25%;"><a href="check_eq_method.html">check_eq_method</a></td>
+<td>check if eq method are avilable</td></tr>
+<tr><td style="width: 25%;"><a href="check_features.html">check_features</a></td>
+<td>check features</td></tr>
+<tr><td style="width: 25%;"><a href="check_for_zero_counts.html">check_for_zero_counts</a></td>
+<td>check_for_zero_counts check which barcodes contain all 0 counts and filter</td></tr>
+<tr><td style="width: 25%;"><a href="check_group_value.html">check_group_value</a></td>
+<td>check if requested territory is in territory list</td></tr>
+<tr><td style="width: 25%;"><a href="check_image.html">check_image</a></td>
+<td>check if image is present</td></tr>
+<tr><td style="width: 25%;"><a href="check_image_input.html">check_image_input</a></td>
+<td>check image input check if input image is in correct format</td></tr>
+<tr><td style="width: 25%;"><a href="check_inputs.html">check_inputs</a></td>
+<td>check input checks the validity of input data to build_vesalius_assay</td></tr>
+<tr><td style="width: 25%;"><a href="check_isolation_method.html">check_isolation_method</a></td>
+<td>check territory isolation method is available</td></tr>
+<tr><td style="width: 25%;"><a href="check_min_spatial_index.html">check_min_spatial_index</a></td>
+<td>check number of spatial indices present</td></tr>
+<tr><td style="width: 25%;"><a href="check_norm.html">check_norm</a></td>
+<td>check if select norm method is an available option</td></tr>
+<tr><td style="width: 25%;"><a href="check_norm_methods.html">check_norm_methods</a></td>
+<td>check if norm method is present in availble options</td></tr>
+<tr><td style="width: 25%;"><a href="check_segmentation_method.html">check_segmentation_method</a></td>
+<td>check if segmentation options are valid for segmentation</td></tr>
+<tr><td style="width: 25%;"><a href="check_segment_trial.html">check_segment_trial</a></td>
+<td>check if segment selection is a valid option</td></tr>
+<tr><td style="width: 25%;"><a href="check_smoothing_kernel.html">check_smoothing_kernel</a></td>
+<td>check if smoothing method is present in availble options</td></tr>
+<tr><td style="width: 25%;"><a href="check_smoothing_level.html">check_smoothing_level</a></td>
+<td>check if across level options are valid for smoothing</td></tr>
+<tr><td style="width: 25%;"><a href="check_tensor_compression.html">check_tensor_compression</a></td>
+<td>check tensor compression</td></tr>
+<tr><td style="width: 25%;"><a href="check_territory_trial.html">check_territory_trial</a></td>
+<td>check if territory selection is a valid option</td></tr>
+<tr><td style="width: 25%;"><a href="check_tiles.html">check_tiles</a></td>
+<td>check tile integretiy</td></tr>
+<tr><td style="width: 25%;"><a href="clean_trial.html">clean_trial</a></td>
+<td>clean trial annotation</td></tr>
+<tr><td style="width: 25%;"><a href="commit_log.html">commit_log</a></td>
+<td>commits function call to log slot</td></tr>
+<tr><td style="width: 25%;"><a href="compute_effect_size.html">compute_effect_size</a></td>
+<td>compute_effect_size</td></tr>
+<tr><td style="width: 25%;"><a href="compute_nearest_neighbor_graph.html">compute_nearest_neighbor_graph</a></td>
+<td>compute and greate nearest neighbor graph</td></tr>
+<tr><td style="width: 25%;"><a href="concat_cost.html">concat_cost</a></td>
+<td>concat cost - pairwise sum of score complement</td></tr>
+<tr><td style="width: 25%;"><a href="concat_embed.html">concat_embed</a></td>
+<td>create new embedding from jointly measure spatial omics</td></tr>
+<tr><td style="width: 25%;"><a href="concat_matches.html">concat_matches</a></td>
+<td>merging batch matches together</td></tr>
+<tr><td style="width: 25%;"><a href="convexify.html">convexify</a></td>
+<td>convexify</td></tr>
+<tr><td style="width: 25%;"><a href="coordinates.html">coordinates</a></td>
+<td>Spatial coordinates</td></tr>
+<tr><td style="width: 25%;"><a href="counts.html">counts</a></td>
+<td>Count matrix for vesalius</td></tr>
+<tr><td style="width: 25%;"><a href="create_alpha.html">create_alpha</a></td>
+<td>create alpha value if territories need to be highlighted</td></tr>
+<tr><td style="width: 25%;"><a href="create_commit_log.html">create_commit_log</a></td>
+<td>create function log to be commit to the log slot</td></tr>
+<tr><td style="width: 25%;"><a href="create_palette.html">create_palette</a></td>
+<td>create color palette from predefine scheme</td></tr>
+<tr><td style="width: 25%;"><a href="create_pseudo_centroids.html">create_pseudo_centroids</a></td>
+<td>create centroid vlues for louvain and leiden</td></tr>
+<tr><td style="width: 25%;"><a href="create_trial_tag.html">create_trial_tag</a></td>
+<td>create a trail tag name</td></tr>
+</table>
+
+<h2><a id="D">-- D --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="detect_edges.html">detect_edges</a></td>
+<td>detect_edges detect territory edges in black and white images with sobel filter</td></tr>
+<tr><td style="width: 25%;"><a href="dispatch_batch.html">dispatch_batch</a></td>
+<td>Dispatch cells into batches</td></tr>
+<tr><td style="width: 25%;"><a href="dispatch_cost_groups.html">dispatch_cost_groups</a></td>
+<td>dispatch barcodes to subset cost for match clustering</td></tr>
+<tr><td style="width: 25%;"><a href="dispatch_deg_group.html">dispatch_deg_group</a></td>
+<td>dispatch barcodes to seed and query groups</td></tr>
+<tr><td style="width: 25%;"><a href="dispatch_sample.html">dispatch_sample</a></td>
+<td>dispatch barcodes associted with a specific territory in a specific samples</td></tr>
+<tr><td style="width: 25%;"><a href="dispatch_territory.html">dispatch_territory</a></td>
+<td>dispatch territories labels territories according to which group they belong to.</td></tr>
+<tr><td style="width: 25%;"><a href="distance_pooling.html">distance_pooling</a></td>
+<td>distance pooling beads of colour segment into seperate territories</td></tr>
+</table>
+
+<h2><a id="E">-- E --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="ecdf_eq.html">ecdf_eq</a></td>
+<td>internal ecdf eq used for formatting</td></tr>
+<tr><td style="width: 25%;"><a href="embed_latent_space.html">embed_latent_space</a></td>
+<td>embed latent space</td></tr>
+<tr><td style="width: 25%;"><a href="embed_lsi.html">embed_lsi</a></td>
+<td>embed lsi</td></tr>
+<tr><td style="width: 25%;"><a href="embed_lsi_umap.html">embed_lsi_umap</a></td>
+<td>embed lsi</td></tr>
+<tr><td style="width: 25%;"><a href="embed_nmf.html">embed_nmf</a></td>
+<td>embed nmf</td></tr>
+<tr><td style="width: 25%;"><a href="embed_pca.html">embed_pca</a></td>
+<td>embed PCA</td></tr>
+<tr><td style="width: 25%;"><a href="embed_pcal.html">embed_pcal</a></td>
+<td>embed PCA loading values</td></tr>
+<tr><td style="width: 25%;"><a href="embed_umap.html">embed_umap</a></td>
+<td>embed umap</td></tr>
+<tr><td style="width: 25%;"><a href="equalize_image.html">equalize_image</a></td>
+<td>equalise image histogram</td></tr>
+<tr><td style="width: 25%;"><a href="extend_boundary.html">extend_boundary</a></td>
+<td>extend image boundary around territory</td></tr>
+</table>
+
+<h2><a id="F">-- F --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="filter_grid.html">filter_grid</a></td>
+<td>filter grid</td></tr>
+<tr><td style="width: 25%;"><a href="filter_maps.html">filter_maps</a></td>
+<td>filter mapped cells</td></tr>
+<tr><td style="width: 25%;"><a href="filter_tiles.html">filter_tiles</a></td>
+<td>filter tiles</td></tr>
+<tr><td style="width: 25%;"><a href="format_call.html">format_call</a></td>
+<td>format function call to list for log update</td></tr>
+<tr><td style="width: 25%;"><a href="format_counts_for_deseq2.html">format_counts_for_deseq2</a></td>
+<td>format counts for DESeq</td></tr>
+<tr><td style="width: 25%;"><a href="format_counts_for_edger.html">format_counts_for_edger</a></td>
+<td>format counts for edgeR</td></tr>
+<tr><td style="width: 25%;"><a href="format_counts_for_logit.html">format_counts_for_logit</a></td>
+<td>format counts for logistic regression</td></tr>
+<tr><td style="width: 25%;"><a href="format_c_to_ves.html">format_c_to_ves</a></td>
+<td>convert cimg list to vesalius object embedding</td></tr>
+<tr><td style="width: 25%;"><a href="format_ves_to_c.html">format_ves_to_c</a></td>
+<td>convert vesalius_assay to cimg images</td></tr>
+<tr><td style="width: 25%;"><a href="future_ves_to_cimg.html">future_ves_to_cimg</a></td>
+<td>convert ves embedding to image</td></tr>
+</table>
+
+<h2><a id="G">-- G --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="generate_embeddings.html">generate_embeddings</a></td>
+<td>Generate embeddings.</td></tr>
+<tr><td style="width: 25%;"><a href="generate_spix.html">generate_spix</a></td>
+<td>Generate super pixels from ST</td></tr>
+<tr><td style="width: 25%;"><a href="generate_tiles.html">generate_tiles</a></td>
+<td>generate tiles</td></tr>
+<tr><td style="width: 25%;"><a href="get_active_count_tag.html">get_active_count_tag</a></td>
+<td>get last count matrix used</td></tr>
+<tr><td style="width: 25%;"><a href="get_active_embedding_tag.html">get_active_embedding_tag</a></td>
+<td>get active embedding</td></tr>
+<tr><td style="width: 25%;"><a href="get_assay_names.html">get_assay_names</a></td>
+<td>get assay names from vesalius_assay</td></tr>
+<tr><td style="width: 25%;"><a href="get_coordinayes.html">get_coordinates</a></td>
+<td>get coordinates from vesalius_assay</td></tr>
+<tr><td style="width: 25%;"><a href="get_cost_contribution.html">get_cost_contribution</a></td>
+<td>Compute mapping score contribution to mapping</td></tr>
+<tr><td style="width: 25%;"><a href="get_counts.html">get_counts</a></td>
+<td>get counts from vesalius_assay</td></tr>
+<tr><td style="width: 25%;"><a href="get_deg_metrics.html">get_deg_metrics</a></td>
+<td>get DEG metrics from groups</td></tr>
+<tr><td style="width: 25%;"><a href="get_embeddings.html">get_embeddings</a></td>
+<td>get embeddings from vesalius_assay</td></tr>
+<tr><td style="width: 25%;"><a href="get_func_from_commit.html">get_func_from_commit</a></td>
+<td>get function name from commit list</td></tr>
+<tr><td style="width: 25%;"><a href="get_markers.html">get_markers</a></td>
+<td>get markers from vesalius_assay</td></tr>
+<tr><td style="width: 25%;"><a href="get_metric_clusters.html">get_metric_clusters</a></td>
+<td>Cluster query cells based on which reference cells they tend to mapped to</td></tr>
+<tr><td style="width: 25%;"><a href="get_neighborhood_signal.html">get_neighborhood_signal</a></td>
+<td>Method dispatch function for neighborhood selection</td></tr>
+<tr><td style="width: 25%;"><a href="get_signal.html">get_signal</a></td>
+<td>get cell signal from vesalius assays</td></tr>
+<tr><td style="width: 25%;"><a href="get_territories.html">get_territories</a></td>
+<td>get territories from vesalius_assay</td></tr>
+<tr><td style="width: 25%;"><a href="get_tiles.html">get_tiles</a></td>
+<td>get tiles from vesalius_assay</td></tr>
+<tr><td style="width: 25%;"><a href="globalise_territories.html">globalise_territories</a></td>
+<td>globalise territories converts territories number from territory values per segment to territory values overall the entire spatial omics assay.</td></tr>
+<tr><td style="width: 25%;"><a href="graph_neighborhood.html">graph_neighborhood</a></td>
+<td>Graph depth method based method to select niche</td></tr>
+<tr><td style="width: 25%;"><a href="graph_path_length.html">graph_path_length</a></td>
+<td>get path length in a graph</td></tr>
+</table>
+
+<h2><a id="H">-- H --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="hclust_scores.html">hclust_scores</a></td>
+<td>Hiearchal clustering of mapping scores for co mapping events</td></tr>
+</table>
+
+<h2><a id="I">-- I --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="identify_markers.html">identify_markers</a></td>
+<td>identify_markers computes differential observation expression between selected territories.</td></tr>
+<tr><td style="width: 25%;"><a href="image_plot.html">image_plot</a></td>
+<td>image_plot - plotting vesalius embeddings</td></tr>
+<tr><td style="width: 25%;"><a href="initialize_matches.html">initialize_matches</a></td>
+<td>initialize matched data frame</td></tr>
+<tr><td style="width: 25%;"><a href="integrate_assays.html">integrate_assays</a></td>
+<td>integrate 2 vesalius assays</td></tr>
+<tr><td style="width: 25%;"><a href="integrate_counts.html">integrate_counts</a></td>
+<td>Integrate counts using Seurat</td></tr>
+<tr><td style="width: 25%;"><a href="interlace_embeds.html">interlace_embeds</a></td>
+<td>interlace image stack between seed and query</td></tr>
+<tr><td style="width: 25%;"><a href="internal_smooth.html">internal_smooth</a></td>
+<td>internal smoothing function Function that does the smoothing on individual image array</td></tr>
+<tr><td style="width: 25%;"><a href="int_sctransform.html">int_sctransform</a></td>
+<td>SCTransform</td></tr>
+<tr><td style="width: 25%;"><a href="isolate_territories.html">isolate_territories</a></td>
+<td>isolating territories from vesalius image segments</td></tr>
+</table>
+
+<h2><a id="J">-- J --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="jitter_coord.html">jitter_coord</a></td>
+<td>Spatial coordinates - alt</td></tr>
+<tr><td style="width: 25%;"><a href="jitter_counts.html">jitter_counts</a></td>
+<td>Count matrix for vesalius - alt</td></tr>
+<tr><td style="width: 25%;"><a href="joint_territories.html">joint_territories</a></td>
+<td>Jointly measured spatial omic assays territories</td></tr>
+</table>
+
+<h2><a id="K">-- K --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="kmeans_segmentation.html">kmeans_segmentation</a></td>
+<td>kmeans segmentation function</td></tr>
+<tr><td style="width: 25%;"><a href="knn_neighborhood.html">knn_neighborhood</a></td>
+<td>k nearest neighbors - niche selection</td></tr>
+</table>
+
+<h2><a id="L">-- L --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="layer_territory.html">layer_territory</a></td>
+<td>layer_territory generates layer from the outside to the inside of a territory</td></tr>
+<tr><td style="width: 25%;"><a href="leiden_scores.html">leiden_scores</a></td>
+<td>Using Leiden community clustering to for co-mapping events</td></tr>
+<tr><td style="width: 25%;"><a href="leiden_segmentation.html">leiden_segmentation</a></td>
+<td>leiden segmentation</td></tr>
+<tr><td style="width: 25%;"><a href="log_norm.html">log_norm</a></td>
+<td>log norm</td></tr>
+<tr><td style="width: 25%;"><a href="louvain_scores.html">louvain_scores</a></td>
+<td>Using Louvain community clustering to for co-mapping events</td></tr>
+<tr><td style="width: 25%;"><a href="louvain_segmentation.html">louvain_segmentation</a></td>
+<td>louvain segmentation</td></tr>
+</table>
+
+<h2><a id="M">-- M --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="make_composition_matrix.html">make_composition_matrix</a></td>
+<td>convert niche composition into matrix format for jaccard compute</td></tr>
+<tr><td style="width: 25%;"><a href="map_assays.html">map_assays</a></td>
+<td>Aling and integrate spatial assay from the same modality using super pixels</td></tr>
+<tr><td style="width: 25%;"><a href="map_index.html">map_index</a></td>
+<td>LAPVJ solver</td></tr>
+<tr><td style="width: 25%;"><a href="match_cells.html">match_cells</a></td>
+<td>Internal function returning cell type label match as numiric</td></tr>
+<tr><td style="width: 25%;"><a href="merge_coordinates.html">merge_coordinates</a></td>
+<td>Merge coordinates from 2 vesalius assays</td></tr>
+<tr><td style="width: 25%;"><a href="merge_territories.html">merge_territories</a></td>
+<td>Merge territories using specified labels</td></tr>
+<tr><td style="width: 25%;"><a href="message_switch.html">message_switch</a></td>
+<td>switch message output based in input</td></tr>
+<tr><td style="width: 25%;"><a href="min_max.html">min_max</a></td>
+<td>min max normalisation</td></tr>
+</table>
+
+<h2><a id="N">-- N --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="neighborhood_signal.html">neighborhood_signal</a></td>
+<td>compute average expression of local neighborhood</td></tr>
+<tr><td style="width: 25%;"><a href="niche_composition.html">niche_composition</a></td>
+<td>Method dispatch function for neighborhood selection - added flavor specific to composition</td></tr>
+<tr><td style="width: 25%;"><a href="norm_pixel.html">norm_pixel</a></td>
+<td>pixel normalisation dispatch function</td></tr>
+<tr><td style="width: 25%;"><a href="no_norm.html">no_norm</a></td>
+<td>no norm</td></tr>
+</table>
+
+<h2><a id="O">-- O --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="optimize_matching.html">optimize_matching</a></td>
+<td>optimize matching scores through batching</td></tr>
+<tr><td style="width: 25%;"><a href="overlap_distance_matrix.html">overlap_distance_matrix</a></td>
+<td>create a distance matrix based on mapping scores overlaps</td></tr>
+</table>
+
+<h2><a id="P">-- P --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="pearson_approx.html">pearson_approx</a></td>
+<td>compute fast pearson correlation between matrices</td></tr>
+<tr><td style="width: 25%;"><a href="point_mapping.html">point_mapping</a></td>
+<td>mapping points between data sets</td></tr>
+<tr><td style="width: 25%;"><a href="populate_graph.html">populate_graph</a></td>
+<td>populate graph with network connections</td></tr>
+<tr><td style="width: 25%;"><a href="process_counts.html">process_counts</a></td>
+<td>process counts</td></tr>
+</table>
+
+<h2><a id="R">-- R --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="radius_neighborhood.html">radius_neighborhood</a></td>
+<td>Radius based method to select niche</td></tr>
+<tr><td style="width: 25%;"><a href="rasterise.html">rasterise</a></td>
+<td>rasterise tiles</td></tr>
+<tr><td style="width: 25%;"><a href="rebalence_colors.html">rebalence_colors</a></td>
+<td>rebalence colors</td></tr>
+<tr><td style="width: 25%;"><a href="reduce_tensor_resolution.html">reduce_tensor_resolution</a></td>
+<td>reduce tensor resoltuon</td></tr>
+<tr><td style="width: 25%;"><a href="regularise.html">regularise</a></td>
+<td>Internal regularise function. performs total variance regularisation</td></tr>
+<tr><td style="width: 25%;"><a href="regularise_image.html">regularise_image</a></td>
+<td>regularise image</td></tr>
+<tr><td style="width: 25%;"><a href="rename_counts.html">rename_counts</a></td>
+<td>renaming counts to remain consistent with vesalius nomenclature</td></tr>
+</table>
+
+<h2><a id="S">-- S --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="score_matches.html">score_matches</a></td>
+<td>Extract score from best matches</td></tr>
+<tr><td style="width: 25%;"><a href="search_log.html">search_log</a></td>
+<td>search through log for parameter values or names</td></tr>
+<tr><td style="width: 25%;"><a href="segment_image.html">segment_image</a></td>
+<td>segment image</td></tr>
+<tr><td style="width: 25%;"><a href="select_initial_indices.html">select_initial_indices</a></td>
+<td>select inital indices</td></tr>
+<tr><td style="width: 25%;"><a href="signal_similarity.html">signal_similarity</a></td>
+<td>compute the similarity between seed and query signals</td></tr>
+<tr><td style="width: 25%;"><a href="smooth_image.html">smooth_image</a></td>
+<td>Smooth Image</td></tr>
+<tr><td style="width: 25%;"><a href="summarise_territories.html">summarise_territories</a></td>
+<td>summarise territories</td></tr>
+</table>
+
+<h2><a id="T">-- T --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="territory_morphing.html">territory_morphing</a></td>
+<td>territory_morphing applies morphological operators to a set of territoriees</td></tr>
+<tr><td style="width: 25%;"><a href="territory_neighborhood.html">territory_neighborhood</a></td>
+<td>Territory selection for large scale niche</td></tr>
+<tr><td style="width: 25%;"><a href="territory_plot.html">territory_plot</a></td>
+<td>territory_plot - plotting Vesalius territories</td></tr>
+<tr><td style="width: 25%;"><a href="tfidf_norm.html">tfidf_norm</a></td>
+<td>tf idf normalisation</td></tr>
+</table>
+
+<h2><a id="U">-- U --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="unpack_territory_path.html">unpack_territory_path</a></td>
+<td>retrieve the points contained in the edge of each territory</td></tr>
+<tr><td style="width: 25%;"><a href="update_matches.html">update_matches</a></td>
+<td>Update best matched cell pairs with new mapping costs</td></tr>
+<tr><td style="width: 25%;"><a href="update_vesalius_assay.html">update_vesalius_assay</a></td>
+<td>update vesalius assay object</td></tr>
+</table>
+
+<h2><a id="V">-- V --</a></h2>
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="vesalius_package.html">vesalius</a></td>
+<td>vesalius</td></tr>
+<tr><td style="width: 25%;"><a href="vesalius_assay-class.html">vesalius_assay-class</a></td>
+<td>The vesalius_assay class</td></tr>
+<tr><td style="width: 25%;"><a href="vesalius_deg.html">vesalius_deg</a></td>
+<td>Internal differantial gene expression function.</td></tr>
+<tr><td style="width: 25%;"><a href="vesalius_deg_chisq.html">vesalius_deg_chisq</a></td>
+<td>chisq test for DEG</td></tr>
+<tr><td style="width: 25%;"><a href="vesalius_deg_deseq2.html">vesalius_deg_deseq2</a></td>
+<td>DESeq negatove binomail for DEG</td></tr>
+<tr><td style="width: 25%;"><a href="vesalius_deg_edger.html">vesalius_deg_edger</a></td>
+<td>edgeR functions for DEG</td></tr>
+<tr><td style="width: 25%;"><a href="vesalius_deg_fisher.html">vesalius_deg_fisher</a></td>
+<td>Fisher's excat test for DEG</td></tr>
+<tr><td style="width: 25%;"><a href="vesalius_deg_logit.html">vesalius_deg_logit</a></td>
+<td>Logistic Regression for DEG</td></tr>
+<tr><td style="width: 25%;"><a href="vesalius_deg_ttest.html">vesalius_deg_ttest</a></td>
+<td>t.test for DEG</td></tr>
+<tr><td style="width: 25%;"><a href="vesalius_deg_wilcox.html">vesalius_deg_wilcox</a></td>
+<td>wilcox rank sum test for DEG</td></tr>
+<tr><td style="width: 25%;"><a href="vesalius_package.html">vesalius_package</a></td>
+<td>vesalius</td></tr>
+<tr><td style="width: 25%;"><a href="view_gene_expression.html">view_gene_expression</a></td>
+<td>view_gene_expression</td></tr>
+</table>
+</div></body></html>

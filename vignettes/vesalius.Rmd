@@ -55,7 +55,10 @@ will apply for other modalities. For examples using other modalities,
 please refer to the other articles.
 
 ```{r loading, eval = TRUE, echo = TRUE}
-libary(vesalius)
+library(vesalius)
+library(ggplot2)
+library(patchwork)
+library(ggpubr)
 data(vesalius, package = "vesalius")
 
 ```

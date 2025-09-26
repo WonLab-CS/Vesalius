@@ -1,0 +1,6287 @@
+\nonstopmode{}
+\documentclass[a4paper]{book}
+\usepackage[times,inconsolata,hyper]{Rd}
+\usepackage{makeidx}
+\makeatletter\@ifl@t@r\fmtversion{2018/04/01}{}{\usepackage[utf8]{inputenc}}\makeatother
+% \usepackage{graphicx} % @USE GRAPHICX@
+\makeindex{}
+\begin{document}
+\chapter*{}
+\begin{center}
+{\textbf{\huge Package `vesalius'}}
+\par\bigskip{\large \today}
+\end{center}
+\ifthenelse{\boolean{Rd@use@hyper}}{\hypersetup{pdftitle = {vesalius: Vesalius: Dissecting Tissue Anatomy from Spatial Transcriptomic Data}}}{}
+\begin{description}
+\raggedright{}
+\item[Type]\AsIs{Package}
+\item[Title]\AsIs{Vesalius: Dissecting Tissue Anatomy from Spatial Transcriptomic
+Data}
+\item[Version]\AsIs{2.0.0}
+\item[Author]\AsIs{Patrick C.N. Martin}
+\item[Maintainer]\AsIs{Patrick C.N. Martin }\email{patrick.martin@cshs.org}\AsIs{}
+\item[Description]\AsIs{We present Vesalius to decipher tissue anatomy by embracing various
+image analysis techniques for high-resolution ST data. Vesalius identifies
+spatially expressed genes linked to the morphology of tissue structures.
+Vesalius is a tool to perform high-resolution in silico anatomization and
+molecular characterization from ST data.}
+\item[License]\AsIs{GPL-3 + file LICENSE}
+\item[Collate]\AsIs{cost.R data.R dispatch.R embeddings.R equalize_image.R
+global_bindings.R image_plot.R integration.R interoperability.R
+isolate_territories.R map_assays.R map_metrics.R misc.R
+morphology_operators.R multi_mod.R normalization.R
+object_modification.R object_utilities_and_methods.R objects.R
+progress_messages.R RcppExports.R reformat.R regularize_image.R
+sanity_checks.R segment_image.R smooth_image.R spix.R
+territory_identity_and_markers.R territory_plot.R tiles.R
+vesalius.R view_gene_expression.R view_mapping_metrics.R}
+\item[Depends]\AsIs{R (>= 4.0.0)}
+\item[LinkingTo]\AsIs{Rcpp, RcppEigen}
+\item[Imports]\AsIs{grDevices, stats, utils, deldir, sp, tvR, Matrix,
+RColorBrewer, future, future.apply, imagerExtra, methods,
+Signac, ggpubr, lmtest, infix, Seurat(>= 5.0.0), SeuratObject,
+imager, DESeq2, RANN, dplyr, edgeR, ggplot2, igraph, pwr,
+purrr, patchwork, ggnewscale, kohonen, Rcpp, RcppEigen,
+TreeDist}
+\item[Suggests]\AsIs{knitr, RUnit, rmarkdown, testthat (>= 3.0.0), NMF, sf}
+\item[Encoding]\AsIs{UTF-8}
+\item[LazyData]\AsIs{true}
+\item[RoxygenNote]\AsIs{7.3.2}
+\item[VignetteBuilder]\AsIs{knitr}
+\item[URL]\AsIs{}\url{https://patrickcnmartin.github.io/Vesalius/}\AsIs{,
+}\url{https://github.com/patrickCNMartin/Vesalius}\AsIs{,
+}\url{https://wonlab-cs.github.io/Vesalius/}\AsIs{}
+\item[Config/testthat/edition]\AsIs{3}
+\item[Config/rextendr/version]\AsIs{0.2.0.9000}
+\item[NeedsCompilation]\AsIs{yes}
+\end{description}
+\Rdcontents{Contents}
+\HeaderA{add\_active\_count\_tag}{add active count tag}{add.Rul.active.Rul.count.Rul.tag}
+%
+\begin{Description}
+add active count tag
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+add_active_count_tag(vesalius_assay, norm)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{vesalius\_assay}] a vesalius assay object
+
+\item[\code{norm}] requested count matrix
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+commented list with active embedding tag
+\end{Value}
+\HeaderA{add\_active\_embedding\_tag}{add active embedding tag}{add.Rul.active.Rul.embedding.Rul.tag}
+%
+\begin{Description}
+add active embedding tag
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+add_active_embedding_tag(vesalius_assay, embedding)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{vesalius\_assay}] a vesalius assay object
+
+\item[\code{embedding}] embedding
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+commented list with active embedding tag
+\end{Value}
+\HeaderA{add\_counts}{Add counts to vesalius assay Adding custom count matrix to a vesalius assay object.}{add.Rul.counts}
+%
+\begin{Description}
+Add counts to vesalius assay
+Adding custom count matrix to a vesalius assay object.
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+add_counts(
+  vesalius_assay,
+  counts,
+  raw_counts = NULL,
+  add_name = NULL,
+  force = FALSE,
+  verbose = TRUE
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{vesalius\_assay}] a vesalius assay object
+
+\item[\code{counts}] matrix or sparse matrix containing normalised counts
+
+\item[\code{raw\_counts}] matrix or sparse matrix containing raw counts
+
+\item[\code{add\_name}] character string defining the name of the count matrix
+being added.
+
+\item[\code{force}] logical indicating if count matrix provided should also be used
+as raw count matrix.
+
+\item[\code{verbose}] logical indicating if progress messages should be outputed.
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+In some case, you might wish to use your own normalisation method.
+In this case, you can add your own matrix and specify the name you want to 
+give to that count matrix. 
+
+Differential gene expression tools
+such as DESeq2 and edgeR require raw counts. As such, we recommend providing
+raw counts as well. If you do not have raw counts, or do not wish to provide
+them, you can set the force argument to TRUE. This will force vesalius to
+generate a copy of your count matrix and use this as "raw" count matrix.
+
+Since coordinates need to be parsed to the vesalius\_assay contructor,
+this function will also compared the your count matrix to the 
+coordinate data. It will trim the count matrix based on barcodes shared
+between both.
+\end{Details}
+%
+\begin{Value}
+a vesalius\_assay object
+\end{Value}
+\HeaderA{add\_embeddings}{Add embeddings Add custom embeddings to vesalius objects}{add.Rul.embeddings}
+%
+\begin{Description}
+Add embeddings
+Add custom embeddings to vesalius objects
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+add_embeddings(vesalius_assay, embeddings, add_name = NULL, verbose = TRUE)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{vesalius\_assay}] a vesalius\_assay object
+
+\item[\code{embeddings}] a matrix containing embedding values (see details)
+
+\item[\code{add\_name}] character string to be used as embedding name.
+
+\item[\code{verbose}] logical indicating if progress message should be outputed.
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+Vesalius objects accepts custom embedding values that will be
+used to generate images.
+
+The embedding matrix should be in the form of a matrix with columns being
+the latent space dimensiions and rows representing the spatial indices
+present in the data set.
+
+The intersection between spatial indices present in the tiles and
+custom embeddings will be used.
+This intersection will be applied to the custom embeddings and filter
+out all tiles that are not present in the tiles. The tiles will not
+be filtered.
+
+Rownames should also be present and should represent the barcode name.
+These rownames are use to match the latent space embedding to its tile
+in the image.
+\end{Details}
+%
+\begin{Value}
+a vesalius\_assay object
+\end{Value}
+\HeaderA{adjust\_counts}{adjust count}{adjust.Rul.counts}
+%
+\begin{Description}
+adjust counts after reducing the resolution of the image tensor
+or after filtering stray beads
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+adjust_counts(coordinates, counts, throw = TRUE, verbose = TRUE)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{coordinates}] data frame containing coordinates after reducing 
+resolution and compressing cooridnates
+
+\item[\code{counts}] count matrix
+
+\item[\code{throw}] logical - throwing warning message for unshared barcodes
+
+\item[\code{verbose}] logical if progress messaged should be outputed.
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+This function will check the coordinate file to 
+see if any barcodes have been merged together. If so,
+the counts will be adjusted by taking the average count value accross 
+all barcodes that have been merged together.
+\end{Details}
+%
+\begin{Value}
+a count matrix with adjusted count values
+\end{Value}
+\HeaderA{align\_index}{assign coordinates to matched indices}{align.Rul.index}
+%
+\begin{Description}
+assign coordinates to matched indices
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+align_index(matched_index, coord, jitter = 0)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{matched\_index}] data.frame containing matching pairs of 
+coordinates
+
+\item[\code{seed}] data.frame containing seed coordinates
+
+\item[\code{query}] data.frame containing quert cooridates
+
+\item[\code{verbose}] logical - should progress message be outputed to the 
+console
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+adjusted query coordinate data.frame where each point
+receives the coordinates of its best matche in the seed.
+\end{Value}
+\HeaderA{assign\_centers}{assign centroid values to active embedding}{assign.Rul.centers}
+%
+\begin{Description}
+assign centroid values to active embedding
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+assign_centers(vesalius_assay, clusters, kcenters, dimensions, ratio = NULL)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{vesalius\_assay}] a vesalius assy object
+
+\item[\code{clusters}] data.frame containing cluster values
+
+\item[\code{kcenters}] matrix containing centroid values for each dimension
+
+\item[\code{dimensions}] vector (nummeric / int) describin which latent space
+
+\item[\code{ratio}] if used in the context of super pixel - spatial ration
+dimensiuons shouls be used.
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+matrix for the active embedding usiong color segementation
+\end{Value}
+\HeaderA{average\_embed}{average image stack between seed and query}{average.Rul.embed}
+%
+\begin{Description}
+average image stack between seed and query
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+average_embed(seed, query, dimensions)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{seed}] matrix - seed embedding image stack
+
+\item[\code{query}] matrix - query embedding image stack
+
+\item[\code{dimensions}] int vector describing which embeddings
+should be selected
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+Takes select embedding from seed and query and 
+creates and avarage the grey scale pixel values for each spatial
+location
+\end{Details}
+%
+\begin{Value}
+embedding matrix containing average pixel value for both seed
+query
+\end{Value}
+\HeaderA{back\_infer}{Infer normalized counts from shared embedding values}{back.Rul.infer}
+%
+\begin{Description}
+Infer normalized counts from shared embedding values
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+back_infer(counts, embeds)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{counts}] list of count matrices containing normalized gene expression
+
+\item[\code{embeds}] shared embedding matrix produced by Seurat.
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+list containing inferred count values from embeddings
+\end{Value}
+\HeaderA{bubble\_stack}{importFrom imager nPix}{bubble.Rul.stack}
+%
+\begin{Description}
+importFrom imager nPix
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+bubble_stack(coordinates, n_centers = 500, max_iter = 500)
+\end{verbatim}
+\end{Usage}
+\HeaderA{build\_mapped\_assay}{Build a new vesalius\_assay object using mapping information}{build.Rul.mapped.Rul.assay}
+%
+\begin{Description}
+Build a new vesalius\_assay object using mapping information
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+build_mapped_assay(mapped, seed_assay, query_assay, meta_labels, jitter = 0)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{mapped}] mapping results (see output of point\_mapping)
+
+\item[\code{seed\_assay}] vesalius\_assay object used as reference
+
+\item[\code{query\_assay}] vesalius\_assay that was mapped onto the reference
+
+\item[\code{meta\_labels}] character - name of column to be transfered to new object
+
+\item[\code{jitter}] numeric - how much coordiate jitter should be added to the 
+coordinates to avoid duplication. If 0, no jitter will be added.
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+This function will only return a vesalius\_assay with new coordinates
+and mapping inforation such as cost. The rest will remain the same. We
+are only transfering coordinates here. No integration.
+\end{Details}
+%
+\begin{Value}
+vesalius\_assay object with new coordinates.
+\end{Value}
+\HeaderA{build\_vesalius\_assay}{build vesalius assay object}{build.Rul.vesalius.Rul.assay}
+%
+\begin{Description}
+build a simple vesalius assay object from single count matrix and spatial
+coordinate pair.
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+build_vesalius_assay(
+  coordinates,
+  counts = NULL,
+  image = NULL,
+  assay = "spatial_omics",
+  scale = "auto",
+  unit = "um",
+  verbose = TRUE
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{coordinates}] data.frame in the format
+barcodes, x, y.
+Default is NULL. See details.
+
+\item[\code{counts}] matrix, sparse matrix containing counts.
+Default is NULL. See details.
+
+\item[\code{image}] connection string or image array
+
+\item[\code{assay}] character vector containing names of the assays
+(see details).
+
+\item[\code{scale}] character | numeric - if "auto", vesalius will compute
+99 percentile of inter barcodes distance else provide a numeric value
+describing distance between barcodes.
+
+\item[\code{unit}] character - units of scale
+
+\item[\code{verbose}] logical indicating if progress message should be
+outputed or not.
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+The vesalius\_assay constructor allows you to create
+partial or complete vesalius\_assay objects.
+
+Partial objects contain only the coordinates.
+
+Complete objects contain both the counts and the coordinates.
+
+The main purpose of using partial objects (or empty objects) is 
+for you to be able to provide your own count matrix. 
+This will be useful if you want to normalise your data in a 
+way that is not provided by vesalius.
+
+This approach of using your own data can also apply to embeddings.
+If you have generated a set of latent space embeddings that you 
+wish to use instead of those provided by vesalius, you can 
+use the \code{\LinkA{add\_embeddings}{add.Rul.embeddings}} function. 
+
+
+Along side this input data, you can provide a name 
+to your assay. If none are provided, 
+Vesalius will generate a set of names based on 
+the default assay name "spatial\_omics".
+
+You can decide if you want to adjust the coordinates to the 
+origin i.e remove unnecessary space or normalise the coordinates.
+Norm is not recommened at the moment
+\end{Details}
+%
+\begin{Value}
+A vesalius\_assay objecy
+\end{Value}
+%
+\begin{Examples}
+\begin{ExampleCode}
+data(vesalius)
+# Single assay object
+ves <- build_vesalius_assay(coordinates, counts)
+\end{ExampleCode}
+\end{Examples}
+\HeaderA{calculate\_scale}{calculate scale of assay}{calculate.Rul.scale}
+%
+\begin{Description}
+calculate scale of assay
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+calculate_scale(coordinates, q = 0.999)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{coordinates}] Spatial coordinates as data frame
+
+\item[\code{q}] quantile range
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+Calculate the average distance between spots/beads/indeces
+\end{Details}
+%
+\begin{Value}
+Single numeric
+\end{Value}
+\HeaderA{cell\_type\_match}{Compute score based on cell type labels}{cell.Rul.type.Rul.match}
+%
+\begin{Description}
+Compute score based on cell type labels
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+cell_type_match(seed_labels, query_labels)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{seed\_labels}] cell type labels in seed (reference) data
+
+\item[\code{query\_labels}] cell type labels in query data
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+Return 1 if same label and 0 if different.
+\end{Details}
+%
+\begin{Value}
+Score matrix based on cell label similarity
+\end{Value}
+\HeaderA{check\_barcodes}{checking overlap between barcodes in counts and coordinates}{check.Rul.barcodes}
+%
+\begin{Description}
+checking overlap between barcodes in counts and coordinates
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+check_barcodes(mat_barcodes, coordinates, throw = TRUE)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{mat\_barcodes}] character vector containing barcode names in matrix
+(count matrix or embedding matrix)
+
+\item[\code{coordinates}] character vector containing barcode names in tile
+data frame
+
+\item[\code{throw}] logical if warning should be thrown or not
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+Will throw in a warning if the overlap is not perfect.
+\end{Details}
+%
+\begin{Value}
+overlapping location between counts and coordinates
+\end{Value}
+\HeaderA{check\_binary\_nature}{check binary nature}{check.Rul.binary.Rul.nature}
+%
+\begin{Description}
+check binary nature
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+check_binary_nature(buffer)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{buffer}] list containing output of get\_deg\_metrics
+
+\item[\code{test}] string - test type of scope
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+For now we do this check but might be depreciated in the future.
+\end{Details}
+%
+\begin{Value}
+buffer list
+\end{Value}
+\HeaderA{check\_cells}{check if provided cells are contained withing provided territory}{check.Rul.cells}
+%
+\begin{Description}
+check if provided cells are contained withing provided territory
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+check_cells(territory_barcodes, ter, cell_barcodes)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{territory\_barcodes}] character vector containing spatial barcodes
+of territories
+
+\item[\code{ter}] string selected territories in the form of chacater string
+
+\item[\code{cell\_barcodes}] character vector containing barcodes of cells
+of interest
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+charcater vector of common barcodes between territory 
+barcodes and cell barcodes.
+\end{Value}
+\HeaderA{check\_coordinates}{check if coordinates are of the correct type and format and adjust coordinate value to remove white edge space}{check.Rul.coordinates}
+%
+\begin{Description}
+check if coordinates are of the correct type and format and
+adjust coordinate value to remove white edge space
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+check_coordinates(coordinates, assay, verbose)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{coordinates}] coordinate data
+
+\item[\code{assay}] string - assay name
+
+\item[\code{verbose}] logical if progress message should be printed
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+adjusts coordinates by either snapping coordinates to origin 
+or min max normalisation of coordinates. Might add polar for future tests.
+\end{Details}
+%
+\begin{Value}
+coordinates data.frame or error
+\end{Value}
+\HeaderA{check\_counts}{check if counts are of the correct type and format}{check.Rul.counts}
+%
+\begin{Description}
+check if counts are of the correct type and format
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+check_counts(counts, assay, verbose)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{counts}] count matrix
+
+\item[\code{assay}] string - assay name
+
+\item[\code{verbose}] logical if progress message should be printed
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+count matrix or error
+\end{Value}
+\HeaderA{check\_deg\_method}{check if DEG method is one of the available options}{check.Rul.deg.Rul.method}
+%
+\begin{Description}
+check if DEG method is one of the available options
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+check_deg_method(method)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{method}] string - DEG method
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+DEG method or error
+\end{Value}
+\HeaderA{check\_dim\_selection\_method}{check dimension selection method}{check.Rul.dim.Rul.selection.Rul.method}
+%
+\begin{Description}
+check dimension selection method
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+check_dim_selection_method(method)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{method}] string - dimensions selecion
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+territory isolation method
+\end{Value}
+\HeaderA{check\_embeddings}{check embeddings checking user provided embedding matrix}{check.Rul.embeddings}
+%
+\begin{Description}
+check embeddings
+checking user provided embedding matrix
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+check_embeddings(embeddings)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{embeddings}] a matrix
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+If a user provides their own embedding matrix, we need 
+to check if it fits the required format and if not throw, errors,
+warnings or adjust if possible.
+\end{Details}
+%
+\begin{Value}
+a formated matrix
+\end{Value}
+\HeaderA{check\_embedding\_selection}{check embedding selection}{check.Rul.embedding.Rul.selection}
+%
+\begin{Description}
+check embedding selection
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+check_embedding_selection(vesalius_assay, embed, dims)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{vesalius\_assay}] a vesalius\_assay
+
+\item[\code{embed}] string embedding selection choice
+
+\item[\code{dims}] integer vector containing embedding dimension to extract
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+we want to check if the embedding that the user requests 
+is present in the assay. If not return error. If more than one 
+with that name return last entry of that name and warning. Default is last 
+that will just take the last embedding created which should be stored in
+the active slot in the vesalius\_Assay object.
+We also want to be able to select which dimensions we want to return.
+We make sure that those dimensions can be extracted from the embedding 
+data frame.
+\end{Details}
+%
+\begin{Value}
+embedding data frame
+\end{Value}
+\HeaderA{check\_embed\_methods}{check if embedding method is present in availble options}{check.Rul.embed.Rul.methods}
+%
+\begin{Description}
+check if embedding method is present in availble options
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+check_embed_methods(embed)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{embed}] embedding method selected by user
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+embedding method string or error
+\end{Value}
+\HeaderA{check\_eq\_method}{check if eq method are avilable}{check.Rul.eq.Rul.method}
+%
+\begin{Description}
+check if eq method are avilable
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+check_eq_method(method)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{method}] string - eq method
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+eq method
+\end{Value}
+\HeaderA{check\_features}{check features}{check.Rul.features}
+%
+\begin{Description}
+check features
+
+check features
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+check_features(counts)
+
+check_features(counts)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{counts}] a seurat object
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+If the user use custom counts, we want to check
+if variable features have been computed or not. Dim reduction
+requires a list if features toi be provided or variable features
+to be computed.
+
+If the user use custom counts, we want to check
+if variable features have been computed or not. Dim reduction
+requires a list if features toi be provided or variable features
+to be computed.
+\end{Details}
+%
+\begin{Value}
+a list of features
+
+a list of features
+\end{Value}
+\HeaderA{check\_for\_zero\_counts}{check\_for\_zero\_counts  check which barcodes contain all 0 counts and filter}{check.Rul.for.Rul.zero.Rul.counts}
+%
+\begin{Description}
+check\_for\_zero\_counts 
+check which barcodes contain all 0 counts and filter
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+check_for_zero_counts(counts)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{counts}] count matrix
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+trimmed count matrix
+\end{Value}
+\HeaderA{check\_group\_value}{check if requested territory is in territory list}{check.Rul.group.Rul.value}
+%
+\begin{Description}
+check if requested territory is in territory list
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+check_group_value(territories, group)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{territories}] data frame containing territories
+
+\item[\code{group}] vector indicating which territories should be selected
+from territory data frame.
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+a vector of territories that are present in territory data frame
+\end{Value}
+\HeaderA{check\_image}{check if image is present}{check.Rul.image}
+%
+\begin{Description}
+check if image is present
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+check_image(vesalius_assay, image_name = NULL, as_is = FALSE)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{vesalius\_assay}] vesalius assay object
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+microscopy image
+\end{Value}
+\HeaderA{check\_image\_input}{check image input  check if input image is in correct format}{check.Rul.image.Rul.input}
+%
+\begin{Description}
+check image input 
+check if input image is in correct format
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+check_image_input(image)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{image}] input
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+list of images
+\end{Value}
+\HeaderA{check\_inputs}{check input checks the validity of input data to build\_vesalius\_assay}{check.Rul.inputs}
+%
+\begin{Description}
+check input checks the validity of input data to build\_vesalius\_assay
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+check_inputs(counts, coordinates, image, assay, verbose)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{counts}] count matrix
+
+\item[\code{coordinates}] coordinate file
+
+\item[\code{image}] connection to image or image array
+
+\item[\code{assay}] string with assay name
+
+\item[\code{verbose}] logical if progress message should be outputed.
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+list containing checked counts, coordinates and assay
+\end{Value}
+\HeaderA{check\_isolation\_method}{check territory isolation method is available}{check.Rul.isolation.Rul.method}
+%
+\begin{Description}
+check territory isolation method is available
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+check_isolation_method(method)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{method}] string - territory isolation method
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+territory isolation method
+\end{Value}
+\HeaderA{check\_min\_spatial\_index}{check number of spatial indices present}{check.Rul.min.Rul.spatial.Rul.index}
+%
+\begin{Description}
+check number of spatial indices present
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+check_min_spatial_index(group, min_spatial_index, id)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{group}] count matrix
+
+\item[\code{min\_spatial\_index}] numeric - min number of spatial indices 
+that need to be present in group
+
+\item[\code{id}] string - id of group
+\end{ldescription}
+\end{Arguments}
+\HeaderA{check\_norm}{check if select norm method is an available option}{check.Rul.norm}
+%
+\begin{Description}
+check if select norm method is an available option
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+check_norm(vesalius_assay, norm_method, method = NULL, verbose = TRUE)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{vesalius\_assay}] a vesalius\_assay
+
+\item[\code{norm\_method}] string - selected normalisation parsed by user
+
+\item[\code{method}] DEG method
+
+\item[\code{verbose}] logical if progress message should be ouputed
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+Here we check if the normalisation method has been computed in
+the count slot. We also check if this is used in the context of
+differential gene expression analysis. DESeq and edgeR require raw counts
+so if the user parses a valid norm method but is running DEG with one
+those methods, we ignore request and parse raw count instead.
+\end{Details}
+%
+\begin{Value}
+count matrix
+\end{Value}
+\HeaderA{check\_norm\_methods}{check if norm method is present in availble options}{check.Rul.norm.Rul.methods}
+%
+\begin{Description}
+check if norm method is present in availble options
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+check_norm_methods(norm, use_counts = NULL)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{norm}] string - norm method parsed to function
+
+\item[\code{use\_counts}] string - which count matrix to use
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+norm method string or error
+\end{Value}
+\HeaderA{check\_segmentation\_method}{check if segmentation options are valid for segmentation}{check.Rul.segmentation.Rul.method}
+%
+\begin{Description}
+check if segmentation options are valid for segmentation
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+check_segmentation_method(method)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{method}] string - segmentation method
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+segmentation method
+\end{Value}
+\HeaderA{check\_segment\_trial}{check if segment selection is a valid option}{check.Rul.segment.Rul.trial}
+%
+\begin{Description}
+check if segment selection is a valid option
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+check_segment_trial(vesalius_assay, trial = "last")
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{vesalius\_assay}] a vesalius\_assay object
+
+\item[\code{trial}] string - trial selection parse by user
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+check if the trial selection exists in territory slot
+Default is last that will take the last entry. This function
+will also reformat to only include the necessay information.
+\end{Details}
+%
+\begin{Value}
+data frame contain selected trial
+\end{Value}
+\HeaderA{check\_smoothing\_kernel}{check if smoothing method is present in availble options}{check.Rul.smoothing.Rul.kernel}
+%
+\begin{Description}
+check if smoothing method is present in availble options
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+check_smoothing_kernel(method)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{method}] smoothing method selected by user
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+smoothing method string or error
+\end{Value}
+\HeaderA{check\_smoothing\_level}{check if across level options are valid for smoothing}{check.Rul.smoothing.Rul.level}
+%
+\begin{Description}
+check if across level options are valid for smoothing
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+check_smoothing_level(method)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{method}] string - across level option
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+acroos level option or error
+\end{Value}
+\HeaderA{check\_tensor\_compression}{check tensor compression}{check.Rul.tensor.Rul.compression}
+%
+\begin{Description}
+check tensor compression
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+check_tensor_compression(locs)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{locs}] rle output of coordinate compression
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+Here we just want to check if the output is reasonable or not
+Essentially if you end up with very little barcodes, this could mean
+that the user compressed to much.
+Set warning if compression is set to less 10
+\end{Details}
+%
+\begin{Value}
+rle out of coordinate compression
+\end{Value}
+\HeaderA{check\_territory\_trial}{check if territory selection is a valid option}{check.Rul.territory.Rul.trial}
+%
+\begin{Description}
+check if territory selection is a valid option
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+check_territory_trial(vesalius_assay, trial, return_label = FALSE)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{vesalius\_assay}] a vesalius\_assay object
+
+\item[\code{trial}] string - trial selection parse by user
+
+\item[\code{return\_label}] string - only return the colmun name
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+check if the trial selection exists in territory slot
+Default is last that will take the last entry. This function
+will also reformat to only include the necessay information.
+\end{Details}
+%
+\begin{Value}
+data frame contain selected trial
+\end{Value}
+\HeaderA{check\_tiles}{check tile integretiy}{check.Rul.tiles}
+%
+\begin{Description}
+check tile integretiy
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+check_tiles(vesalius_assay)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{vesalius\_assay}] a vesalius\_assay
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+place holder for in depth checks at the moment only return tiles
+\end{Details}
+%
+\begin{Value}
+tile data frame
+\end{Value}
+\HeaderA{clean\_trial}{clean trial annotation}{clean.Rul.trial}
+%
+\begin{Description}
+clean trial annotation
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+clean_trial(trial)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{trial}] vector of strings with trial tag
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+vector of strings with sanitize numeric value
+\end{Value}
+\HeaderA{commit\_log}{commits function call to log slot}{commit.Rul.log}
+%
+\begin{Description}
+commits function call to log slot
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+commit_log(vesalius_assay, commit, assay)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{vesalius\_assay}] a vesalius\_assay object
+
+\item[\code{commit}] list containing arguments used in latest function call
+
+\item[\code{assay}] assay name used in latest function call
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+vesalius\_assay with updated log slot
+\end{Value}
+\HeaderA{compute\_effect\_size}{compute\_effect\_size}{compute.Rul.effect.Rul.size}
+%
+\begin{Description}
+compute\_effect\_size
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+compute_effect_size(pval, seed, query)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{pval}] pvalue for a given gene
+
+\item[\code{seed}] number of cells in seed
+
+\item[\code{query}] number of cells in query
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+If pval is 0 we convert that to a very small number
+pwr does not take 0 as input values.
+DESeq might return NA pvals - just skip the effect size and 
+return NA
+\end{Details}
+%
+\begin{Value}
+efect size estimate for an unbalenced 
+power analysis.
+importFrom pwr pwr.2p2n.test
+\end{Value}
+\HeaderA{compute\_nearest\_neighbor\_graph}{compute and greate nearest neighbor graph}{compute.Rul.nearest.Rul.neighbor.Rul.graph}
+%
+\begin{Description}
+compute and greate nearest neighbor graph
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+compute_nearest_neighbor_graph(embeddings, k = 20)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{embeddings}] embedding matrix
+
+\item[\code{k}] numeric describing number of nearest neighbors
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+igraph object
+\end{Value}
+\HeaderA{concat\_cost}{concat cost - pairwise sum of score complement}{concat.Rul.cost}
+%
+\begin{Description}
+concat cost - pairwise sum of score complement
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+concat_cost(cost, use_cost, complement = TRUE)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{cost}] list - named list contained score matrices
+
+\item[\code{use\_cost}] character - which cost matrices to use
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+list with cost matrix
+\end{Value}
+\HeaderA{concat\_embed}{create new embedding from jointly measure spatial omics}{concat.Rul.embed}
+%
+\begin{Description}
+create new embedding from jointly measure spatial omics
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+concat_embed(seed, query, dimensions, norm_method, dim_reduction, signal)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{seed}] vesalius\_assay object of the first modality
+
+\item[\code{query}] vesalius\_assay object of the second modality
+
+\item[\code{dimensions}] int - number of gray scale images to create
+
+\item[\code{norm\_method}] string describing which normalisation 
+method to use. One of the following "log\_norm", "SCT", "TFIDF", "raw"
+
+\item[\code{dim\_reduction}] string describing which dimensionality
+reduction method should be used. One of the following:
+"PCA", "PCA\_L", "UMAP", "LSI", "LSI\_UMAP"
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+Create new latent space using feature from both modalities
+Creates a new feature matrix than in nromalized and converted to latent
+space image stack.
+\end{Details}
+%
+\begin{Value}
+embedding matrix used as grey scale image stack
+\end{Value}
+\HeaderA{concat\_matches}{merging batch matches together}{concat.Rul.matches}
+%
+\begin{Description}
+merging batch matches together
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+concat_matches(matched_indices, coms)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{matched\_indices}] list containing matched points in each batch
+
+\item[\code{coms}] character - potential changes to be applied to data
+Attached to list as comment attribute
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+data.frame with matched points
+\end{Value}
+\HeaderA{convexify}{convexify}{convexify}
+%
+\begin{Description}
+order coordinates based on their angle around a central point
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+convexify(xside, yside, indx, indy, order = FALSE)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{xside}] vector of x coordinates
+
+\item[\code{yside}] vector of y coordinates
+
+\item[\code{indx}] central point x coordinate
+
+\item[\code{indy}] central point y coordinate
+
+\item[\code{order}] logical - if TRUE return order only and not the
+coordinates
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+For rasterisation, the shape of the polygon must be as
+convex as possible. To ensure that all points are in some sense 
+in a convex form we order them based on their polar coordinate 
+angle.
+\end{Details}
+%
+\begin{Value}
+a data frame of ordered x and y coordinates.
+\end{Value}
+\HeaderA{coordinates}{Spatial coordinates}{coordinates}
+\keyword{datasets}{coordinates}
+%
+\begin{Description}
+Spatial coordinates
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+data(vesalius)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Format}
+coordinate data frame
+\begin{description}
+
+\item[coordinates] spatial coodinates of Puck\_200815 taken from slide-seV2
+
+\end{description}
+
+\end{Format}
+%
+\begin{Source}
+\url{https://singlecell.broadinstitute.org/single_cell/study/SCP948/robust-decomposition-of-cell-type-mixtures-in-spatial-transcriptomics\#study-download}
+\end{Source}
+\HeaderA{counts}{Count matrix for vesalius}{counts}
+\keyword{datasets}{counts}
+%
+\begin{Description}
+Count matrix for vesalius
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+data(vesalius)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Format}
+sparse count matrix
+\begin{description}
+
+\item[counts] gene counts of Puck\_200815 taken from slide-seV2
+
+\end{description}
+
+\end{Format}
+%
+\begin{Source}
+\url{https://singlecell.broadinstitute.org/single_cell/study/SCP948/robust-decomposition-of-cell-type-mixtures-in-spatial-transcriptomics\#study-download}
+\end{Source}
+\HeaderA{create\_alpha}{create alpha value if territories need to be highlighted}{create.Rul.alpha}
+%
+\begin{Description}
+create alpha value if territories need to be highlighted
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+create_alpha(territories, highlight, alpha)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{territories}] vesalius territories taken from a vesalius\_assay
+
+\item[\code{highlight}] numeric vector describing which territories should 
+be highlighted
+
+\item[\code{alpha}] tranaparent factor
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+If highlight is null, will return the same alpha values 
+for all territories
+\end{Details}
+%
+\begin{Value}
+vector of alpha values
+\end{Value}
+\HeaderA{create\_commit\_log}{create function log to be commit to the log slot}{create.Rul.commit.Rul.log}
+%
+\begin{Description}
+create function log to be commit to the log slot
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+create_commit_log(arg_match, default)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{arg\_match}] function argument call
+
+\item[\code{default}] default argument values of function
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+list with all arguments used in latest function call
+\end{Value}
+\HeaderA{create\_palette}{create color palette from predefine scheme}{create.Rul.palette}
+%
+\begin{Description}
+create color palette from predefine scheme
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+create_palette(territories, randomise)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{territories}] vesalius territories taken from a vesalius\_assay
+
+\item[\code{randomise}] logical describing if colour palette should be 
+randomised.
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+We use a predefined palette that use colour blind friendly
+base colours. We generate a color palette based on the number of 
+territories present. If required the colours will be randomly assinged
+to each territory. Note that as the territory plot 
+return a ggplot object, you can easily override the color scheme.
+\end{Details}
+%
+\begin{Value}
+color vector
+\end{Value}
+\HeaderA{create\_pseudo\_centroids}{create centroid vlues for louvain and leiden}{create.Rul.pseudo.Rul.centroids}
+%
+\begin{Description}
+create centroid vlues for louvain and leiden
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+create_pseudo_centroids(vesalius_assay, clusters, dimensions)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{vesalius\_assay}] vesalius assay object
+
+\item[\code{clusters}] data frame containing clusters/segments
+
+\item[\code{dimensions}] vector (nummeric / int) describin which latent space
+dimensiuons shouls be used.
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+matrix for the active embedding usiong color segementation
+\end{Value}
+\HeaderA{create\_trial\_tag}{create a trail tag name}{create.Rul.trial.Rul.tag}
+%
+\begin{Description}
+create a trail tag name
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+create_trial_tag(trials, tag)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{trials}] character vector containing names of trials 
+that have already been computed
+
+\item[\code{tag}] character string describing which trial tag to add
+\end{ldescription}
+\end{Arguments}
+\HeaderA{detect\_edges}{detect\_edges detect territory edges in black and white images with sobel filter}{detect.Rul.edges}
+%
+\begin{Description}
+detect\_edges
+detect territory edges in black and white images with sobel filter
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+detect_edges(img)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{img}] a cimg image
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+a pix set containing deteced edges
+\end{Value}
+\HeaderA{dispatch\_batch}{Dispatch cells into batches}{dispatch.Rul.batch}
+%
+\begin{Description}
+Dispatch cells into batches
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+dispatch_batch(cost_matrix, batch_size = 5000)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{cost\_matrix}] matrix containing cost for each cell pair
+
+\item[\code{batch\_size}] int size of batch
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+Create cell batches that will dynamically adapt to the size of
+the data set with respect to batch size. Smalled data sets, cells
+will be sampled to match the size of the larger data set. This
+allows for multiple to multiple matching. All cells will be selected
+at least once.
+\end{Details}
+%
+\begin{Value}
+Nested list. Each element of the list will contain 
+a batched cost matrix and the mapping pairs
+\end{Value}
+\HeaderA{dispatch\_cost\_groups}{dispatch barcodes to subset cost for match clustering}{dispatch.Rul.cost.Rul.groups}
+%
+\begin{Description}
+dispatch barcodes to subset cost for match clustering
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+dispatch_cost_groups(
+  vesalius_assay,
+  cost,
+  trial = NULL,
+  group_identity = NULL,
+  ref_cells = NULL,
+  query_cells = NULL
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{vesalius\_assay}] vesalius\_assay object post cell mapping
+
+\item[\code{group\_identity}] character - name of column containing group
+to be used for cluster (i.e. territories, segments, layers etc)
+
+\item[\code{cell\_label}] character - name of column containing cell names
+if the clustering is to be done by cell types only
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+character string of barcodes
+\end{Value}
+\HeaderA{dispatch\_deg\_group}{dispatch barcodes to seed and query groups}{dispatch.Rul.deg.Rul.group}
+%
+\begin{Description}
+dispatch barcodes to seed and query groups
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+dispatch_deg_group(ter, seed, query, cells, sample, verbose)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{ter}] territories data frame from territoires slot in
+vesalius\_assay object
+
+\item[\code{seed}] interger vector indicating which territories should be included
+in seed group
+
+\item[\code{query}] interger vector indicating which territories should be included
+in query group
+
+\item[\code{cells}] cell barcodes
+
+\item[\code{sample}] barcodes for each sample type
+
+\item[\code{verbose}] logical if progress messages should be outputed
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+This function generates groups for DEG analysis. It creates 
+different groups depending on what is being parse to both seed and query. 
+This could probably be cleaned up and simplified. Always need to return 
+a list though.
+\end{Details}
+%
+\begin{Value}
+list with seed group and seed id as well as query group and query id
+\end{Value}
+\HeaderA{dispatch\_sample}{dispatch barcodes associted with a specific territory in a specific samples}{dispatch.Rul.sample}
+%
+\begin{Description}
+dispatch barcodes associted with a specific territory in a specific samples
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+dispatch_sample(territory_barcodes, ter, sample)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{territory\_barcodes}] character vector barcodes associated with territory
+
+\item[\code{ter}] chracter territory id
+
+\item[\code{sample}] character vector associeted with sample
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+character vector of barcodes at the intersection of territory and sample
+\end{Value}
+\HeaderA{dispatch\_territory}{dispatch territories labels territories according to which group they belong to.}{dispatch.Rul.territory}
+%
+\begin{Description}
+dispatch territories labels territories according to which
+group they belong to.
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+dispatch_territory(territories, ter_1, ter_2, cells)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{territories}] territories data frame from territoires slot in 
+vesalius\_assay object
+
+\item[\code{ter\_1}] integer vector containing territories in group 1
+
+\item[\code{ter\_2}] integer vector containing territories in group 2
+
+\item[\code{cells}] cell barcodes
+\end{ldescription}
+\end{Arguments}
+\HeaderA{distance\_pooling}{distance pooling beads of colour segment into seperate territories}{distance.Rul.pooling}
+%
+\begin{Description}
+distance pooling beads of colour segment into seperate territories
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+distance_pooling(img, capture_radius, min_spatial_index)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{img}] data frame contain all barcodes of a single sgement
+
+\item[\code{capture\_radius}] numeric proportion of max distance between beads
+to use as distance threshold between beads
+
+\item[\code{min\_spatial\_index}] numeric minimum number of beads that should
+be contained in a territory.
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+Beads that are too far away or bead cluster that are below
+the minimum number of spatial indices will all be pooled under the
+isolated label. Note that this label is used across color segments.
+\end{Details}
+\HeaderA{ecdf\_eq}{internal ecdf eq  used for formatting}{ecdf.Rul.eq}
+%
+\begin{Description}
+internal ecdf eq 
+used for formatting
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+ecdf_eq(im)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{im}] image matrix
+\end{ldescription}
+\end{Arguments}
+\HeaderA{embed\_latent\_space}{embed latent space}{embed.Rul.latent.Rul.space}
+%
+\begin{Description}
+Embed latent space into grey color scale.
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+embed_latent_space(
+  counts,
+  assay,
+  dim_reduction,
+  dimensions,
+  features = NULL,
+  remove_lsi_1,
+  verbose
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{counts}] Seurat object containing counts (generally normalised)
+
+\item[\code{assay}] charcter string of the assay being used
+
+\item[\code{dim\_reduction}] dimensionality reduction method that will be used
+Select from PCA, PCA\_L, UMAP, LSI, LSI\_UMAP
+
+\item[\code{dimensions}] numeric for number of dimeniosn top retain after 
+dimensionality reduction
+
+\item[\code{features}] custom features used for dim reduction
+
+\item[\code{remove\_lsi\_1}] logical if first dimension of LSI embedding should be 
+removed (will soon be depreciated)
+
+\item[\code{verbose}] logical if progress messages should be outputed or not
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+General method dispatch function for dim reduction methods
+\end{Details}
+%
+\begin{Value}
+data frame of normalised embedding values.
+\end{Value}
+\HeaderA{embed\_lsi}{embed lsi}{embed.Rul.lsi}
+%
+\begin{Description}
+embed in grey scale using latent semantic indexing
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+embed_lsi(counts, dimensions, features = NULL, remove_lsi_1, verbose = TRUE)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{counts}] Seurat object containing normalised counts
+
+\item[\code{dimensions}] numeric for number of latent space dimensions to use
+
+\item[\code{features}] custom vector of features
+
+\item[\code{remove\_lsi\_1}] logical if first LSI dimenions should be removed
+
+\item[\code{verbose}] logical if progress messages should be outputed
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+normalised LSI embedding matrix
+\end{Value}
+\HeaderA{embed\_lsi\_umap}{embed lsi}{embed.Rul.lsi.Rul.umap}
+%
+\begin{Description}
+embed in grey scale using latent semantic indexing 
+followed by UMAP
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+embed_lsi_umap(
+  counts,
+  dimensions,
+  features = NULL,
+  remove_lsi_1,
+  verbose = TRUE
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{counts}] Seurat object containing normalised counts
+
+\item[\code{dimensions}] numeric for number of latent space dimensions to use
+
+\item[\code{features}] custom vector of features
+
+\item[\code{remove\_lsi\_1}] logical if first LSI dimenions should be removed
+
+\item[\code{verbose}] logical if progress messages should be outputed
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+normalised LSI embedding matrix
+\end{Value}
+\HeaderA{embed\_nmf}{embed nmf}{embed.Rul.nmf}
+%
+\begin{Description}
+embed in grey scale using NMF embeddings
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+embed_nmf(counts, dimensions, verbose = TRUE)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{counts}] Seurat object containing normalised counts
+
+\item[\code{dimensions}] number dimension to retain from NMF
+
+\item[\code{verbose}] logical if progress messages should be outputed
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+normalised NMF embedding matrix
+\end{Value}
+\HeaderA{embed\_pca}{embed PCA}{embed.Rul.pca}
+%
+\begin{Description}
+embed in grey scale using PCA embeddings
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+embed_pca(counts, dimensions, features = NULL, verbose = TRUE)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{counts}] Seurat object containing normalised counts
+
+\item[\code{dimensions}] number dimension to retain from PCA
+
+\item[\code{features}] custom vector of features
+
+\item[\code{verbose}] logical if progress messages should be outputed
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+normalised PCA embedding matrix
+\end{Value}
+\HeaderA{embed\_pcal}{embed PCA loading values}{embed.Rul.pcal}
+%
+\begin{Description}
+embed in grey scale using PCA Loading value
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+embed_pcal(counts, dimensions, features = NULL, verbose = TRUE)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{counts}] Seurat object containing normalised counts
+
+\item[\code{dimensions}] number dimension to retain from PCA
+
+\item[\code{features}] custom vector of features
+
+\item[\code{verbose}] logical if progress messages should be outputed
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+This approach is a slightly different as it takes 
+the loading value associted to each gene in a barcode and sums
+the absolute value of each of those values. 
+Once all genes in all barcodes have been summed,
+we normalise the latent space and return the matrix.
+\end{Details}
+%
+\begin{Value}
+normalised PCA loading matrix
+\end{Value}
+\HeaderA{embed\_umap}{embed umap}{embed.Rul.umap}
+%
+\begin{Description}
+embed in gray scale using UMAP projections
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+embed_umap(counts, dimensions, features = NULL, verbose)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{counts}] Seurat object containing normalised counts
+
+\item[\code{dimensions}] number of PCs to use for the UMAP projections
+
+\item[\code{features}] custom vector of features
+
+\item[\code{verbose}] logical if progress messages should be outputed
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+Note that while you can select any number of dimensions
+the number of UMAP dimensions will always be 3.
+\end{Details}
+%
+\begin{Value}
+normalised UMAP projection matrix
+\end{Value}
+\HeaderA{equalize\_image}{equalise image histogram}{equalize.Rul.image}
+%
+\begin{Description}
+equalizeHistogram image enhancement via colour histogram equalization.
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+equalize_image(
+  vesalius_assay,
+  dimensions = seq(1, 3),
+  embedding = "last",
+  method = "BalanceSimplest",
+  N = 1,
+  smax = 1,
+  sleft = 1,
+  sright = 1,
+  lambda = 0.1,
+  up = 100,
+  down = 10,
+  verbose = TRUE
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{vesalius\_assay}] a vesalius\_assay object
+
+\item[\code{dimensions}] numeric vector of latent space dimensions to use.
+
+\item[\code{embedding}] character string describing which embedding should
+be used.
+
+\item[\code{N}] numeric describing how each colour channel will be mapped back to
+the image (Higher N = Higher greyscale contrast).
+Used with EqualizePiecewise
+
+\item[\code{smax}] numeric - upper limit if contrast stretching.
+Used with EqualizePiecewise
+
+\item[\code{sleft}] numeric - Range 0 - 100. Percentage of pixel to be saturated on
+the left side of the histogram. Used with BalanceSimplest
+
+\item[\code{sright}] numeric - Range 0 - 100. Percentage of pixel to be saturated on
+the right side of the histogram. Used with BalanceSimplest
+
+\item[\code{lambda}] numeric - strength of background correction.
+Used with SPE (Screened Poisson Equation).
+
+\item[\code{up}] numeric - color value threshold in the upper limit.
+Used with EqualizeDP.
+
+\item[\code{down}] numeric color value threshold in the lower limit.
+Used with EqualizeDP.
+
+\item[\code{verbose}] logical - progress message output.
+
+\item[\code{type}] character - histogram EQ type. Select from: BalanceSimplest,
+EqualizePiecewise, SPE, EqualizeDP, EqualizeADP, ECDF (see details)
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+Histogram equalization ensures that image details are amplified.
+In turn, territories may be extract with greater precision. We recommend
+balancing the histogram prior to smoothing.
+
+For further details on each method described here, please refer to
+\Rhref{imagerExtra Vignette}{https://cran.r-project.org/web/packages/imagerExtra/vignettes/gettingstarted.html}
+\end{Details}
+%
+\begin{Value}
+a vesalius\_assay object
+\end{Value}
+%
+\begin{Examples}
+\begin{ExampleCode}
+## Not run: 
+data(vesalius)
+# First we build a simple object
+ves <- build_vesalius_object(coordinates, counts)
+# We can do a simple run
+ves <- build_vesalius_embeddings(ves)
+
+# simple EQ
+ves <- equalisz_image(ves, embedding = "PCA")
+
+## End(Not run)
+\end{ExampleCode}
+\end{Examples}
+\HeaderA{extend\_boundary}{extend image boundary around territory}{extend.Rul.boundary}
+%
+\begin{Description}
+extend image boundary around territory
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+extend_boundary(territories, morphology_factor)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{territories}] data frame containing x/y and color value of
+territories to extend
+
+\item[\code{morphology\_factor}] integer or vector of integers describing growth
+and/or shrink extent.
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+we want to avoid clipping territory if they sit at the edge of the
+image. To avoid this we simply extend the image boundary.
+\end{Details}
+\HeaderA{filter\_grid}{filter grid}{filter.Rul.grid}
+%
+\begin{Description}
+filtered stray barcodes/spatial indices.
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+filter_grid(coordinates, filter_grid)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{coordinates}] data frame containing barcodes, / y coordinates of 
+each barcode.
+
+\item[\code{filter\_grid}] numeric describing size of the grid to use as proporiton 
+of array size.
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+we create a grid over the data an check which grid section contain
+a number of barcodes lower than a quantile threshold. Those barcodes will 
+be removed. As it stands, I am not satisfied with this function. I think 
+it is too restrictive and will most likely not be applicable to highly 
+standardised assay.
+\end{Details}
+%
+\begin{Value}
+a data.frame containing barcodes, x and y coordinates.
+\end{Value}
+\HeaderA{filter\_maps}{filter mapped cells}{filter.Rul.maps}
+%
+\begin{Description}
+filter mapped cells
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+filter_maps(mapped, allow_duplicates, verbose)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{mapped}] data frame containing mapped cells
+
+\item[\code{allow\_duplicates}] logical - if duplicated matches are to be reatained
+
+\item[\code{verbose}] logical - output progress messages
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+filtered mappped data frame
+\end{Value}
+\HeaderA{filter\_tiles}{filter tiles}{filter.Rul.tiles}
+%
+\begin{Description}
+filter tiles based on tile area and if they share an edge with the 
+tesselation box
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+filter_tiles(tesselation, coordinates, filter_threshold)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{tesselation}] data.frame output from the deldir function
+
+\item[\code{coordinates}] data frame with original coordinates
+
+\item[\code{filter\_threshold}] numeric describing the quantile threshold value
+to use for area filtering
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+Here we want to filter based on the size of the tile
+under the assumption that very large tiles are probably due to 
+unpexted space. The issue is that if you don't apply this threshold,
+subtle pixel patterns are lost wuhtin the sea of pixels. 
+If the ueser really dont want to filter anything out then you don't
+We will set a filter threshold pretty high though to make sure 
+that it does get filter out as default.
+\end{Details}
+%
+\begin{Value}
+a list with 2 data frame. 1 with filtered tesselation results
+2 filtered coordinate file.
+\end{Value}
+\HeaderA{format\_call}{format function call to list for log update}{format.Rul.call}
+%
+\begin{Description}
+format function call to list for log update
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+format_call(call)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{call}] a function call argument list
+\end{ldescription}
+\end{Arguments}
+\HeaderA{format\_counts\_for\_deseq2}{format counts for DESeq}{format.Rul.counts.Rul.for.Rul.deseq2}
+%
+\begin{Description}
+format counts for DESeq
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+format_counts_for_deseq2(seed, query)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{seed}] seed count matrix
+
+\item[\code{query}] query count matrix
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+Always adding a pseudocount of 1 to avoid issues
+with 0 counts. We also force coercion to int since DESeq does
+not handle numerics nor does it do internal coersion.
+\end{Details}
+%
+\begin{Value}
+DESeq2 object
+\end{Value}
+\HeaderA{format\_counts\_for\_edger}{format counts for edgeR}{format.Rul.counts.Rul.for.Rul.edger}
+%
+\begin{Description}
+format counts for edgeR
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+format_counts_for_edger(seed, query)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{seed}] seed count matrix
+
+\item[\code{query}] query count matrix
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+DGEList object from edgeR
+\end{Value}
+\HeaderA{format\_counts\_for\_logit}{format counts for logistic regression}{format.Rul.counts.Rul.for.Rul.logit}
+%
+\begin{Description}
+format counts for logistic regression
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+format_counts_for_logit(seed, query)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{seed}] seed count matrix
+
+\item[\code{query}] query count matrix
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+list of merged counts and meta data formated for logit
+\end{Value}
+\HeaderA{format\_c\_to\_ves}{convert cimg list to vesalius object embedding}{format.Rul.c.Rul.to.Rul.ves}
+%
+\begin{Description}
+convert cimg list to vesalius object embedding
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+format_c_to_ves(cimg, vesalius_assay, dims, embed = "last", verbose = TRUE)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{cimg}] cimg image list
+
+\item[\code{vesalius\_assay}] a vesalius\_assay object
+
+\item[\code{dims}] integer vector of embedding that need to be updated
+
+\item[\code{embed}] character string which embedding should be updated
+
+\item[\code{verbose}] logical should progress message be outputed
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+a vesalius\_Assay obejct
+\end{Value}
+\HeaderA{format\_ves\_to\_c}{convert vesalius\_assay to cimg images}{format.Rul.ves.Rul.to.Rul.c}
+%
+\begin{Description}
+convert vesalius\_assay to cimg images
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+format_ves_to_c(vesalius_assay, dims, embed = "last", verbose = TRUE)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{vesalius\_assay}] a vesalius\_Assay object
+
+\item[\code{dims}] integer vector indicating the number of dimensions to select from
+embeddings.
+
+\item[\code{embed}] character indicating which embedding should be selected.
+Default uses last embedding produced
+
+\item[\code{verbose}] logical if progress message should be outputed
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+list of cimg images
+\end{Value}
+\HeaderA{future\_ves\_to\_cimg}{convert ves embedding to image}{future.Rul.ves.Rul.to.Rul.cimg}
+%
+\begin{Description}
+convert ves embedding to image
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+future_ves_to_cimg(i, embeddings, dims, tiles, full_image = TRUE)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{i}] index of embedding to use
+
+\item[\code{embeddings}] matrix - embedding matrix
+
+\item[\code{dims}] dimensions to use
+
+\item[\code{tiles}] tile data frame used to reconstruct images
+
+\item[\code{full\_image}] logical - should the background be returned as well
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+using this as a way to run this section in parallel
+way to slow otherwise. The back ground represents all pixels that are not 
+part of the Spatial data but constiture the "rest" of the pixels in the image.
+This tends to happen when you have a non rectangular assay that needs to be fitted
+into a n * p or n * p * d array.
+\end{Details}
+%
+\begin{Value}
+cimg object of embedding
+\end{Value}
+\HeaderA{generate\_embeddings}{Generate embeddings.}{generate.Rul.embeddings}
+%
+\begin{Description}
+Generate image embddings from spatial omics data.
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+generate_embeddings(
+  vesalius_assay,
+  dim_reduction = "PCA",
+  normalization = "log_norm",
+  use_counts = "raw",
+  dimensions = 30,
+  tensor_resolution = 1,
+  filter_grid = 1,
+  filter_threshold = 1,
+  nfeatures = 2000,
+  features = NULL,
+  min_cutoff = "q5",
+  remove_lsi_1 = TRUE,
+  verbose = TRUE
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{vesalius\_assay}] vesalius\_assay object.
+
+\item[\code{dim\_reduction}] string describing which dimensionality
+reduction method should be used. One of the following:
+"PCA", "PCA\_L", "UMAP", "LSI", "LSI\_UMAP".
+
+\item[\code{normalization}] string describing which normalisation 
+method to use. One of the following "log\_norm", "SCT", "TFIDF", "none".
+
+\item[\code{use\_counts}] string describing which counts should be used for the 
+generating emebddings. Default = "raw". See details.
+
+\item[\code{dimensions}] numeric describing the number of Principle Components or
+Latent space dimension to use. Default dimensions = 30
+
+\item[\code{tensor\_resolution}] numeric (range 0 - 1) describing the compression
+ratio to be applied to the final image. Default = 1
+
+\item[\code{filter\_grid}] numeric (range 0 - 1) size of the grid used when filtering
+outlier beads. Defined as a proportion of total image size. Default = 0.1
+
+\item[\code{filter\_threshold}] numeric (range 0 -1) describing the quantile
+threshold at which tiles should be retained (seed details)
+
+\item[\code{nfeatures}] numeric describing the number of variable features to use.
+
+\item[\code{features}] custom set of features to generate embeddings
+
+\item[\code{min\_cutoff}] only used when dimensionality reduction method is
+LSI or LSI\_UMAP
+cutoff for feature to be included in the VariableFeatures for the object.
+
+\item[\code{remove\_lsi\_1}] logical only used when dimensionality reduction
+method is LSI or LSI\_UMAP
+indicating if the first LSI component should be removed from further analysis
+as it usually captures sequencing depth (technical variation)
+
+\item[\code{verbose}] logical output progress message or not. Default = TRUE
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+The core principle behind vesalius is to convert spatial omics
+data into an image. \code{generate\_embeddings} allows you to convert
+your omics data into a stack of gray scale images.
+The stack hight will be equal to the number of dimenions you
+selected excluding UMAP embeddings as only 3 dimesnions are availbale.
+
+If tiles have not yet been generated (see \code{\LinkA{generate\_tiles}{generate.Rul.tiles}}),
+pixel will be generated from the spatial coordinates provided. 
+If tiles are already present, `generate\_embeddings` will skip the
+tile creation step. 
+
+The algorithm is broadly applicable to many spatial omics assays.
+Vesalius provides a 3 nornalization methods log\_norm, SCTransform,
+and TF-IDF.
+
+The `use\_counts` argument specifies which count matrix should be used
+for normalization. This argument is only necessary if you use a custom
+normalised count matrix. In this case, set this argument to the name
+you gave your count matrix (see \code{\LinkA{add\_counts}{add.Rul.counts}}) and
+`generate\_embeddings` will skip the normalization and use your custom
+count matrix to generate image embeddings. 
+
+Note that it is also possible to add custom embeddings by using the 
+\code{\LinkA{add\_embeddings}{add.Rul.embeddings}} function. 
+
+Embeddings can be created using a custom set of genes. These genes 
+can be provided to the `features` argument in the form of a character
+vector. Note that this will not filter the count matrix hence you 
+will still have access to the whole matrix for downsteam analysis.
+\end{Details}
+%
+\begin{Value}
+vesalius\_assay
+\end{Value}
+%
+\begin{Examples}
+\begin{ExampleCode}
+## Not run: 
+data(vesalius)
+# First we build a simple object
+ves <- build_vesalius_object(coordinates, counts)
+# We can do a simple run 
+ves <- generate_embeddings(ves)
+# maybe we want to try a different method
+# both will be stored in the object
+ves <- generate_embeddings(ves, dim_reduction = "UMAP")
+
+
+## End(Not run)
+\end{ExampleCode}
+\end{Examples}
+\HeaderA{generate\_spix}{Generate super pixels from ST}{generate.Rul.spix}
+%
+\begin{Description}
+Generate super pixels from ST
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+generate_spix(
+  vesalius_assay,
+  dimensions = seq(1, 3),
+  embedding = "last",
+  method = "kmeans",
+  col_resolution = 10,
+  compactness = 1,
+  scaling = 0.5,
+  threshold = 0.9,
+  index_selection = "bubble",
+  verbose = TRUE
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{vesalius\_assay}] a vesalius\_assay object
+
+\item[\code{dimensions}] numeric vector of latent space dimensions to use.
+
+\item[\code{embedding}] character string describing which embedding should
+be used.
+
+\item[\code{method}] character string for which method should be used for
+segmentation. Select from "slic", 
+"leiden\_slic","louvain\_slic"
+
+\item[\code{col\_resolution}] numeric colour resolution used for segmentation. 
+(see details)
+
+\item[\code{compactness}] numeric - factor defining super pixel compaction.
+
+\item[\code{scaling}] numeric - scaling image ration during super pixel 
+segmentation.
+
+\item[\code{threshold}] numeric [0,1] - correlation threshold between 
+nearest neighbors when generating segments from super pixels.
+
+\item[\code{verbose}] logical - progress message output.
+
+\item[\code{k}] numeric - number of closest super pixel neighbors to consider
+when generating segments from super pixels
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+a vesalius\_assay object
+\end{Value}
+\HeaderA{generate\_tiles}{generate tiles}{generate.Rul.tiles}
+%
+\begin{Description}
+generate pixel tiles from punctual spatial assay coordinates
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+generate_tiles(
+  vesalius_assay,
+  tensor_resolution = 1,
+  filter_grid = 0.01,
+  filter_threshold = 0.995,
+  verbose = TRUE
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{vesalius\_assay}] a vesalius\_assay object
+
+\item[\code{tensor\_resolution}] numeric (range 0 - 1) describing the compression
+ratio to be applied to the final image. Default = 1
+
+\item[\code{filter\_grid}] numeric (range 0 - 1) size of the grid used when filtering
+outlier beads. Defined as a proportion of total image size. Default = 0.1
+
+\item[\code{filter\_threshold}] numeric (range 0 -1) describing the quantile
+
+\item[\code{verbose}] logical describing if progress message should be outputed
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+This function converts punctual coordinates into pixel tiles.
+The first step is to filter outlier beads. Essentially removing any bead 
+that lies outside of the main assay (seed \code{\LinkA{filter\_grid}{filter.Rul.grid}}). If 
+reqested the resolution of the image can be reduced by redudcing the 
+relative distance between each coordinate pair 
+(see \code{\LinkA{reduce\_tensor\_resolution}{reduce.Rul.tensor.Rul.resolution}}). Note that if the 
+resolution is reduce all spatial indices are retained and counts
+will be merged together (see \code{\LinkA{adjust\_counts}{adjust.Rul.counts}}). 
+
+To create tiles, each coordinates is expanded by using Voronoi 
+tesselation and each tile is raterised i.e "filled with pixel" 
+(see \code{\LinkA{rasterise}{rasterise}}). Prior to rasterisation, we
+remove all tiles that are above an area threshold. These tiles
+are artefacts of the tesselation algortihm that creates a "box"
+around all points and uses this as a boudary to generate each tile.
+They can also be generate by stray beads or holes in the data.
+\end{Details}
+%
+\begin{Value}
+a data.frame containing barcodes, x and you coordinates
+of each pixel as well as the original x/y coordinates
+\end{Value}
+\HeaderA{get\_active\_count\_tag}{get last count matrix used}{get.Rul.active.Rul.count.Rul.tag}
+%
+\begin{Description}
+get last count matrix used
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+get_active_count_tag(vesalius_assay)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{vesalius\_assay}] a vesalius\_assay object
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+character string with name of last embedding used
+\end{Value}
+\HeaderA{get\_active\_embedding\_tag}{get active embedding}{get.Rul.active.Rul.embedding.Rul.tag}
+%
+\begin{Description}
+get active embedding
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+get_active_embedding_tag(vesalius_assay)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{vesalius\_assay}] a vesalius\_assay object
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+character string with name of last embedding used
+\end{Value}
+\HeaderA{get\_assay\_names}{get assay names from vesalius\_assay}{get.Rul.assay.Rul.names}
+%
+\begin{Description}
+get assay names from vesalius\_assay
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+get_assay_names(vesalius_assay)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{vesalius\_assay}] a vesalius\_assay
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+assay names
+\end{Value}
+\HeaderA{get\_coordinates}{get coordinates from vesalius\_assay}{get.Rul.coordinates}
+%
+\begin{Description}
+get coordinates from vesalius\_assay
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+get_coordinates(vesalius_assay, original = FALSE)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{vesalius\_assay}] a vesalius\_assay
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+coordinate data frame
+\end{Value}
+\HeaderA{get\_cost\_contribution}{Compute mapping score contribution to mapping}{get.Rul.cost.Rul.contribution}
+%
+\begin{Description}
+Compute mapping score contribution to mapping
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+get_cost_contribution(vesalius_assay, method = "dispersion", verbose = TRUE)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{vesalius\_assay}] vesalius\_assay object after mapping a query 
+onto a reference assay.
+
+\item[\code{method}] character - which method to use to compute contribution
+currently only dispersion availble
+
+\item[\code{verbose}] logical - print progress messages
+\end{ldescription}
+\end{Arguments}
+\HeaderA{get\_counts}{get counts from vesalius\_assay}{get.Rul.counts}
+%
+\begin{Description}
+get counts from vesalius\_assay
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+get_counts(vesalius_assay, type = "raw")
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{vesalius\_assay}] a vesalius\_assay
+
+\item[\code{type}] character string for which count matrix to
+retrieve.
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+count matrix
+\end{Value}
+\HeaderA{get\_deg\_metrics}{get DEG metrics from groups}{get.Rul.deg.Rul.metrics}
+%
+\begin{Description}
+get DEG metrics from groups
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+get_deg_metrics(seed, query, params)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{seed}] count matrix for group 1
+
+\item[\code{query}] count matrix for group 2
+
+\item[\code{params}] parameter list (pval,log\_fc, min\_pct)
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+Computes basic metrics such as fold change 
+and percent of cells containing each gene. This functions 
+is used to filter out genes so we don't run differential 
+expression on all genes. We also compute an effct size estimate 
+by running a power analysis with 2 uneven groups 
+importFrom pwr pwr.2p2n.test
+\end{Details}
+\HeaderA{get\_embeddings}{get embeddings from vesalius\_assay}{get.Rul.embeddings}
+%
+\begin{Description}
+get embeddings from vesalius\_assay
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+get_embeddings(vesalius_assay, active = TRUE)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{vesalius\_assay}] a vesalius\_assay
+
+\item[\code{active}] logical if active embedding should be return 
+or full embedding list.
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+embedding matrix
+\end{Value}
+\HeaderA{get\_func\_from\_commit}{get function name from commit list}{get.Rul.func.Rul.from.Rul.commit}
+%
+\begin{Description}
+get function name from commit list
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+get_func_from_commit(commit)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{commit}] commit list
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+Using tail since if you make an explicit function call
+using pkg::func you get pkg as well. Neat. We only want the function
+\end{Details}
+%
+\begin{Value}
+function name
+\end{Value}
+\HeaderA{get\_markers}{get markers from vesalius\_assay}{get.Rul.markers}
+%
+\begin{Description}
+get markers from vesalius\_assay
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+get_markers(vesalius_assay, trial = "last")
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{vesalius\_assay}] a vesalius\_assay
+
+\item[\code{trial}] character string describing name of DEG trial 
+to retrieve.
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+marker data frame
+\end{Value}
+\HeaderA{get\_metric\_clusters}{Cluster query cells based on which reference cells they tend to mapped to}{get.Rul.metric.Rul.clusters}
+%
+\begin{Description}
+Cluster query cells based on which reference cells they tend to mapped to
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+get_metric_clusters(
+  vesalius_assay,
+  use_cost = "feature",
+  cluster_method = "hclust",
+  trial = NULL,
+  group_identity = NULL,
+  ref_cells = NULL,
+  query_cells = NULL,
+  top_nn = 30,
+  h = 0.75,
+  k = NULL,
+  nn = 30,
+  resolution = 1,
+  verbose = TRUE,
+  ...
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{vesalius\_assay}] vesalius\_assay object after mapping a query onto a 
+reference.
+
+\item[\code{use\_cost}] character vector describing which cost matrices should be
+used to compare cells
+
+\item[\code{cluster\_method}] character string - which method should be used for
+clustering (hclust, louvain, leiden)
+
+\item[\code{trial}] character string defining which trial should be used for
+clustering if any. If NULL, will search for "Cells".
+
+\item[\code{ref\_cells}] character vector with reference cell barcodes
+(by default will use all barcodes)
+
+\item[\code{query\_cells}] character with query cell barcodes
+(by default will use all barcodes)
+
+\item[\code{top\_nn}] int - how many cells should be used to define clustering
+similarity (see details)
+
+\item[\code{h}] numeric - normalized height to use as hclust cutoff [0,1]
+
+\item[\code{k}] int - number of cluster to obtain from hclust
+
+\item[\code{nn}] int - number of nearest neighbors to use when creating graph
+for community clustering algorithms
+
+\item[\code{resolution}] numeric - clustering resolution to be parsed to 
+community clustering algorithms
+
+\item[\code{verbose}] logical - print output message
+
+\item[\code{group\_identitiy}] character vector - which specific substes of trial 
+should be used for clustering By default will use all labels present.
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+Once we have mapped cells between sample, we can identify which cells
+tend to map to the same group of cells. To achieve this, we first create a 
+cost matrix that will serve as a basis to find similar-mapping instances.
+The cost matrix can be constructed from any cost matrix that was used during the 
+mapping phase. 
+Next, for each query cell we extract the top\_nn cells in the reference with lowest
+cost. Using the ordered index as a character label, we compute a jaccard index 
+between overlapping labels. Query cells with a high jaccard index tend to map 
+to the same reference cells. We then use the reciprocal to define a distance between
+cells and cluster cells based on this distance.
+The same approach is used for every clustering method provided. 
+This function will add a new column with the metric clustering results.
+\end{Details}
+%
+\begin{Value}
+vesalius\_assay with clustering results
+\end{Value}
+\HeaderA{get\_neighborhood\_signal}{Method dispatch function for neighborhood selection}{get.Rul.neighborhood.Rul.signal}
+%
+\begin{Description}
+Method dispatch function for neighborhood selection
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+get_neighborhood_signal(coord, signal, method, k = 20, depth = 3, radius = 20)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{coord}] data.frame - coordinates of assay (barcodes, x, y)
+
+\item[\code{signal}] matrix - matrix or sparse matrix containing assay 
+signal for all spatial indices contained in coord
+
+\item[\code{method}] character - which method should be use to collect 
+neighborhood - switch matches
+
+\item[\code{k}] int - how many nearest neighbors from KNN algorithm
+
+\item[\code{depth}] int - graph path depth to define neighborhood 
+0 = self, 1 = direct neigbors, 2 = neighbors of neighbors, etc
+
+\item[\code{radius}] - numeric - radius around center cell
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+matrix of average signals for each spatial index and its 
+neighborhood.
+\end{Value}
+\HeaderA{get\_signal}{get cell signal from vesalius assays}{get.Rul.signal}
+%
+\begin{Description}
+get cell signal from vesalius assays
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+get_signal(
+  seed_assay,
+  query_assay,
+  signal,
+  dimensions = seq(1:30),
+  use_norm = "raw",
+  scale = FALSE,
+  verbose = TRUE
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{seed\_assay}] vesalius\_assay object
+
+\item[\code{query\_assay}] vesalius\_assay object
+
+\item[\code{signal}] character string where the signal should be taken from
+
+\item[\code{dimensions}] int vector - if signal is embeddings which 
+embeddings should be selected
+
+\item[\code{use\_norm}] charcater string which counts should be use when
+extracting signal
+
+\item[\code{scale}] logical - should signal be scaled
+
+\item[\code{verbose}] logical - should progress messages be outputed.
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+list contain seed signal, query signal and features used
+\end{Value}
+\HeaderA{get\_territories}{get territories from vesalius\_assay}{get.Rul.territories}
+%
+\begin{Description}
+get territories from vesalius\_assay
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+get_territories(vesalius_assay)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{vesalius\_assay}] a vesalius\_assay
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+territories data frame
+\end{Value}
+\HeaderA{get\_tiles}{get tiles from vesalius\_assay}{get.Rul.tiles}
+%
+\begin{Description}
+get tiles from vesalius\_assay
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+get_tiles(vesalius_assay)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{vesalius\_assay}] a vesalius\_assay
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+tiles data frame
+\end{Value}
+\HeaderA{globalise\_territories}{globalise territories converts territories number from territory values per segment to territory values overall the entire spatial omics assay.}{globalise.Rul.territories}
+%
+\begin{Description}
+globalise territories
+converts territories number from territory values per segment
+to territory values overall the entire spatial omics assay.
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+globalise_territories(img)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{img}] a vesalius territory data frame containing segments
+and new territory trial
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+the same data frame but with adjusted terriroty values
+\end{Value}
+\HeaderA{graph\_neighborhood}{Graph depth method based method to select niche}{graph.Rul.neighborhood}
+%
+\begin{Description}
+Graph depth method based method to select niche
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+graph_neighborhood(coord, depth)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{coord}] data.frame - coordinates of spatial indices in assay
+
+\item[\code{depth}] int - graph path depth to define neighborhood 
+0 = self, 1 = direct neigbors, 2 = neighbors of neighbors, etc
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+list containing barcodes of  neighbors for each 
+spatial index.
+\end{Value}
+\HeaderA{graph\_path\_length}{get path length in a graph}{graph.Rul.path.Rul.length}
+%
+\begin{Description}
+get path length in a graph
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+graph_path_length(graph)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{graph}] graph data.frame
+\end{ldescription}
+\end{Arguments}
+\HeaderA{hclust\_scores}{Hiearchal clustering of mapping scores for co mapping events}{hclust.Rul.scores}
+%
+\begin{Description}
+Hiearchal clustering of mapping scores for co mapping events
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+hclust_scores(score, h, k, verbose)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{score}] matrix containing mapping scores
+
+\item[\code{h}] numeric representing the normalized height that will be 
+used for clustering (normalized to ensure that it will be between 0 and 1)
+
+\item[\code{k}] int - number of clusters
+
+\item[\code{verbose}] logical - print progress messages
+\end{ldescription}
+\end{Arguments}
+\HeaderA{identify\_markers}{identify\_markers computes differential observation expression  between selected territories.}{identify.Rul.markers}
+%
+\begin{Description}
+identify\_markers computes differential observation expression 
+between selected territories.
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+identify_markers(
+  vesalius_assay,
+  trial = "last",
+  norm_method = "last",
+  seed = NULL,
+  query = NULL,
+  cells = NULL,
+  sample = FALSE,
+  method = "wilcox",
+  log_fc = 0.25,
+  pval = 0.05,
+  min_pct = 0.05,
+  min_spatial_index = 10,
+  genes = NULL,
+  verbose = TRUE,
+  ...
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{vesalius\_assay}] a vesalius\_assay
+
+\item[\code{trial}] character string - which territory trial that 
+should be used to select
+territorires. Default is last one computed
+
+\item[\code{norm\_method}] charcater string - which normalisation method should 
+be used.
+
+\item[\code{seed}] Integer or vector of integers describing territories to be
+included in group 1 for differential gene expression analysis.
+
+\item[\code{query}] Integer or vector of integers describing territories to be
+included in group 2 for differential gene expression analysis. Default = NULL
+
+\item[\code{cells}] character vector containing barcodes of cells of interest.
+
+\item[\code{sample}] logical
+
+\item[\code{method}] character describing the statistical test to use in order to
+extract differantial gene expression.
+Select from:
+"wilcox", "t.test", "chisq", "fisher.exact", "DEseq2", "QLF", "LRT","logit"
+
+\item[\code{log\_fc}] numeric describing minimum log fold change value for
+differential gene expression. Default set at 0.25.
+
+\item[\code{pval}] numeric for pval threshold. Default set at 0.05
+
+\item[\code{min\_pct}] numeric defining the minimum percentage of cells that should
+contain any given gene. Deault set at 0.05
+
+\item[\code{min\_spatial\_index}] integer defining minimum number of 
+barcodes in a territory.
+
+\item[\code{genes}] character vector - vector of gene names to use directly for
+DEG analysis.
+
+\item[\code{verbose}] logical - progress message output
+
+\item[\code{...}] other parameters parsed to DESeq2 or edgeR (not functional)
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+Identifying markers is a key aspect of spatial data analysis. 
+This functions let's you select which territory trial you which to use.
+Note that this can be any territory trial that you have run, including 
+color segments, isolated territories, dilated or eroded territories and
+layered territories. By default, \code{identify\_markers} takes the last 
+one that has been computed.
+
+The normalisation method refers to the normalisation method applied to
+the count matrices. If you use, DESeq2, QLF (edgeR) or LRT (edgeR), 
+raw counts will be selected and will ignore any cother command. 
+This is a requirement for both of these packages.
+
+If you have some cells you are interested in comparing between territories,
+you can simply parse a character vector containing the barcodes of your 
+cells of interest. \code{identify\_markers} will automatically retrieve cells
+in each territory and only use these cell for comparison.
+
+Once the Differentially expressed genes/oberservations have been computed 
+they are stored in the vesalius\_assay object. This allows you to run multiple
+trial and have all these trials sorted within your object.
+
+To retrieve them from the object, you can use \code{\LinkA{get\_markers}{get.Rul.markers}}
+\end{Details}
+%
+\begin{Value}
+a vesalius\_assay object
+\end{Value}
+%
+\begin{Examples}
+\begin{ExampleCode}
+## Not run: 
+data(vesalius)
+# First we build a simple object
+ves <- build_vesalius_object(coordinates, counts)
+# We can do a simple run
+ves <- build_vesalius_embeddings(ves)
+
+# simple smoothing
+ves <- smooth_image(ves, dimensions = seq(1, 30))
+
+# quick segmentation
+ves <- segment_image(ves, dimensions = seq(1, 30))
+
+# isolate territories
+ves <- isolate_territories(ves)
+
+# identify markers
+ves <- identify_markers(ves, seed = c(3,5), query = 8)
+deg <- get_markers(ves)
+
+## End(Not run)
+\end{ExampleCode}
+\end{Examples}
+\HeaderA{image\_plot}{image\_plot - plotting vesalius embeddings}{image.Rul.plot}
+%
+\begin{Description}
+image\_plot - plotting vesalius embeddings
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+image_plot(
+  vesalius_assay,
+  dimensions = seq(1, 3),
+  embedding = "last",
+  cex = 10
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{vesalius\_assay}] a vesalius\_assay object
+
+\item[\code{dimensions}] which dimensions to use to generate image (see details)
+
+\item[\code{embedding}] character string descrining which embedding should be 
+used for image generation.
+
+\item[\code{cex}] numeric - font and point size resizing factor.
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+Once you have generated your embeddings, 
+you can visualise these embeddings using the \code{image\_plot} function.
+This function will generate a ggplot object representing the embedding 
+image containing all pixels. You can select any dimension and in any 
+combination you desire, however you can only select 1 or 3 dimensions 
+to visualise at a time. This will either generate grey scale image 
+or RGB images. 
+
+This function is always applied to the active embedding. By default,
+this is the last you generated. This means that you can also use
+this function to visualise the effect if smoothing, equalization,
+regularisation or segmentation. 
+
+Please note that if you are using "louvain" or "leiden" for 
+image segmentation, this will always generate grey scale images
+even if you select multiple dimensions. "Kmeans" on the other hand 
+will still produce RGB color segments.
+
+The usage of this function remains the same in after any processing steps.
+\end{Details}
+%
+\begin{Value}
+ggplot object
+\end{Value}
+%
+\begin{Examples}
+\begin{ExampleCode}
+## Not run: 
+data(vesalius)
+# First we build a simple object
+ves <- build_vesalius_object(coordinates, counts)
+# We can do a simple run 
+ves <- build_vesalius_embeddings(ves)
+# Plot 1st 3 PCs
+p <- image_plot(ves)
+
+
+## End(Not run)
+\end{ExampleCode}
+\end{Examples}
+\HeaderA{initialize\_matches}{initialize matched data frame}{initialize.Rul.matches}
+%
+\begin{Description}
+initialize matched data frame
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+initialize_matches(cost_matrix)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{cost\_matrix}] matrix containing cost of each cell pair
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+data.frame templated which will contain the best matching pairs
+\end{Value}
+\HeaderA{integrate\_assays}{integrate 2 vesalius assays}{integrate.Rul.assays}
+%
+\begin{Description}
+integrate 2 vesalius assays
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+integrate_assays(
+  mapped,
+  reference,
+  method = "CCAIntegration",
+  nfeatures = 2000,
+  signal = "variable_features",
+  dimensions = 30,
+  infer = TRUE,
+  use_counts = "raw",
+  labels_mapped = NULL,
+  labels_reference = NULL,
+  regenerate_tiles = TRUE,
+  tensor_resolution = 1,
+  filter_grid = 1,
+  filter_threshold = 1,
+  verbose = TRUE
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{mapped}] vesalius\_assay object - mapped veslius assay (map\_assays)
+
+\item[\code{reference}] vesalius\_assay object - reference vesalius\_assay (seed)
+
+\item[\code{method}] character - count integration method (methods provided by 
+Seurat v5)
+
+\item[\code{nfeatures}] integer - number of variable features to sue during 
+integration.
+
+\item[\code{signal}] character - defining which signal should be returned:
+variable\_features, all\_features or custom gene list.
+
+\item[\code{dimensions}] interger - number of dimensions integrated latent space
+dimensions.
+
+\item[\code{infer}] logical - back infer original counts by reversing reduced 
+dimensional space roations.
+
+\item[\code{use\_counts}] character - which count matrix to use during integration
+
+\item[\code{labels\_mapped}] character - which columns in the mapped data assay
+should be merged with the reference data (see details)
+
+\item[\code{labels\_reference}] character - which columns in the reference data assay
+should be merged with the mapped data (see details)
+
+\item[\code{regenerate\_tiles}] logical - should tiles be regenrated from integrated 
+coordinates
+
+\item[\code{verbose}] logical - should progressed message be printed
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+After mapping coordinates from a query onto a reference, vesalius
+provides a way to then integrate the assays together. This function will:
+
+* Integrate Counts using Seurat 
+* Merge coordinates (adding a jitter to avoid overlapping coordinayes)
+* Merge territories (pair-wise merging using labels\_mapped and labels\_reference 
+- everything else will have a separate column).
+
+We also infer log nomalized counts from CCA latent space. 
+
+The final output of this function is a vesalius\_assay object containing 
+coordinates from the mapped and reference, integrated latent space (e.g.CCA)
+integrated counts, merged territories, an additional meta data.
+
+It should be noted that this object does not contain tiles. To use this 
+vesalius\_assay as any other, add tiles by using \code{\LinkA{generate\_tiles}{generate.Rul.tiles}}
+\end{Details}
+%
+\begin{Value}
+a vesalius\_assay object
+\end{Value}
+\HeaderA{integrate\_counts}{Integrate counts using Seurat}{integrate.Rul.counts}
+%
+\begin{Description}
+Integrate counts using Seurat
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+integrate_counts(
+  matched,
+  reference,
+  method = "HarmonyIntegration",
+  nfeatures = 2000,
+  dimensions = 30,
+  infer = FALSE,
+  signal = "variable_features",
+  verbose
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{matched}] matrix - matrix containing counts from matched/mapped assay
+
+\item[\code{reference}] matrix - matrix containing counts from reference assay
+
+\item[\code{method}] character - Seurat integration method to use
+
+\item[\code{nfeatures}] integer - number of features to use during integration
+
+\item[\code{dimensions}] interger - number of dimensions integrated latent space
+dimensions.
+
+\item[\code{infer}] logical - back infer original counts by reversing reduced 
+dimensional space roations.
+
+\item[\code{signal}] character - defining which signal should be returned:
+variable\_features, all\_features or custom gene list.
+
+\item[\code{verbose}] logical - print output messages
+\end{ldescription}
+\end{Arguments}
+\HeaderA{interlace\_embeds}{interlace image stack between seed and query}{interlace.Rul.embeds}
+%
+\begin{Description}
+interlace image stack between seed and query
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+interlace_embeds(seed, query, dimensions)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{seed}] matrix - seed embedding image stack
+
+\item[\code{query}] matrix - query embedding image stack
+
+\item[\code{dimensions}] int vector describing which embeddings
+should be selected
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+Takes selected embedding from seed and query and 
+creates and interlaced embedding matrix starting with the 
+first seed embedding
+\end{Details}
+%
+\begin{Value}
+embedding matrix containing seed embeddings + query 
+embeddings.
+\end{Value}
+\HeaderA{internal\_smooth}{internal smoothing function Function that does the smoothing on individual image array}{internal.Rul.smooth}
+%
+\begin{Description}
+internal smoothing function
+Function that does the smoothing on individual image array
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+internal_smooth(
+  image,
+  method = c("median", "iso", "box"),
+  iter = 1,
+  sigma = 1,
+  box = 20,
+  threshold = 0,
+  neuman = TRUE,
+  gaussian = TRUE,
+  na.rm = FALSE,
+  across_levels = "min"
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{image}] cimg array
+
+\item[\code{method}] character describing smoothing method to use "median" ,
+"iso"  or "box" or a combination of them.
+
+\item[\code{iter}] numeric - number of smoothing iteration
+
+\item[\code{sigma}] numeric - standard deviation associated with isoblur (Gaussian)
+
+\item[\code{box}] numeric describing box size (centered around center pixel)
+for smoothing
+
+\item[\code{threshold}] numeric - discard pixels that are too low in value (cutoff
+threshold only applied in box/median blurs).
+
+\item[\code{neuman}] logical describing If Neumann boundary conditions should be
+used, Dirichlet otherwise (default true, Neumann)
+
+\item[\code{gaussian}] logical - use gaussian filter
+
+\item[\code{na.rm}] logical describing if NA values should be removed
+
+\item[\code{across\_levels}] character - method used to account for multiple
+smoothing levels (see details). Select from: "min","mean", "max"
+\end{ldescription}
+\end{Arguments}
+\HeaderA{int\_sctransform}{SCTransform}{int.Rul.sctransform}
+%
+\begin{Description}
+SCTransform pre-processing from Seurat
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+int_sctransform(counts, nfeatures)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{counts}] seurat object containing counts
+
+\item[\code{nfeatures}] number of top variable features to select
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+list with seurat object used later and normalised counts to be stored
+in a vesalius object
+\end{Value}
+\HeaderA{isolate\_territories}{isolating territories from vesalius image segments}{isolate.Rul.territories}
+%
+\begin{Description}
+isolating territories from vesalius image segments
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+isolate_territories(
+  vesalius_assay,
+  method = "distance",
+  trial = "last",
+  capture_radius = 0.05,
+  global = TRUE,
+  min_spatial_index = 10,
+  verbose = TRUE
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{vesalius\_assay}] vesalius\_Assay object
+
+\item[\code{method}] character describing barcode pooling method.
+Currently, only "distance" availble
+
+\item[\code{trial}] character string describing which segmentation trial
+to use. Default is "last" which is the last segmentation trial used.
+
+\item[\code{capture\_radius}] numeric - proportion of maximum distance between
+barcodes that will be used to pool barcodes together (range 0 - 1).
+
+\item[\code{global}] logical - If TRUE, territories will be numbered across all
+colour segments. If FALSE, territories will be numbered within each colour
+segment.
+
+\item[\code{min\_spatial\_index}] integer - minimum number of barcodes/spots/beads
+required in each territory
+
+\item[\code{verbose}] logical - progress message output.
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+Image segments can be further subdivided into 2D
+seperated territorires. This is accomplished by pooling barcodes
+that are associated with a colour cluster into territories based on the
+distance between each barcode.
+
+First, \code{isolate\_territories} considers the maximum distance
+between all beads. The \code{capture\_radius} will define which 
+proportion of this distance should be considered.
+
+Second, a seed barcode will be selected and all barcodes that are within the
+capture distance of the seed barcode with be pooled together. This process
+is then applied on barcodes that have been selected in this manner. The
+process is repeated until all barcodes have been pooled into a territory.
+If there are still barcodes remaining, a new seed barcode is selected and the
+whole process is repeated. NOTE : Territory isolation is applied to each
+colour segment independently.
+
+If a territory does not contain enough barcodes, it will be pooled into the
+isolated territory. This territory contains all isolated territories
+regardless of colour cluster of origin.
+\end{Details}
+%
+\begin{Value}
+a vesalius\_assay object
+\end{Value}
+%
+\begin{Examples}
+\begin{ExampleCode}
+## Not run: 
+data(vesalius)
+# First we build a simple object
+ves <- build_vesalius_object(coordinates, counts)
+# We can do a simple run
+ves <- build_vesalius_embeddings(ves)
+
+# simple smoothing
+ves <- smooth_image(ves, dimensions = seq(1, 30))
+
+# quick segmentation
+ves <- segment_image(ves, dimensions = seq(1, 30))
+
+# isolate territories
+ves <- isolate_territories(ves)
+
+## End(Not run)
+\end{ExampleCode}
+\end{Examples}
+\HeaderA{jitter\_coord}{Spatial coordinates - alt}{jitter.Rul.coord}
+\keyword{datasets}{jitter\_coord}
+%
+\begin{Description}
+Spatial coordinates - alt
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+data(vesalius)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Format}
+coordinate data frame 
+\begin{description}
+
+\item[jitter\_coord] Sampled, flipped, and jittered coordinates of Puck\_200815 taken from slide-seV2
+
+\end{description}
+
+\end{Format}
+%
+\begin{Source}
+\url{https://singlecell.broadinstitute.org/single_cell/study/SCP948/robust-decomposition-of-cell-type-mixtures-in-spatial-transcriptomics\#study-download}
+\end{Source}
+\HeaderA{jitter\_counts}{Count matrix for vesalius - alt}{jitter.Rul.counts}
+\keyword{datasets}{jitter\_counts}
+%
+\begin{Description}
+Count matrix for vesalius - alt
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+data(vesalius)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Format}
+sparse count matrix
+\begin{description}
+
+\item[counts] Sampled and jittered counts from Puck\_200815 taken from slide-seV2
+
+\end{description}
+
+\end{Format}
+%
+\begin{Source}
+\url{https://singlecell.broadinstitute.org/single_cell/study/SCP948/robust-decomposition-of-cell-type-mixtures-in-spatial-transcriptomics\#study-download}
+\end{Source}
+\HeaderA{joint\_territories}{Jointly measured spatial omic assays territories}{joint.Rul.territories}
+%
+\begin{Description}
+Jointly measured spatial omic assays territories
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+joint_territories(
+  mod1,
+  mod2,
+  dimensions = seq(1, 30),
+  embedding = "last",
+  method = "interlace",
+  norm_method = "log_norm",
+  dim_reduction = "PCA",
+  signal = "variable_features",
+  verbose = TRUE
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{mod1}] vesalius\_assay object containing first modality
+
+\item[\code{mod2}] vesalius\_assay objecty containing second modality
+
+\item[\code{dimensions}] numeric vector describing latent space dimensions 
+to use during intergration
+
+\item[\code{method}] character - integration method. interlace - mean - concat 
+are available options
+
+\item[\code{norm\_method}] character - which count values should be use 
+for integration when using concat method
+
+\item[\code{dim\_reduction}] characater - which dim reduction methods should be 
+used for concat integration (PCA,PCA\_L,UMAP,LSI,LSI\_UMAP,NMF)
+
+\item[\code{verbose}] logical - should progress message be outputed to the 
+console.
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+vesalius object containing new image embeddings
+\end{Value}
+\HeaderA{kmeans\_segmentation}{kmeans segmentation function}{kmeans.Rul.segmentation}
+%
+\begin{Description}
+kmeans segmentation function
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+kmeans_segmentation(
+  vesalius_assay,
+  dimensions = seq(1, 3),
+  col_resolution = 10,
+  embedding = "last",
+  verbose = TRUE
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{vesalius\_assay}] a vesalius\_assay
+
+\item[\code{dimensions}] numeric vector of latent space dimensions to use.
+
+\item[\code{col\_resolution}] integer or vector of positive integers.
+Colour depth used for segmentation.
+
+\item[\code{embedding}] character string describing which embedding should
+be used.
+
+\item[\code{verbose}] logical - progress message output.
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+Run an interaive kmeans segmentation with the possibility 
+to run multiple rounds of smoothing.
+\end{Details}
+%
+\begin{Value}
+list containing segmented image as an active embedding and
+territory cluster for all barcodes.
+\end{Value}
+\HeaderA{knn\_neighborhood}{k nearest neighbors - niche selection}{knn.Rul.neighborhood}
+%
+\begin{Description}
+k nearest neighbors - niche selection
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+knn_neighborhood(coord, k)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{coord}] data.frame - coordinates of spatial indices in assay
+
+\item[\code{k}] int - number of nearest neighbors to select
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+list containing barcodes of nearest neighbors for each 
+spatial index.
+\end{Value}
+\HeaderA{layer\_territory}{layer\_territory generates layer from the outside to the inside of  a territory}{layer.Rul.territory}
+%
+\begin{Description}
+layer\_territory generates layer from the outside to the inside of 
+a territory
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+layer_territory(
+  vesalius_assay,
+  territory = NULL,
+  trial = "last",
+  layer_depth = NULL,
+  morphology_factor = 0,
+  verbose = TRUE
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{vesalius\_assay}] vesalius\_assay object
+
+\item[\code{territory}] integer or vector of integers desrcining territories 
+to morph.
+
+\item[\code{trial}] character string - which territory trial that 
+should be used to select
+territorires. Default is last one computed
+
+\item[\code{layer\_depth}] integer describing the number of final layers.
+
+\item[\code{morphology\_factor}] integer or vector of integers describing growth
+and/or shrink extent.
+
+\item[\code{verbose}] logical - progress message output.
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+Each territory can be subdivided into a series of layers. 
+Each layer will be considered a seperate territory and can be treated as
+such for functions such as \code{\LinkA{identify\_markers}{identify.Rul.markers}} and 
+\code{\LinkA{territory\_plot}{territory.Rul.plot}}.
+
+However, all other territories present will be labled as "out". 
+This means that for the time being you can only work with a single
+territory at a time.
+\end{Details}
+%
+\begin{Value}
+a vesalius\_assay
+\end{Value}
+%
+\begin{Examples}
+\begin{ExampleCode}
+## Not run: 
+data(vesalius)
+# First we build a simple object
+ves <- build_vesalius_object(coordinates, counts)
+# We can do a simple run
+ves <- build_vesalius_embeddings(ves)
+
+# simple smoothing
+ves <- smooth_image(ves, dimensions = seq(1, 30))
+
+# quick segmentation
+ves <- segment_image(ves, dimensions = seq(1, 30))
+
+# isolate territories
+ves <- isolate_territories(ves)
+
+# morph territory
+
+ves <- layer_territory(ves)
+
+# view territory morphing
+territory_plot(ves)
+
+## End(Not run)
+\end{ExampleCode}
+\end{Examples}
+\HeaderA{leiden\_scores}{Using Leiden community clustering to for co-mapping events}{leiden.Rul.scores}
+%
+\begin{Description}
+Using Leiden community clustering to for co-mapping events
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+leiden_scores(score, resolution, nn, verbose)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{score}] matrix containing mapping scores
+
+\item[\code{nn}] int - number of nearest neighbors to use for graph construction
+
+\item[\code{verbose}] logical - print output messages
+
+\item[\code{resoltuion}] numeric - clustering resolution
+\end{ldescription}
+\end{Arguments}
+\HeaderA{leiden\_segmentation}{leiden segmentation}{leiden.Rul.segmentation}
+%
+\begin{Description}
+using leiden clustering to cluster colors
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+leiden_segmentation(
+  vesalius_assay,
+  dimensions = seq(1, 3),
+  col_resolution = 0.01,
+  embedding = "last",
+  verbose = TRUE
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{vesalius\_assay}] a vesalius\_assay object
+
+\item[\code{dimensions}] embedding dimensions used for clustering
+
+\item[\code{col\_resolution}] clustering resolution used for leiden
+
+\item[\code{embedding}] embedding type used for clustering
+
+\item[\code{verbose}] logical if progress message should outputed
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+list with updated segmented embedding values 
+and segment territories.
+\end{Value}
+\HeaderA{log\_norm}{log norm}{log.Rul.norm}
+%
+\begin{Description}
+log normalisation, scaling and top variable features
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+log_norm(counts, nfeatures)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{counts}] seurat object containing counts
+
+\item[\code{nfeatures}] number of top variable features to select
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+list with seurat object used later and normalised counts to be stored
+in a vesalius object
+\end{Value}
+\HeaderA{louvain\_scores}{Using Louvain community clustering to for co-mapping events}{louvain.Rul.scores}
+%
+\begin{Description}
+Using Louvain community clustering to for co-mapping events
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+louvain_scores(score, resolution, nn, verbose)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{score}] matrix containing mapping scores
+
+\item[\code{nn}] int - number of nearest neighbors to use for graph construction
+
+\item[\code{verbose}] logical - print output messages
+
+\item[\code{resoltuion}] numeric - clustering resolution
+\end{ldescription}
+\end{Arguments}
+\HeaderA{louvain\_segmentation}{louvain segmentation}{louvain.Rul.segmentation}
+%
+\begin{Description}
+using leiden clustering to cluster colors
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+louvain_segmentation(
+  vesalius_assay,
+  dimensions = seq(1, 3),
+  col_resolution = 0.01,
+  embedding = "last",
+  verbose = TRUE
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{vesalius\_assay}] a vesalius\_assay object
+
+\item[\code{dimensions}] embedding dimensions used for clustering
+
+\item[\code{col\_resolution}] clustering resolution used for leiden
+
+\item[\code{embedding}] embedding type used for clustering
+
+\item[\code{verbose}] logical if progress message should outputed
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+list with updated segmented embedding values 
+and segment territories.
+\end{Value}
+\HeaderA{make\_composition\_matrix}{convert niche composition into matrix format for jaccard compute}{make.Rul.composition.Rul.matrix}
+%
+\begin{Description}
+convert niche composition into matrix format for jaccard compute
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+make_composition_matrix(niches)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{niches}] list of niches with the cell composition of each niche
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+matrix with columns as cells and rows as cell types
+\end{Value}
+\HeaderA{map\_assays}{Aling and integrate spatial assay from the same modality using super pixels}{map.Rul.assays}
+%
+\begin{Description}
+Aling and integrate spatial assay from the same modality using super pixels
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+map_assays(
+  seed_assay,
+  query_assay,
+  signal = "variable_features",
+  use_cost = c("feature", "niche"),
+  method = "pearson",
+  neighborhood = "knn",
+  k = 20,
+  radius = 0.05,
+  depth = 1,
+  dimensions = seq(1, 30),
+  batch_size = 10000,
+  epochs = 1,
+  allow_duplicates = TRUE,
+  threshold = 0.3,
+  filter_cells = FALSE,
+  use_norm = "raw",
+  scale = FALSE,
+  custom_cost = NULL,
+  seed_territory_labels = "Territory",
+  query_territory_labels = "Territory",
+  seed_meta_labels = NULL,
+  query_meta_labels = NULL,
+  jitter = 0,
+  digits = 5,
+  verbose = TRUE
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{seed\_assay}] vesalius\_assay object - data to be mapped to
+
+\item[\code{query\_assay}] vesalius\_assay objecy - data to map
+
+\item[\code{signal}] character (variable\_features, all\_features, embeddings, custom)
+- What should  be used as cell signal to generate the cost matrix.
+Seed details
+
+\item[\code{use\_cost}] character string defining how should total cost be computer
+Available: feature, niche, territory, composition (See details for combinations
+and custom matrices)
+
+\item[\code{neighborhood}] character - how should the neighborhood be selected?
+"knn", "radius", "graph"(See details)
+
+\item[\code{k}] int ]2, n\_points] number of neareset neighbors to be considered for
+neighborhodd computation.
+
+\item[\code{radius}] numeric ]0,1[ proportion of max distance between points 
+to consider for the neighborhood
+
+\item[\code{depth}] int [1, NA] graph depth from cell to consider from neighborhood
+(See details)
+
+\item[\code{dimensions}] Int vector containing latent space dimensions to use
+
+\item[\code{batch\_size}] number of points per batch in query during assignment
+problem solving
+
+\item[\code{threshold}] score threshold below which indicices should be removed.
+Scores will always be between 0 and 1
+
+\item[\code{use\_norm}] character - which count data to use
+
+\item[\code{scale}] logical - should signal be scaled
+
+\item[\code{custom\_cost}] matrix - matrix of size n (query cells) by p (seed cells)
+containing custom cost matrix. Used instead of vesalius cost matrix
+
+\item[\code{verbose}] logical - should I be a noisy boy?
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+The goal is to assign the best matching point between a seed set and
+a query set.
+
+To do so, \code{map\_assays} will first extract a
+biological signal. This can be latent space embeddings per cell, or by using
+gene counts (or any other modality).
+
+If using gene counts, there are a few more options available to
+you. First, you can select "variable\_features" and vesalius will find the
+intersection between the variable features in your seed\_assay and your
+query\_assay. "all\_features" will find the intersection of all genes across
+assays (even if they are not highly variable). Finally, you can also select
+a custom gene vector, containing only the gene set you are interested in.
+
+The second step is to create a cost matrix. The creation of a cost matrix
+is achieved by pair-wise sum of various cost matrices. By default, 
+the map\_assays function will use "feature" and "niche" cost matrices. 
+The feature matrix computes the pearson correlation between the seed and query
+using which ever signal was defined by the signal argument (variable\_features)
+will compute the correlation between shared variable features in seed 
+and query).
+The niche matrix will be computed by using the pearson correlation between
+niche expression profiles (based on signal). Niche are defined using the
+neighborhood argument where knn represent the k nearest neighbors algorithm
+(with k defining the number of nearest neighbors), depth represents the 
+graph depth of a local neighborhood graph, and radius defining a spatial
+radius surrunding a center cell. The singal (expression or embedding) is
+average across all cells in the niche.
+The territory matrix will compare the average signal of vesalius 
+territories between seed and query. 
+The composition matrix will compute a frequency aware jaccard index
+between cell types present in a niche. Cell types must be assigned 
+to seed and query vesalius objects  (See add\_cells function)
+Total cost matrix will be computed by computing the pairwise sum 
+of the complement (1 - p ) of each cost matrix. 
+
+This cost matrix is then parsed to a
+Kuhn–Munkres algorithm that will generate point pairs that minimize
+the overall cost. 
+
+Since the algorithm complexity is O(n3), it can be time consuming to
+to run on larger data sets. As such, mapping will be approximated by
+dividing seed and query into batches defined by batch size. For an
+exact mapping ensure that batch\_size is larger than the number of cells
+in both query and seed.
+
+Finaly once the matches are found, the coordinates are mapped to its
+corresponding point and a new object is returned.
+\end{Details}
+%
+\begin{Value}
+vesalius\_assay
+\end{Value}
+%
+\begin{Examples}
+\begin{ExampleCode}
+## Not run: 
+data(vesalius)
+# Create Vesalius object for processing
+vesalius <- build_vesalius_assay(coordinates, counts)
+jitter_ves <- build_vesalius_assay(jitter_coord, jitter_counts)
+mapped <- map_assays(vesalius, jitter_ves)
+
+## End(Not run)
+\end{ExampleCode}
+\end{Examples}
+\HeaderA{map\_index}{LAPVJ solver}{map.Rul.index}
+%
+\begin{Description}
+LAPVJ solver
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+map_index(batch)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{batch}] cost matrix batch to be solved
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+data frame with best matches for this batch
+\end{Value}
+\HeaderA{match\_cells}{Internal function returning cell type label match as numiric}{match.Rul.cells}
+%
+\begin{Description}
+Internal function returning cell type label match as numiric
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+match_cells(idx, query_labels, seed_labels)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{idx}] numeric - used to iterate down the labels
+
+\item[\code{query\_labels}] cell type labels for query
+
+\item[\code{seed\_labels}] cell type labels for seed
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+binary numeric vector
+\end{Value}
+\HeaderA{merge\_coordinates}{Merge coordinates from 2 vesalius assays}{merge.Rul.coordinates}
+%
+\begin{Description}
+Merge coordinates from 2 vesalius assays
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+merge_coordinates(matched, reference, barcodes)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{matched}] matched vesalius\_assay object (query object)
+
+\item[\code{reference}] reference vesalius\_assay object
+
+\item[\code{barcodes}] barcodes to use for matching and merging
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+Simple merge followed a duplication check. Duplicated
+coordinates produce errors when running tesselation. Just
+adding some noise
+\end{Details}
+%
+\begin{Value}
+merged coordinate data frame (barcodes, x, y)
+\end{Value}
+\HeaderA{merge\_territories}{Merge territories using specified labels}{merge.Rul.territories}
+%
+\begin{Description}
+Merge territories using specified labels
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+merge_territories(
+  matched,
+  reference,
+  coordinates,
+  labels_mapped,
+  labels_reference
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{matched}] matched (query) vesalius\_assay object
+
+\item[\code{reference}] reference vesalius\_assay
+
+\item[\code{coordinates}] coord data frame after merging (see merge\_coordinates)
+
+\item[\code{labels\_mapped}] Territory columns to merge in mapped object
+
+\item[\code{labels\_reference}] Territory columns to merge in reference object
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+Territory data frame generally contain a lot of information 
+depending on how much analysis the user has run. 
+(Segments, Cells, territories, morphology). 
+Using pariwise matching of labels parse in labels\_mapped and labels\_reference
+the data will be merged into a single column. 
+A new column will be added to distinguish samples. All other columns that are not
+present in the labels argument will retain their name and NA will be added 
+to cell present in the other data set (similar to left and right joins).
+\end{Details}
+%
+\begin{Value}
+territory data frame with merged columns
+\end{Value}
+\HeaderA{message\_switch}{switch message output based in input}{message.Rul.switch}
+%
+\begin{Description}
+switch message output based in input
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+message_switch(type, verbose = TRUE, ...)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{type}] name of message output to produce
+
+\item[\code{verbose}] logical if message should be outputed
+
+\item[\code{...}] any other parameter
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+Essentially, all message types are listed in this giant switch.
+The type defines what message you want to output. We select named
+arguments from `...` and parse them when required.
+Adding message is straight forward by simply using the template in 
+other switch types. This also means that you can add and remove messages
+without causing errors. While this might lead to dead code, better dead
+code than buggy code with undefined functions...
+\end{Details}
+\HeaderA{min\_max}{min max normalisation}{min.Rul.max}
+%
+\begin{Description}
+min max normalisation
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+min_max(x)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{x}] numeric vector
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+min max nornalised vector
+\end{Value}
+\HeaderA{neighborhood\_signal}{compute average expression of local neighborhood}{neighborhood.Rul.signal}
+%
+\begin{Description}
+compute average expression of local neighborhood
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+neighborhood_signal(neighbors, signal)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{neighbors}] list of local neighbors
+
+\item[\code{signal}] count matrix or feature matrix to average
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+average feature matrix. The expression of each cell 
+is replace by the average expression of the k nearest neighbors
+\end{Value}
+\HeaderA{niche\_composition}{Method dispatch function for neighborhood selection - added flavor specific to composition}{niche.Rul.composition}
+%
+\begin{Description}
+Method dispatch function for neighborhood selection - added
+flavor specific to composition
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+niche_composition(
+  coord,
+  vesalius_assay,
+  method,
+  cell_label = NULL,
+  k = 20,
+  depth = 3,
+  radius = 20
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{coord}] data.frame - coordinates of assay (barcodes, x, y)
+
+\item[\code{method}] character - which method should be use to collect 
+neighborhood - switch matches
+
+\item[\code{k}] int - how many nearest neighbors from KNN algorithm
+
+\item[\code{depth}] int - graph path depth to define neighborhood 
+0 = self, 1 = direct neigbors, 2 = neighbors of neighbors, etc
+
+\item[\code{radius}] - numeric - radius around center cell
+
+\item[\code{signal}] matrix - matrix or sparse matrix containing assay 
+signal for all spatial indices contained in coord
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+list of all cells and cell types for each niche
+\end{Value}
+\HeaderA{norm\_pixel}{pixel normalisation dispatch function}{norm.Rul.pixel}
+%
+\begin{Description}
+pixel normalisation dispatch function
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+norm_pixel(embeds, type = c("minmax", "quantile_norm", "z_norm"))
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{embeds}] a embedding vector
+
+\item[\code{type}] string "minmax" or "quantileNorm"
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+how pixels should be normalised 
+At the moment only miman is used. Quantile needs to be tested.
+\end{Details}
+\HeaderA{no\_norm}{no norm}{no.Rul.norm}
+%
+\begin{Description}
+no normalisation applied simply return raw counts
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+no_norm(counts, use_count = "raw")
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{counts}] seurat object containing counts
+
+\item[\code{use\_count}] string describing name that needs to be added to
+list element. This list will be appended to the count slot in
+the vesalius\_assay.
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+Here, either the user doesn't want to normalise the data or
+they provide their custom count matrix. In this case, we parse it 
+as "none" to avoid writing another function and add the custom name.
+\end{Details}
+%
+\begin{Value}
+list with seurat object used later and raw counts to be stored in
+the vesalius objects
+\end{Value}
+\HeaderA{optimize\_matching}{optimize matching scores through batching}{optimize.Rul.matching}
+%
+\begin{Description}
+optimize matching scores through batching
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+optimize_matching(cost_matrix, batch_size = 10000, epochs = 1, verbose = TRUE)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{cost\_matrix}] matrix containing mapping cost for each cell
+
+\item[\code{batch\_size}] int - number of cells to be assigned to each batch
+
+\item[\code{verbose}] logical - output progress messages
+
+\item[\code{epoch}] number of epochs to run the optimization
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+list with best matching cell pairs (data.frame) and 
+total cost at each epoch
+\end{Value}
+\HeaderA{overlap\_distance\_matrix}{create a distance matrix based on mapping scores overlaps}{overlap.Rul.distance.Rul.matrix}
+%
+\begin{Description}
+create a distance matrix based on mapping scores overlaps
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+overlap_distance_matrix(score, top_nn = 10, verbose = TRUE)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{score}] matrix - cost matrix
+
+\item[\code{top\_nn}] integer nearest neighbors
+
+\item[\code{verbose}] logical - print progress messages
+\end{ldescription}
+\end{Arguments}
+\HeaderA{pearson\_approx}{compute fast pearson correlation between matrices}{pearson.Rul.approx}
+%
+\begin{Description}
+compute fast pearson correlation between matrices
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+pearson_approx(seed, query)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{seed}] matrix/sparse matrix of seed cells
+
+\item[\code{query}] matrix/sparse matrix of query cells
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+correlation matrix between all cells in seed and query
+\end{Value}
+\HeaderA{point\_mapping}{mapping points between data sets}{point.Rul.mapping}
+%
+\begin{Description}
+mapping points between data sets
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+point_mapping(
+  query_signal,
+  query_assay,
+  cost,
+  seed_signal,
+  seed_assay,
+  method = "pearson",
+  neighborhood = "knn",
+  k = 20,
+  radius = 0.05,
+  depth = 1,
+  batch_size = 10000,
+  epochs = 1,
+  use_cost = c("feature", "niche"),
+  threshold = 0.5,
+  filter_cells = FALSE,
+  seed_territory_labels = "Territory",
+  query_territory_labels = "Territory",
+  seed_meta_labels = NULL,
+  query_meta_labels = NULL,
+  digits = 4,
+  verbose = TRUE
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{query\_signal}] processed query signal from query assay
+
+\item[\code{cost}] matrix - matrix of size n (query cells) by p (seed cells)
+containing custom cost matrix.
+
+\item[\code{seed\_signal}] processed seed signal from seed assay
+
+\item[\code{k}] int size of niche (knn)
+
+\item[\code{radius}] 0.05 proportion of max distance to use as radius for 
+neighborhood
+
+\item[\code{depth}] graph path depth to condsider for neighborhood.
+
+\item[\code{batch\_size}] int number of points in each query batch
+
+\item[\code{use\_cost}] character string defining how should total cost be computer
+Available: feature, niche, territory, composition (See details for combinations
+
+\item[\code{threshold}] score threshold below which indicices should be removed.
+Scores will always be between 0 and 1
+
+\item[\code{verbose}] logical - out progress to console
+
+\item[\code{query}] vesalius\_assay object
+
+\item[\code{seed}] vesalius\_assay object
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+list of matched and aligned coordinates in query
+\end{Value}
+\HeaderA{populate\_graph}{populate graph with network connections}{populate.Rul.graph}
+%
+\begin{Description}
+populate graph with network connections
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+populate_graph(chunk)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{chunk}] data frame with nearest neighbors
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+data frame with network connections
+\end{Value}
+\HeaderA{process\_counts}{process counts}{process.Rul.counts}
+%
+\begin{Description}
+pre-process count matrices
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+process_counts(
+  counts,
+  assay,
+  method = "log_norm",
+  use_count = "raw",
+  nfeatures = 2000,
+  min_cutoff = "q5",
+  verbose = TRUE
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{counts}] count matrix in the form of a sparse matrix
+
+\item[\code{assay}] character string describing the assay that is being 
+pre-processed in the vesaliusObject or vesalius\_assay
+
+\item[\code{method}] character string describing which normalisation method to use.
+One of the following "log\_norm", "SCT", "TFIDF", "none".
+
+\item[\code{use\_count}] string describing which counts should be used for the 
+generating emebddings. Default = "raw".
+
+\item[\code{nfeatures}] numeric describing the number of variable features to use.
+
+\item[\code{min\_cutoff}] only used when dimensionality reduction method is
+LSI or LSI\_UMAP cutoff for feature to be included in the 
+VariableFeatures for the object.
+
+\item[\code{verbose}] logical - progress messages outputed or not
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+The `use\_count` argument specifies which count matrix should be used
+for normalization. This argument is only necessary if you use a custom
+normalised count matrix. In this case, set this argument to the name
+you gave your count matrix (see \code{\LinkA{add\_counts}{add.Rul.counts}}) and
+`generate\_embeddings` will skip the normalization and use your custom
+count matrix to generate image embeddings.
+\end{Details}
+\HeaderA{radius\_neighborhood}{Radius based method to select niche}{radius.Rul.neighborhood}
+%
+\begin{Description}
+Radius based method to select niche
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+radius_neighborhood(coord, radius)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{coord}] data.frame - coordinates of spatial indices in assay
+
+\item[\code{radius}] - numeric - radius around center cell
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+list containing barcodes of nearest neighbors for each 
+spatial index.
+\end{Value}
+\HeaderA{rasterise}{rasterise tiles}{rasterise}
+%
+\begin{Description}
+fill tiles with pixel - rasterisation
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+rasterise(filtered)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{filtered}] data.frame with voronoi tile coordinates
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+Here, we take our tile cooridnates and fill them 
+with pixels. Essentially, each voronoi tile can be discretised 
+into a series of pixels and we achieve this by reconstructing a 
+polygon from the tesselation coordinates and finding all discrete 
+value that fall within this polygon. 
+
+Note that the polygon coordinates need to be "convexified". 
+Essentially, the order of the coordinates maters here so we
+order the coordinates before recontructing the polygon (see
+\code{\LinkA{convexify}{convexify}})
+\end{Details}
+%
+\begin{Value}
+a data frame barcodes and their associated pixels.
+\end{Value}
+\HeaderA{rebalence\_colors}{rebalence colors}{rebalence.Rul.colors}
+%
+\begin{Description}
+rebalence colors
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+rebalence_colors(coordinates, dimensions, method = "minmax")
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{coordinates}] data frame containing barcodes, x/y coord, origin,
+and color value.
+
+\item[\code{dimensions}] number dimensions select for plotting
+
+\item[\code{method}] character string: min max or truncate
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+This function is use to re-bound values between 0 and 1. 
+Some image processing steps may lead to negative values being introduced.
+Imager handles this without an issue but for plotting we want to make sure 
+that all values are indeed bound between 0 and 1. We will try to different 
+methods either we truncate the value or we min max norm.
+\end{Details}
+%
+\begin{Value}
+data frame with [0,1] bound values
+\end{Value}
+\HeaderA{reduce\_tensor\_resolution}{reduce tensor resoltuon}{reduce.Rul.tensor.Rul.resolution}
+%
+\begin{Description}
+reduce the size of the image tensor by merging barcodes together after
+compressing coordinates values
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+reduce_tensor_resolution(coordinates, tensor_resolution = 1)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{coordinates}] data frame with barcode coordinates
+
+\item[\code{tensor\_resolution}] numeric (range 0 - 1) describing the compression
+ratio to be applied to the final image. Default = 1
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+While we compress the coordinates, we retain all barcodes. 
+Each barcode that overlap with each other are marged together. Their 
+respective counts will also be merged together. This allows us to 
+retain all barcodes for downstream analysis.
+\end{Details}
+%
+\begin{Value}
+a data frame with barcodes, x and coordinates
+\end{Value}
+\HeaderA{regularise}{Internal regularise function. performs total variance regularisation}{regularise}
+%
+\begin{Description}
+Internal regularise function.
+performs total variance regularisation
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+regularise(img, lambda = 1, niter = 100)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{img}] image array - generally a matrix
+
+\item[\code{lambda}] lambda value for regularisation
+
+\item[\code{niter}] numeric number of rounds of regularisation
+\end{ldescription}
+\end{Arguments}
+\HeaderA{regularise\_image}{regularise image}{regularise.Rul.image}
+%
+\begin{Description}
+regularise\_image denoise Vesalius images via variance regularization
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+regularise_image(
+  vesalius_assay,
+  dimensions = seq(1, 3),
+  embedding = "last",
+  lambda = 1,
+  niter = 100,
+  verbose = TRUE
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{vesalius\_assay}] a vesalius\_assay object
+
+\item[\code{dimensions}] numeric vector of latent space dimensions to use.
+
+\item[\code{embedding}] character string describing which embedding should
+be used.
+
+\item[\code{lambda}] numeric - positive real numbers describing regularization
+parameter (see details)
+
+\item[\code{niter}] numeric - number of variance regularization iterations
+(Default = 100)
+
+\item[\code{verbose}] logical - progress message output.
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+Image regularization can be seen as a form of image denoising.
+Details on each method can be found in the tvR package under the denoise2
+function \Rhref{tvR}{https://cran.r-project.org/web/packages/tvR/tvR.pdf}.
+
+A higher value for lambda will results in a smoother image. It should be noted
+that in the context of spatial omics the more sparse the points in the data
+(the more space between coordinates), the more you will need to increase
+the value of lambda to obtain better denoising.
+\end{Details}
+%
+\begin{Value}
+a vesalius\_assay
+\end{Value}
+%
+\begin{Examples}
+\begin{ExampleCode}
+## Not run: 
+data(vesalius)
+# First we build a simple object
+ves <- build_vesalius_object(coordinates, counts)
+# We can do a simple run
+ves <- build_vesalius_embeddings(ves)
+
+# simple regularisation
+ves <- regularise_image(ves, embedding = "PCA")
+
+## End(Not run)
+\end{ExampleCode}
+\end{Examples}
+\HeaderA{rename\_counts}{renaming counts to remain consistent with vesalius nomenclature}{rename.Rul.counts}
+%
+\begin{Description}
+renaming counts to remain consistent with vesalius nomenclature
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+rename_counts(integrated, seed_cells, seed_genes, query_cells, query_genes)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{integrated}] seurat object containing integrated count data
+
+\item[\code{seed\_cells}] character vector contain seed barcodes
+
+\item[\code{seed\_genes}] character vector contain seed genes
+
+\item[\code{query\_cells}] character vector contain query barcodes
+
+\item[\code{query\_genes}] character vector contain query genes
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+list of count matrices with cell and gene names added and 
+each matrix is renamed to follow the vesalius nomencalture
+\end{Value}
+\HeaderA{score\_matches}{Extract score from best matches}{score.Rul.matches}
+%
+\begin{Description}
+Extract score from best matches
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+score_matches(matched_indices, cost, use_cost)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{matched\_indices}] matrix - best matches between seed and query
+
+\item[\code{cost}] list - cost list essentially scores
+
+\item[\code{use\_cost}] character - which scores should be added to assay
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+data frame containing matched indices and associated cost and scores
+\end{Value}
+\HeaderA{search\_log}{search through log for parameter values or names}{search.Rul.log}
+%
+\begin{Description}
+search through log for parameter values or names
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+search_log(vesalius_assay, arg, return_assay = TRUE)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{vesalius\_assay}] a vesalius\_assay object
+
+\item[\code{arg}] string indicating which parameter value or argument name
+should be searched for
+
+\item[\code{return\_assay}] logical indicating if the log list
+should returned or only the value.
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+You may search through the log to see if you have used
+certain parameters and if so which values did you use when running a
+certain trial.
+If `return\_assay` is `TRUE` then the entire log call will be returned.
+This will include all parameter values including defaults parse to 
+function.
+\end{Details}
+%
+\begin{Value}
+either a list containing log calls or values found in call
+\end{Value}
+%
+\begin{Examples}
+\begin{ExampleCode}
+## Not run: 
+data(vesalius)
+# First we build a simple object
+ves <- build_vesalius_object(coordinates, counts)
+# We can do a simple run 
+ves <- build_vesalius_embeddings(ves)
+# maybe we want to try a different method 
+# both will be stored in the object
+ves <- build_vesalius_embeddings(ves, dim_reduction = "UMAP")
+
+# search log 
+search_log(ves, "tensor_resolution")
+
+## End(Not run)
+\end{ExampleCode}
+\end{Examples}
+\HeaderA{segment\_image}{segment image}{segment.Rul.image}
+%
+\begin{Description}
+segment vesalius images to find initial territories
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+segment_image(
+  vesalius_assay,
+  dimensions = seq(1, 3),
+  embedding = "last",
+  method = "kmeans",
+  col_resolution = 10,
+  compactness = 1,
+  scaling = 0.5,
+  threshold = 0.9,
+  index_selection = "bubble",
+  verbose = TRUE
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{vesalius\_assay}] a vesalius\_assay object
+
+\item[\code{dimensions}] numeric vector of latent space dimensions to use.
+
+\item[\code{embedding}] character string describing which embedding should
+be used.
+
+\item[\code{method}] character string for which method should be used for
+segmentation. Select from "kmeans", "louvain", "leiden", "slic", 
+"leiden\_slic","louvain\_slic","som"
+
+\item[\code{col\_resolution}] numeric colour resolution used for segmentation. 
+(see details)
+
+\item[\code{compactness}] numeric - factor defining super pixel compaction.
+
+\item[\code{scaling}] numeric - scaling image ration during super pixel 
+segmentation.
+
+\item[\code{threshold}] numeric [0,1] - correlation threshold between 
+nearest neighbors when generating segments from super pixels.
+
+\item[\code{verbose}] logical - progress message output.
+
+\item[\code{k}] numeric - number of closest super pixel neighbors to consider
+when generating segments from super pixels
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+Applying image segmentation ensures a reduction in colour
+complexity.
+
+Vesalius provides 7 different methods for clustering colours and
+reducing color complexity: **Kmeans**, **Louvain**, **Leiden**,
+**slic**, **leiden\_slic**, **louvain\_slic**, and **som**
+
+In the case of kmeans clustering the \code{col\_resolution} argument
+shows the number of colours that the images should be reduced to.
+In this case, \code{col\_resolution} should be an integer and
+we suggest first looking at values between 3 and 20.
+
+In the case of **leiden** and **louvain** clustering, the
+\code{col\_resolution} is the granularity of the clustering.
+In this case, we suggest using values between 0.01 and 1 to start with.
+We recommned uisng **louvain** clustering over **leiden** in
+this context.
+
+In the case of slic, the col\_resolution define the number of starting
+points used to generate super pixels. Depending on the number of
+points there are in the assay, we suggested using 10
+number of points as starting point. 
+For example, if you have  1000 spatial indices, you can set 
+col\_resolution to 100.
+
+The optimal \code{col\_resolution} will depend on your interest and 
+biological question at hand. You might be interested in more or less
+granular territories. Along with smoothing, the number of segments is
+one way to control this granularity.
+\end{Details}
+%
+\begin{Value}
+a vesalius\_assay object
+\end{Value}
+%
+\begin{Examples}
+\begin{ExampleCode}
+## Not run: 
+data(vesalius)
+# First we build a simple object
+ves <- build_vesalius_object(coordinates, counts)
+# We can do a simple run
+ves <- build_vesalius_embeddings(ves)
+
+# simple smoothing
+ves <- smooth_image(ves, dimensions = seq(1, 30))
+
+# quick segmentation
+ves <- segment_image(ves, dimensions = seq(1, 30))
+
+## End(Not run)
+\end{ExampleCode}
+\end{Examples}
+\HeaderA{select\_initial\_indices}{select inital indices}{select.Rul.initial.Rul.indices}
+%
+\begin{Description}
+select inital indices
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+select_initial_indices(
+  coordinates,
+  embeddings,
+  type = "bubble",
+  n_centers = 500,
+  max_iter = 500
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{coordinates}] data frame containing spatial coordinates of beads
+
+\item[\code{embeddings}] matrix containing embedding values - full pixel image
+
+\item[\code{n\_centers}] numeric number of beads to select as super pixel centers
+
+\item[\code{max\_iter}] numeric number of iteration before returning result if 
+no coveregnce.
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+barcodes of starting coordinates
+\end{Value}
+\HeaderA{signal\_similarity}{compute the similarity between seed and query signals}{signal.Rul.similarity}
+%
+\begin{Description}
+compute the similarity between seed and query signals
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+signal_similarity(seed, query, method = "pearson", digits = 4)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{seed}] seed signal
+
+\item[\code{query}] query signal
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+Chunking cost and signal into smaller chunks to run the 
+correlation score in paralell. There is room for improvement here.
+First we could dispatch the longer list to future\_lapply
+but cannot know which one it is and we need to know that so we can 
+subset the cost. 
+Also the functions calls feature\_cost which is a R wrapper for a 
+c++ function (cost.cpp).
+\end{Details}
+%
+\begin{Value}
+matrix with query as rows and seed as colmuns
+\end{Value}
+\HeaderA{smooth\_image}{Smooth Image}{smooth.Rul.image}
+%
+\begin{Description}
+Apply iterative smoothing to Vesalius images
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+smooth_image(
+  vesalius_assay,
+  dimensions = seq(1, 3),
+  embedding = "last",
+  method = "iso",
+  iter = 1,
+  sigma = 1,
+  box = 20,
+  threshold = 0,
+  neuman = TRUE,
+  gaussian = TRUE,
+  na.rm = FALSE,
+  across_levels = "min",
+  verbose = TRUE
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{vesalius\_assay}] a vesalius\_assay object
+
+\item[\code{dimensions}] numeric vector of latent space dimensions to use.
+
+\item[\code{embedding}] character string describing which embedding should
+be used.
+
+\item[\code{method}] character describing smoothing method to use "median" ,
+"iso"  or "box" or a combination of them.
+
+\item[\code{iter}] numeric - number of smoothing iteration
+
+\item[\code{sigma}] numeric - standard deviation associated with isoblur (Gaussian)
+
+\item[\code{box}] numeric describing box size (centered around center pixel)
+for smoothing
+
+\item[\code{threshold}] numeric - discard pixels that are too low in value (cutoff
+threshold only applied in box/median blurs).
+
+\item[\code{neuman}] logical describing If Neumann boundary conditions should be
+used, Dirichlet otherwise (default true, Neumann)
+
+\item[\code{gaussian}] logical - use gaussian filter
+
+\item[\code{na.rm}] logical describing if NA values should be removed
+
+\item[\code{across\_levels}] character - method used to account for multiple
+smoothing levels (see details). Select from: "min","mean", "max"
+
+\item[\code{verbose}] logical - progress message output.
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+The smooth\_image function provides a series of options to smooth
+your grey scale images contained within the vesalius\_assay object.
+
+You can select any number of dimensions to be smoothed. As default, we take
+the first 3 dimensions.
+
+Vesalius provides 3 smoothing methods:
+* median: computes median color in box (box size defined by box)
+* box: computes max color value in box (box size defined by box)
+* iso: compute gaussian kernel using sigma (Gussian SD defined by sigma)
+
+Vesalius can apply the same smoothing paramters over multiple iterations
+as defined by the iter argument.
+It is also possible to provide multiple values to box and sigma as numeric
+vectors. Vesalius will run the smoothing over all provided values and return
+either the maximum, minimum or mean color value as described by the
+across\_levels argument.
+
+Please note that unless specified the smoothing always applied to
+the active embedding (default is last embedding computed). If you
+want to start over you can simply set \code{embedding} to which ever
+embedding you want to work with.
+
+This will take the raw embedding values before any image processing
+has been applied. No need to re-run the embedding if you are not
+satisfied with the smoothing.
+
+For more information, we suggest reading through the imager vignette.
+\end{Details}
+%
+\begin{Value}
+a vesalius\_assay
+\end{Value}
+%
+\begin{Examples}
+\begin{ExampleCode}
+## Not run: 
+data(vesalius)
+# First we build a simple object
+ves <- build_vesalius_object(coordinates, counts)
+# We can do a simple run
+ves <- build_vesalius_embeddings(ves)
+
+# simple smoothing
+ves <- smooth_image(ves, embedding = "PCA")
+# multiple rounds
+ves <- smooth_image(ves, iter = 3, embedding = "PCA")
+# accross level
+ves <- smooth_image(ves, box = seq(3,11),
+ accross_level = "mean",
+ embedding = "PCA")
+
+## End(Not run)
+\end{ExampleCode}
+\end{Examples}
+\HeaderA{summarise\_territories}{summarise territories}{summarise.Rul.territories}
+%
+\begin{Description}
+summarise territories
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+summarise_territories(vesalius_assay, as_log = FALSE)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{vesalius\_assay}] a vesalius assay object
+
+\item[\code{as\_log}] logical defining if log list should be returned
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+a list containing summary of territory transformation
+and manipulations.
+\end{Value}
+\HeaderA{territory\_morphing}{territory\_morphing applies morphological operators to a set of territoriees}{territory.Rul.morphing}
+%
+\begin{Description}
+territory\_morphing applies morphological operators to a set of territoriees
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+territory_morphing(
+  vesalius_assay,
+  territory = NULL,
+  trial = "last",
+  morphology_factor = 0,
+  verbose = TRUE
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{vesalius\_assay}] vesalius\_assay object
+
+\item[\code{territory}] integer or vector of integers desrcining territories 
+to morph.
+
+\item[\code{trial}] character string - which territory trial that 
+should be used to select
+territorires. Default is last one computed
+
+\item[\code{morphology\_factor}] integer or vector of integers describing growth
+and/or shrink extent.
+
+\item[\code{verbose}] logical - progress message output.
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+Territory morphing can manipulate territories by growing, shrinking,
+filling, and cleaning territories.
+Growing = Positive integers - Territory will be dilated by x number of pixels
+Shrinking = Negative integers - Territory will be contracted by x number of
+pixels
+Filling = grow followed by shrink.
+Cleaning = shrink followed by grow.
+\end{Details}
+%
+\begin{Value}
+a vesalius\_assay
+\end{Value}
+%
+\begin{Examples}
+\begin{ExampleCode}
+## Not run: 
+data(vesalius)
+# First we build a simple object
+ves <- build_vesalius_object(coordinates, counts)
+# We can do a simple run
+ves <- build_vesalius_embeddings(ves)
+
+# simple smoothing
+ves <- smooth_image(ves, dimensions = seq(1, 30))
+
+# quick segmentation
+ves <- segment_image(ves, dimensions = seq(1, 30))
+
+# isolate territories
+ves <- isolate_territories(ves)
+
+# morph territory
+
+ves <- territory_morphing(ves, 8, morphology_factor = 30)
+ves <- terriotry_morphing(ves, 1, morpholgy_factor = c(-15, 15))
+
+# view territory morphing
+territory_plot(ves)
+
+## End(Not run)
+\end{ExampleCode}
+\end{Examples}
+\HeaderA{territory\_neighborhood}{Territory selection for large scale niche}{territory.Rul.neighborhood}
+%
+\begin{Description}
+Territory selection for large scale niche
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+territory_neighborhood(coord)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{coord}] data.frame - coordinates of spatial indices in assay
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+list containing barcodes of spatial indices in each territory
+\end{Value}
+\HeaderA{territory\_plot}{territory\_plot - plotting Vesalius territories}{territory.Rul.plot}
+%
+\begin{Description}
+territory\_plot - plotting Vesalius territories
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+territory_plot(
+  vesalius_assay,
+  trial = "last",
+  split = FALSE,
+  highlight = NULL,
+  contour = "None",
+  randomise = TRUE,
+  cex = 10,
+  cex_pt = 1,
+  alpha = 0.65,
+  use_image = FALSE
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{vesalius\_assay}] a vesalius\_Assay object
+
+\item[\code{trial}] character string describing which segmentation trial
+to use. Default is "last" which is the last segmentation trial used.
+
+\item[\code{split}] logical - If TRUE, territories will be plotted in
+separate panels
+
+\item[\code{highlight}] numeric vector describing which territories should be 
+highlighted.
+
+\item[\code{contour}] if territory contours should be added. Availble:
+"None", "convex", "concave"
+
+\item[\code{randomise}] logical - If TRUE, colour palette will be randomised.
+
+\item[\code{cex}] numeric describing font size multiplier.
+
+\item[\code{cex\_pt}] numeric describing point size multiplier.
+
+\item[\code{alpha}] opacity factor ]0,1[
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+Territory plots show all territories in false colour after they
+have been isolated from a Vesalius image.
+
+Note that this function can be applied to image segments, territories,
+and layers.
+\end{Details}
+%
+\begin{Value}
+a ggplot object
+\end{Value}
+%
+\begin{Examples}
+\begin{ExampleCode}
+## Not run: 
+data(vesalius)
+# First we build a simple object
+ves <- build_vesalius_object(coordinates, counts)
+# We can do a simple run
+ves <- build_vesalius_embeddings(ves)
+
+# simple smoothing
+ves <- smooth_image(ves, dimensions = seq(1, 30))
+
+# quick segmentation
+ves <- segment_image(ves, dimensions = seq(1, 30))
+
+# isolate territories
+ves <- isolate_territories(ves)
+
+# Plot Territories
+p <- territory_plot(ves)
+
+## End(Not run)
+\end{ExampleCode}
+\end{Examples}
+\HeaderA{tfidf\_norm}{tf idf normalisation}{tfidf.Rul.norm}
+%
+\begin{Description}
+nornalising count using TF IDF
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+tfidf_norm(counts, min_cutoff)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{counts}] Seurat object containing counts
+
+\item[\code{min\_cutoff}] min cutoff of for top features
+list with seurat object used later and normalised counts to be stored
+in a vesalius object
+\end{ldescription}
+\end{Arguments}
+\HeaderA{unpack\_territory\_path}{retrieve the points contained in the edge of each territory}{unpack.Rul.territory.Rul.path}
+%
+\begin{Description}
+retrieve the points contained in the edge of each territory
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+unpack_territory_path(trial, tiles, method = "none")
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{trial}] name of territory trial that should be selected
+
+\item[\code{tiles}] vesalius tiles
+
+\item[\code{method}] string - method for how territories edges should be
+selected
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+Here we are using convex as start point. Essentially, we 
+order the coordinates based on their polar coordinates using the 
+median coordinate as the center point.
+\end{Details}
+%
+\begin{Value}
+a data frame containing edge of each territory.
+\end{Value}
+\HeaderA{update\_matches}{Update best matched cell pairs with new mapping costs}{update.Rul.matches}
+%
+\begin{Description}
+Update best matched cell pairs with new mapping costs
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+update_matches(matched, mapped, epoch)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{matched}] data frame containing mapping pairs template
+
+\item[\code{mapped}] best mapping pairs for each batch
+
+\item[\code{epoch}] int - which epoch was the optimal match found
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+updated matched data frame
+\end{Value}
+\HeaderA{update\_vesalius\_assay}{update vesalius assay object}{update.Rul.vesalius.Rul.assay}
+%
+\begin{Description}
+update vesalius assay object
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+update_vesalius_assay(vesalius_assay, data, slot, append = TRUE)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{vesalius\_assay}] a vesalius\_assay object
+
+\item[\code{data}] data that will be inserted into the vesalius\_assay
+
+\item[\code{slot}] name of the slot that will be updated
+
+\item[\code{append}] logical if the dats hould be appended to already existing data
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+a vesalius\_assay
+\end{Value}
+\HeaderA{vesalius\_assay-class}{The vesalius\_assay class}{vesalius.Rul.assay.Rdash.class}
+%
+\begin{Description}
+The vesalius\_assay class is the functional unit of vesalius. Each assay is
+stored within this class and it contains all the required information to
+run analysis on your assay of choice. In this object, you can find spatial
+tiles, image embeddings, spatial territories, differentially expressed genes
+(DEG), count matrices (raw and normalised), microscopy images (if present)
+and a functional log that lets you see what had been run on this object.
+\end{Description}
+%
+\begin{Section}{Slots}
+
+\begin{description}
+
+\item[\code{assay}] character assay name
+
+\item[\code{tiles}] data.frame containing spatial coordinates and pixels tiles once
+they have been computed
+
+\item[\code{embeddings}] list containing latent space embeddings in the form of
+data.frames.
+
+\item[\code{active}] matrix containing active embedding data
+
+\item[\code{territories}] data.frame containing spatial color segments, spatial
+territories, or layers.
+
+\item[\code{DEG}] list of data.frame for each differentially gene expression trial
+
+\item[\code{counts}] list that containing count matrices. Raw and normalised will
+be stored here and named by the normalisation method used.
+
+\item[\code{image}] list containing associated microscopy images (NOT implemented)
+
+\item[\code{log}] list containing analysis history of the object.
+
+\end{description}
+\end{Section}
+\HeaderA{vesalius\_deg}{Internal differantial gene expression function.}{vesalius.Rul.deg}
+%
+\begin{Description}
+This function dispatches the groups to the various methods 
+That are avialbale
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+vesalius_deg(
+  seed,
+  query,
+  seed_id,
+  query_id,
+  method,
+  log_fc,
+  pval,
+  min_pct,
+  min_spatial_index,
+  verbose = TRUE,
+  args
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{seed}] = group1 count data
+
+\item[\code{query}] = group 2 count data
+
+\item[\code{seed\_id}] = territory ID's for group 1
+
+\item[\code{query\_id}] = territory ID's for group 2
+
+\item[\code{method}] = DEG stat method
+
+\item[\code{log\_fc}] = fold change threshold
+
+\item[\code{pval}] = p value threshold
+
+\item[\code{min\_pct}] = minimum percentage of barcodes that should contain a
+given gene
+
+\item[\code{min\_spatial\_index}] = minimum number of barcodes present in a territory
+
+\item[\code{verbose}] = progress message output
+
+\item[\code{args}] arguments parse to (...) in upper level function (not functional)
+\end{ldescription}
+\end{Arguments}
+\HeaderA{vesalius\_deg\_chisq}{chisq test for DEG}{vesalius.Rul.deg.Rul.chisq}
+%
+\begin{Description}
+chisq test for DEG
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+vesalius_deg_chisq(seed, seed_id, query, query_id, params)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{seed}] count matrix for group 1
+
+\item[\code{seed\_id}] territory used in group 1
+
+\item[\code{query}] count matrix for group 2
+
+\item[\code{query\_id}] territory used in group 2
+
+\item[\code{params}] parameter value list (pval, log\_fc, min\_pct)
+\end{ldescription}
+\end{Arguments}
+\HeaderA{vesalius\_deg\_deseq2}{DESeq negatove binomail for DEG}{vesalius.Rul.deg.Rul.deseq2}
+%
+\begin{Description}
+DESeq negatove binomail for DEG
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+vesalius_deg_deseq2(seed, seed_id, query, query_id, params)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{seed}] count matrix for group 1
+
+\item[\code{seed\_id}] territory used in group 1
+
+\item[\code{query}] count matrix for group 2
+
+\item[\code{query\_id}] territory used in group 2
+
+\item[\code{params}] parameter value list (pval, log\_fc, min\_pct)
+\end{ldescription}
+\end{Arguments}
+\HeaderA{vesalius\_deg\_edger}{edgeR functions for DEG}{vesalius.Rul.deg.Rul.edger}
+%
+\begin{Description}
+edgeR functions for DEG
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+vesalius_deg_edger(seed, seed_id, query, query_id, params, type)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{seed}] count matrix for group 1
+
+\item[\code{seed\_id}] territory used in group 1
+
+\item[\code{query}] count matrix for group 2
+
+\item[\code{query\_id}] territory used in group 2
+
+\item[\code{params}] parameter value list (pval, log\_fc, min\_pct)
+
+\item[\code{type}] either "QLF" for quasi-likelihood F-test or 
+"LRT" fpr likelihood ratio test
+\end{ldescription}
+\end{Arguments}
+\HeaderA{vesalius\_deg\_fisher}{Fisher's excat test for DEG}{vesalius.Rul.deg.Rul.fisher}
+%
+\begin{Description}
+Fisher's excat test for DEG
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+vesalius_deg_fisher(seed, seed_id, query, query_id, params)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{seed}] count matrix for group 1
+
+\item[\code{seed\_id}] territory used in group 1
+
+\item[\code{query}] count matrix for group 2
+
+\item[\code{query\_id}] territory used in group 2
+
+\item[\code{params}] parameter value list (pval, log\_fc, min\_pct)
+\end{ldescription}
+\end{Arguments}
+\HeaderA{vesalius\_deg\_logit}{Logistic Regression for DEG}{vesalius.Rul.deg.Rul.logit}
+%
+\begin{Description}
+Logistic Regression for DEG
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+vesalius_deg_logit(seed, seed_id, query, query_id, params)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{seed}] count matrix for group 1
+
+\item[\code{seed\_id}] territory used in group 1
+
+\item[\code{query}] count matrix for group 2
+
+\item[\code{query\_id}] territory used in group 2
+
+\item[\code{params}] parameter value list (pval, log\_fc, min\_pct)
+\end{ldescription}
+\end{Arguments}
+\HeaderA{vesalius\_deg\_ttest}{t.test for DEG}{vesalius.Rul.deg.Rul.ttest}
+%
+\begin{Description}
+t.test for DEG
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+vesalius_deg_ttest(seed, seed_id, query, query_id, params)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{seed}] count matrix for group 1
+
+\item[\code{seed\_id}] territory used in group 1
+
+\item[\code{query}] count matrix for group 2
+
+\item[\code{query\_id}] territory used in group 2
+
+\item[\code{params}] parameter value list (pval, log\_fc, min\_pct)
+\end{ldescription}
+\end{Arguments}
+\HeaderA{vesalius\_deg\_wilcox}{wilcox rank sum test for DEG}{vesalius.Rul.deg.Rul.wilcox}
+%
+\begin{Description}
+wilcox rank sum test for DEG
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+vesalius_deg_wilcox(seed, seed_id, query, query_id, params)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{seed}] count matrix for group 1
+
+\item[\code{seed\_id}] territory used in group 1
+
+\item[\code{query}] count matrix for group 2
+
+\item[\code{query\_id}] territory used in group 2
+
+\item[\code{params}] parameter value list (pval, log\_fc, min\_pct)
+\end{ldescription}
+\end{Arguments}
+\HeaderA{vesalius\_package}{vesalius}{vesalius.Rul.package}
+\aliasA{vesalius}{vesalius\_package}{vesalius}
+\aliasA{vesalius-package}{vesalius\_package}{vesalius.Rdash.package}
+%
+\begin{Description}
+Vesalius: Spatial Omics analysis using images processing
+\end{Description}
+%
+\begin{SeeAlso}
+Useful links:
+\begin{itemize}
+
+\item{} \url{https://patrickcnmartin.github.io/Vesalius/}
+\item{} \url{https://github.com/patrickCNMartin/Vesalius}
+\item{} \url{https://wonlab-cs.github.io/Vesalius/}
+
+\end{itemize}
+
+
+\end{SeeAlso}
+\HeaderA{view\_gene\_expression}{view\_gene\_expression}{view.Rul.gene.Rul.expression}
+%
+\begin{Description}
+View gene expression in spatial omics data, in specific territories or
+the expression of genes in a subset of cells.
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+view_gene_expression(
+  vesalius_assay,
+  genes = NULL,
+  norm_method = "last",
+  trial = "last",
+  territory_1 = NULL,
+  territory_2 = NULL,
+  cells = NULL,
+  norm = TRUE,
+  as_layer = FALSE,
+  with_background = FALSE,
+  cex = 10,
+  cex_pt = 1,
+  alpha = 0.75,
+  max_size = 5,
+  return_as_list = FALSE
+)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{vesalius\_assay}] a vesalius\_assay object
+
+\item[\code{genes}] character vector containing the genes you wish to 
+visualise.
+
+\item[\code{norm\_method}] character string - which count matrix should be used.
+
+\item[\code{trial}] character string describing which segmentation trial
+to use. Default is "last" which is the last trial used.
+
+\item[\code{territory\_1}] integer or vector of integers descrbing territories in
+group 1 (see details)
+
+\item[\code{territory\_2}] integer or vector of integers descrbing territories in
+group 2 (see details)
+
+\item[\code{cells}] charactor vector containing barcodes/spatial\_indices
+associated with cell types of interest (see details)
+
+\item[\code{norm}] logical indicating if expression should be min/max normalised
+
+\item[\code{as\_layer}] logical indicating if expression should represented as
+a territory/ layer.
+
+\item[\code{cex}] numeric - font size modulator
+
+\item[\code{cex\_pt}] numeric point size
+
+\item[\code{alpha}] point transparency
+
+\item[\code{return\_as\_list}] logical - should plot be returned as simple list
+or as a ggplot object (single gene)/ patchwork object (multiple genes)
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Details}
+Vesalius offers a plotting function that allows you to 
+visualise gene expression. 
+
+This function offers multiple options depending on what you provide.
+
+1. Overall expression
+You can visualise the overall expression pattern of a set of genes
+by providing a vesalius\_assay object containing counts.
+If \code{as\_layer} is set to FALSE this will show the expression at
+each sptial index indivdually. If set to TRUE, this will show the
+average expression on a gene in all territories present.
+
+2. Expression in a territory
+You can visualise the expression of a gene in an isolated territory.
+
+3. Expression of cells in one or more territory
+If you want to visualise the expression of specific cells, you can
+parse a character vector containing your cells of interest. This
+function will automatically subset the relevant territory data and
+show the expression only in the spatial indeces hat are associated
+with your cell type of interest. You can use this option to contrast
+the expression of cells between territories by also providing which
+territories you wish to contrast (`territory\_1` and `territory\_2`).
+If only a single territory is provided, vesalius will only shows cell
+in that territory.
+
+If you provide more than one gene, `view\_gene\_expression` will return 
+a ggarrange list containing all your genes as individual plots.
+\end{Details}
+%
+\begin{Value}
+a ggplot object
+\end{Value}
+%
+\begin{Examples}
+\begin{ExampleCode}
+## Not run: 
+data(vesalius)
+# First we build a simple object
+ves <- build_vesalius_object(coordinates, counts)
+# We can do a simple run
+ves <- build_vesalius_embeddings(ves)
+
+# simple smoothing
+ves <- smooth_image(ves, dimensions = seq(1, 30))
+
+# quick segmentation
+ves <- segment_image(ves, dimensions = seq(1, 30))
+
+# isolate territories
+ves <- isolate_territories(ves)
+
+# view over all expression
+p <- view_gene_expression(ves, genes = "Malat1")
+p1 <- view_gene_expression(ves, genes = "Malat1", as_layer = TRUE)
+
+# view expression in isolated territory 
+p2 <- view_gene_expression(ves, genes = "Malat1", territory_1 = 5)
+
+# view expression of cells
+cells <- sample(colnames(get_counts(ves)),300)
+p3 <- view_gene_expression(ves,
+ genes = "Malat",
+ cells = cells,
+ territory_1 = 5,
+ terriotry_2 = 8)
+
+## End(Not run)
+\end{ExampleCode}
+\end{Examples}
+\printindex{}
+\end{document}
