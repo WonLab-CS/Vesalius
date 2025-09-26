@@ -14,12 +14,17 @@ permissions: read-all
 jobs:
   pkgdown:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        r-version: ['release', 'devel', 'oldrel']
     concurrency:
       group: pkgdown-${{ github.event_name != 'pull_request' || github.run_id }}
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
     permissions:
       contents: write
+    
     steps:
       - uses: actions/checkout@v4
 
@@ -29,7 +34,14 @@ jobs:
         with:
           use-public-rspm: true
     
-      - uses: r-lib/actions/setup-renv@v2
+      
+      - name: Install Dependencies
+        uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: 
+            any::rcmdcheck
+            any::pkgdown
+          upgrade: 'TRUE'
 
 
       - name: Build site
