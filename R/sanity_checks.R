@@ -81,6 +81,9 @@ check_image_input <- function(image) {
     return(image)
 }
 
+#' check map input validity
+#' @param map map data structure
+#' @return validated map
 check_map_input <- function(map){
     if (is.null(map)) {
         map <- list()
@@ -212,6 +215,8 @@ check_embeddings <- function(embeddings) {
 
 #' check if image is present
 #' @param vesalius_assay vesalius assay object
+#' @param image_name character - name of the image to retrieve
+#' @param as_is logical - return image as is
 #' @return microscopy image
 check_image <- function(vesalius_assay, image_name = NULL, as_is = FALSE) {
     image <- vesalius_assay@image
@@ -642,6 +647,10 @@ check_norm <- function(vesalius_assay,
     return(counts)
 }
 
+#' check sample information in vesalius assay
+#' @param vesalius_assay vesalius_assay object
+#' @param sample logical - whether to return sample information
+#' @return sample information or NULL
 check_sample <- function(vesalius_assay, sample = FALSE) {
     tmp <- any(grepl(x = colnames(vesalius_assay@territories),
         pattern = "sample"))
@@ -723,7 +732,6 @@ check_group_value <- function(territories, group) {
 
 #' check binary nature
 #' @param buffer list containing output of get_deg_metrics
-#' @param test string - test type of scope
 #' @details For now we do this check but might be depreciated in the future.
 #' @return buffer list
 check_binary_nature <- function(buffer) {
@@ -763,6 +771,11 @@ check_for_zero_counts <- function(counts) {
 }
 
 
+#' check template source validity
+#' @param vesalius_assay vesalius_assay object
+#' @param from source type
+#' @param dimensions dimensions to check
+#' @return validated template information
 check_template_source <- function(vesalius_assay, from, dimensions) {
     if (from == "last") {
         stop("Please specifiy by name what should 
@@ -788,6 +801,11 @@ check_template_source <- function(vesalius_assay, from, dimensions) {
 }
 
 
+#' check signal validity
+#' @param assay assay object
+#' @param signal signal type
+#' @param type data type
+#' @return validated signal
 check_signal <- function(assay, signal, type) {
     if (any(signal %in% c("variable_features", "all_features"))) {
         signal <- switch(EXPR = signal,
@@ -811,6 +829,10 @@ check_signal <- function(assay, signal, type) {
 }
 
 
+#' check feature integration validity
+#' @param signal signal type
+#' @param intergrated integrated object
+#' @return validated features
 check_feature_integration <- function(signal, intergrated) {
     if (any(signal %in% "variable_features")) {
         features <- Seurat::VariableFeatures(intergrated)
@@ -851,6 +873,10 @@ check_features <- function(counts) {
     return(features)
 }
 
+#' check genes validity
+#' @param genes gene names
+#' @param counts count matrix
+#' @return validated genes
 check_genes <- function(genes, counts) {
     if (is.null(genes)){
         return(rownames(counts))
@@ -867,6 +893,9 @@ check_genes <- function(genes, counts) {
     return(genes[g_local])
 }
 
+#' check cost matrix validity
+#' @param custom_cost custom cost matrix
+#' @return validated cost matrix
 check_cost_matrix_validity <- function(custom_cost) {
     #-------------------------------------------------------------------------#
     # making sure that we have a proper list 
@@ -880,6 +909,15 @@ check_cost_matrix_validity <- function(custom_cost) {
 }
 
 
+#' check cost validity
+#' @param cost cost matrix
+#' @param seed_assay seed assay
+#' @param seed_signal seed signal
+#' @param query_assay query assay
+#' @param query_signal query signal
+#' @param use_cost cost types to use
+#' @param verbose logical - progress messages
+#' @return validated cost information
 check_cost_validity <- function(cost,
     seed_assay,
     seed_signal,
@@ -906,8 +944,8 @@ check_cost_validity <- function(cost,
             "territory"))){
             stop("Requested cost matrix is not present in cost matrix list!")
         }
-        assign("seed", seed, env = parent.frame())
-        assign("query", query, env = parent.frame())
+        assign("seed", seed, envir = parent.frame())
+        assign("query", query, envir = parent.frame())
         return(NULL)
     }
     
@@ -996,21 +1034,28 @@ check_cost_validity <- function(cost,
     query_signal <- q[rownames(q) %in% gene_intersect, ]
     seed_signal <- s[rownames(s) %in% gene_intersect, ]
     
-    assign("seed", seed, env = parent.frame())
-    assign("query", query, env = parent.frame())
-    assign("seed_signal", seed_signal, env = parent.frame())
-    assign("query_signal", query_signal, env = parent.frame())
-    assign("cost", cost, env = parent.frame())
-    assign("use_cost", use_cost, env = parent.frame())
+    assign("seed", seed, envir = parent.frame())
+    assign("query", query, envir = parent.frame())
+    assign("seed_signal", seed_signal, envir = parent.frame())
+    assign("query_signal", query_signal, envir = parent.frame())
+    assign("cost", cost, envir = parent.frame())
+    assign("use_cost", use_cost, envir = parent.frame())
     return(NULL)
 }
 
+#' check gene overlap
+#' @param signal signal matrix
+#' @return genes with non-zero expression
 check_gene_overlap <- function(signal) {
     non_zero <- Matrix::rowSums(signal) != 0
     return(rownames(signal)[non_zero])
 }
 
 
+#' check cell labels
+#' @param vesalius_assay vesalius_assay object
+#' @param trial trial name
+#' @return cell labels data frame
 check_cell_labels <- function(vesalius_assay, trial = NULL) {
     if (is.null(trial)) {
         cells <- check_territory_trial(vesalius_assay, trial = "Cells")
@@ -1024,6 +1069,10 @@ check_cell_labels <- function(vesalius_assay, trial = NULL) {
 }
 
 
+#' check map selection validity
+#' @param vesalius_assay vesalius_assay object
+#' @param by selection criteria
+#' @return validated map columns
 check_map_selection <- function(vesalius_assay, by) {
     maps <- vesalius_assay@map$mapping_scores
     locs <- grep(paste0(by, collapse = "|"), colnames(maps), value =TRUE)
@@ -1040,6 +1089,9 @@ check_map_selection <- function(vesalius_assay, by) {
 }
 
 
+#' check for unmatched entries
+#' @param matched matched data frame
+#' @return filtered matched data frame
 check_for_unmatched <- function(matched) {
     either <- is.na(matched$from) | is.na(matched$to)
     matched <- matched[!either, ]
@@ -1047,6 +1099,10 @@ check_for_unmatched <- function(matched) {
 }
 
 
+#' check metric trial validity
+#' @param vesalius_assay vesalius_assay object
+#' @param trial trial name
+#' @return validated trial data
 check_metric_trial <- function(vesalius_assay, trial) {
     if (sum(dim(vesalius_assay@map)) == 0) {
         stop("No map metrics have been computed yet!")
@@ -1075,6 +1131,9 @@ check_metric_trial <- function(vesalius_assay, trial) {
     return(map)
 }
 
+#' check cost contribution
+#' @param vesalius_assay vesalius_assay object
+#' @return cost contribution data
 check_cost_contribution <- function(vesalius_assay) {
     cost <- vesalius_assay@cost$cost
     if (length(cost) == 0){
@@ -1084,6 +1143,9 @@ check_cost_contribution <- function(vesalius_assay) {
     return(cost)
 }
 
+#' check maps availability
+#' @param vesalius_assay vesalius_assay object
+#' @return map data
 check_maps <- function(vesalius_assay) {
     assay <- get_assay_names(vesalius_assay)
     maps <- vesalius_assay@map

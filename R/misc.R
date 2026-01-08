@@ -82,10 +82,39 @@ min_max <- function(x) {
 }
 
 
+#' quantile normalization
+#' @param x numeric vector
+#' @return quantile normalised vector
+quantile_norm <- function(x) {
+  if (length(table(x)) == 1) {
+    return(x)
+  } else {
+    return(quantile(x, probs = (seq_along(x) - 0.5) / length(x)))
+  }
+}
+
+
+#' z-score normalization
+#' @param x numeric vector
+#' @return z-score normalised vector
+z_norm <- function(x) {
+  if (length(table(x)) == 1) {
+    return(x)
+  } else {
+    return((x - mean(x)) / sd(x))
+  }
+}
 
 
 
 
+
+
+#' split vector into chunks
+#' @param x vector to split
+#' @param n chunk size
+#' @param l maximum number of chunks
+#' @return list of chunks
 chunk <- function(x, n, l = NULL) {
     chunk <- mapply(function(a, b) {
       return(x[a:b])},

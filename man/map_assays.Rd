@@ -45,6 +45,8 @@ Seed details}
 Available: feature, niche, territory, composition (See details for combinations
 and custom matrices)}
 
+\item{method}{character - correlation method to use}
+
 \item{neighborhood}{character - how should the neighborhood be selected?
 "knn", "radius", "graph"(See details)}
 
@@ -62,8 +64,14 @@ to consider for the neighborhood}
 \item{batch_size}{number of points per batch in query during assignment
 problem solving}
 
+\item{epochs}{numeric - number of epochs}
+
+\item{allow_duplicates}{logical - allow duplicate mappings}
+
 \item{threshold}{score threshold below which indicices should be removed.
 Scores will always be between 0 and 1}
+
+\item{filter_cells}{logical - filter cells}
 
 \item{use_norm}{character - which count data to use}
 
@@ -71,6 +79,18 @@ Scores will always be between 0 and 1}
 
 \item{custom_cost}{matrix - matrix of size n (query cells) by p (seed cells)
 containing custom cost matrix. Used instead of vesalius cost matrix}
+
+\item{seed_territory_labels}{character - territory labels for seed}
+
+\item{query_territory_labels}{character - territory labels for query}
+
+\item{seed_meta_labels}{character - meta labels for seed}
+
+\item{query_meta_labels}{character - meta labels for query}
+
+\item{jitter}{numeric - jitter amount}
+
+\item{digits}{numeric - number of digits}
 
 \item{verbose}{logical - should I be a noisy boy?}
 }

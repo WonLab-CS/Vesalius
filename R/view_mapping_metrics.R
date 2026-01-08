@@ -1,6 +1,12 @@
 
-
-#' @export 
+#' visualize mapping metrics for vesalius assay
+#' @param vesalius_assay vesalius_assay object
+#' @param trial character string defining which metric trial to visualize
+#' @param cex_pt numeric - point size for plotting
+#' @param cex numeric - text size for plotting
+#' @param randomize logical - whether to randomize point order for better visualization
+#' @return ggplot object showing mapping metrics
+#' @export
 #' @importFrom tools toTitleCase
 view_mapping_metrics <- function(vesalius_assay,
     trial = "cost",

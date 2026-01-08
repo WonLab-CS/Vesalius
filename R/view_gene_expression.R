@@ -23,6 +23,8 @@
 #' @param alpha point transparency
 #' @param return_as_list logical - should plot be returned as simple list
 #' or as a ggplot object (single gene)/ patchwork object (multiple genes)
+#' @param with_background logical - include background in plot
+#' @param max_size numeric - maximum point size
 #' @details Vesalius offers a plotting function that allows you to 
 #' visualise gene expression. 
 #' 

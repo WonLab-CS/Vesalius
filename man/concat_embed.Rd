@@ -19,6 +19,8 @@ method to use. One of the following "log_norm", "SCT", "TFIDF", "raw"}
 \item{dim_reduction}{string describing which dimensionality
 reduction method should be used. One of the following:
 "PCA", "PCA_L", "UMAP", "LSI", "LSI_UMAP"}
+
+\item{signal}{character - signal type to use}
 }
 \value{
 embedding matrix used as grey scale image stack

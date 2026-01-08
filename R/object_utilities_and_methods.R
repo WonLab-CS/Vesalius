@@ -279,6 +279,7 @@ get_tiles <- function(vesalius_assay) {
 
 #' get coordinates from vesalius_assay
 #' @param vesalius_assay a vesalius_assay
+#' @param original logical - return original coordinates
 #' @return coordinate data frame
 #' @rdname get_coordinayes
 #' @export
@@ -359,6 +360,9 @@ get_markers <- function(vesalius_assay, trial = "last") {
     }
 }
 
+#' get mapping scores from vesalius assay
+#' @param vesalius_assay vesalius_assay object
+#' @return data.frame containing mapping scores between reference and query cells
 #' @export
 get_mapping_scores <- function(vesalius_assay) {
     coord <- get_coordinates(vesalius_assay)
@@ -468,6 +472,13 @@ summarise_territories <- function(vesalius_assay, as_log = FALSE) {
 
 
 
+#' filter vesalius assay by cells, territories, or genes
+#' @param vesalius_assay vesalius_assay object
+#' @param cells character vector of cell barcodes to keep
+#' @param territories character vector of territory labels to keep
+#' @param trial character string defining which territory trial to use
+#' @param genes character vector of genes to keep
+#' @return filtered vesalius_assay object
 #' @importFrom dplyr %>% filter
 #' @export
 filter_assay <- function(vesalius_assay,

@@ -33,6 +33,12 @@ territories, or layers.}
 \item{\code{counts}}{list that containing count matrices. Raw and normalised will
 be stored here and named by the normalisation method used.}
 
+\item{\code{meta}}{list containing metadata associated with the assay}
+
+\item{\code{cost}}{list containing cost matrices used for mapping assays}
+
+\item{\code{map}}{data.frame containing mapping results between assays}
+
 \item{\code{image}}{list containing associated microscopy images (NOT implemented)}
 
 \item{\code{log}}{list containing analysis history of the object.}

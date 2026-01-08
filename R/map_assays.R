@@ -33,6 +33,16 @@
 
 #' @param custom_cost matrix - matrix of size n (query cells) by p (seed cells)
 #' containing custom cost matrix. Used instead of vesalius cost matrix
+#' @param method character - correlation method to use
+#' @param epochs numeric - number of epochs
+#' @param allow_duplicates logical - allow duplicate mappings
+#' @param filter_cells logical - filter cells
+#' @param seed_territory_labels character - territory labels for seed
+#' @param query_territory_labels character - territory labels for query
+#' @param seed_meta_labels character - meta labels for seed
+#' @param query_meta_labels character - meta labels for query
+#' @param jitter numeric - jitter amount
+#' @param digits numeric - number of digits
 #' @param verbose logical - should I be a noisy boy?
 #' @details The goal is to assign the best matching point between a seed set and
 #' a query set.
@@ -232,11 +242,11 @@ get_signal <- function(seed_assay,
 
 #' mapping points between data sets
 #' @param query_signal processed query signal from query assay
-#' @param query vesalius_assay object
+#' @param query_assay vesalius_assay object
 #' @param cost matrix - matrix of size n (query cells) by p (seed cells)
-#' containing custom cost matrix. 
+#' containing custom cost matrix.
 #' @param seed_signal processed seed signal from seed assay
-#' @param seed vesalius_assay object
+#' @param seed_assay vesalius_assay object
 #' @param k int size of niche (knn)
 #' @param radius 0.05 proportion of max distance to use as radius for 
 #' neighborhood
@@ -244,6 +254,15 @@ get_signal <- function(seed_assay,
 #' @param batch_size int number of points in each query batch
 #' @param use_cost character string defining how should total cost be computer
 #' Available: feature, niche, territory, composition (See details for combinations
+#' @param method character - correlation method
+#' @param neighborhood character - neighborhood method
+#' @param epochs numeric - number of epochs
+#' @param filter_cells logical - filter cells
+#' @param seed_territory_labels character - seed territory labels
+#' @param query_territory_labels character - query territory labels
+#' @param seed_meta_labels character - seed meta labels
+#' @param query_meta_labels character - query meta labels
+#' @param digits numeric - number of digits
 #' @param threshold score threshold below which indicices should be removed.
 #' Scores will always be between 0 and 1
 #' @param verbose logical - out progress to console
@@ -277,7 +296,7 @@ point_mapping <- function(query_signal,
         query_assay,
         query_signal,
         use_cost)
-
+    
     #--------------------------------------------------------------------------#
     # Correlation between individual cells 
     #--------------------------------------------------------------------------#
@@ -296,7 +315,6 @@ point_mapping <- function(query_signal,
     # Correlation between the cellular niche centered around the cell
     #--------------------------------------------------------------------------#
     if ("niche" %in% use_cost) {
-        
         message_switch("get_neigh", verbose, assay = assay)
         seed_signal_niche <- get_neighborhood_signal(seed,
             seed_signal,
@@ -408,7 +426,8 @@ point_mapping <- function(query_signal,
 
 #' concat cost - pairwise sum of score complement
 #' @param cost list - named list contained score matrices
-#' @param use_cost character - which cost matrices to use 
+#' @param use_cost character - which cost matrices to use
+#' @param complement logical - whether to use complement of scores
 #' @return list with cost matrix 
 concat_cost <- function(cost, use_cost, complement = TRUE) { 
     if (length(use_cost) == 0) {
@@ -445,6 +464,8 @@ concat_cost <- function(cost, use_cost, complement = TRUE) {
 #' compute the similarity between seed and query signals
 #' @param seed seed signal
 #' @param query query signal
+#' @param method character - correlation method to use
+#' @param digits numeric - number of digits for rounding
 #' @details Chunking cost and signal into smaller chunks to run the 
 #' correlation score in paralell. There is room for improvement here.
 #' First we could dispatch the longer list to future_lapply
@@ -648,14 +669,14 @@ neighborhood_signal <- function(neighbors, signal) {
 #' Method dispatch function for neighborhood selection - added
 #' flavor specific to composition
 #' @param coord data.frame - coordinates of assay (barcodes, x, y)
-#' @param signal matrix - matrix or sparse matrix containing assay 
-#' signal for all spatial indices contained in coord
+#' @param vesalius_assay vesalius_assay object
 #' @param method character - which method should be use to collect 
 #' neighborhood - switch matches
 #' @param k int - how many nearest neighbors from KNN algorithm
 #' @param depth int - graph path depth to define neighborhood 
 #' 0 = self, 1 = direct neigbors, 2 = neighbors of neighbors, etc
-#' @param radius - numeric - radius around center cell 
+#' @param radius - numeric - radius around center cell
+#' @param cell_label character - cell label column name
 #' @return list of all cells and cell types for each niche
 niche_composition <- function(coord,
     vesalius_assay,
@@ -736,7 +757,7 @@ filter_cost <- function(costs,
 #' optimize matching scores through batching
 #' @param cost_matrix matrix containing mapping cost for each cell
 #' @param batch_size int - number of cells to be assigned to each batch
-#' @param epoch number of epochs to run the optimization
+#' @param epochs number of epochs to run the optimization
 #' @param verbose logical - output progress messages 
 #' @return list with best matching cell pairs (data.frame) and 
 #' total cost at each epoch 
@@ -953,14 +974,12 @@ filter_maps <- function(mapped, allow_duplicates, verbose) {
 
 
 #' assign coordinates to matched indices
-#' @param matched_index data.frame containing matching pairs of 
+#' @param matched_index data.frame containing matching pairs of
 #' coordinates
-#' @param seed data.frame containing seed coordinates 
-#' @param query data.frame containing quert cooridates
-#' @param verbose logical - should progress message be outputed to the 
-#' console
-#' @return adjusted query coordinate data.frame where each point
-#' receives the coordinates of its best matche in the seed. 
+#' @param coord data.frame containing coordinate data
+#' @param jitter numeric - amount of jitter to add to duplicated coordinates
+#' @return adjusted coordinate data.frame where each point
+#' receives the coordinates of its best match. 
 align_index <- function(matched_index,
     coord,
     jitter = 0) {

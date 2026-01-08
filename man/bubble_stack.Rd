@@ -2,10 +2,22 @@
 % Please edit documentation in R/spix.R
 \name{bubble_stack}
 \alias{bubble_stack}
-\title{importFrom imager nPix}
+\title{importFrom imager nPix
+bubble_stack}
 \usage{
 bubble_stack(coordinates, n_centers = 500, max_iter = 500)
 }
+\arguments{
+\item{coordinates}{data.frame containing spatial coordinates}
+
+\item{n_centers}{numeric - number of centers to use for clustering}
+
+\item{max_iter}{numeric - maximum number of iterations}
+}
+\value{
+clustered coordinates
+}
 \description{
 importFrom imager nPix
+bubble_stack
 }

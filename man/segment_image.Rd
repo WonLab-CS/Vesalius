@@ -37,13 +37,12 @@ segmentation. Select from "kmeans", "louvain", "leiden", "slic",
 \item{scaling}{numeric - scaling image ration during super pixel 
 segmentation.}
 
-\item{threshold}{numeric [0,1] - correlation threshold between 
+\item{threshold}{numeric [0,1] - correlation threshold between
 nearest neighbors when generating segments from super pixels.}
 
-\item{verbose}{logical - progress message output.}
+\item{index_selection}{character - method for selecting initial indices}
 
-\item{k}{numeric - number of closest super pixel neighbors to consider
-when generating segments from super pixels}
+\item{verbose}{logical - progress message output.}
 }
 \value{
 a vesalius_assay object

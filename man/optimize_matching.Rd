@@ -11,9 +11,9 @@ optimize_matching(cost_matrix, batch_size = 10000, epochs = 1, verbose = TRUE)
 
 \item{batch_size}{int - number of cells to be assigned to each batch}
 
-\item{verbose}{logical - output progress messages}
+\item{epochs}{number of epochs to run the optimization}
 
-\item{epoch}{number of epochs to run the optimization}
+\item{verbose}{logical - output progress messages}
 }
 \value{
 list with best matching cell pairs (data.frame) and 

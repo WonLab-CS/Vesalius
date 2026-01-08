@@ -10,6 +10,10 @@ signal_similarity(seed, query, method = "pearson", digits = 4)
 \item{seed}{seed signal}
 
 \item{query}{query signal}
+
+\item{method}{character - correlation method to use}
+
+\item{digits}{numeric - number of digits for rounding}
 }
 \value{
 matrix with query as rows and seed as colmuns

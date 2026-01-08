@@ -13,10 +13,9 @@
 #' @param compactness numeric - factor defining super pixel compaction.
 #' @param scaling numeric - scaling image ration during super pixel 
 #' segmentation.
-#' @param k numeric - number of closest super pixel neighbors to consider
-#' when generating segments from super pixels
-#' @param threshold numeric [0,1] - correlation threshold between 
+#' @param threshold numeric [0,1] - correlation threshold between
 #' nearest neighbors when generating segments from super pixels.
+#' @param index_selection character - method for selecting initial indices
 #' @param verbose logical - progress message output.
 #' @details Applying image segmentation ensures a reduction in colour
 #' complexity.

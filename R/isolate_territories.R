@@ -295,6 +295,7 @@ distance_pooling <- function(img, capture_radius, min_spatial_index) {
 #' @importFrom imager imsplit  threshold split_connected where
 #' @importFrom imagerExtra ThresholdML
 #' @importFrom dplyr inner_join
+#' @importFrom stats cor
 select_similar <- function(img,
   coordinates,
   threshold = 1) {

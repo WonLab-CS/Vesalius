@@ -8,8 +8,6 @@ check_binary_nature(buffer)
 }
 \arguments{
 \item{buffer}{list containing output of get_deg_metrics}
-
-\item{test}{string - test type of scope}
 }
 \value{
 buffer list

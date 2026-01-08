@@ -79,17 +79,17 @@ Imports:
     ggnewscale,
     kohonen,
     Rcpp,
-    RcppEigen,
-    TreeDist
+    TreeDist,
+    NMF
 Suggests:
     knitr,
     RUnit,
     rmarkdown,
     testthat (>= 3.0.0),
-    NMF,
     sf
 Encoding: UTF-8
 LazyData: true
+LazyDataCompression: bzip2
 RoxygenNote: 7.3.2
 VignetteBuilder: knitr
 URL: https://patrickcnmartin.github.io/Vesalius/, https://github.com/patrickCNMartin/Vesalius, https://wonlab-cs.github.io/Vesalius/

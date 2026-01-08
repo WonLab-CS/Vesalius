@@ -9,11 +9,11 @@ louvain_scores(score, resolution, nn, verbose)
 \arguments{
 \item{score}{matrix containing mapping scores}
 
+\item{resolution}{numeric - clustering resolution}
+
 \item{nn}{int - number of nearest neighbors to use for graph construction}
 
 \item{verbose}{logical - print output messages}
-
-\item{resoltuion}{numeric - clustering resolution}
 }
 \description{
 Using Louvain community clustering to for co-mapping events

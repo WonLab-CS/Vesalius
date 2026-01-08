@@ -270,6 +270,7 @@ embed_latent_space <- function(counts,
 #' @return normalised PCA embedding matrix 
 #' @importFrom Seurat RunPCA
 #' @importFrom Seurat Embeddings
+#' @importFrom stats setNames
 embed_pca <- function(counts,
   dimensions,
   features = NULL,
@@ -503,27 +504,30 @@ embed_lsi_umap <- function(counts,
 #' @param counts Seurat object containing normalised counts
 #' @param dimensions number dimension to retain from NMF
 #' @param verbose logical if progress messages should be outputed
+#' @importFrom NMF nmf coefficients
 #' @return normalised NMF embedding matrix 
 embed_nmf <- function(counts, dimensions, verbose = TRUE) {
-  #--------------------------------------------------------------------------#
-  # adding this since I don't want to have this package as a dependancy 
-  # The problem is that those functions are exported to name space
-  # but NMF only works if the package is attached.
-  #--------------------------------------------------------------------------#
-  inst <- requireNamespace("NMF", quietly = TRUE)
-  if (!inst) {
-      stop("NMF is not installed - Please install NMF
-      install.packages('NMF')
-      https://cran.r-project.org/web/packages/NMF/index.html")
-  } else {
-      library("NMF")
-  }
+#   #--------------------------------------------------------------------------#
+#   # adding this since I don't want to have this package as a dependancy 
+#   # The problem is that those functions are exported to name space
+#   # but NMF only works if the package is attached.
+#   #--------------------------------------------------------------------------#
+#   inst <- requireNamespace("NMF", quietly = TRUE)
+#   if (!inst) {
+#       stop("NMF is not installed - Please install NMF
+#       install.packages('NMF')
+#       https://cran.r-project.org/web/packages/NMF/index.html")
+    
+#   } else {
+#       library("NMF")
+#   }
+
 
   #--------------------------------------------------------------------------#
   # Get the normalized count matrix and matrix with variable features 
   # from the Seurat object
   #--------------------------------------------------------------------------#
-  vesalius:::message_switch("nmf_tensor", verbose)
+  message_switch("nmf_tensor", verbose)
   features <- check_features(counts)
   count_matrix <- as.matrix(Seurat::GetAssayData(counts, layer = "data"))
   count_matrix <- count_matrix[features, ]
@@ -539,7 +543,7 @@ embed_nmf <- function(counts, dimensions, verbose = TRUE) {
   # Get the NMF projections (W matrix) and normalize
   #--------------------------------------------------------------------------#
   nmf_projections <- t(NMF::coefficients(nmf_result))
-  nmf_projections <- apply(nmf_projections, 2, vesalius:::norm_pixel, "minmax")
+  nmf_projections <- apply(nmf_projections, 2, norm_pixel, "minmax")
   nmf_projections <- list(as.matrix(nmf_projections))
   names(nmf_projections) <- "NMF"
   

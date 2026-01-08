@@ -47,11 +47,15 @@ associated with cell types of interest (see details)}
 \item{as_layer}{logical indicating if expression should represented as
 a territory/ layer.}
 
+\item{with_background}{logical - include background in plot}
+
 \item{cex}{numeric - font size modulator}
 
 \item{cex_pt}{numeric point size}
 
 \item{alpha}{point transparency}
+
+\item{max_size}{numeric - maximum point size}
 
 \item{return_as_list}{logical - should plot be returned as simple list
 or as a ggplot object (single gene)/ patchwork object (multiple genes)}

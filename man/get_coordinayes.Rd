@@ -8,6 +8,8 @@ get_coordinates(vesalius_assay, original = FALSE)
 }
 \arguments{
 \item{vesalius_assay}{a vesalius_assay}
+
+\item{original}{logical - return original coordinates}
 }
 \value{
 coordinate data frame

@@ -146,10 +146,12 @@ dispatch_sample <- function(territory_barcodes, ter, sample) {
 
 #' dispatch barcodes to subset cost for match clustering
 #' @param vesalius_assay vesalius_assay object post cell mapping
-#' @param cell_label character - name of column containing cell names
-#' if the clustering is to be done by cell types only
+#' @param cost cost matrix
+#' @param trial character - trial name
 #' @param group_identity character - name of column containing group
 #' to be used for cluster (i.e. territories, segments, layers etc)
+#' @param ref_cells character vector - reference cell barcodes
+#' @param query_cells character vector - query cell barcodes
 #' @return character string of barcodes
 dispatch_cost_groups <- function(vesalius_assay,
     cost,

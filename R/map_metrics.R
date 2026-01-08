@@ -15,7 +15,7 @@
 #' clustering (hclust, louvain, leiden)
 #' @param trial character string defining which trial should be used for
 #' clustering if any. If NULL, will search for "Cells".
-#' @param group_identitiy character vector - which specific substes of trial 
+#' @param group_identity character vector - which specific substes of trial 
 #' should be used for clustering By default will use all labels present.
 #' @param ref_cells character vector with reference cell barcodes
 #' (by default will use all barcodes)
@@ -30,6 +30,7 @@
 #' @param resolution numeric - clustering resolution to be parsed to 
 #' community clustering algorithms
 #' @param verbose logical - print output message
+#' @param ... additional arguments
 #' @details Once we have mapped cells between sample, we can identify which cells
 #' tend to map to the same group of cells. To achieve this, we first create a 
 #' cost matrix that will serve as a basis to find similar-mapping instances.
@@ -120,7 +121,7 @@ get_metric_clusters <- function(vesalius_assay,
 #' used for clustering (normalized to ensure that it will be between 0 and 1)
 #' @param k int - number of clusters
 #' @param verbose logical - print progress messages
-#' @importFrom stats hclust cutree
+#' @importFrom stats hclust cutree as.dist sd var IQR
 hclust_scores <- function(score, h, k, verbose) {
     message_switch("hclust_scores", verbose)
     clusters <- hclust(as.dist(score))
@@ -133,7 +134,7 @@ hclust_scores <- function(score, h, k, verbose) {
 
 #' Using Louvain community clustering to for co-mapping events
 #' @param score matrix containing mapping scores
-#' @param resoltuion numeric - clustering resolution
+#' @param resolution numeric - clustering resolution
 #' @param nn int - number of nearest neighbors to use for graph construction
 #' @param verbose logical - print output messages
 #' @importFrom igraph graph_from_data_frame cluster_louvain
@@ -155,7 +156,7 @@ louvain_scores <- function(score, resolution, nn, verbose) {
 
 #' Using Leiden community clustering to for co-mapping events
 #' @param score matrix containing mapping scores
-#' @param resoltuion numeric - clustering resolution
+#' @param resolution numeric - clustering resolution
 #' @param nn int - number of nearest neighbors to use for graph construction
 #' @param verbose logical - print output messages
 #' @importFrom igraph graph_from_data_frame cluster_leiden

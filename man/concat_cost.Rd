@@ -10,6 +10,8 @@ concat_cost(cost, use_cost, complement = TRUE)
 \item{cost}{list - named list contained score matrices}
 
 \item{use_cost}{character - which cost matrices to use}
+
+\item{complement}{logical - whether to use complement of scores}
 }
 \value{
 list with cost matrix

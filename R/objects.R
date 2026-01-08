@@ -34,7 +34,10 @@
 #' territories, or layers.
 #' @slot DEG list of data.frame for each differentially gene expression trial
 #' @slot counts list that containing count matrices. Raw and normalised will
-#' be stored here and named by the normalisation method used. 
+#' be stored here and named by the normalisation method used.
+#' @slot meta list containing metadata associated with the assay
+#' @slot cost list containing cost matrices used for mapping assays
+#' @slot map data.frame containing mapping results between assays
 #' @slot image list containing associated microscopy images (NOT implemented)
 #' @slot log list containing analysis history of the object. 
 #' 

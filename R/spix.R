@@ -13,10 +13,10 @@
 #' @param compactness numeric - factor defining super pixel compaction.
 #' @param scaling numeric - scaling image ration during super pixel 
 #' segmentation.
-#' @param k numeric - number of closest super pixel neighbors to consider
-#' when generating segments from super pixels
-#' @param threshold numeric [0,1] - correlation threshold between 
+#' @param threshold numeric [0,1] - correlation threshold between
 #' nearest neighbors when generating segments from super pixels.
+#' @param index_selection character - method for selecting initial indices
+#' @param max_iter int - max number of kmean iterations for slic segments
 #' @param verbose logical - progress message output.
 #
 #' @return a vesalius_assay object
@@ -32,6 +32,7 @@ generate_spix <- function(vesalius_assay,
   scaling = 0.5,
   threshold = 0.9,
   index_selection = "bubble",
+  max_iter = 10000,
   verbose = TRUE) {
   simple_bar(verbose)
   message_switch("seg", verbose, method = method)
@@ -49,6 +50,7 @@ generate_spix <- function(vesalius_assay,
       compactness = compactness,
       scaling = scaling,
       threshold = threshold,
+      max_iter = max_iter,
       verbose = verbose),
     "louvain_slic" = louvain_slic_segmentation(vesalius_assay,
         dimensions = dimensions,
@@ -219,6 +221,18 @@ leiden_slic_segmentation <- function(vesalius_assay,
 
 
 
+#' SLIC segmentation
+#' @param vesalius_assay vesalius_assay object
+#' @param dimensions dimensions to use
+#' @param col_resolution color resolution for segmentation
+#' @param embedding embedding to use
+#' @param index_selection method for selecting initial indices
+#' @param compactness compactness factor
+#' @param scaling scaling factor
+#' @param threshold correlation threshold
+#' @param max_iter int - max number of kmeans iterations
+#' @param verbose logical - progress messages
+#' @return segmented territories
 #' @importFrom imager imappend imsplit spectrum
 #' @importFrom purrr map_dbl map
 slic_segmentation <- function(vesalius_assay,
@@ -331,6 +345,7 @@ slic_segmentation <- function(vesalius_assay,
 #' select inital indices
 #' @param coordinates data frame containing spatial coordinates of beads
 #' @param embeddings matrix containing embedding values - full pixel image
+#' @param type character - method for selecting initial indices
 #' @param n_centers numeric number of beads to select as super pixel centers
 #' @param max_iter numeric number of iteration before returning result if 
 #' no coveregnce.
@@ -391,8 +406,13 @@ random_sampling <- function(coordinates, n_centers) {
 #   in_image <- paste0(embeddings[,"x"], "_", embeddings[,"y"])
 #   in_image <- which(in_image %in% in_background)
 #   return(in_image)
-# } 
+# }
 
+#' bubble_stack
+#' @param coordinates data.frame containing spatial coordinates
+#' @param n_centers numeric - number of centers to use for clustering
+#' @param max_iter numeric - maximum number of iterations
+#' @return clustered coordinates
 bubble_stack <- function(coordinates,
     n_centers = 500,
     max_iter = 500) {

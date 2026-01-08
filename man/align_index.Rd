@@ -7,19 +7,16 @@
 align_index(matched_index, coord, jitter = 0)
 }
 \arguments{
-\item{matched_index}{data.frame containing matching pairs of 
+\item{matched_index}{data.frame containing matching pairs of
 coordinates}
 
-\item{seed}{data.frame containing seed coordinates}
+\item{coord}{data.frame containing coordinate data}
 
-\item{query}{data.frame containing quert cooridates}
-
-\item{verbose}{logical - should progress message be outputed to the 
-console}
+\item{jitter}{numeric - amount of jitter to add to duplicated coordinates}
 }
 \value{
-adjusted query coordinate data.frame where each point
-receives the coordinates of its best matche in the seed.
+adjusted coordinate data.frame where each point
+receives the coordinates of its best match.
 }
 \description{
 assign coordinates to matched indices

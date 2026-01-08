@@ -16,6 +16,7 @@
 #' @param cex numeric describing font size multiplier.
 #' @param cex_pt numeric describing point size multiplier.
 #' @param alpha opacity factor ]0,1[
+#' @param use_image logical - whether to use image background
 #' @details Territory plots show all territories in false colour after they
 #' have been isolated from a Vesalius image.
 #' 

@@ -9,12 +9,14 @@
 #' @param mod2 vesalius_assay objecty containing second modality
 #' @param dimensions numeric vector describing latent space dimensions 
 #' to use during intergration
-#' @param method character - integration method. interlace - mean - concat 
+#' @param embedding character - embedding to use
+#' @param method character - integration method. interlace - mean - concat
 #' are available options
 #' @param norm_method character - which count values should be use 
 #' for integration when using concat method
-#' @param dim_reduction characater - which dim reduction methods should be 
+#' @param dim_reduction characater - which dim reduction methods should be
 #' used for concat integration (PCA,PCA_L,UMAP,LSI,LSI_UMAP,NMF)
+#' @param signal character - signal type to use
 #' @param verbose logical - should progress message be outputed to the 
 #' console.
 #' @return vesalius object containing new image embeddings
@@ -166,6 +168,7 @@ average_embed <- function(seed, query, dimensions) {
 #' @param dim_reduction string describing which dimensionality
 #' reduction method should be used. One of the following:
 #' "PCA", "PCA_L", "UMAP", "LSI", "LSI_UMAP"
+#' @param signal character - signal type to use
 #' @details Create new latent space using feature from both modalities
 #' Creates a new feature matrix than in nromalized and converted to latent
 #' space image stack.

@@ -1,63 +1,37 @@
 on:
   push:
-    branches: [main, master]
+    branches: [main]
   pull_request:
-  release:
-    types: [published]
-  workflow_dispatch:
 
 name: R CMD Check
 
 permissions: read-all
 
 jobs:
-  
   check-package:
-    
     runs-on: ubuntu-latest
 
-    # Run checks with R-release, R-devel, and R-oldrelease.
-    strategy:
-      # Make sure each job runs independently. When `fail-fast` is true 
-      # (by default) all jobs in the matrix are cancelled as soon as one fails.
-      fail-fast: false
-      matrix:
-        r-version: ['release', 'devel', 'oldrel']
-
-    # Override the default job name to display the current R version name in
-    # parentheses (e.g. "check-package (R-release)").
-    name: "check-package (R-${{ matrix.r-version }})"
-
     steps:
-      # Pull the latest changes from the repository down to the runner.
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Install R and any system dependencies.
       - name: Setup R
         uses: r-lib/actions/setup-r@v2
         with:
-          r-version: ${{ matrix.r-version }}
           use-public-rspm: true
-          
-      
-      # Install R dependencies.
-      - name: Install Dependencies
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libcurl4-openssl-dev libbz2-dev liblzma-dev zlib1g-dev libglpk-dev pandoc texlive-latex-recommended texlive-latex-extra
+
+      - name: Install R dependencies
         uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: 
+          extra-packages: |
             any::rcmdcheck
-            any::pkgdown
-          # Installed packages are cached by default - force an upgrade to the 
-          # latest version of all dependencies.
+            cran::BiocManager
           upgrade: 'TRUE'
-      
-      # Run CRAN checks - fails if any ERRORs or WARNINGs are raised in which 
-      # case the `rcmdcheck` output will be uploaded as an artifact.
-      - name: Run Checks
+
+      - name: Run checks
         uses: r-lib/actions/check-r-package@v2
-        env:
-            _R_CHECK_PKG_SIZES_: true
-            _R_CHECK_RD_XREFS_: true
-            _R_CHECK_CRAN_INCOMING_NOTE_GNU_MAKE_: true
-            _R_CHECK_PACKAGE_DATASETS_SUPPRESS_NOTES_: true

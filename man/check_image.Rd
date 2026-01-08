@@ -8,6 +8,10 @@ check_image(vesalius_assay, image_name = NULL, as_is = FALSE)
 }
 \arguments{
 \item{vesalius_assay}{vesalius assay object}
+
+\item{image_name}{character - name of the image to retrieve}
+
+\item{as_is}{logical - return image as is}
 }
 \value{
 microscopy image

@@ -39,6 +39,8 @@ highlighted.}
 \item{cex_pt}{numeric describing point size multiplier.}
 
 \item{alpha}{opacity factor ]0,1[}
+
+\item{use_image}{logical - whether to use image background}
 }
 \value{
 a ggplot object

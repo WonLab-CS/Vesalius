@@ -50,8 +50,14 @@ should be merged with the reference data (see details)}
 \item{labels_reference}{character - which columns in the reference data assay
 should be merged with the mapped data (see details)}
 
-\item{regenerate_tiles}{logical - should tiles be regenrated from integrated 
+\item{regenerate_tiles}{logical - should tiles be regenrated from integrated
 coordinates}
+
+\item{tensor_resolution}{numeric - tensor resolution for tile generation}
+
+\item{filter_grid}{numeric - filter grid parameter}
+
+\item{filter_threshold}{numeric - filter threshold parameter}
 
 \item{verbose}{logical - should progressed message be printed}
 }

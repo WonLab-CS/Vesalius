@@ -24,8 +24,11 @@
 #' should be merged with the reference data (see details)
 #' @param labels_reference character - which columns in the reference data assay
 #' should be merged with the mapped data (see details)
-#' @param regenerate_tiles logical - should tiles be regenrated from integrated 
+#' @param regenerate_tiles logical - should tiles be regenrated from integrated
 #' coordinates
+#' @param tensor_resolution numeric - tensor resolution for tile generation
+#' @param filter_grid numeric - filter grid parameter
+#' @param filter_threshold numeric - filter threshold parameter
 #' @param verbose logical - should progressed message be printed
 #' @details After mapping coordinates from a query onto a reference, vesalius
 #' provides a way to then integrate the assays together. This function will:
@@ -311,6 +314,7 @@ merge_coordinates <- function(matched, reference, barcodes) {
 #' to cell present in the other data set (similar to left and right joins).
 #' @return territory data frame with merged columns 
 #' @importFrom dplyr right_join
+#' @importFrom stats runif
 merge_territories <- function(matched,
     reference,
     coordinates,

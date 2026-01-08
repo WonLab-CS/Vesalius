@@ -17,6 +17,8 @@ select_initial_indices(
 
 \item{embeddings}{matrix containing embedding values - full pixel image}
 
+\item{type}{character - method for selecting initial indices}
+
 \item{n_centers}{numeric number of beads to select as super pixel centers}
 
 \item{max_iter}{numeric number of iteration before returning result if 

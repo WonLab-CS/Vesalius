@@ -5,7 +5,7 @@
 #' @param dimensions numeric vector of latent space dimensions to use.
 #' @param embedding character string describing which embedding should
 #' be used.
-#' @param type character - histogram EQ type. Select from: BalanceSimplest,
+#' @param method character - histogram EQ type. Select from: BalanceSimplest,
 #' EqualizePiecewise, SPE, EqualizeDP, EqualizeADP, ECDF (see details)
 #' @param N numeric describing how each colour channel will be mapped back to
 #' the image (Higher N = Higher greyscale contrast).

@@ -34,6 +34,9 @@ clustering (hclust, louvain, leiden)}
 \item{trial}{character string defining which trial should be used for
 clustering if any. If NULL, will search for "Cells".}
 
+\item{group_identity}{character vector - which specific substes of trial 
+should be used for clustering By default will use all labels present.}
+
 \item{ref_cells}{character vector with reference cell barcodes
 (by default will use all barcodes)}
 
@@ -55,8 +58,7 @@ community clustering algorithms}
 
 \item{verbose}{logical - print output message}
 
-\item{group_identitiy}{character vector - which specific substes of trial 
-should be used for clustering By default will use all labels present.}
+\item{...}{additional arguments}
 }
 \value{
 vesalius_assay with clustering results

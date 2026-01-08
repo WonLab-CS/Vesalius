@@ -18,8 +18,12 @@ niche_composition(
 \arguments{
 \item{coord}{data.frame - coordinates of assay (barcodes, x, y)}
 
+\item{vesalius_assay}{vesalius_assay object}
+
 \item{method}{character - which method should be use to collect 
 neighborhood - switch matches}
+
+\item{cell_label}{character - cell label column name}
 
 \item{k}{int - how many nearest neighbors from KNN algorithm}
 
@@ -27,9 +31,6 @@ neighborhood - switch matches}
 0 = self, 1 = direct neigbors, 2 = neighbors of neighbors, etc}
 
 \item{radius}{- numeric - radius around center cell}
-
-\item{signal}{matrix - matrix or sparse matrix containing assay 
-signal for all spatial indices contained in coord}
 }
 \value{
 list of all cells and cell types for each niche

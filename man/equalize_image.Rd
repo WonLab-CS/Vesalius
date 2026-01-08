@@ -27,6 +27,9 @@ equalize_image(
 \item{embedding}{character string describing which embedding should
 be used.}
 
+\item{method}{character - histogram EQ type. Select from: BalanceSimplest,
+EqualizePiecewise, SPE, EqualizeDP, EqualizeADP, ECDF (see details)}
+
 \item{N}{numeric describing how each colour channel will be mapped back to
 the image (Higher N = Higher greyscale contrast).
 Used with EqualizePiecewise}
@@ -50,9 +53,6 @@ Used with EqualizeDP.}
 Used with EqualizeDP.}
 
 \item{verbose}{logical - progress message output.}
-
-\item{type}{character - histogram EQ type. Select from: BalanceSimplest,
-EqualizePiecewise, SPE, EqualizeDP, EqualizeADP, ECDF (see details)}
 }
 \value{
 a vesalius_assay object

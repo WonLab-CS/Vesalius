@@ -16,11 +16,16 @@ dispatch_cost_groups(
 \arguments{
 \item{vesalius_assay}{vesalius_assay object post cell mapping}
 
+\item{cost}{cost matrix}
+
+\item{trial}{character - trial name}
+
 \item{group_identity}{character - name of column containing group
 to be used for cluster (i.e. territories, segments, layers etc)}
 
-\item{cell_label}{character - name of column containing cell names
-if the clustering is to be done by cell types only}
+\item{ref_cells}{character vector - reference cell barcodes}
+
+\item{query_cells}{character vector - query cell barcodes}
 }
 \value{
 character string of barcodes

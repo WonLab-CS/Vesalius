@@ -24,14 +24,18 @@ joint_territories(
 \item{dimensions}{numeric vector describing latent space dimensions 
 to use during intergration}
 
-\item{method}{character - integration method. interlace - mean - concat 
+\item{embedding}{character - embedding to use}
+
+\item{method}{character - integration method. interlace - mean - concat
 are available options}
 
 \item{norm_method}{character - which count values should be use 
 for integration when using concat method}
 
-\item{dim_reduction}{characater - which dim reduction methods should be 
+\item{dim_reduction}{characater - which dim reduction methods should be
 used for concat integration (PCA,PCA_L,UMAP,LSI,LSI_UMAP,NMF)}
+
+\item{signal}{character - signal type to use}
 
 \item{verbose}{logical - should progress message be outputed to the 
 console.}

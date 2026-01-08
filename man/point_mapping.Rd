@@ -31,10 +31,18 @@ point_mapping(
 \arguments{
 \item{query_signal}{processed query signal from query assay}
 
+\item{query_assay}{vesalius_assay object}
+
 \item{cost}{matrix - matrix of size n (query cells) by p (seed cells)
 containing custom cost matrix.}
 
 \item{seed_signal}{processed seed signal from seed assay}
+
+\item{seed_assay}{vesalius_assay object}
+
+\item{method}{character - correlation method}
+
+\item{neighborhood}{character - neighborhood method}
 
 \item{k}{int size of niche (knn)}
 
@@ -45,17 +53,27 @@ neighborhood}
 
 \item{batch_size}{int number of points in each query batch}
 
+\item{epochs}{numeric - number of epochs}
+
 \item{use_cost}{character string defining how should total cost be computer
 Available: feature, niche, territory, composition (See details for combinations}
 
 \item{threshold}{score threshold below which indicices should be removed.
 Scores will always be between 0 and 1}
 
+\item{filter_cells}{logical - filter cells}
+
+\item{seed_territory_labels}{character - seed territory labels}
+
+\item{query_territory_labels}{character - query territory labels}
+
+\item{seed_meta_labels}{character - seed meta labels}
+
+\item{query_meta_labels}{character - query meta labels}
+
+\item{digits}{numeric - number of digits}
+
 \item{verbose}{logical - out progress to console}
-
-\item{query}{vesalius_assay object}
-
-\item{seed}{vesalius_assay object}
 }
 \value{
 list of matched and aligned coordinates in query

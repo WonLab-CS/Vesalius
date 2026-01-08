@@ -211,6 +211,12 @@ add_embeddings <- function(vesalius_assay,
 
 
 
+#' add cells to vesalius assay
+#' @param vesalius_assay vesalius_assay object
+#' @param cells data.frame containing cell coordinates and metadata
+#' @param add_name character string defining trial name for added cells
+#' @param verbose logical - progress message output
+#' @return vesalius_assay object with added cells
 #' @export
 add_cells <- function(vesalius_assay, cells, add_name = NULL, verbose = TRUE){
     if (is.null(cells)){

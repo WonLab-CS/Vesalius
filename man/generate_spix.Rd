@@ -14,6 +14,7 @@ generate_spix(
   scaling = 0.5,
   threshold = 0.9,
   index_selection = "bubble",
+  max_iter = 10000,
   verbose = TRUE
 )
 }
@@ -37,13 +38,14 @@ segmentation. Select from "slic",
 \item{scaling}{numeric - scaling image ration during super pixel 
 segmentation.}
 
-\item{threshold}{numeric [0,1] - correlation threshold between 
+\item{threshold}{numeric [0,1] - correlation threshold between
 nearest neighbors when generating segments from super pixels.}
 
-\item{verbose}{logical - progress message output.}
+\item{index_selection}{character - method for selecting initial indices}
 
-\item{k}{numeric - number of closest super pixel neighbors to consider
-when generating segments from super pixels}
+\item{max_iter}{int - max number of kmean iterations for slic segments}
+
+\item{verbose}{logical - progress message output.}
 }
 \value{
 a vesalius_assay object

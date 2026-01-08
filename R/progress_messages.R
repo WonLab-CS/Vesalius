@@ -8,7 +8,10 @@
 # Prettify is only for graphical stuff. Could add more stuff.
 
 #-----------------------------/Prettify/-----------------------------------#
-# Simple bar output used to start any progress message output
+
+#' Simple progress bar output
+#' @param verbose logical - whether to print output
+#' @return NULL
 simple_bar <- function(verbose = TRUE) {
     if (!verbose) return(NULL)
     width_display <- round(options()$width)
