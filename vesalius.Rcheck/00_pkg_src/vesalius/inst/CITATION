@@ -1,0 +1,20 @@
+citHeader("To cite Vesalius in publications, please use:")
+citEntry(entry = "article",
+author = personList(as.person("Patrick C N Martin"),
+    as.person("Hyobin Kim"),
+    as.person("Cecilia Lövkvist"),
+    as.person("Byung-Woo Hong"),
+    as.person("Kyoung Jae Won")),
+title = "Vesalius: high-resolution in silico anatomization of spatial transcriptomic data using image analysis",
+journal = "Molecular Systems Biology",
+volume = "18",
+number = "9",
+pages = "e11080",
+keywords = "anatomical territories, spatial domains, spatial transcriptomics, tissue architecture, tissue heterogeneity",
+doi = "https://doi.org/10.15252/msb.202211080",
+url = "https://www.embopress.org/doi/abs/10.15252/msb.202211080",
+eprint = "https://www.embopress.org/doi/pdf/10.15252/msb.202211080",
+abstract = "Abstract Characterization of tissue architecture promises to deliver insights into development, cell communication, and disease. In silico spatial domain retrieval methods have been developed for spatial transcriptomics (ST) data assuming transcriptional similarity of neighboring barcodes. However, domain retrieval approaches with this assumption cannot work in complex tissues composed of multiple cell types. This task becomes especially challenging in cellular resolution ST methods. We developed Vesalius to decipher tissue anatomy from ST data by applying image processing technology. Vesalius uniquely detected territories composed of multiple cell types and successfully recovered tissue structures in high-resolution ST data including in mouse brain, embryo, liver, and colon. Utilizing this tissue architecture, Vesalius identified tissue morphology-specific gene expression and regional specific gene expression changes for astrocytes, interneuron, oligodendrocytes, and entorhinal cells in the mouse brain.",
+year = "2022",
+textVersion = "Martin et al. Vesalius: high-resolution in silico anatomization of spatial transcriptomic data using image analysis. Molecular Systems Biology (2022) [Vesalius 1.0.0]")
+

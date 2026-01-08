@@ -1,0 +1,15 @@
+data(vesalius)
+vesalius <- build_vesalius_assay(coordinates, counts)
+vesalius <- generate_embeddings(vesalius)
+vesalius <- smooth_image(vesalius, iter = 15)
+vesalius <- segment_image(vesalius, col_resolution = 3)
+vesalius <- isolate_territories(vesalius)
+
+test_that("summary of territories", {
+    expect_type(summarise_territories(vesalius), "list")
+    expect_type(summarise_territories(vesalius, as_log = TRUE), "list")
+    tmp <- summarise_territories(vesalius)
+    expect_length(tmp, 4)
+    tmp <- summarise_territories(vesalius, as_log = TRUE)
+    expect_length(tmp, 4)
+})

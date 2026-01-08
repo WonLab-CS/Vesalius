@@ -1,7 +1,6 @@
 ^renv$
 ^renv\.lock$
 ^\.github$
-^src/\.cargo$
 ^_pkgdown\.yml$
 ^docs$
 ^pkgdown$

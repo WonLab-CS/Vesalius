@@ -43,7 +43,10 @@
               RcppEigen
               TreeDist
               devtools
-              tidyr;
+              tidyr
+              RUnit
+              NMF
+              sf;
         };
 
         
@@ -53,7 +56,7 @@
             glibcLocales
             nix
             R
-            lintl
+            gettext
             pandoc
             which;
         };
