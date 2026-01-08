@@ -53,6 +53,7 @@
             glibcLocales
             nix
             R
+            lintl
             pandoc
             which;
         };
