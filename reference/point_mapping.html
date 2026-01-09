@@ -73,6 +73,10 @@
 <dd><p>processed query signal from query assay</p></dd>
 
 
+<dt id="arg-query-assay">query_assay<a class="anchor" aria-label="anchor" href="#arg-query-assay"></a></dt>
+<dd><p>vesalius_assay object</p></dd>
+
+
 <dt id="arg-cost">cost<a class="anchor" aria-label="anchor" href="#arg-cost"></a></dt>
 <dd><p>matrix - matrix of size n (query cells) by p (seed cells)
 containing custom cost matrix.</p></dd>
@@ -80,6 +84,18 @@ containing custom cost matrix.</p></dd>
 
 <dt id="arg-seed-signal">seed_signal<a class="anchor" aria-label="anchor" href="#arg-seed-signal"></a></dt>
 <dd><p>processed seed signal from seed assay</p></dd>
+
+
+<dt id="arg-seed-assay">seed_assay<a class="anchor" aria-label="anchor" href="#arg-seed-assay"></a></dt>
+<dd><p>vesalius_assay object</p></dd>
+
+
+<dt id="arg-method">method<a class="anchor" aria-label="anchor" href="#arg-method"></a></dt>
+<dd><p>character - correlation method</p></dd>
+
+
+<dt id="arg-neighborhood">neighborhood<a class="anchor" aria-label="anchor" href="#arg-neighborhood"></a></dt>
+<dd><p>character - neighborhood method</p></dd>
 
 
 <dt id="arg-k">k<a class="anchor" aria-label="anchor" href="#arg-k"></a></dt>
@@ -99,6 +115,10 @@ neighborhood</p></dd>
 <dd><p>int number of points in each query batch</p></dd>
 
 
+<dt id="arg-epochs">epochs<a class="anchor" aria-label="anchor" href="#arg-epochs"></a></dt>
+<dd><p>numeric - number of epochs</p></dd>
+
+
 <dt id="arg-use-cost">use_cost<a class="anchor" aria-label="anchor" href="#arg-use-cost"></a></dt>
 <dd><p>character string defining how should total cost be computer
 Available: feature, niche, territory, composition (See details for combinations</p></dd>
@@ -109,16 +129,32 @@ Available: feature, niche, territory, composition (See details for combinations<
 Scores will always be between 0 and 1</p></dd>
 
 
+<dt id="arg-filter-cells">filter_cells<a class="anchor" aria-label="anchor" href="#arg-filter-cells"></a></dt>
+<dd><p>logical - filter cells</p></dd>
+
+
+<dt id="arg-seed-territory-labels">seed_territory_labels<a class="anchor" aria-label="anchor" href="#arg-seed-territory-labels"></a></dt>
+<dd><p>character - seed territory labels</p></dd>
+
+
+<dt id="arg-query-territory-labels">query_territory_labels<a class="anchor" aria-label="anchor" href="#arg-query-territory-labels"></a></dt>
+<dd><p>character - query territory labels</p></dd>
+
+
+<dt id="arg-seed-meta-labels">seed_meta_labels<a class="anchor" aria-label="anchor" href="#arg-seed-meta-labels"></a></dt>
+<dd><p>character - seed meta labels</p></dd>
+
+
+<dt id="arg-query-meta-labels">query_meta_labels<a class="anchor" aria-label="anchor" href="#arg-query-meta-labels"></a></dt>
+<dd><p>character - query meta labels</p></dd>
+
+
+<dt id="arg-digits">digits<a class="anchor" aria-label="anchor" href="#arg-digits"></a></dt>
+<dd><p>numeric - number of digits</p></dd>
+
+
 <dt id="arg-verbose">verbose<a class="anchor" aria-label="anchor" href="#arg-verbose"></a></dt>
 <dd><p>logical - out progress to console</p></dd>
-
-
-<dt id="arg-query">query<a class="anchor" aria-label="anchor" href="#arg-query"></a></dt>
-<dd><p>vesalius_assay object</p></dd>
-
-
-<dt id="arg-seed">seed<a class="anchor" aria-label="anchor" href="#arg-seed"></a></dt>
-<dd><p>vesalius_assay object</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -135,7 +171,7 @@ Scores will always be between 0 and 1</p></dd>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.3.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
 </div>
 
     </footer></div>

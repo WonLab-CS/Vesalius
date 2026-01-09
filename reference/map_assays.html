@@ -93,6 +93,10 @@ Available: feature, niche, territory, composition (See details for combinations
 and custom matrices)</p></dd>
 
 
+<dt id="arg-method">method<a class="anchor" aria-label="anchor" href="#arg-method"></a></dt>
+<dd><p>character - correlation method to use</p></dd>
+
+
 <dt id="arg-neighborhood">neighborhood<a class="anchor" aria-label="anchor" href="#arg-neighborhood"></a></dt>
 <dd><p>character - how should the neighborhood be selected?
 "knn", "radius", "graph"(See details)</p></dd>
@@ -122,9 +126,21 @@ to consider for the neighborhood</p></dd>
 problem solving</p></dd>
 
 
+<dt id="arg-epochs">epochs<a class="anchor" aria-label="anchor" href="#arg-epochs"></a></dt>
+<dd><p>numeric - number of epochs</p></dd>
+
+
+<dt id="arg-allow-duplicates">allow_duplicates<a class="anchor" aria-label="anchor" href="#arg-allow-duplicates"></a></dt>
+<dd><p>logical - allow duplicate mappings</p></dd>
+
+
 <dt id="arg-threshold">threshold<a class="anchor" aria-label="anchor" href="#arg-threshold"></a></dt>
 <dd><p>score threshold below which indicices should be removed.
 Scores will always be between 0 and 1</p></dd>
+
+
+<dt id="arg-filter-cells">filter_cells<a class="anchor" aria-label="anchor" href="#arg-filter-cells"></a></dt>
+<dd><p>logical - filter cells</p></dd>
 
 
 <dt id="arg-use-norm">use_norm<a class="anchor" aria-label="anchor" href="#arg-use-norm"></a></dt>
@@ -138,6 +154,30 @@ Scores will always be between 0 and 1</p></dd>
 <dt id="arg-custom-cost">custom_cost<a class="anchor" aria-label="anchor" href="#arg-custom-cost"></a></dt>
 <dd><p>matrix - matrix of size n (query cells) by p (seed cells)
 containing custom cost matrix. Used instead of vesalius cost matrix</p></dd>
+
+
+<dt id="arg-seed-territory-labels">seed_territory_labels<a class="anchor" aria-label="anchor" href="#arg-seed-territory-labels"></a></dt>
+<dd><p>character - territory labels for seed</p></dd>
+
+
+<dt id="arg-query-territory-labels">query_territory_labels<a class="anchor" aria-label="anchor" href="#arg-query-territory-labels"></a></dt>
+<dd><p>character - territory labels for query</p></dd>
+
+
+<dt id="arg-seed-meta-labels">seed_meta_labels<a class="anchor" aria-label="anchor" href="#arg-seed-meta-labels"></a></dt>
+<dd><p>character - meta labels for seed</p></dd>
+
+
+<dt id="arg-query-meta-labels">query_meta_labels<a class="anchor" aria-label="anchor" href="#arg-query-meta-labels"></a></dt>
+<dd><p>character - meta labels for query</p></dd>
+
+
+<dt id="arg-jitter">jitter<a class="anchor" aria-label="anchor" href="#arg-jitter"></a></dt>
+<dd><p>numeric - jitter amount</p></dd>
+
+
+<dt id="arg-digits">digits<a class="anchor" aria-label="anchor" href="#arg-digits"></a></dt>
+<dd><p>numeric - number of digits</p></dd>
 
 
 <dt id="arg-verbose">verbose<a class="anchor" aria-label="anchor" href="#arg-verbose"></a></dt>
@@ -214,7 +254,7 @@ corresponding point and a new object is returned.</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.3.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
 </div>
 
     </footer></div>

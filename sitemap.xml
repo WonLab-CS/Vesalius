@@ -9,6 +9,7 @@
 <url><loc>wonlab-cs.github.io/Vesalius/news/index.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/add_active_count_tag.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/add_active_embedding_tag.html</loc></url>
+<url><loc>wonlab-cs.github.io/Vesalius/reference/add_cells.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/add_counts.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/add_embeddings.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/adjust_counts.html</loc></url>
@@ -23,8 +24,12 @@
 <url><loc>wonlab-cs.github.io/Vesalius/reference/cell_type_match.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/check_barcodes.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/check_binary_nature.html</loc></url>
+<url><loc>wonlab-cs.github.io/Vesalius/reference/check_cell_labels.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/check_cells.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/check_coordinates.html</loc></url>
+<url><loc>wonlab-cs.github.io/Vesalius/reference/check_cost_contribution.html</loc></url>
+<url><loc>wonlab-cs.github.io/Vesalius/reference/check_cost_matrix_validity.html</loc></url>
+<url><loc>wonlab-cs.github.io/Vesalius/reference/check_cost_validity.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/check_counts.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/check_deg_method.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/check_dim_selection_method.html</loc></url>
@@ -32,23 +37,36 @@
 <url><loc>wonlab-cs.github.io/Vesalius/reference/check_embedding_selection.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/check_embeddings.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/check_eq_method.html</loc></url>
+<url><loc>wonlab-cs.github.io/Vesalius/reference/check_feature_integration.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/check_features.html</loc></url>
+<url><loc>wonlab-cs.github.io/Vesalius/reference/check_for_unmatched.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/check_for_zero_counts.html</loc></url>
+<url><loc>wonlab-cs.github.io/Vesalius/reference/check_gene_overlap.html</loc></url>
+<url><loc>wonlab-cs.github.io/Vesalius/reference/check_genes.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/check_group_value.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/check_image.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/check_image_input.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/check_inputs.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/check_isolation_method.html</loc></url>
+<url><loc>wonlab-cs.github.io/Vesalius/reference/check_map_input.html</loc></url>
+<url><loc>wonlab-cs.github.io/Vesalius/reference/check_map_selection.html</loc></url>
+<url><loc>wonlab-cs.github.io/Vesalius/reference/check_maps.html</loc></url>
+<url><loc>wonlab-cs.github.io/Vesalius/reference/check_metric_trial.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/check_min_spatial_index.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/check_norm.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/check_norm_methods.html</loc></url>
+<url><loc>wonlab-cs.github.io/Vesalius/reference/check_sample.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/check_segment_trial.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/check_segmentation_method.html</loc></url>
+<url><loc>wonlab-cs.github.io/Vesalius/reference/check_signal.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/check_smoothing_kernel.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/check_smoothing_level.html</loc></url>
+<url><loc>wonlab-cs.github.io/Vesalius/reference/check_template_source.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/check_tensor_compression.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/check_territory_trial.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/check_tiles.html</loc></url>
+<url><loc>wonlab-cs.github.io/Vesalius/reference/chunk.html</loc></url>
+<url><loc>wonlab-cs.github.io/Vesalius/reference/clean_trial.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/commit_log.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/compute_effect_size.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/compute_nearest_neighbor_graph.html</loc></url>
@@ -80,6 +98,7 @@
 <url><loc>wonlab-cs.github.io/Vesalius/reference/embed_umap.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/equalize_image.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/extend_boundary.html</loc></url>
+<url><loc>wonlab-cs.github.io/Vesalius/reference/filter_assay.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/filter_grid.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/filter_maps.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/filter_tiles.html</loc></url>
@@ -102,6 +121,7 @@
 <url><loc>wonlab-cs.github.io/Vesalius/reference/get_deg_metrics.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/get_embeddings.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/get_func_from_commit.html</loc></url>
+<url><loc>wonlab-cs.github.io/Vesalius/reference/get_mapping_scores.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/get_markers.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/get_metric_clusters.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/get_neighborhood_signal.html</loc></url>
@@ -133,6 +153,7 @@
 <url><loc>wonlab-cs.github.io/Vesalius/reference/log_norm.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/louvain_scores.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/louvain_segmentation.html</loc></url>
+<url><loc>wonlab-cs.github.io/Vesalius/reference/make_composition_matrix.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/map_assays.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/map_index.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/match_cells.html</loc></url>
@@ -150,6 +171,7 @@
 <url><loc>wonlab-cs.github.io/Vesalius/reference/point_mapping.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/populate_graph.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/process_counts.html</loc></url>
+<url><loc>wonlab-cs.github.io/Vesalius/reference/quantile_norm.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/radius_neighborhood.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/rasterise.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/rebalence_colors.html</loc></url>
@@ -162,6 +184,8 @@
 <url><loc>wonlab-cs.github.io/Vesalius/reference/segment_image.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/select_initial_indices.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/signal_similarity.html</loc></url>
+<url><loc>wonlab-cs.github.io/Vesalius/reference/simple_bar.html</loc></url>
+<url><loc>wonlab-cs.github.io/Vesalius/reference/slic_segmentation.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/smooth_image.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/summarise_territories.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/territory_morphing.html</loc></url>
@@ -182,5 +206,7 @@
 <url><loc>wonlab-cs.github.io/Vesalius/reference/vesalius_deg_wilcox.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/vesalius_package.html</loc></url>
 <url><loc>wonlab-cs.github.io/Vesalius/reference/view_gene_expression.html</loc></url>
+<url><loc>wonlab-cs.github.io/Vesalius/reference/view_mapping_metrics.html</loc></url>
+<url><loc>wonlab-cs.github.io/Vesalius/reference/z_norm.html</loc></url>
 </urlset>
 

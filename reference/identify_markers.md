@@ -1,0 +1,153 @@
+# identify_markers computes differential observation expression between selected territories.
+
+identify_markers computes differential observation expression between
+selected territories.
+
+## Usage
+
+``` r
+identify_markers(
+  vesalius_assay,
+  trial = "last",
+  norm_method = "last",
+  seed = NULL,
+  query = NULL,
+  cells = NULL,
+  sample = FALSE,
+  method = "wilcox",
+  log_fc = 0.25,
+  pval = 0.05,
+  min_pct = 0.05,
+  min_spatial_index = 10,
+  genes = NULL,
+  verbose = TRUE,
+  ...
+)
+```
+
+## Arguments
+
+- vesalius_assay:
+
+  a vesalius_assay
+
+- trial:
+
+  character string - which territory trial that should be used to select
+  territorires. Default is last one computed
+
+- norm_method:
+
+  charcater string - which normalisation method should be used.
+
+- seed:
+
+  Integer or vector of integers describing territories to be included in
+  group 1 for differential gene expression analysis.
+
+- query:
+
+  Integer or vector of integers describing territories to be included in
+  group 2 for differential gene expression analysis. Default = NULL
+
+- cells:
+
+  character vector containing barcodes of cells of interest.
+
+- sample:
+
+  logical
+
+- method:
+
+  character describing the statistical test to use in order to extract
+  differantial gene expression. Select from: "wilcox", "t.test",
+  "chisq", "fisher.exact", "DEseq2", "QLF", "LRT","logit"
+
+- log_fc:
+
+  numeric describing minimum log fold change value for differential gene
+  expression. Default set at 0.25.
+
+- pval:
+
+  numeric for pval threshold. Default set at 0.05
+
+- min_pct:
+
+  numeric defining the minimum percentage of cells that should contain
+  any given gene. Deault set at 0.05
+
+- min_spatial_index:
+
+  integer defining minimum number of barcodes in a territory.
+
+- genes:
+
+  character vector - vector of gene names to use directly for DEG
+  analysis.
+
+- verbose:
+
+  logical - progress message output
+
+- ...:
+
+  other parameters parsed to DESeq2 or edgeR (not functional)
+
+## Value
+
+a vesalius_assay object
+
+## Details
+
+Identifying markers is a key aspect of spatial data analysis. This
+functions let's you select which territory trial you which to use. Note
+that this can be any territory trial that you have run, including color
+segments, isolated territories, dilated or eroded territories and
+layered territories. By default, `identify_markers` takes the last one
+that has been computed.
+
+The normalisation method refers to the normalisation method applied to
+the count matrices. If you use, DESeq2, QLF (edgeR) or LRT (edgeR), raw
+counts will be selected and will ignore any cother command. This is a
+requirement for both of these packages.
+
+If you have some cells you are interested in comparing between
+territories, you can simply parse a character vector containing the
+barcodes of your cells of interest. `identify_markers` will
+automatically retrieve cells in each territory and only use these cell
+for comparison.
+
+Once the Differentially expressed genes/oberservations have been
+computed they are stored in the vesalius_assay object. This allows you
+to run multiple trial and have all these trials sorted within your
+object.
+
+To retrieve them from the object, you can use
+[`get_markers`](wonlab-cs.github.io/Vesalius/reference/get_markers.md)
+
+## Examples
+
+``` r
+if (FALSE) { # \dontrun{
+data(vesalius)
+# First we build a simple object
+ves <- build_vesalius_object(coordinates, counts)
+# We can do a simple run
+ves <- build_vesalius_embeddings(ves)
+
+# simple smoothing
+ves <- smooth_image(ves, dimensions = seq(1, 30))
+
+# quick segmentation
+ves <- segment_image(ves, dimensions = seq(1, 30))
+
+# isolate territories
+ves <- isolate_territories(ves)
+
+# identify markers
+ves <- identify_markers(ves, seed = c(3,5), query = 8)
+deg <- get_markers(ves)
+} # }
+```

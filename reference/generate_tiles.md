@@ -1,0 +1,66 @@
+# generate tiles
+
+generate pixel tiles from punctual spatial assay coordinates
+
+## Usage
+
+``` r
+generate_tiles(
+  vesalius_assay,
+  tensor_resolution = 1,
+  filter_grid = 0.01,
+  filter_threshold = 0.995,
+  verbose = TRUE
+)
+```
+
+## Arguments
+
+- vesalius_assay:
+
+  a vesalius_assay object
+
+- tensor_resolution:
+
+  numeric (range 0 - 1) describing the compression ratio to be applied
+  to the final image. Default = 1
+
+- filter_grid:
+
+  numeric (range 0 - 1) size of the grid used when filtering outlier
+  beads. Defined as a proportion of total image size. Default = 0.1
+
+- filter_threshold:
+
+  numeric (range 0 -1) describing the quantile
+
+- verbose:
+
+  logical describing if progress message should be outputed
+
+## Value
+
+a data.frame containing barcodes, x and you coordinates of each pixel as
+well as the original x/y coordinates
+
+## Details
+
+This function converts punctual coordinates into pixel tiles. The first
+step is to filter outlier beads. Essentially removing any bead that lies
+outside of the main assay (seed
+[`filter_grid`](wonlab-cs.github.io/Vesalius/reference/filter_grid.md)).
+If reqested the resolution of the image can be reduced by redudcing the
+relative distance between each coordinate pair (see
+[`reduce_tensor_resolution`](wonlab-cs.github.io/Vesalius/reference/reduce_tensor_resolution.md)).
+Note that if the resolution is reduce all spatial indices are retained
+and counts will be merged together (see
+[`adjust_counts`](wonlab-cs.github.io/Vesalius/reference/adjust_counts.md)).
+
+To create tiles, each coordinates is expanded by using Voronoi
+tesselation and each tile is raterised i.e "filled with pixel" (see
+[`rasterise`](wonlab-cs.github.io/Vesalius/reference/rasterise.md)).
+Prior to rasterisation, we remove all tiles that are above an area
+threshold. These tiles are artefacts of the tesselation algortihm that
+creates a "box" around all points and uses this as a boudary to generate
+each tile. They can also be generate by stray beads or holes in the
+data.
