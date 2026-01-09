@@ -1,4 +1,4 @@
 library(testthat)
 library(vesalius)
-usethis::use_package("rlang")
+library(rlang)
 test_check("vesalius")
