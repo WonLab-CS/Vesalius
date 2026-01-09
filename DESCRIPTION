@@ -80,14 +80,14 @@ Imports:
     kohonen,
     Rcpp,
     TreeDist,
-    NMF,
-    rlang
+    NMF
 Suggests:
     knitr,
     RUnit,
     rmarkdown,
     testthat (>= 3.0.0),
-    sf
+    sf,
+    rlang
 Encoding: UTF-8
 LazyData: true
 LazyDataCompression: bzip2

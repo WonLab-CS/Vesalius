@@ -6,3 +6,6 @@
 ^docs$
 ^pkgdown$
 ^vesalius\.Rcheck$
+^help$
+^doc$
+^libs$
