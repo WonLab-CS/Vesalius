@@ -203,7 +203,7 @@ leiden_segmentation <- function(vesalius_assay,
   embeddings <- cbind(coord[, c("x", "y")], embeddings[loc, ])
   graph <- compute_nearest_neighbor_graph(embeddings = embeddings)
   clusters <- igraph::cluster_leiden(graph,
-    resolution_parameter = col_resolution)
+    resolution = col_resolution)
   cluster <- data.frame("cluster" = clusters$membership,
     "barcodes" = clusters$names)
   match_loc <- match(coord$barcodes, cluster$barcodes)
