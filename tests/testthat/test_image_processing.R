@@ -29,7 +29,7 @@ test_that("Vesalius assay work as expected with reg", {
 
 test_that("Regularisation works as expected", {
     expect_error(regularise_image(vesalius, lambda = 0))
-    expect_error(regularise_image(vesalius, iter = 0))
+    expect_error(regularise_image(vesalius, niter = 0))
     # checking if values are nornalised correctly
     tmp <- regularise_image(vesalius)
     expect_true(max(tmp@active) == 1)

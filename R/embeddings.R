@@ -510,7 +510,8 @@ embed_nmf <- function(counts, dimensions, verbose = TRUE) {
 #   #--------------------------------------------------------------------------#
 #   # adding this since I don't want to have this package as a dependancy 
 #   # The problem is that those functions are exported to name space
-#   # but NMF only works if the package is attached.
+#   # but NMF only works if the package is load via library
+#   # it will refuse to work if this is not the case. 
 #   #--------------------------------------------------------------------------#
 #   inst <- requireNamespace("NMF", quietly = TRUE)
 #   if (!inst) {

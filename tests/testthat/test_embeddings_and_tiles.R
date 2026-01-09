@@ -137,6 +137,9 @@ test_that("Vesalius PCA embeds", {
 })
 
 test_that("Vesalius NMF embeds", {
+  # need to load the library first otherwise it won't work
+  # despite using it in import
+  library(NMF)
   vesalius <- build_vesalius_assay(coordinates, counts)
   vesalius <- generate_embeddings(vesalius,
                                   dim_reduction = "NMF",

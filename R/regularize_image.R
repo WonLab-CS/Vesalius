@@ -54,6 +54,17 @@ regularise_image <- function(vesalius_assay,
       stop("Unsupported format to regularise_image function")
     }
     #--------------------------------------------------------------------------#
+    # Param validity pre-future dispatch
+    # error handling with future will throw and error and a waring 
+    # which makes it messy in unit testing scenarios
+    #--------------------------------------------------------------------------#
+    if (lambda <= 0) {
+      stop("Lambda needs to be a positive numeric")
+    }
+    if (niter < 1) {
+      stop("niter needs to be at least one")
+    }
+    #--------------------------------------------------------------------------#
     # now we can do some var reg!
     # Will add the imager denoising function as well
     # regularisation is essentially denoising anyway
