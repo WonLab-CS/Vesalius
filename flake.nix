@@ -2,7 +2,7 @@
   description = "Vesalius Development Shell";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/unstable";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
   };
 
@@ -56,6 +56,7 @@
             glibcLocales
             nix
             R
+            libintl
             gettext
             pandoc
             which;
