@@ -3,7 +3,7 @@ pkgdown: 2.2.0
 pkgdown_sha: ~
 articles:
   vesalius: vesalius.html
-last_built: 2026-01-09T21:49Z
+last_built: 2026-01-09T22:17Z
 urls:
   reference: wonlab-cs.github.io/Vesalius/reference
   article: wonlab-cs.github.io/Vesalius/articles

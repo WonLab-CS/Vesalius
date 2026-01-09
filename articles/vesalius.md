@@ -307,9 +307,9 @@ vesalius <- regularise_image(vesalius, lambda = 1)
 ```
 
     ## #--------------------------------------------------------------------------------# 
-    ## 2026-50-01/09/26 21:50:47  Converting Vesalius to Image
-    ## 2026-50-01/09/26 21:50:47  Regularising Image 
-    ## 2026-50-01/09/26 21:50:51  Converting Images to Vesalius
+    ## 2026-18-01/09/26 22:18:42  Converting Vesalius to Image
+    ## 2026-18-01/09/26 22:18:43  Regularising Image 
+    ## 2026-18-01/09/26 22:18:46  Converting Images to Vesalius
     ## #--------------------------------------------------------------------------------#
 
 ``` r
@@ -317,9 +317,9 @@ vesalius <- smooth_image(vesalius, sigma = 5, iter = 10)
 ```
 
     ## #--------------------------------------------------------------------------------# 
-    ## 2026-50-01/09/26 21:50:51  Converting Vesalius to Image
-    ## 2026-50-01/09/26 21:50:52  Smoothing Image Arrays 
-    ## 2026-50-01/09/26 21:50:52  Converting Images to Vesalius
+    ## 2026-18-01/09/26 22:18:46  Converting Vesalius to Image
+    ## 2026-18-01/09/26 22:18:47  Smoothing Image Arrays 
+    ## 2026-18-01/09/26 22:18:47  Converting Images to Vesalius
     ## #--------------------------------------------------------------------------------#
 
 ``` r
@@ -327,9 +327,9 @@ vesalius <- equalize_image(vesalius, sleft = 5, sright = 5)
 ```
 
     ## #--------------------------------------------------------------------------------# 
-    ## 2026-50-01/09/26 21:50:52  Converting Vesalius to Image
-    ## 2026-50-01/09/26 21:50:53  Equalizing Histogram 
-    ## 2026-50-01/09/26 21:50:53  Converting Images to Vesalius
+    ## 2026-18-01/09/26 22:18:48  Converting Vesalius to Image
+    ## 2026-18-01/09/26 22:18:48  Equalizing Histogram 
+    ## 2026-18-01/09/26 22:18:48  Converting Images to Vesalius
     ## #--------------------------------------------------------------------------------#
 
 You can apply any image processing method you wish and in any order you
@@ -440,8 +440,8 @@ vesalius <- isolate_territories(vesalius, capture_radius = 0.05)
 ```
 
     ## #--------------------------------------------------------------------------------# 
-    ## 2026-50-01/09/26 21:50:56  Pooling Segment  1 
-    ## 2026-50-01/09/26 21:50:56  Pooling Segment  2 
+    ## 2026-18-01/09/26 22:18:51  Pooling Segment  1 
+    ## 2026-18-01/09/26 22:18:51  Pooling Segment  2 
     ## #--------------------------------------------------------------------------------#
 
 #### What do we have?
@@ -495,8 +495,8 @@ vesalius <- identify_markers(vesalius, seed = 1, query = 2)
 ```
 
     ## #--------------------------------------------------------------------------------# 
-    ## 2026-50-01/09/26 21:50:57 ===> Computing DEGs in spatial_omics <===
-    ## 2026-50-01/09/26 21:50:57 ===> 1 VS 2 <=== 
+    ## 2026-18-01/09/26 22:18:52 ===> Computing DEGs in spatial_omics <===
+    ## 2026-18-01/09/26 22:18:52 ===> 1 VS 2 <=== 
     ## #--------------------------------------------------------------------------------#
 
 ``` r
@@ -538,9 +538,9 @@ vesalius <- build_vesalius_assay(coordinates, counts)
 ```
 
     ## #--------------------------------------------------------------------------------# 
-    ## 2026-50-01/09/26 21:50:59  Checking Coordinates in spatial_omics 
-    ## 2026-51-01/09/26 21:51:00  Checking Counts in spatial_omics 
-    ## 2026-51-01/09/26 21:51:00  Calculating Assay scale from coordinates
+    ## 2026-18-01/09/26 22:18:54  Checking Coordinates in spatial_omics 
+    ## 2026-18-01/09/26 22:18:55  Checking Counts in spatial_omics 
+    ## 2026-18-01/09/26 22:18:55  Calculating Assay scale from coordinates
     ## #--------------------------------------------------------------------------------#
 
 ``` r
@@ -550,7 +550,7 @@ vesalius <- add_cells(vesalius, cells = cells, add_name = "Cells")
 ```
 
     ## #--------------------------------------------------------------------------------# 
-    ## 2026-51-01/09/26 21:51:00  Adding cell labels to Cells territory column in spatial_omics 
+    ## 2026-18-01/09/26 22:18:55  Adding cell labels to Cells territory column in spatial_omics 
     ## #--------------------------------------------------------------------------------#
 
 ``` r
@@ -558,9 +558,9 @@ jitter_ves <- build_vesalius_assay(jitter_coord, jitter_counts)
 ```
 
     ## #--------------------------------------------------------------------------------# 
-    ## 2026-51-01/09/26 21:51:00  Checking Coordinates in spatial_omics 
-    ## 2026-51-01/09/26 21:51:01  Checking Counts in spatial_omics 
-    ## 2026-51-01/09/26 21:51:02  Calculating Assay scale from coordinates
+    ## 2026-18-01/09/26 22:18:55  Checking Coordinates in spatial_omics 
+    ## 2026-18-01/09/26 22:18:56  Checking Counts in spatial_omics 
+    ## 2026-18-01/09/26 22:18:57  Calculating Assay scale from coordinates
     ## #--------------------------------------------------------------------------------#
 
 ``` r
@@ -570,7 +570,7 @@ jitter_ves <- add_cells(jitter_ves, cells = cells, add_name = "Cells")
 ```
 
     ## #--------------------------------------------------------------------------------# 
-    ## 2026-51-01/09/26 21:51:02  Adding cell labels to Cells territory column in spatial_omics 
+    ## 2026-18-01/09/26 22:18:57  Adding cell labels to Cells territory column in spatial_omics 
     ## #--------------------------------------------------------------------------------#
 
 ``` r
@@ -580,15 +580,15 @@ vesalius <- generate_embeddings(vesalius,
 ```
 
     ## #--------------------------------------------------------------------------------# 
-    ## 2026-51-01/09/26 21:51:02 ===> Generating Tiles in spatial_omics <===
-    ## 2026-51-01/09/26 21:51:02  Generating Voronoi Tesselation 
-    ## 2026-51-01/09/26 21:51:02  Filtering Tiles
-    ## 2026-51-01/09/26 21:51:02  Rasterising Tiles 
-    ## 2026-51-01/09/26 21:51:06  Adjusting count matrix
-    ## 2026-51-01/09/26 21:51:06 ===> Pre-processing counts in spatial_omics <===
-    ## 2026-51-01/09/26 21:51:07 ===> Compute Latent Space in spatial_omics <===
-    ## 2026-51-01/09/26 21:51:07  Running Principal Component Analysis 
-    ## 2026-51-01/09/26 21:51:09  Converting PCA Embedding Values to gray scale 
+    ## 2026-18-01/09/26 22:18:57 ===> Generating Tiles in spatial_omics <===
+    ## 2026-18-01/09/26 22:18:57  Generating Voronoi Tesselation 
+    ## 2026-18-01/09/26 22:18:57  Filtering Tiles
+    ## 2026-18-01/09/26 22:18:57  Rasterising Tiles 
+    ## 2026-19-01/09/26 22:19:00  Adjusting count matrix
+    ## 2026-19-01/09/26 22:19:00 ===> Pre-processing counts in spatial_omics <===
+    ## 2026-19-01/09/26 22:19:02 ===> Compute Latent Space in spatial_omics <===
+    ## 2026-19-01/09/26 22:19:02  Running Principal Component Analysis 
+    ## 2026-19-01/09/26 22:19:03  Converting PCA Embedding Values to gray scale 
     ## #--------------------------------------------------------------------------------#
 
 ``` r
@@ -596,9 +596,9 @@ vesalius <- smooth_image(vesalius, embedding = "PCA", sigma = 5, iter = 10)
 ```
 
     ## #--------------------------------------------------------------------------------# 
-    ## 2026-51-01/09/26 21:51:09  Converting Vesalius to Image
-    ## 2026-51-01/09/26 21:51:09  Smoothing Image Arrays 
-    ## 2026-51-01/09/26 21:51:10  Converting Images to Vesalius
+    ## 2026-19-01/09/26 22:19:03  Converting Vesalius to Image
+    ## 2026-19-01/09/26 22:19:04  Smoothing Image Arrays 
+    ## 2026-19-01/09/26 22:19:05  Converting Images to Vesalius
     ## #--------------------------------------------------------------------------------#
 
 ``` r
@@ -606,9 +606,9 @@ vesalius <- equalize_image(vesalius, sleft = 5, sright = 5)
 ```
 
     ## #--------------------------------------------------------------------------------# 
-    ## 2026-51-01/09/26 21:51:10  Converting Vesalius to Image
-    ## 2026-51-01/09/26 21:51:11  Equalizing Histogram 
-    ## 2026-51-01/09/26 21:51:11  Converting Images to Vesalius
+    ## 2026-19-01/09/26 22:19:05  Converting Vesalius to Image
+    ## 2026-19-01/09/26 22:19:05  Equalizing Histogram 
+    ## 2026-19-01/09/26 22:19:05  Converting Images to Vesalius
     ## #--------------------------------------------------------------------------------#
 
 ``` r
@@ -616,7 +616,7 @@ vesalius <- segment_image(vesalius, col_resolution = 2)
 ```
 
     ## #--------------------------------------------------------------------------------# 
-    ## 2026-51-01/09/26 21:51:11  Segmenting Image using kmeans 
+    ## 2026-19-01/09/26 22:19:06  Segmenting Image using kmeans 
     ## #--------------------------------------------------------------------------------#
 
 ``` r
@@ -624,8 +624,8 @@ vesalius <- isolate_territories(vesalius)
 ```
 
     ## #--------------------------------------------------------------------------------# 
-    ## 2026-51-01/09/26 21:51:11  Pooling Segment  1 
-    ## 2026-51-01/09/26 21:51:11  Pooling Segment  2 
+    ## 2026-19-01/09/26 22:19:06  Pooling Segment  1 
+    ## 2026-19-01/09/26 22:19:06  Pooling Segment  2 
     ## #--------------------------------------------------------------------------------#
 
 ``` r
@@ -635,15 +635,15 @@ jitter_ves <- generate_embeddings(jitter_ves,
 ```
 
     ## #--------------------------------------------------------------------------------# 
-    ## 2026-51-01/09/26 21:51:11 ===> Generating Tiles in spatial_omics <===
-    ## 2026-51-01/09/26 21:51:11  Generating Voronoi Tesselation 
-    ## 2026-51-01/09/26 21:51:11  Filtering Tiles
-    ## 2026-51-01/09/26 21:51:11  Rasterising Tiles 
-    ## 2026-51-01/09/26 21:51:13  Adjusting count matrix
-    ## 2026-51-01/09/26 21:51:13 ===> Pre-processing counts in spatial_omics <===
-    ## 2026-51-01/09/26 21:51:19 ===> Compute Latent Space in spatial_omics <===
-    ## 2026-51-01/09/26 21:51:19  Running Principal Component Analysis 
-    ## 2026-51-01/09/26 21:51:20  Converting PCA Embedding Values to gray scale 
+    ## 2026-19-01/09/26 22:19:06 ===> Generating Tiles in spatial_omics <===
+    ## 2026-19-01/09/26 22:19:06  Generating Voronoi Tesselation 
+    ## 2026-19-01/09/26 22:19:06  Filtering Tiles
+    ## 2026-19-01/09/26 22:19:06  Rasterising Tiles 
+    ## 2026-19-01/09/26 22:19:08  Adjusting count matrix
+    ## 2026-19-01/09/26 22:19:08 ===> Pre-processing counts in spatial_omics <===
+    ## 2026-19-01/09/26 22:19:13 ===> Compute Latent Space in spatial_omics <===
+    ## 2026-19-01/09/26 22:19:13  Running Principal Component Analysis 
+    ## 2026-19-01/09/26 22:19:14  Converting PCA Embedding Values to gray scale 
     ## #--------------------------------------------------------------------------------#
 
 ``` r
@@ -651,9 +651,9 @@ jitter_ves <- smooth_image(jitter_ves, embedding = "PCA", sigma = 5, iter = 10)
 ```
 
     ## #--------------------------------------------------------------------------------# 
-    ## 2026-51-01/09/26 21:51:20  Converting Vesalius to Image
-    ## 2026-51-01/09/26 21:51:20  Smoothing Image Arrays 
-    ## 2026-51-01/09/26 21:51:21  Converting Images to Vesalius
+    ## 2026-19-01/09/26 22:19:14  Converting Vesalius to Image
+    ## 2026-19-01/09/26 22:19:15  Smoothing Image Arrays 
+    ## 2026-19-01/09/26 22:19:15  Converting Images to Vesalius
     ## #--------------------------------------------------------------------------------#
 
 ``` r
@@ -661,9 +661,9 @@ jitter_ves <- equalize_image(jitter_ves, sleft = 5, sright = 5)
 ```
 
     ## #--------------------------------------------------------------------------------# 
-    ## 2026-51-01/09/26 21:51:21  Converting Vesalius to Image
-    ## 2026-51-01/09/26 21:51:22  Equalizing Histogram 
-    ## 2026-51-01/09/26 21:51:22  Converting Images to Vesalius
+    ## 2026-19-01/09/26 22:19:15  Converting Vesalius to Image
+    ## 2026-19-01/09/26 22:19:16  Equalizing Histogram 
+    ## 2026-19-01/09/26 22:19:16  Converting Images to Vesalius
     ## #--------------------------------------------------------------------------------#
 
 ``` r
@@ -671,7 +671,7 @@ jitter_ves <- segment_image(jitter_ves, col_resolution = 2)
 ```
 
     ## #--------------------------------------------------------------------------------# 
-    ## 2026-51-01/09/26 21:51:22  Segmenting Image using kmeans 
+    ## 2026-19-01/09/26 22:19:16  Segmenting Image using kmeans 
     ## #--------------------------------------------------------------------------------#
 
 ``` r
@@ -679,8 +679,8 @@ jitter_ves <- isolate_territories(jitter_ves)
 ```
 
     ## #--------------------------------------------------------------------------------# 
-    ## 2026-51-01/09/26 21:51:22  Pooling Segment  1 
-    ## 2026-51-01/09/26 21:51:22  Pooling Segment  2 
+    ## 2026-19-01/09/26 22:19:16  Pooling Segment  1 
+    ## 2026-19-01/09/26 22:19:16  Pooling Segment  2 
     ## #--------------------------------------------------------------------------------#
 
 Next, we can proceed with the mapping of cells on to the other. We will
@@ -698,19 +698,19 @@ matched <- map_assays(vesalius,
 ```
 
     ## #--------------------------------------------------------------------------------# 
-    ## 2026-51-01/09/26 21:51:22  Extracting assay signal
-    ## 2026-51-01/09/26 21:51:22  Computing Feature cost in spatial_omics 
-    ## 2026-51-01/09/26 21:51:23  Getting Neighborhoods in spatial_omics 
-    ## 2026-51-01/09/26 21:51:23  Computing Neighborhood cost in spatial_omics 
-    ## 2026-51-01/09/26 21:51:24  Computing Territory cost in spatial_omics 
-    ## 2026-51-01/09/26 21:51:26  Computing Niche Composition Index in spatial_omics 
-    ## 2026-51-01/09/26 21:51:31  Filtering Cost Matrices 
-    ## 2026-51-01/09/26 21:51:31  Mapping query to seed - Epoch =  1 
-    ## 2026-51-01/09/26 21:51:32  Mapping query to seed - Epoch =  2 
-    ## 2026-51-01/09/26 21:51:32  Mapping query to seed - Epoch =  3 
-    ## 2026-51-01/09/26 21:51:32  Mapping query to seed - Epoch =  4 
-    ## 2026-51-01/09/26 21:51:32  Mapping query to seed - Epoch =  5 
-    ## 2026-51-01/09/26 21:51:32  Filtering Mapped Indices 
+    ## 2026-19-01/09/26 22:19:16  Extracting assay signal
+    ## 2026-19-01/09/26 22:19:17  Computing Feature cost in spatial_omics 
+    ## 2026-19-01/09/26 22:19:17  Getting Neighborhoods in spatial_omics 
+    ## 2026-19-01/09/26 22:19:18  Computing Neighborhood cost in spatial_omics 
+    ## 2026-19-01/09/26 22:19:18  Computing Territory cost in spatial_omics 
+    ## 2026-19-01/09/26 22:19:20  Computing Niche Composition Index in spatial_omics 
+    ## 2026-19-01/09/26 22:19:25  Filtering Cost Matrices 
+    ## 2026-19-01/09/26 22:19:25  Mapping query to seed - Epoch =  1 
+    ## 2026-19-01/09/26 22:19:26  Mapping query to seed - Epoch =  2 
+    ## 2026-19-01/09/26 22:19:26  Mapping query to seed - Epoch =  3 
+    ## 2026-19-01/09/26 22:19:26  Mapping query to seed - Epoch =  4 
+    ## 2026-19-01/09/26 22:19:26  Mapping query to seed - Epoch =  5 
+    ## 2026-19-01/09/26 22:19:26  Filtering Mapped Indices 
     ## #--------------------------------------------------------------------------------#
 
 The mapping produces a new vesalius object with mapped coordinates for
@@ -728,9 +728,9 @@ matched <- smooth_image(matched, sigma = 5, iter = 10)
 ```
 
     ## #--------------------------------------------------------------------------------# 
-    ## 2026-51-01/09/26 21:51:41  Converting Vesalius to Image
-    ## 2026-51-01/09/26 21:51:42  Smoothing Image Arrays 
-    ## 2026-51-01/09/26 21:51:43  Converting Images to Vesalius
+    ## 2026-19-01/09/26 22:19:35  Converting Vesalius to Image
+    ## 2026-19-01/09/26 22:19:36  Smoothing Image Arrays 
+    ## 2026-19-01/09/26 22:19:37  Converting Images to Vesalius
     ## #--------------------------------------------------------------------------------#
 
 ``` r
@@ -738,9 +738,9 @@ matched <- equalize_image(matched, sleft = 5, sright = 5)
 ```
 
     ## #--------------------------------------------------------------------------------# 
-    ## 2026-51-01/09/26 21:51:43  Converting Vesalius to Image
-    ## 2026-51-01/09/26 21:51:44  Equalizing Histogram 
-    ## 2026-51-01/09/26 21:51:44  Converting Images to Vesalius
+    ## 2026-19-01/09/26 22:19:37  Converting Vesalius to Image
+    ## 2026-19-01/09/26 22:19:38  Equalizing Histogram 
+    ## 2026-19-01/09/26 22:19:38  Converting Images to Vesalius
     ## #--------------------------------------------------------------------------------#
 
 ``` r
@@ -748,7 +748,7 @@ matched <- segment_image(matched,col_resolution = 2)
 ```
 
     ## #--------------------------------------------------------------------------------# 
-    ## 2026-51-01/09/26 21:51:44  Segmenting Image using kmeans 
+    ## 2026-19-01/09/26 22:19:38  Segmenting Image using kmeans 
     ## #--------------------------------------------------------------------------------#
 
 We can then look at the resulting embeddings
@@ -786,19 +786,19 @@ inter <- integrate_assays(matched,
 ```
 
     ## #--------------------------------------------------------------------------------# 
-    ## 2026-51-01/09/26 21:51:50  Intergrating Counts
+    ## 2026-19-01/09/26 22:19:44  Intergrating Counts
 
     ## Warning in merge_coordinates(mapped, reference,
     ## rownames(integrated$integrated)): No duplicated coordinates allowed - Adding
     ## noise!
 
-    ## 2026-51-01/09/26 21:51:59 ===> Generating Tiles in spatial_omics <===
-    ## 2026-51-01/09/26 21:51:59  Generating Voronoi Tesselation 
-    ## 2026-51-01/09/26 21:51:59  Filtering Tiles
-    ## 2026-51-01/09/26 21:51:59  Rasterising Tiles 
-    ## 2026-52-01/09/26 21:52:03  Adjusting count matrix
-    ## 2026-52-01/09/26 21:52:03  Setting integrated as active embedding 
-    ## 2026-52-01/09/26 21:52:03  Setting inferred as active count matrix 
+    ## 2026-19-01/09/26 22:19:53 ===> Generating Tiles in spatial_omics <===
+    ## 2026-19-01/09/26 22:19:53  Generating Voronoi Tesselation 
+    ## 2026-19-01/09/26 22:19:53  Filtering Tiles
+    ## 2026-19-01/09/26 22:19:53  Rasterising Tiles 
+    ## 2026-19-01/09/26 22:19:57  Adjusting count matrix
+    ## 2026-19-01/09/26 22:19:57  Setting integrated as active embedding 
+    ## 2026-19-01/09/26 22:19:57  Setting inferred as active count matrix 
     ## #--------------------------------------------------------------------------------#
 
 Since this data set now contains an integrated latent space, we can also
@@ -810,9 +810,9 @@ inter <- smooth_image(inter, sigma = 5, iter = 10)
 ```
 
     ## #--------------------------------------------------------------------------------# 
-    ## 2026-52-01/09/26 21:52:03  Converting Vesalius to Image
-    ## 2026-52-01/09/26 21:52:05  Smoothing Image Arrays 
-    ## 2026-52-01/09/26 21:52:05  Converting Images to Vesalius
+    ## 2026-19-01/09/26 22:19:57  Converting Vesalius to Image
+    ## 2026-19-01/09/26 22:19:58  Smoothing Image Arrays 
+    ## 2026-19-01/09/26 22:19:58  Converting Images to Vesalius
     ## #--------------------------------------------------------------------------------#
 
 ``` r
@@ -820,9 +820,9 @@ inter <- equalize_image(inter, sleft = 5, sright = 5)
 ```
 
     ## #--------------------------------------------------------------------------------# 
-    ## 2026-52-01/09/26 21:52:05  Converting Vesalius to Image
-    ## 2026-52-01/09/26 21:52:06  Equalizing Histogram 
-    ## 2026-52-01/09/26 21:52:06  Converting Images to Vesalius
+    ## 2026-19-01/09/26 22:19:59  Converting Vesalius to Image
+    ## 2026-19-01/09/26 22:19:59  Equalizing Histogram 
+    ## 2026-20-01/09/26 22:20:00  Converting Images to Vesalius
     ## #--------------------------------------------------------------------------------#
 
 ``` r
@@ -830,7 +830,7 @@ inter <- segment_image(inter, col_resolution = 2)
 ```
 
     ## #--------------------------------------------------------------------------------# 
-    ## 2026-52-01/09/26 21:52:06  Segmenting Image using kmeans 
+    ## 2026-20-01/09/26 22:20:00  Segmenting Image using kmeans 
     ## #--------------------------------------------------------------------------------#
 
 We can view the resulting embeddings and territories.
@@ -854,10 +854,10 @@ inter <- identify_markers(inter, sample = TRUE)
 ```
 
     ## #--------------------------------------------------------------------------------# 
-    ## 2026-52-01/09/26 21:52:09  No territory Specified - Comparing all territories
-    ## 2026-52-01/09/26 21:52:09 ===> Computing DEGs in spatial_omics <===
-    ## 2026-52-01/09/26 21:52:09 ===> 1_reference VS remaining_matched <=== 
-    ## 2026-52-01/09/26 21:52:09 ===> 2_reference VS remaining_matched <=== 
+    ## 2026-20-01/09/26 22:20:02  No territory Specified - Comparing all territories
+    ## 2026-20-01/09/26 22:20:02 ===> Computing DEGs in spatial_omics <===
+    ## 2026-20-01/09/26 22:20:02 ===> 1_reference VS remaining_matched <=== 
+    ## 2026-20-01/09/26 22:20:02 ===> 2_reference VS remaining_matched <=== 
     ## #--------------------------------------------------------------------------------#
 
 ``` r

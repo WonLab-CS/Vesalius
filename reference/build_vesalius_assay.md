@@ -87,8 +87,8 @@ data(vesalius)
 # Single assay object
 ves <- build_vesalius_assay(coordinates, counts)
 #> #--------------------------------------------------------------------------------# 
-#> 2026-49-01/09/26 21:49:41  Checking Coordinates in spatial_omics 
-#> 2026-49-01/09/26 21:49:41  Checking Counts in spatial_omics 
-#> 2026-49-01/09/26 21:49:42  Calculating Assay scale from coordinates
+#> 2026-17-01/09/26 22:17:40  Checking Coordinates in spatial_omics 
+#> 2026-17-01/09/26 22:17:40  Checking Counts in spatial_omics 
+#> 2026-17-01/09/26 22:17:40  Calculating Assay scale from coordinates
 #> #--------------------------------------------------------------------------------# 
 ```
