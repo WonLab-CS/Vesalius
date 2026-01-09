@@ -1,5 +1,6 @@
-^renv$
-^renv\.lock$
+^flake\.nix$
+^flake\.lock$
+^CODE_OF_CONDUCT\.md$
 ^\.github$
 ^_pkgdown\.yml$
 ^docs$

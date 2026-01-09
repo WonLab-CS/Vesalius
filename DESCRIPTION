@@ -80,7 +80,8 @@ Imports:
     kohonen,
     Rcpp,
     TreeDist,
-    NMF
+    NMF,
+    rlang
 Suggests:
     knitr,
     RUnit,
