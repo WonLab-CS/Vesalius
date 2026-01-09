@@ -5,3 +5,5 @@
 .DS_Store
 docs
 vesalius.Rcheck
+vesalius_*.tar.gz
+vesalius_*.zip
